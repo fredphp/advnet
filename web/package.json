@@ -1,0 +1,28 @@
+{
+  "name": "video-coin-app",
+  "version": "1.0.0",
+  "description": "短视频金币平台 UniApp 客户端",
+  "main": "main.js",
+  "scripts": {
+    "dev:mp-weixin": "uni -p mp-weixin",
+    "build:mp-weixin": "uni build -p mp-weixin",
+    "dev:h5": "uni",
+    "build:h5": "uni build"
+  },
+  "dependencies": {
+    "@dcloudio/uni-app": "latest",
+    "@dcloudio/uni-app-plus": "latest",
+    "@dcloudio/uni-components": "latest",
+    "@dcloudio/uni-h5": "latest",
+    "@dcloudio/uni-mp-weixin": "latest",
+    "vue": "^3.2.45"
+  },
+  "devDependencies": {
+    "@dcloudio/types": "latest",
+    "@dcloudio/uni-automator": "latest",
+    "@dcloudio/uni-cli-shared": "latest",
+    "@dcloudio/vite-plugin-uni": "latest",
+    "sass": "^1.57.0",
+    "vite": "4.1.4"
+  }
+}
