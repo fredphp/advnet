@@ -259,22 +259,34 @@ class User extends Backend
             ->order('date', 'asc')
             ->select();
 
-        $dailyActive = Db::name('user_behavior_stat')
-            ->field('stat_date as date, COUNT(DISTINCT user_id) as count')
-            ->where('stat_date', 'between', [$startDate, $endDate])
-            ->group('stat_date')
-            ->order('stat_date', 'asc')
-            ->select();
+        // 尝试获取每日活跃用户，如果表不存在则返回空数组
+        $dailyActive = [];
+        try {
+            $dailyActive = Db::name('user_behavior_stat')
+                ->field('stat_date as date, COUNT(DISTINCT user_id) as count')
+                ->where('stat_date', 'between', [$startDate, $endDate])
+                ->group('stat_date')
+                ->order('stat_date', 'asc')
+                ->select();
+        } catch (\Exception $e) {
+            $dailyActive = [];
+        }
 
         $sourceDistribution = $this->model
             ->field('source, COUNT(*) as count')
             ->group('source')
             ->select();
 
-        $deviceDistribution = Db::name('device_fingerprint')
-            ->field('device_type, COUNT(DISTINCT user_id) as count')
-            ->group('device_type')
-            ->select();
+        // 尝试获取设备分布，如果表不存在则返回空数组
+        $deviceDistribution = [];
+        try {
+            $deviceDistribution = Db::name('device_fingerprint')
+                ->field('device_type, COUNT(DISTINCT user_id) as count')
+                ->group('device_type')
+                ->select();
+        } catch (\Exception $e) {
+            $deviceDistribution = [];
+        }
 
         if ($this->request->isAjax()) {
             $this->success('', [

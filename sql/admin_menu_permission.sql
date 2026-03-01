@@ -73,7 +73,9 @@ INSERT INTO `advn_auth_rule` (`type`, `pid`, `name`, `title`, `icon`, `url`, `co
 ('file', (SELECT id FROM (SELECT id FROM advn_auth_rule WHERE name = 'member/user' LIMIT 1) tmp), 'member/user/status', '修改状态', '', '', '', '', 0, '', '', UNIX_TIMESTAMP(), UNIX_TIMESTAMP(), 0, 'normal'),
 ('file', (SELECT id FROM (SELECT id FROM advn_auth_rule WHERE name = 'member/user' LIMIT 1) tmp), 'member/user/recharge', '充值金币', '', '', '', '', 0, '', '', UNIX_TIMESTAMP(), UNIX_TIMESTAMP(), 0, 'normal'),
 ('file', (SELECT id FROM (SELECT id FROM advn_auth_rule WHERE name = 'member/user' LIMIT 1) tmp), 'member/user/deduct', '扣除金币', '', '', '', '', 0, '', '', UNIX_TIMESTAMP(), UNIX_TIMESTAMP(), 0, 'normal'),
-('file', (SELECT id FROM (SELECT id FROM advn_auth_rule WHERE name = 'member/user' LIMIT 1) tmp), 'member/user/export', '导出', '', '', '', '', 0, '', '', UNIX_TIMESTAMP(), UNIX_TIMESTAMP(), 0, 'normal');
+('file', (SELECT id FROM (SELECT id FROM advn_auth_rule WHERE name = 'member/user' LIMIT 1) tmp), 'member/user/export', '导出', '', '', '', '', 0, '', '', UNIX_TIMESTAMP(), UNIX_TIMESTAMP(), 0, 'normal'),
+('file', (SELECT id FROM (SELECT id FROM advn_auth_rule WHERE name = 'member/user' LIMIT 1) tmp), 'member/user/statistics', '用户统计', '', '', '', '', 0, '', '', UNIX_TIMESTAMP(), UNIX_TIMESTAMP(), 0, 'normal'),
+('file', (SELECT id FROM (SELECT id FROM advn_auth_rule WHERE name = 'member/user' LIMIT 1) tmp), 'member/user/behaviors', '用户行为', '', '', '', '', 0, '', '', UNIX_TIMESTAMP(), UNIX_TIMESTAMP(), 0, 'normal');
 
 -- =============================================
 -- 二级菜单 - 视频管理
@@ -128,7 +130,9 @@ INSERT INTO `advn_auth_rule` (`type`, `pid`, `name`, `title`, `icon`, `url`, `co
 ('file', (SELECT id FROM (SELECT id FROM advn_auth_rule WHERE name = 'withdraw/order' LIMIT 1) tmp), 'withdraw/order/complete', '确认打款', '', '', '', '', 0, '', '', UNIX_TIMESTAMP(), UNIX_TIMESTAMP(), 0, 'normal'),
 ('file', (SELECT id FROM (SELECT id FROM advn_auth_rule WHERE name = 'withdraw/order' LIMIT 1) tmp), 'withdraw/order/batchApprove', '批量审核', '', '', '', '', 0, '', '', UNIX_TIMESTAMP(), UNIX_TIMESTAMP(), 0, 'normal'),
 ('file', (SELECT id FROM (SELECT id FROM advn_auth_rule WHERE name = 'withdraw/order' LIMIT 1) tmp), 'withdraw/order/batchPay', '批量打款', '', '', '', '', 0, '', '', UNIX_TIMESTAMP(), UNIX_TIMESTAMP(), 0, 'normal'),
-('file', (SELECT id FROM (SELECT id FROM advn_auth_rule WHERE name = 'withdraw/order' LIMIT 1) tmp), 'withdraw/order/export', '导出', '', '', '', '', 0, '', '', UNIX_TIMESTAMP(), UNIX_TIMESTAMP(), 0, 'normal');
+('file', (SELECT id FROM (SELECT id FROM advn_auth_rule WHERE name = 'withdraw/order' LIMIT 1) tmp), 'withdraw/order/export', '导出', '', '', '', '', 0, '', '', UNIX_TIMESTAMP(), UNIX_TIMESTAMP(), 0, 'normal'),
+('file', (SELECT id FROM (SELECT id FROM advn_auth_rule WHERE name = 'withdraw/order' LIMIT 1) tmp), 'withdraw/order/pending', '待审核', '', '', '', '', 0, '', '', UNIX_TIMESTAMP(), UNIX_TIMESTAMP(), 0, 'normal'),
+('file', (SELECT id FROM (SELECT id FROM advn_auth_rule WHERE name = 'withdraw/order' LIMIT 1) tmp), 'withdraw/order/statistics', '提现统计', '', '', '', '', 0, '', '', UNIX_TIMESTAMP(), UNIX_TIMESTAMP(), 0, 'normal');
 
 -- =============================================
 -- 二级菜单 - 金币管理
