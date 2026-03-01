@@ -11,6 +11,9 @@ use think\Db;
 class Rewardrule extends Backend
 {
     protected $model = null;
+    
+    // 排序字段映射：weigh -> sort
+    protected $sortFieldMapping = ['weigh' => 'sort'];
 
     public function _initialize()
     {

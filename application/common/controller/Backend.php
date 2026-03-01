@@ -110,6 +110,13 @@ class Backend extends Controller
     protected $importHeadType = 'comment';
 
     /**
+     * 排序字段映射
+     * 用于将前端传递的字段名映射到实际数据库字段
+     * 例如: ['weigh' => 'sort'] 表示将 weigh 映射到 sort
+     */
+    protected $sortFieldMapping = [];
+
+    /**
      * 引入后台控制器的traits
      */
     use \app\admin\library\traits\Backend;
@@ -268,6 +275,12 @@ class Backend extends Controller
         $op = $this->request->get("op", '', 'trim');
         $sort = $this->request->get("sort", !empty($this->model) && $this->model->getPk() ? $this->model->getPk() : 'id');
         $order = $this->request->get("order", "DESC");
+        
+        // 应用排序字段映射
+        if (!empty($this->sortFieldMapping) && isset($this->sortFieldMapping[$sort])) {
+            $sort = $this->sortFieldMapping[$sort];
+        }
+        
         $offset = max(0, $this->request->get("offset/d", 0));
         $limit = max(0, $this->request->get("limit/d", 0));
         $limit = $limit ?: 999999;

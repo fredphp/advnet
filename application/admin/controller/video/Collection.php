@@ -11,6 +11,9 @@ use think\Db;
 class Collection extends Backend
 {
     protected $model = null;
+    
+    // 排序字段映射：weigh -> sort
+    protected $sortFieldMapping = ['weigh' => 'sort'];
 
     public function _initialize()
     {
@@ -25,11 +28,6 @@ class Collection extends Backend
     {
         if ($this->request->isAjax()) {
             list($where, $sort, $order, $offset, $limit) = $this->buildparams();
-            
-            // 如果排序字段是 weigh，改为 sort
-            if ($sort === 'weigh') {
-                $sort = 'sort';
-            }
 
             $total = $this->model->where($where)->count();
             $list = $this->model->where($where)
