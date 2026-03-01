@@ -2,20 +2,13 @@
 
 namespace app\common\model;
 
-use think\Model;
-
 /**
  * 视频模型
  */
-class Video extends Model
+class Video extends BaseModel
 {
     // 表名
     protected $name = 'video';
-    
-    // 自动写入时间戳
-    protected $autoWriteTimestamp = 'int';
-    protected $createTime = 'createtime';
-    protected $updateTime = 'updatetime';
     
     // 追加属性
     protected $append = [

@@ -1,9 +1,23 @@
 define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefined, Backend, Table, Form) {
     var Controller = {
         index: function () {
+            // 初始化表格参数配置
+            Table.api.init({
+                extend: {
+                    index_url: 'videoreward/video_collection/index',
+                    add_url: 'videoreward/video_collection/add',
+                    edit_url: 'videoreward/video_collection/edit',
+                    del_url: 'videoreward/video_collection/del',
+                    multi_url: 'videoreward/video_collection/multi',
+                    table: 'video_collection',
+                }
+            });
+
             var table = $("#table");
+
+            // 初始化表格
             table.bootstrapTable({
-                url: 'videoreward/video_collection/index',
+                url: $.fn.bootstrapTable.defaults.extend.index_url,
                 pk: 'id',
                 sortName: 'id',
                 sortOrder: 'desc',
@@ -12,15 +26,35 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
                         {checkbox: true},
                         {field: 'id', title: 'ID', sortable: true},
                         {field: 'title', title: '合集标题', operate: 'LIKE'},
-                        {field: 'video_count', title: '视频数量'},
-                        {field: 'reward_type', title: '奖励类型'},
-                        {field: 'total_reward', title: '总奖励'},
+                        {field: 'cover', title: '封面', events: Table.api.events.image, formatter: Table.api.formatter.image, operate: false},
+                        {field: 'video_count', title: '视频数量', operate: false},
+                        {field: 'reward_type', title: '奖励类型', searchList: {"fixed":"固定奖励","random":"随机奖励","progress":"递进奖励"}, formatter: Table.api.formatter.normal},
+                        {field: 'total_reward', title: '总奖励', operate: 'BETWEEN', sortable: true},
                         {field: 'status', title: '状态', searchList: {"0":"禁用","1":"启用"}, formatter: Table.api.formatter.status},
-                        {field: 'createtime', title: '创建时间', formatter: Table.api.formatter.datetime},
-                        {field: 'operate', title: '操作', table: table, events: Table.api.events.operate, formatter: Table.api.formatter.operate}
+                        {field: 'createtime', title: '创建时间', formatter: Table.api.formatter.datetime, operate: 'RANGE', addclass: 'datetimerange', sortable: true},
+                        {
+                            field: 'operate', 
+                            title: '操作', 
+                            table: table, 
+                            events: Table.api.events.operate, 
+                            formatter: Table.api.formatter.operate,
+                            buttons: [
+                                {
+                                    name: 'videos',
+                                    text: '管理视频',
+                                    title: '管理合集视频',
+                                    classname: 'btn btn-xs btn-success btn-dialog',
+                                    icon: 'fa fa-list',
+                                    url: 'videoreward/video_collection/videos',
+                                    extend: 'data-area=\'["90%","90%"]\''
+                                }
+                            ]
+                        }
                     ]
                 ]
             });
+
+            // 为表格绑定事件
             Table.api.bindevent(table);
         },
         add: function () {

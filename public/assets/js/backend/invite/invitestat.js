@@ -1,9 +1,23 @@
 define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefined, Backend, Table, Form) {
     var Controller = {
         index: function () {
+            // 初始化表格参数配置
+            Table.api.init({
+                extend: {
+                    index_url: 'invite/invitestat/index',
+                    add_url: '',
+                    edit_url: '',
+                    del_url: '',
+                    multi_url: '',
+                    table: 'user_invite_stat',
+                }
+            });
+
             var table = $("#table");
+
+            // 初始化表格
             table.bootstrapTable({
-                url: 'invite/invitestat/index',
+                url: $.fn.bootstrapTable.defaults.extend.index_url,
                 pk: 'id',
                 sortName: 'id',
                 sortOrder: 'desc',
@@ -11,17 +25,24 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
                     [
                         {checkbox: true},
                         {field: 'id', title: 'ID', sortable: true},
-                        {field: 'user_id', title: '用户ID'},
-                        {field: 'username', title: '用户名'},
-                        {field: 'total_invite_count', title: '总邀请数'},
-                        {field: 'today_invite_count', title: '今日邀请'},
-                        {field: 'valid_invite_count', title: '有效邀请'},
-                        {field: 'total_commission', title: '累计佣金'},
-                        {field: 'updatetime', title: '更新时间', formatter: Table.api.formatter.datetime},
+                        {field: 'user_id', title: '用户ID', sortable: true},
+                        {field: 'user_nickname', title: '用户昵称', operate: false},
+                        {field: 'user_avatar', title: '头像', events: Table.api.events.image, formatter: Table.api.formatter.image, operate: false},
+                        {field: 'total_invite_count', title: '总邀请数', sortable: true},
+                        {field: 'level1_count', title: '一级邀请', sortable: true},
+                        {field: 'level2_count', title: '二级邀请', sortable: true},
+                        {field: 'valid_invite_count', title: '有效邀请', sortable: true},
+                        {field: 'today_invite_count', title: '今日邀请', sortable: true},
+                        {field: 'total_commission', title: '累计佣金', sortable: true},
+                        {field: 'withdrawn_commission', title: '已提现佣金', sortable: true},
+                        {field: 'new_invite_today', title: '今日新增邀请', sortable: true},
+                        {field: 'updatetime', title: '更新时间', formatter: Table.api.formatter.datetime, operate: 'RANGE', addclass: 'datetimerange', sortable: true},
                         {field: 'operate', title: '操作', table: table, events: Table.api.events.operate, formatter: Table.api.formatter.operate}
                     ]
                 ]
             });
+
+            // 为表格绑定事件
             Table.api.bindevent(table);
         },
         api: {
