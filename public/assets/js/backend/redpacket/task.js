@@ -26,10 +26,10 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
                         {field: 'remain_count', title: '剩余数量'},
                         {field: 'grabbed_count', title: '已领取'},
                         {field: 'status', title: '状态', searchList: {
-                            "pending": "待发布",
-                            "active": "进行中",
-                            "completed": "已完成",
-                            "revoked": "已撤回"
+                            "0": "禁用",
+                            "1": "启用",
+                            "2": "已结束",
+                            "3": "已抢完"
                         }, formatter: Table.api.formatter.status},
                         {field: 'start_time', title: '开始时间', formatter: Table.api.formatter.datetime},
                         {field: 'end_time', title: '结束时间', formatter: Table.api.formatter.datetime},

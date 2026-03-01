@@ -165,12 +165,11 @@ class Task extends Backend
             $this->error(__('未找到记录'));
         }
 
-        if ($row->status != 'pending') {
+        if ($row->status != 0) {
             $this->error('该红包已发布');
         }
 
-        $row->status = 'active';
-        $row->publish_time = time();
+        $row->status = 1;
         $row->updatetime = time();
         $row->save();
 
@@ -187,13 +186,13 @@ class Task extends Backend
             $this->error(__('未找到记录'));
         }
 
-        if ($row->status != 'active') {
+        if ($row->status != 1) {
             $this->error('只能撤回进行中的红包');
         }
 
         Db::startTrans();
         try {
-            $row->status = 'revoked';
+            $row->status = 0;
             $row->updatetime = time();
             $row->save();
 
@@ -248,10 +247,9 @@ class Task extends Backend
         }
 
         $this->model->where('id', 'in', $ids)
-            ->where('status', 'pending')
+            ->where('status', 0)
             ->update([
-                'status' => 'active',
-                'publish_time' => time(),
+                'status' => 1,
                 'updatetime' => time()
             ]);
 
