@@ -2,45 +2,190 @@
 
 namespace app\common\library;
 
-use think\facade\Db;
-use think\facade\Cache;
-use think\facade\Log;
+use think\Db;
+use think\Exception;
+use think\Cache;
 use app\common\model\CoinAccount;
 use app\common\model\CoinLog;
 
 /**
  * 金币服务类
+ * 
+ * 优化版本：
+ * 1. 使用统一配置服务
+ * 2. 添加分布式锁
+ * 3. 添加乐观锁
  */
 class CoinService
 {
-    // Redis键前缀
+    // 缓存前缀
     const CACHE_PREFIX = 'coin:';
     const LOCK_PREFIX = 'lock:coin:';
     
     /**
-     * 增加金币
+     * @var array 配置缓存
+     */
+    protected $config = null;
+    
+    /**
+     * 构造函数
+     */
+    public function __construct()
+    {
+        $this->loadConfig();
+    }
+    
+    /**
+     * 加载配置
+     */
+    protected function loadConfig()
+    {
+        $this->config = SystemConfigService::getCoinConfig();
+    }
+    
+    /**
+     * 获取配置
+     */
+    protected function getConfig($key, $default = null)
+    {
+        return $this->config[$key] ?? $default;
+    }
+    
+    /**
+     * 获取用户账户
+     * 
      * @param int $userId 用户ID
-     * @param float $amount 金币数量
-     * @param string $type 类型
-     * @param array $options 额外选项
+     * @param bool $lock 是否加锁
+     * @return array|null
+     */
+    public function getAccount($userId, $lock = false)
+    {
+        $userId = (int)$userId;
+        
+        $query = Db::name('coin_account')->where('user_id', $userId);
+        
+        if ($lock) {
+            $query->lock(true);
+        }
+        
+        return $query->find();
+    }
+    
+    /**
+     * 获取或创建账户
+     * 
+     * @param int $userId 用户ID
      * @return array
      */
-    public function addCoin($userId, $amount, $type, $options = [])
+    public function getOrCreateAccount($userId)
+    {
+        $userId = (int)$userId;
+        
+        $account = $this->getAccount($userId);
+        
+        if (!$account) {
+            $account = $this->createAccount($userId);
+        }
+        
+        return $account;
+    }
+    
+    /**
+     * 创建账户
+     * 
+     * @param int $userId 用户ID
+     * @return array
+     */
+    protected function createAccount($userId)
+    {
+        $userId = (int)$userId;
+        
+        Db::startTrans();
+        try {
+            // 再次检查是否已存在
+            $exists = $this->getAccount($userId, true);
+            if ($exists) {
+                Db::commit();
+                return $exists;
+            }
+            
+            $account = [
+                'user_id' => $userId,
+                'balance' => 0,
+                'frozen' => 0,
+                'total_income' => 0,
+                'total_expense' => 0,
+                'version' => 1,
+                'createtime' => time(),
+                'updatetime' => time(),
+            ];
+            
+            Db::name('coin_account')->insert($account);
+            Db::commit();
+            
+            return $account;
+        } catch (Exception $e) {
+            Db::rollback();
+            throw $e;
+        }
+    }
+    
+    /**
+     * 获取余额
+     * 
+     * @param int $userId 用户ID
+     * @return int
+     */
+    public function getBalance($userId)
+    {
+        $account = $this->getOrCreateAccount($userId);
+        return (int)max(0, $account['balance']);
+    }
+    
+    /**
+     * 获取可用余额（扣除冻结）
+     * 
+     * @param int $userId 用户ID
+     * @return int
+     */
+    public function getAvailableBalance($userId)
+    {
+        $account = $this->getOrCreateAccount($userId);
+        $balance = (int)$account['balance'];
+        $frozen = (int)$account['frozen'];
+        return max(0, $balance - $frozen);
+    }
+    
+    /**
+     * 增加金币
+     * 
+     * @param int $userId 用户ID
+     * @param int $amount 金币数量
+     * @param string $type 类型
+     * @param string $relationType 关联类型
+     * @param int $relationId 关联ID
+     * @param string $description 描述
+     * @return array
+     */
+    public function addCoin($userId, $amount, $type = 'system', $relationType = '', $relationId = 0, $description = '')
     {
         $result = [
             'success' => false,
-            'balance' => 0,
             'message' => '',
+            'balance' => 0,
         ];
+        
+        $userId = (int)$userId;
+        $amount = (int)$amount;
         
         if ($amount <= 0) {
             $result['message'] = '金币数量必须大于0';
             return $result;
         }
         
-        // 分布式锁
+        // 获取分布式锁
         $lockKey = self::LOCK_PREFIX . $userId;
-        $lock = $this->getLock($lockKey, 5);
+        $lock = $this->getLock($lockKey, 10);
         
         if (!$lock) {
             $result['message'] = '操作频繁，请稍后重试';
@@ -50,71 +195,54 @@ class CoinService
         try {
             Db::startTrans();
             
-            // 获取账户(加锁)
-            $account = Db::name('coin_account')
-                ->where('user_id', $userId)
-                ->lock(true)
-                ->find();
+            // 获取账户（加锁）
+            $account = $this->getAccount($userId, true);
             
             if (!$account) {
-                // 创建账户
                 $account = $this->createAccount($userId);
             }
             
-            $oldBalance = $account['balance'];
-            $newBalance = $oldBalance + $amount;
+            $balanceBefore = (int)$account['balance'];
+            $balanceAfter = $balanceBefore + $amount;
             
-            // 更新账户
-            $updateData = [
-                'balance' => $newBalance,
-                'total_earn' => $account['total_earn'] + $amount,
-                'updatetime' => time(),
-            ];
-            
-            // 更新今日获得
-            $today = date('Y-m-d');
-            if ($account['today_earn_date'] != $today) {
-                $updateData['today_earn'] = $amount;
-                $updateData['today_earn_date'] = $today;
-            } else {
-                $updateData['today_earn'] = $account['today_earn'] + $amount;
-            }
-            
-            // 乐观锁
+            // 使用乐观锁更新
             $affected = Db::name('coin_account')
                 ->where('user_id', $userId)
                 ->where('version', $account['version'])
-                ->update(array_merge($updateData, ['version' => $account['version'] + 1]));
+                ->update([
+                    'balance' => $balanceAfter,
+                    'total_income' => (int)$account['total_income'] + $amount,
+                    'version' => (int)$account['version'] + 1,
+                    'updatetime' => time(),
+                ]);
             
             if ($affected === 0) {
-                throw new \Exception('操作失败，请重试');
+                throw new Exception('账户更新失败，请重试');
             }
             
             // 记录流水
-            $this->addCoinLog($userId, [
+            $this->addLog($userId, [
                 'type' => $type,
                 'amount' => $amount,
-                'balance_before' => $oldBalance,
-                'balance_after' => $newBalance,
-                'relation_type' => $options['relation_type'] ?? null,
-                'relation_id' => $options['relation_id'] ?? null,
-                'description' => $options['description'] ?? '',
-                'ip' => $options['ip'] ?? null,
+                'balance_before' => $balanceBefore,
+                'balance_after' => $balanceAfter,
+                'relation_type' => $relationType,
+                'relation_id' => $relationId,
+                'description' => $description,
             ]);
             
             Db::commit();
             
-            $result['success'] = true;
-            $result['balance'] = $newBalance;
-            $result['message'] = '金币发放成功';
-            
             // 清除缓存
             $this->clearAccountCache($userId);
             
-        } catch (\Exception $e) {
+            $result['success'] = true;
+            $result['balance'] = $balanceAfter;
+            
+        } catch (Exception $e) {
             Db::rollback();
             $result['message'] = $e->getMessage();
-            Log::error('金币增加失败: ' . $e->getMessage());
+            Log::error('AddCoin error: ' . $e->getMessage());
         } finally {
             $this->releaseLock($lockKey);
         }
@@ -123,28 +251,35 @@ class CoinService
     }
     
     /**
-     * 扣减金币
+     * 扣除金币
+     * 
      * @param int $userId 用户ID
-     * @param float $amount 金币数量
+     * @param int $amount 金币数量
      * @param string $type 类型
-     * @param array $options 额外选项
+     * @param string $relationType 关联类型
+     * @param int $relationId 关联ID
+     * @param string $description 描述
      * @return array
      */
-    public function reduceCoin($userId, $amount, $type, $options = [])
+    public function deductCoin($userId, $amount, $type = 'system', $relationType = '', $relationId = 0, $description = '')
     {
         $result = [
             'success' => false,
-            'balance' => 0,
             'message' => '',
+            'balance' => 0,
         ];
+        
+        $userId = (int)$userId;
+        $amount = (int)$amount;
         
         if ($amount <= 0) {
             $result['message'] = '金币数量必须大于0';
             return $result;
         }
         
+        // 获取分布式锁
         $lockKey = self::LOCK_PREFIX . $userId;
-        $lock = $this->getLock($lockKey, 5);
+        $lock = $this->getLock($lockKey, 10);
         
         if (!$lock) {
             $result['message'] = '操作频繁，请稍后重试';
@@ -154,60 +289,59 @@ class CoinService
         try {
             Db::startTrans();
             
-            $account = Db::name('coin_account')
-                ->where('user_id', $userId)
-                ->lock(true)
-                ->find();
+            // 获取账户（加锁）
+            $account = $this->getAccount($userId, true);
             
             if (!$account) {
-                throw new \Exception('账户不存在');
+                throw new Exception('账户不存在');
             }
             
-            if ($account['balance'] < $amount) {
-                throw new \Exception('金币余额不足');
+            $balanceBefore = (int)$account['balance'];
+            
+            if ($balanceBefore < $amount) {
+                throw new Exception('金币余额不足');
             }
             
-            $oldBalance = $account['balance'];
-            $newBalance = $oldBalance - $amount;
+            $balanceAfter = $balanceBefore - $amount;
             
+            // 使用乐观锁更新
             $affected = Db::name('coin_account')
                 ->where('user_id', $userId)
                 ->where('version', $account['version'])
                 ->update([
-                    'balance' => $newBalance,
-                    'total_spend' => $account['total_spend'] + $amount,
-                    'version' => $account['version'] + 1,
+                    'balance' => $balanceAfter,
+                    'total_expense' => (int)$account['total_expense'] + $amount,
+                    'version' => (int)$account['version'] + 1,
                     'updatetime' => time(),
                 ]);
             
             if ($affected === 0) {
-                throw new \Exception('操作失败，请重试');
+                throw new Exception('账户更新失败，请重试');
             }
             
             // 记录流水
-            $this->addCoinLog($userId, [
+            $this->addLog($userId, [
                 'type' => $type,
                 'amount' => -$amount,
-                'balance_before' => $oldBalance,
-                'balance_after' => $newBalance,
-                'relation_type' => $options['relation_type'] ?? null,
-                'relation_id' => $options['relation_id'] ?? null,
-                'description' => $options['description'] ?? '',
-                'ip' => $options['ip'] ?? null,
+                'balance_before' => $balanceBefore,
+                'balance_after' => $balanceAfter,
+                'relation_type' => $relationType,
+                'relation_id' => $relationId,
+                'description' => $description,
             ]);
             
             Db::commit();
             
-            $result['success'] = true;
-            $result['balance'] = $newBalance;
-            $result['message'] = '金币扣减成功';
-            
+            // 清除缓存
             $this->clearAccountCache($userId);
             
-        } catch (\Exception $e) {
+            $result['success'] = true;
+            $result['balance'] = $balanceAfter;
+            
+        } catch (Exception $e) {
             Db::rollback();
             $result['message'] = $e->getMessage();
-            Log::error('金币扣减失败: ' . $e->getMessage());
+            Log::error('DeductCoin error: ' . $e->getMessage());
         } finally {
             $this->releaseLock($lockKey);
         }
@@ -217,13 +351,17 @@ class CoinService
     
     /**
      * 冻结金币
+     * 
+     * @param int $userId 用户ID
+     * @param int $amount 金币数量
+     * @return array
      */
-    public function freezeCoin($userId, $amount)
+    public function freeze($userId, $amount)
     {
-        $result = [
-            'success' => false,
-            'message' => '',
-        ];
+        $result = ['success' => false, 'message' => ''];
+        
+        $userId = (int)$userId;
+        $amount = (int)$amount;
         
         if ($amount <= 0) {
             $result['message'] = '金币数量必须大于0';
@@ -231,7 +369,7 @@ class CoinService
         }
         
         $lockKey = self::LOCK_PREFIX . $userId;
-        $lock = $this->getLock($lockKey, 5);
+        $lock = $this->getLock($lockKey, 10);
         
         if (!$lock) {
             $result['message'] = '操作频繁，请稍后重试';
@@ -241,34 +379,38 @@ class CoinService
         try {
             Db::startTrans();
             
-            $account = Db::name('coin_account')
-                ->where('user_id', $userId)
-                ->lock(true)
-                ->find();
+            $account = $this->getAccount($userId, true);
             
-            if (!$account || $account['balance'] < $amount) {
-                throw new \Exception('金币余额不足');
+            if (!$account) {
+                throw new Exception('账户不存在');
+            }
+            
+            $balance = (int)$account['balance'];
+            $frozen = (int)$account['frozen'];
+            $available = $balance - $frozen;
+            
+            if ($available < $amount) {
+                throw new Exception('可用金币不足');
             }
             
             $affected = Db::name('coin_account')
                 ->where('user_id', $userId)
                 ->where('version', $account['version'])
                 ->update([
-                    'balance' => $account['balance'] - $amount,
-                    'frozen' => $account['frozen'] + $amount,
-                    'version' => $account['version'] + 1,
+                    'frozen' => $frozen + $amount,
+                    'version' => (int)$account['version'] + 1,
                     'updatetime' => time(),
                 ]);
             
             if ($affected === 0) {
-                throw new \Exception('操作失败，请重试');
+                throw new Exception('操作失败，请重试');
             }
             
             Db::commit();
             
             $result['success'] = true;
             
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             Db::rollback();
             $result['message'] = $e->getMessage();
         } finally {
@@ -280,16 +422,25 @@ class CoinService
     
     /**
      * 解冻金币
+     * 
+     * @param int $userId 用户ID
+     * @param int $amount 金币数量
+     * @return array
      */
-    public function unfreezeCoin($userId, $amount)
+    public function unfreeze($userId, $amount)
     {
-        $result = [
-            'success' => false,
-            'message' => '',
-        ];
+        $result = ['success' => false, 'message' => ''];
+        
+        $userId = (int)$userId;
+        $amount = (int)$amount;
+        
+        if ($amount <= 0) {
+            $result['message'] = '金币数量必须大于0';
+            return $result;
+        }
         
         $lockKey = self::LOCK_PREFIX . $userId;
-        $lock = $this->getLock($lockKey, 5);
+        $lock = $this->getLock($lockKey, 10);
         
         if (!$lock) {
             $result['message'] = '操作频繁，请稍后重试';
@@ -299,34 +450,36 @@ class CoinService
         try {
             Db::startTrans();
             
-            $account = Db::name('coin_account')
-                ->where('user_id', $userId)
-                ->lock(true)
-                ->find();
+            $account = $this->getAccount($userId, true);
             
-            if (!$account || $account['frozen'] < $amount) {
-                throw new \Exception('冻结金币不足');
+            if (!$account) {
+                throw new Exception('账户不存在');
+            }
+            
+            $frozen = (int)$account['frozen'];
+            
+            if ($frozen < $amount) {
+                throw new Exception('冻结金币不足');
             }
             
             $affected = Db::name('coin_account')
                 ->where('user_id', $userId)
                 ->where('version', $account['version'])
                 ->update([
-                    'balance' => $account['balance'] + $amount,
-                    'frozen' => $account['frozen'] - $amount,
-                    'version' => $account['version'] + 1,
+                    'frozen' => $frozen - $amount,
+                    'version' => (int)$account['version'] + 1,
                     'updatetime' => time(),
                 ]);
             
             if ($affected === 0) {
-                throw new \Exception('操作失败，请重试');
+                throw new Exception('操作失败，请重试');
             }
             
             Db::commit();
             
             $result['success'] = true;
             
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             Db::rollback();
             $result['message'] = $e->getMessage();
         } finally {
@@ -337,90 +490,239 @@ class CoinService
     }
     
     /**
-     * 获取账户余额
+     * 转账
+     * 
+     * @param int $fromUserId 转出用户ID
+     * @param int $toUserId 转入用户ID
+     * @param int $amount 金币数量
+     * @param string $description 描述
+     * @return array
      */
-    public function getBalance($userId)
+    public function transfer($fromUserId, $toUserId, $amount, $description = '')
     {
-        $cacheKey = self::CACHE_PREFIX . "balance:{$userId}";
-        $balance = Cache::get($cacheKey);
-        
-        if ($balance !== null) {
-            return $balance;
-        }
-        
-        $account = Db::name('coin_account')->where('user_id', $userId)->find();
-        
-        if (!$account) {
-            return 0;
-        }
-        
-        // 缓存5秒
-        Cache::set($cacheKey, $account['balance'], 5);
-        
-        return $account['balance'];
-    }
-    
-    /**
-     * 获取账户详情
-     */
-    public function getAccountInfo($userId)
-    {
-        $account = Db::name('coin_account')->where('user_id', $userId)->find();
-        
-        if (!$account) {
-            return $this->createAccount($userId);
-        }
-        
-        return $account;
-    }
-    
-    /**
-     * 创建账户
-     */
-    protected function createAccount($userId)
-    {
-        Db::name('coin_account')->insert([
-            'user_id' => $userId,
-            'balance' => 0,
-            'frozen' => 0,
-            'total_earn' => 0,
-            'total_spend' => 0,
-            'total_withdraw' => 0,
-            'today_earn' => 0,
-            'today_earn_date' => date('Y-m-d'),
-            'version' => 0,
-            'createtime' => time(),
-            'updatetime' => time(),
-        ]);
-        
-        return [
-            'user_id' => $userId,
-            'balance' => 0,
-            'frozen' => 0,
-            'total_earn' => 0,
-            'total_spend' => 0,
-            'total_withdraw' => 0,
-            'version' => 0,
+        $result = [
+            'success' => false,
+            'message' => '',
         ];
+        
+        $fromUserId = (int)$fromUserId;
+        $toUserId = (int)$toUserId;
+        $amount = (int)$amount;
+        
+        if ($amount <= 0) {
+            $result['message'] = '金币数量必须大于0';
+            return $result;
+        }
+        
+        if ($fromUserId == $toUserId) {
+            $result['message'] = '不能转给自己';
+            return $result;
+        }
+        
+        // 获取锁（按用户ID排序避免死锁）
+        $lockIds = [$fromUserId, $toUserId];
+        sort($lockIds);
+        
+        $locks = [];
+        foreach ($lockIds as $uid) {
+            $lockKey = self::LOCK_PREFIX . $uid;
+            $lock = $this->getLock($lockKey, 10);
+            if (!$lock) {
+                // 释放已获取的锁
+                foreach ($locks as $lk) {
+                    $this->releaseLock($lk);
+                }
+                $result['message'] = '操作频繁，请稍后重试';
+                return $result;
+            }
+            $locks[] = $lockKey;
+        }
+        
+        try {
+            Db::startTrans();
+            
+            // 获取转出账户
+            $fromAccount = $this->getAccount($fromUserId, true);
+            if (!$fromAccount) {
+                throw new Exception('转出账户不存在');
+            }
+            
+            $fromBalance = (int)$fromAccount['balance'];
+            if ($fromBalance < $amount) {
+                throw new Exception('余额不足');
+            }
+            
+            // 获取或创建转入账户
+            $toAccount = $this->getAccount($toUserId, true);
+            if (!$toAccount) {
+                $toAccount = $this->createAccount($toUserId);
+            }
+            
+            $toBalance = (int)$toAccount['balance'];
+            
+            // 更新转出账户
+            Db::name('coin_account')
+                ->where('user_id', $fromUserId)
+                ->where('version', $fromAccount['version'])
+                ->update([
+                    'balance' => $fromBalance - $amount,
+                    'total_expense' => (int)$fromAccount['total_expense'] + $amount,
+                    'version' => (int)$fromAccount['version'] + 1,
+                    'updatetime' => time(),
+                ]);
+            
+            // 更新转入账户
+            Db::name('coin_account')
+                ->where('user_id', $toUserId)
+                ->where('version', $toAccount['version'])
+                ->update([
+                    'balance' => $toBalance + $amount,
+                    'total_income' => (int)$toAccount['total_income'] + $amount,
+                    'version' => (int)$toAccount['version'] + 1,
+                    'updatetime' => time(),
+                ]);
+            
+            // 记录流水
+            $this->addLog($fromUserId, [
+                'type' => 'transfer_out',
+                'amount' => -$amount,
+                'balance_before' => $fromBalance,
+                'balance_after' => $fromBalance - $amount,
+                'relation_type' => 'user',
+                'relation_id' => $toUserId,
+                'description' => $description ?: "转账给用户{$toUserId}",
+            ]);
+            
+            $this->addLog($toUserId, [
+                'type' => 'transfer_in',
+                'amount' => $amount,
+                'balance_before' => $toBalance,
+                'balance_after' => $toBalance + $amount,
+                'relation_type' => 'user',
+                'relation_id' => $fromUserId,
+                'description' => $description ?: "收到用户{$fromUserId}转账",
+            ]);
+            
+            Db::commit();
+            
+            // 清除缓存
+            $this->clearAccountCache($fromUserId);
+            $this->clearAccountCache($toUserId);
+            
+            $result['success'] = true;
+            
+        } catch (Exception $e) {
+            Db::rollback();
+            $result['message'] = $e->getMessage();
+            Log::error('Transfer error: ' . $e->getMessage());
+        } finally {
+            foreach ($locks as $lockKey) {
+                $this->releaseLock($lockKey);
+            }
+        }
+        
+        return $result;
+    }
+    
+    /**
+     * 新用户注册奖励
+     * 
+     * @param int $userId 用户ID
+     * @return array
+     */
+    public function newUserReward($userId)
+    {
+        $amount = (int)$this->getConfig('new_user_coin', 1000);
+        
+        if ($amount <= 0) {
+            return ['success' => true, 'amount' => 0];
+        }
+        
+        return $this->addCoin(
+            $userId,
+            $amount,
+            'new_user',
+            '',
+            0,
+            '新用户注册奖励'
+        );
+    }
+    
+    /**
+     * 视频观看奖励
+     * 
+     * @param int $userId 用户ID
+     * @param int $videoId 视频ID
+     * @param int $watchDuration 观看时长
+     * @return array
+     */
+    public function videoReward($userId, $videoId, $watchDuration = 0)
+    {
+        $amount = (int)$this->getConfig('video_coin_reward', 100);
+        $requiredDuration = (int)$this->getConfig('video_watch_duration', 30);
+        
+        if ($watchDuration < $requiredDuration) {
+            return ['success' => false, 'message' => '观看时长不足', 'amount' => 0];
+        }
+        
+        if ($amount <= 0) {
+            return ['success' => true, 'amount' => 0];
+        }
+        
+        return $this->addCoin(
+            $userId,
+            $amount,
+            'video',
+            'video',
+            $videoId,
+            '观看视频奖励'
+        );
+    }
+    
+    /**
+     * 检查每日限制
+     * 
+     * @param int $userId 用户ID
+     * @return bool
+     */
+    public function checkDailyLimit($userId)
+    {
+        $dailyLimit = (int)$this->getConfig('daily_coin_limit', 50000);
+        
+        if ($dailyLimit <= 0) {
+            return true;
+        }
+        
+        $today = date('Y-m-d');
+        
+        $earned = Db::name('coin_log')
+            ->where('user_id', $userId)
+            ->where('amount', '>', 0)
+            ->where('create_date', $today)
+            ->sum('amount');
+        
+        return (int)$earned < $dailyLimit;
     }
     
     /**
      * 添加金币流水
+     * 
+     * @param int $userId 用户ID
+     * @param array $data 数据
      */
-    protected function addCoinLog($userId, $data)
+    protected function addLog($userId, array $data)
     {
         $tableName = 'coin_log_' . date('Ym');
         
         Db::name($tableName)->insert([
-            'user_id' => $userId,
-            'type' => $data['type'],
-            'amount' => $data['amount'],
-            'balance_before' => $data['balance_before'],
-            'balance_after' => $data['balance_after'],
-            'relation_type' => $data['relation_type'],
-            'relation_id' => $data['relation_id'],
-            'description' => $data['description'],
-            'ip' => $data['ip'],
+            'user_id' => (int)$userId,
+            'type' => (string)($data['type'] ?? ''),
+            'amount' => (int)($data['amount'] ?? 0),
+            'balance_before' => (int)($data['balance_before'] ?? 0),
+            'balance_after' => (int)($data['balance_after'] ?? 0),
+            'relation_type' => (string)($data['relation_type'] ?? ''),
+            'relation_id' => (int)($data['relation_id'] ?? 0),
+            'description' => (string)($data['description'] ?? ''),
             'createtime' => time(),
             'create_date' => date('Y-m-d'),
         ]);
@@ -455,7 +757,24 @@ class CoinService
      */
     protected function clearAccountCache($userId)
     {
-        $cacheKey = self::CACHE_PREFIX . "balance:{$userId}";
-        Cache::delete($cacheKey);
+        Cache::delete(self::CACHE_PREFIX . 'balance:' . $userId);
+    }
+    
+    /**
+     * 金币转人民币
+     */
+    public static function coinToCash($coin)
+    {
+        $rate = SystemConfigService::getCoinRate();
+        return round($coin / $rate, 4);
+    }
+    
+    /**
+     * 人民币转金币
+     */
+    public static function cashToCoin($cash)
+    {
+        $rate = SystemConfigService::getCoinRate();
+        return intval($cash * $rate);
     }
 }

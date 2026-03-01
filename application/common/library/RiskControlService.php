@@ -19,33 +19,13 @@ use app\common\model\RiskBlacklist;
 /**
  * 风控评分服务
  * 
- * 核心功能：
- * 1. 多维度风险评分算法
- * 2. 规则引擎执行
- * 3. 自动封禁机制
- * 4. 行为模式检测
+ * 优化版本：
+ * 1. 使用统一配置服务
+ * 2. 修复潜在bug
+ * 3. 优化性能
  */
 class RiskControlService
 {
-    // 风险等级阈值
-    const RISK_LEVEL_SAFE = 0;          // 安全: 0-50分
-    const RISK_LEVEL_LOW = 50;          // 低风险: 50-150分
-    const RISK_LEVEL_MEDIUM = 150;      // 中风险: 150-300分
-    const RISK_LEVEL_HIGH = 300;        // 高风险: 300-500分
-    const RISK_LEVEL_DANGEROUS = 500;   // 危险: 500+分
-    
-    // 最大风险分
-    const MAX_RISK_SCORE = 1000;
-    
-    // 风险分衰减周期(秒)
-    const SCORE_DECAY_PERIOD = 86400;   // 24小时
-    
-    // 风险分每日衰减比例
-    const SCORE_DECAY_RATE = 0.1;       // 每天衰减10%
-    
-    // 缓存前缀
-    const CACHE_PREFIX = 'risk:';
-    
     // 规则类型
     const RULE_TYPE_VIDEO = 'video';
     const RULE_TYPE_TASK = 'task';
@@ -66,9 +46,9 @@ class RiskControlService
     protected static $rulesCache = null;
     
     /**
-     * @var bool 是否启用缓存
+     * @var array 配置缓存
      */
-    protected $enableCache = true;
+    protected $config = null;
     
     /**
      * @var int 用户ID
@@ -97,30 +77,40 @@ class RiskControlService
     
     /**
      * 初始化风控服务
-     * 
-     * @param int $userId 用户ID
-     * @param string $deviceId 设备ID
-     * @param string $ip IP地址
-     * @param string $userAgent User-Agent
-     * @return $this
      */
     public function init($userId, $deviceId = '', $ip = '', $userAgent = '')
     {
-        $this->userId = $userId;
-        $this->deviceId = $deviceId ?: $this->getDeviceId();
-        $this->ip = $ip ?: $this->getClientIp();
-        $this->userAgent = $userAgent ?: $this->getUserAgent();
+        $this->userId = (int)$userId;
+        $this->deviceId = trim($deviceId) ?: $this->getDeviceId();
+        $this->ip = trim($ip) ?: $this->getClientIp();
+        $this->userAgent = trim($userAgent) ?: $this->getUserAgent();
+        
+        // 加载配置
+        $this->loadConfig();
         
         return $this;
     }
     
     /**
+     * 加载配置
+     */
+    protected function loadConfig()
+    {
+        if ($this->config === null) {
+            $this->config = SystemConfigService::getRiskConfig();
+        }
+    }
+    
+    /**
+     * 获取配置值
+     */
+    protected function getConfig($key, $default = null)
+    {
+        return $this->config[$key] ?? $default;
+    }
+    
+    /**
      * 风控检查入口
-     * 
-     * @param string $ruleType 规则类型
-     * @param string $action 行为动作
-     * @param array $context 上下文数据
-     * @return array 检查结果
      */
     public function check($ruleType, $action, array $context = [])
     {
@@ -134,6 +124,11 @@ class RiskControlService
         ];
         
         try {
+            // 检查风控是否启用
+            if (!$this->getConfig('risk_enabled', true)) {
+                return $result;
+            }
+            
             // 1. 检查白名单
             if ($this->isInWhitelist()) {
                 return $result;
@@ -161,8 +156,8 @@ class RiskControlService
             $result['risk_score'] = $this->calculateRiskScore();
             $result['risk_level'] = $this->getRiskLevel($result['risk_score']);
             
-            // 6. 执行风险动作
-            if ($result['risk_score'] >= self::RISK_LEVEL_HIGH) {
+            // 6. 执行风险动作（仅在开启自动封禁时）
+            if ($this->getConfig('auto_ban_enabled', true) && $result['risk_score'] >= $this->getConfig('freeze_threshold', 300)) {
                 $this->executeRiskAction($result);
             }
             
@@ -176,11 +171,6 @@ class RiskControlService
     
     /**
      * 执行规则检查
-     * 
-     * @param string $ruleType 规则类型
-     * @param string $action 行为动作
-     * @param array $context 上下文
-     * @return array
      */
     protected function executeRules($ruleType, $action, array $context)
     {
@@ -237,11 +227,6 @@ class RiskControlService
     
     /**
      * 检查单个规则
-     * 
-     * @param array $rule 规则配置
-     * @param string $action 行为动作
-     * @param array $context 上下文
-     * @return array
      */
     protected function checkRule($rule, $action, array $context)
     {
@@ -332,12 +317,11 @@ class RiskControlService
     
     /**
      * 检查视频观看速度
-     * 规则：观看速度异常（如3秒内完成多个视频）
      */
     protected function checkVideoWatchSpeed($context, $threshold)
     {
-        $watchDuration = $context['watch_duration'] ?? 0;
-        $videoDuration = $context['video_duration'] ?? 0;
+        $watchDuration = (float)($context['watch_duration'] ?? 0);
+        $videoDuration = (float)($context['video_duration'] ?? 0);
         
         if ($videoDuration <= 0) {
             return ['passed' => true, 'trigger_value' => 0];
@@ -347,7 +331,7 @@ class RiskControlService
         $speedRatio = $watchDuration / $videoDuration;
         
         // 检查最近N个视频的平均观看速度
-        $cacheKey = self::CACHE_PREFIX . "video_speed:{$this->userId}";
+        $cacheKey = "risk:video_speed:{$this->userId}";
         $recentSpeeds = Cache::get($cacheKey, []);
         
         $recentSpeeds[] = $speedRatio;
@@ -371,13 +355,13 @@ class RiskControlService
      */
     protected function checkVideoWatchRepeat($context, $threshold)
     {
-        $videoId = $context['video_id'] ?? 0;
+        $videoId = (int)($context['video_id'] ?? 0);
         if (!$videoId) {
             return ['passed' => true, 'trigger_value' => 0];
         }
         
         // 获取最近观看的视频ID列表
-        $cacheKey = self::CACHE_PREFIX . "video_repeat:{$this->userId}";
+        $cacheKey = "risk:video_repeat:{$this->userId}";
         $recentVideos = Cache::get($cacheKey, []);
         
         // 统计同一视频的观看次数
@@ -409,7 +393,7 @@ class RiskControlService
             ->where('stat_date', $today)
             ->find();
         
-        $watchCount = $stat ? $stat->video_watch_count : 0;
+        $watchCount = $stat ? (int)$stat->video_watch_count : 0;
         
         return [
             'passed' => $watchCount < $threshold,
@@ -422,11 +406,11 @@ class RiskControlService
      */
     protected function checkVideoRewardSpeed($context, $threshold)
     {
-        $coinEarned = $context['coin_earned'] ?? 0;
+        $coinEarned = (int)($context['coin_earned'] ?? 0);
         
         // 检查最近1小时的金币获取
-        $cacheKey = self::CACHE_PREFIX . "coin_speed:{$this->userId}";
-        $hourlyCoin = Cache::get($cacheKey, 0);
+        $cacheKey = "risk:coin_speed:{$this->userId}";
+        $hourlyCoin = (int)Cache::get($cacheKey, 0);
         
         $hourlyCoin += $coinEarned;
         Cache::set($cacheKey, $hourlyCoin, 3600);
@@ -442,14 +426,18 @@ class RiskControlService
      */
     protected function checkVideoSkipRatio($threshold)
     {
-        $cacheKey = self::CACHE_PREFIX . "video_skip:{$this->userId}";
+        $cacheKey = "risk:video_skip:{$this->userId}";
         $stats = Cache::get($cacheKey, ['total' => 0, 'skip' => 0]);
         
-        if ($stats['total'] < 10) {
+        // 确保数值有效
+        $total = max(0, (int)$stats['total']);
+        $skip = max(0, (int)$stats['skip']);
+        
+        if ($total < 10) {
             return ['passed' => true, 'trigger_value' => 0];
         }
         
-        $skipRatio = $stats['skip'] / $stats['total'];
+        $skipRatio = $skip / $total;
         
         return [
             'passed' => $skipRatio < $threshold,
@@ -464,10 +452,10 @@ class RiskControlService
      */
     protected function checkTaskCompleteSpeed($context, $threshold)
     {
-        $taskDuration = $context['task_duration'] ?? 0;
+        $taskDuration = (float)($context['task_duration'] ?? 0);
         
         // 检查最近完成的任务平均时长
-        $cacheKey = self::CACHE_PREFIX . "task_speed:{$this->userId}";
+        $cacheKey = "risk:task_speed:{$this->userId}";
         $recentDurations = Cache::get($cacheKey, []);
         
         $recentDurations[] = $taskDuration;
@@ -477,7 +465,6 @@ class RiskControlService
         
         $avgDuration = count($recentDurations) > 0 ? array_sum($recentDurations) / count($recentDurations) : 60;
         
-        // 如果平均完成时间过短
         return [
             'passed' => $avgDuration >= $threshold,
             'trigger_value' => round($avgDuration, 2),
@@ -494,7 +481,7 @@ class RiskControlService
             ->where('stat_date', $today)
             ->find();
         
-        $completeCount = $stat ? $stat->task_complete_count : 0;
+        $completeCount = $stat ? (int)$stat->task_complete_count : 0;
         
         return [
             'passed' => $completeCount < $threshold,
@@ -507,12 +494,12 @@ class RiskControlService
      */
     protected function checkTaskRepeatSubmit($context, $threshold)
     {
-        $taskId = $context['task_id'] ?? 0;
+        $taskId = (int)($context['task_id'] ?? 0);
         if (!$taskId) {
             return ['passed' => true, 'trigger_value' => 0];
         }
         
-        $cacheKey = self::CACHE_PREFIX . "task_repeat:{$this->userId}";
+        $cacheKey = "risk:task_repeat:{$this->userId}";
         $recentTasks = Cache::get($cacheKey, []);
         
         $submitCount = 0;
@@ -537,26 +524,25 @@ class RiskControlService
      */
     protected function checkTaskFakeBehavior($context, $threshold)
     {
-        // 综合判断任务行为是否异常
-        $suspicionScore = 0;
+        $suspicionScore = 0.0;
         
         // 1. 检查点击模式（是否过于规律）
-        if (isset($context['click_intervals'])) {
+        if (isset($context['click_intervals']) && is_array($context['click_intervals'])) {
             $intervals = $context['click_intervals'];
             if (count($intervals) >= 3) {
                 $variance = $this->calculateVariance($intervals);
-                if ($variance < 0.1) { // 间隔过于一致
+                if ($variance < 0.1) {
                     $suspicionScore += 0.3;
                 }
             }
         }
         
         // 2. 检查屏幕触摸点是否集中
-        if (isset($context['touch_positions'])) {
+        if (isset($context['touch_positions']) && is_array($context['touch_positions'])) {
             $positions = $context['touch_positions'];
             if (count($positions) >= 5) {
                 $avgDistance = $this->calculateAvgDistance($positions);
-                if ($avgDistance < 50) { // 触摸点过于集中
+                if ($avgDistance < 50) {
                     $suspicionScore += 0.4;
                 }
             }
@@ -579,7 +565,6 @@ class RiskControlService
      */
     protected function checkWithdrawFrequency($threshold)
     {
-        // 检查24小时内提现次数
         $count = Db::name('withdraw_order')
             ->where('user_id', $this->userId)
             ->where('createtime', '>', time() - 86400)
@@ -596,7 +581,7 @@ class RiskControlService
      */
     protected function checkWithdrawAmountAnomaly($context, $threshold)
     {
-        $amount = $context['amount'] ?? 0;
+        $amount = (float)($context['amount'] ?? 0);
         
         // 获取用户历史提现统计
         $stats = Db::name('withdraw_order')
@@ -605,12 +590,16 @@ class RiskControlService
             ->field('AVG(amount) as avg_amount, MAX(amount) as max_amount, COUNT(*) as total')
             ->find();
         
-        if (!$stats || $stats['total'] < 3) {
+        if (!$stats || (int)$stats['total'] < 3) {
             return ['passed' => true, 'trigger_value' => 0];
         }
         
-        // 如果提现金额远超历史平均值
-        $ratio = $stats['avg_amount'] > 0 ? $amount / $stats['avg_amount'] : 1;
+        $avgAmount = (float)$stats['avg_amount'];
+        if ($avgAmount <= 0) {
+            return ['passed' => true, 'trigger_value' => 0];
+        }
+        
+        $ratio = $amount / $avgAmount;
         
         return [
             'passed' => $ratio < $threshold,
@@ -623,15 +612,14 @@ class RiskControlService
      */
     protected function checkWithdrawNewAccount($context, $threshold)
     {
-        $amount = $context['amount'] ?? 0;
+        $amount = (float)($context['amount'] ?? 0);
         
-        // 检查账户注册时间
         $user = Db::name('user')->where('id', $this->userId)->find();
         if (!$user) {
             return ['passed' => true, 'trigger_value' => 0];
         }
         
-        $accountAge = time() - $user['createtime'];
+        $accountAge = time() - (int)$user['createtime'];
         $days = $accountAge / 86400;
         
         // 新账户(7天内)提现超过阈值
@@ -653,9 +641,8 @@ class RiskControlService
      */
     protected function checkRedpacketGrabSpeed($context, $threshold)
     {
-        $grabTime = $context['grab_time'] ?? 0; // 抢到红包的时间(秒)
+        $grabTime = (float)($context['grab_time'] ?? 0);
         
-        // 如果抢红包时间过短，可能是脚本
         return [
             'passed' => $grabTime > $threshold,
             'trigger_value' => $grabTime,
@@ -672,7 +659,7 @@ class RiskControlService
             ->where('stat_date', $today)
             ->find();
         
-        $grabCount = $stat ? $stat->redpacket_grab_count : 0;
+        $grabCount = $stat ? (int)$stat->redpacket_grab_count : 0;
         
         return [
             'passed' => $grabCount < $threshold,
@@ -687,7 +674,6 @@ class RiskControlService
      */
     protected function checkInviteSpeed($threshold)
     {
-        // 检查24小时内邀请人数
         $count = Db::name('invite_relation')
             ->where('inviter_id', $this->userId)
             ->where('createtime', '>', time() - 86400)
@@ -704,17 +690,9 @@ class RiskControlService
      */
     protected function checkInviteFakeAccount($context, $threshold)
     {
-        $inviteeId = $context['invitee_id'] ?? 0;
+        $inviteeId = (int)($context['invitee_id'] ?? 0);
         if (!$inviteeId) {
             return ['passed' => true, 'trigger_value' => 0];
-        }
-        
-        // 获取被邀请人的风险评分
-        $inviteeRisk = UserRiskScore::where('user_id', $inviteeId)->find();
-        $fakeCount = 0;
-        
-        if ($inviteeRisk && $inviteeRisk['risk_level'] == 'dangerous') {
-            $fakeCount = 1;
         }
         
         // 统计邀请的虚假账户总数
@@ -738,7 +716,7 @@ class RiskControlService
     protected function checkIpMultiAccount($threshold)
     {
         $ipRisk = IpRisk::where('ip', $this->ip)->find();
-        $accountCount = $ipRisk ? $ipRisk['account_count'] : 1;
+        $accountCount = $ipRisk ? (int)$ipRisk['account_count'] : 1;
         
         return [
             'passed' => $accountCount < $threshold,
@@ -756,7 +734,7 @@ class RiskControlService
         }
         
         $device = DeviceFingerprint::where('device_id', $this->deviceId)->find();
-        $accountCount = $device ? $device['account_count'] : 1;
+        $accountCount = $device ? (int)$device['account_count'] : 1;
         
         return [
             'passed' => $accountCount < $threshold,
@@ -769,18 +747,17 @@ class RiskControlService
      */
     protected function checkBehaviorPattern($threshold)
     {
-        // 计算用户行为模式与正常用户的差异度
-        $deviationScore = 0;
+        $deviationScore = 0.0;
         
         // 1. 活跃时间段异常
-        $hour = date('H');
+        $hour = (int)date('H');
         $normalActiveHours = [8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22];
         if (!in_array($hour, $normalActiveHours)) {
             $deviationScore += 0.1;
         }
         
         // 2. 行为间隔过于规律
-        $cacheKey = self::CACHE_PREFIX . "behavior_pattern:{$this->userId}";
+        $cacheKey = "risk:behavior_pattern:{$this->userId}";
         $intervals = Cache::get($cacheKey, []);
         if (count($intervals) >= 5) {
             $variance = $this->calculateVariance($intervals);
@@ -807,8 +784,6 @@ class RiskControlService
     
     /**
      * 计算综合风险评分
-     * 
-     * @return int
      */
     public function calculateRiskScore()
     {
@@ -819,38 +794,38 @@ class RiskControlService
         }
         
         // 获取原始分值
-        $totalScore = $userScore['total_score'];
+        $totalScore = (int)$userScore['total_score'];
         
         // 应用衰减算法
-        $lastUpdateTime = $userScore['updatetime'] ?: time();
+        $lastUpdateTime = (int)($userScore['updatetime'] ?: time());
         $daysSinceUpdate = (time() - $lastUpdateTime) / 86400;
         
         if ($daysSinceUpdate >= 1) {
-            // 每天衰减10%
-            $decayFactor = pow(1 - self::SCORE_DECAY_RATE, floor($daysSinceUpdate));
-            $totalScore = intval($totalScore * $decayFactor);
+            $decayRate = (float)$this->getConfig('score_decay_rate', 0.1);
+            $decayFactor = pow(1 - $decayRate, floor($daysSinceUpdate));
+            $totalScore = (int)($totalScore * $decayFactor);
         }
         
         // 添加设备风险加权
         $deviceRisk = $this->getDeviceRisk();
-        $totalScore += intval($deviceRisk * 50);
+        $totalScore += (int)($deviceRisk * 50);
         
         // 添加IP风险加权
         $ipRisk = $this->getIpRisk();
-        $totalScore += intval($ipRisk * 50);
+        $totalScore += (int)($ipRisk * 50);
         
-        return min($totalScore, self::MAX_RISK_SCORE);
+        $maxScore = (int)$this->getConfig('max_risk_score', 1000);
+        
+        return min($totalScore, $maxScore);
     }
     
     /**
      * 增加风险分
-     * 
-     * @param int $score 分值
-     * @param string $type 类型
-     * @param string $ruleCode 规则编码
      */
     public function addRiskScore($score, $type, $ruleCode)
     {
+        $score = max(0, (int)$score);
+        
         Db::startTrans();
         try {
             $userScore = UserRiskScore::where('user_id', $this->userId)->lock(true)->find();
@@ -871,11 +846,11 @@ class RiskControlService
             // 根据类型增加对应分值
             $typeField = $type . '_score';
             if (isset($userScore->$typeField)) {
-                $userScore->$typeField += $score;
+                $userScore->$typeField = (int)$userScore->$typeField + $score;
             }
             
-            $userScore->total_score += $score;
-            $userScore->violation_count += 1;
+            $userScore->total_score = (int)$userScore->total_score + $score;
+            $userScore->violation_count = (int)$userScore->violation_count + 1;
             $userScore->last_violation_time = time();
             
             // 更新风险等级
@@ -883,6 +858,9 @@ class RiskControlService
             
             // 记录评分历史
             $history = json_decode($userScore->score_history ?: '[]', true);
+            if (!is_array($history)) {
+                $history = [];
+            }
             $history[] = [
                 'time' => time(),
                 'score' => $score,
@@ -902,23 +880,23 @@ class RiskControlService
     
     /**
      * 执行风险动作
-     * 
-     * @param array $result 检查结果
      */
     protected function executeRiskAction(&$result)
     {
         $riskScore = $result['risk_score'];
         
-        // 根据风险分执行不同动作
-        if ($riskScore >= self::RISK_LEVEL_DANGEROUS) {
+        $banThreshold = (int)$this->getConfig('ban_threshold', 700);
+        $freezeThreshold = (int)$this->getConfig('freeze_threshold', 300);
+        
+        if ($riskScore >= $banThreshold) {
             // 危险：永久封禁
             $this->banUser('permanent', '风险评分过高，系统自动封禁', $riskScore);
             $result['actions'][] = ['action' => 'ban', 'duration' => 0];
-        } elseif ($riskScore >= self::RISK_LEVEL_HIGH) {
+        } elseif ($riskScore >= $freezeThreshold) {
             // 高风险：临时封禁7天
             $this->banUser('temporary', '风险评分过高，系统临时封禁', $riskScore, 604800);
             $result['actions'][] = ['action' => 'ban', 'duration' => 604800];
-        } elseif ($riskScore >= self::RISK_LEVEL_MEDIUM) {
+        } elseif ($riskScore >= 200) {
             // 中风险：冻结账户3天
             $this->freezeUser($riskScore, 259200);
             $result['actions'][] = ['action' => 'freeze', 'duration' => 259200];
@@ -927,14 +905,11 @@ class RiskControlService
     
     /**
      * 封禁用户
-     * 
-     * @param string $type 类型
-     * @param string $reason 原因
-     * @param int $riskScore 风险分
-     * @param int $duration 时长(秒)
      */
     public function banUser($type, $reason, $riskScore, $duration = 0)
     {
+        $duration = max(0, (int)$duration);
+        
         Db::startTrans();
         try {
             // 更新用户风控状态
@@ -957,7 +932,7 @@ class RiskControlService
             $banRecord->ban_type = $type;
             $banRecord->ban_reason = $reason;
             $banRecord->ban_source = 'auto';
-            $banRecord->risk_score = $riskScore;
+            $banRecord->risk_score = (int)$riskScore;
             $banRecord->start_time = time();
             $banRecord->end_time = $type == 'permanent' ? null : time() + $duration;
             $banRecord->duration = $duration;
@@ -965,7 +940,7 @@ class RiskControlService
             $banRecord->save();
             
             // 加入黑名单
-            $this->addToBlacklist('user', $this->userId, $reason, $riskScore);
+            $this->addToBlacklist('user', $this->userId, $reason, (int)$riskScore);
             
             Db::commit();
         } catch (Exception $e) {
@@ -976,12 +951,11 @@ class RiskControlService
     
     /**
      * 冻结用户
-     * 
-     * @param int $riskScore 风险分
-     * @param int $duration 时长(秒)
      */
     public function freezeUser($riskScore, $duration)
     {
+        $duration = max(0, (int)$duration);
+        
         Db::startTrans();
         try {
             $userScore = UserRiskScore::where('user_id', $this->userId)->lock(true)->find();
@@ -1007,19 +981,18 @@ class RiskControlService
     
     /**
      * 获取风险等级
-     * 
-     * @param int $score 风险分
-     * @return string
      */
     public function getRiskLevel($score)
     {
-        if ($score >= self::RISK_LEVEL_DANGEROUS) {
+        $score = max(0, (int)$score);
+        
+        if ($score >= 500) {
             return 'dangerous';
-        } elseif ($score >= self::RISK_LEVEL_HIGH) {
+        } elseif ($score >= 300) {
             return 'high';
-        } elseif ($score >= self::RISK_LEVEL_MEDIUM) {
+        } elseif ($score >= 150) {
             return 'medium';
-        } elseif ($score >= self::RISK_LEVEL_LOW) {
+        } elseif ($score >= 50) {
             return 'low';
         }
         return 'safe';
@@ -1027,22 +1000,21 @@ class RiskControlService
     
     /**
      * 获取规则列表
-     * 
-     * @param string $type 类型
-     * @return array
      */
     protected function getRules($type)
     {
+        $cacheTtl = (int)$this->getConfig('rule_cache_ttl', 300);
+        
         if (self::$rulesCache === null) {
-            $cacheKey = self::CACHE_PREFIX . 'rules';
+            $cacheKey = 'risk:rules';
             self::$rulesCache = Cache::get($cacheKey);
             
-            if (self::$rulesCache === false) {
+            if (self::$rulesCache === false || self::$rulesCache === null) {
                 self::$rulesCache = RiskRule::where('enabled', 1)
                     ->order('level desc, score_weight desc')
                     ->select()
                     ->toArray();
-                Cache::set($cacheKey, self::$rulesCache, 300);
+                Cache::set($cacheKey, self::$rulesCache, $cacheTtl);
             }
         }
         
@@ -1061,7 +1033,7 @@ class RiskControlService
      */
     public static function clearRulesCache()
     {
-        Cache::rm(self::CACHE_PREFIX . 'rules');
+        Cache::rm('risk:rules');
         self::$rulesCache = null;
     }
     
@@ -1072,7 +1044,7 @@ class RiskControlService
     {
         // 检查用户白名单
         if (RiskWhitelist::where('type', 'user')
-            ->where('value', $this->userId)
+            ->where('value', (string)$this->userId)
             ->where('enabled', 1)
             ->where(function ($query) {
                 $query->whereNull('expire_time')
@@ -1116,9 +1088,11 @@ class RiskControlService
      */
     protected function checkBlacklist()
     {
+        $maxScore = (int)$this->getConfig('max_risk_score', 1000);
+        
         // 检查用户黑名单
         $userBlacklist = RiskBlacklist::where('type', 'user')
-            ->where('value', $this->userId)
+            ->where('value', (string)$this->userId)
             ->where('enabled', 1)
             ->where(function ($query) {
                 $query->whereNull('expire_time')
@@ -1130,7 +1104,7 @@ class RiskControlService
             return [
                 'passed' => false,
                 'risk_level' => 'dangerous',
-                'risk_score' => self::MAX_RISK_SCORE,
+                'risk_score' => $maxScore,
                 'actions' => [['action' => 'ban', 'duration' => 0]],
                 'violations' => [],
                 'message' => '账户已被封禁',
@@ -1151,7 +1125,7 @@ class RiskControlService
             return [
                 'passed' => false,
                 'risk_level' => 'high',
-                'risk_score' => self::RISK_LEVEL_HIGH,
+                'risk_score' => 300,
                 'actions' => [['action' => 'block', 'duration' => 3600]],
                 'violations' => [],
                 'message' => '当前网络环境异常，请更换网络后重试',
@@ -1173,7 +1147,7 @@ class RiskControlService
                 return [
                     'passed' => false,
                     'risk_level' => 'high',
-                    'risk_score' => self::RISK_LEVEL_HIGH,
+                    'risk_score' => 300,
                     'actions' => [['action' => 'block', 'duration' => 86400]],
                     'violations' => [],
                     'message' => '当前设备已被限制访问',
@@ -1197,11 +1171,12 @@ class RiskControlService
         
         // 检查封禁状态
         if ($userScore['status'] == 'banned') {
-            if ($userScore['ban_expire_time'] === null || $userScore['ban_expire_time'] > time()) {
+            $expireTime = $userScore['ban_expire_time'];
+            if ($expireTime === null || (int)$expireTime > time()) {
                 return [
                     'passed' => false,
                     'risk_level' => 'dangerous',
-                    'risk_score' => self::MAX_RISK_SCORE,
+                    'risk_score' => (int)$this->getConfig('max_risk_score', 1000),
                     'actions' => [['action' => 'ban', 'duration' => 0]],
                     'violations' => [],
                     'message' => '账户已被封禁',
@@ -1211,12 +1186,13 @@ class RiskControlService
         
         // 检查冻结状态
         if ($userScore['status'] == 'frozen') {
-            if ($userScore['freeze_expire_time'] > time()) {
-                $remaining = $userScore['freeze_expire_time'] - time();
+            $expireTime = (int)$userScore['freeze_expire_time'];
+            if ($expireTime > time()) {
+                $remaining = $expireTime - time();
                 return [
                     'passed' => false,
                     'risk_level' => 'high',
-                    'risk_score' => self::RISK_LEVEL_HIGH,
+                    'risk_score' => 300,
                     'actions' => [['action' => 'freeze', 'duration' => $remaining]],
                     'violations' => [],
                     'message' => '账户已被冻结，请稍后再试',
@@ -1233,43 +1209,44 @@ class RiskControlService
     protected function getDeviceRisk()
     {
         if (empty($this->deviceId)) {
-            return 0;
+            return 0.0;
         }
         
         $device = DeviceFingerprint::where('device_id', $this->deviceId)->find();
         
         if (!$device) {
-            return 0;
+            return 0.0;
         }
         
-        $risk = 0;
+        $risk = 0.0;
         
         // Root/越狱检测
-        if ($device['root_detected']) {
+        if (!empty($device['root_detected'])) {
             $risk += 0.3;
         }
         
         // 模拟器检测
-        if ($device['emulator_detected']) {
+        if (!empty($device['emulator_detected'])) {
             $risk += 0.5;
         }
         
         // Hook框架检测
-        if ($device['hook_detected']) {
+        if (!empty($device['hook_detected'])) {
             $risk += 0.4;
         }
         
         // 代理/VPN检测
-        if ($device['proxy_detected'] || $device['vpn_detected']) {
+        if (!empty($device['proxy_detected']) || !empty($device['vpn_detected'])) {
             $risk += 0.2;
         }
         
         // 多账户检测
-        if ($device['account_count'] > 3) {
-            $risk += min(($device['account_count'] - 3) * 0.1, 0.3);
+        $accountCount = (int)$device['account_count'];
+        if ($accountCount > 3) {
+            $risk += min(($accountCount - 3) * 0.1, 0.3);
         }
         
-        return min($risk, 1);
+        return min($risk, 1.0);
     }
     
     /**
@@ -1280,13 +1257,13 @@ class RiskControlService
         $ipRisk = IpRisk::where('ip', $this->ip)->find();
         
         if (!$ipRisk) {
-            return 0;
+            return 0.0;
         }
         
-        $risk = 0;
+        $risk = 0.0;
         
         // 代理检测
-        if ($ipRisk['proxy_detected']) {
+        if (!empty($ipRisk['proxy_detected'])) {
             $risk += 0.3;
         }
         
@@ -1304,11 +1281,12 @@ class RiskControlService
         }
         
         // 多账户检测
-        if ($ipRisk['account_count'] > 5) {
-            $risk += min(($ipRisk['account_count'] - 5) * 0.05, 0.3);
+        $accountCount = (int)$ipRisk['account_count'];
+        if ($accountCount > 5) {
+            $risk += min(($accountCount - 5) * 0.05, 0.3);
         }
         
-        return min($risk, 1);
+        return min($risk, 1.0);
     }
     
     /**
@@ -1316,22 +1294,26 @@ class RiskControlService
      */
     protected function logRiskEvent($rule, $triggerValue)
     {
-        $log = new RiskLog();
-        $log->user_id = $this->userId;
-        $log->rule_code = $rule['rule_code'];
-        $log->rule_name = $rule['rule_name'];
-        $log->rule_type = $rule['rule_type'];
-        $log->risk_level = $rule['level'];
-        $log->trigger_value = $triggerValue;
-        $log->threshold = $rule['threshold'];
-        $log->score_add = $rule['score_weight'];
-        $log->action = $rule['action'];
-        $log->action_duration = $rule['action_duration'];
-        $log->device_id = $this->deviceId;
-        $log->ip = $this->ip;
-        $log->user_agent = $this->userAgent;
-        $log->request_data = json_encode($this->requestData);
-        $log->save();
+        try {
+            $log = new RiskLog();
+            $log->user_id = $this->userId;
+            $log->rule_code = (string)$rule['rule_code'];
+            $log->rule_name = (string)$rule['rule_name'];
+            $log->rule_type = (string)$rule['rule_type'];
+            $log->risk_level = (int)$rule['level'];
+            $log->trigger_value = (float)$triggerValue;
+            $log->threshold = (float)$rule['threshold'];
+            $log->score_add = (int)$rule['score_weight'];
+            $log->action = (string)$rule['action'];
+            $log->action_duration = (int)$rule['action_duration'];
+            $log->device_id = $this->deviceId;
+            $log->ip = $this->ip;
+            $log->user_agent = $this->userAgent;
+            $log->request_data = json_encode($this->requestData);
+            $log->save();
+        } catch (\Exception $e) {
+            Log::error('RiskLog save error: ' . $e->getMessage());
+        }
     }
     
     /**
@@ -1340,8 +1322,12 @@ class RiskControlService
     protected function updateRuleTriggerStat($ruleCode)
     {
         $today = date('Y-m-d');
-        $cacheKey = self::CACHE_PREFIX . "rule_stat:{$today}";
+        $cacheKey = "risk:rule_stat:{$today}";
         $stats = Cache::get($cacheKey, []);
+        
+        if (!is_array($stats)) {
+            $stats = [];
+        }
         
         if (!isset($stats[$ruleCode])) {
             $stats[$ruleCode] = 0;
@@ -1357,7 +1343,7 @@ class RiskControlService
     protected function addToBlacklist($type, $value, $reason, $riskScore)
     {
         $exists = RiskBlacklist::where('type', $type)
-            ->where('value', $value)
+            ->where('value', (string)$value)
             ->find();
         
         if ($exists) {
@@ -1369,7 +1355,7 @@ class RiskControlService
         $blacklist->value = (string)$value;
         $blacklist->reason = $reason;
         $blacklist->source = 'auto';
-        $blacklist->risk_score = $riskScore;
+        $blacklist->risk_score = (int)$riskScore;
         $blacklist->save();
     }
     
@@ -1378,13 +1364,13 @@ class RiskControlService
      */
     protected function calculateVariance($data)
     {
-        $count = count($data);
-        if ($count < 2) {
-            return 0;
+        if (!is_array($data) || count($data) < 2) {
+            return 0.0;
         }
         
+        $count = count($data);
         $mean = array_sum($data) / $count;
-        $variance = 0;
+        $variance = 0.0;
         
         foreach ($data as $value) {
             $variance += pow($value - $mean, 2);
@@ -1398,24 +1384,24 @@ class RiskControlService
      */
     protected function calculateAvgDistance($positions)
     {
-        $count = count($positions);
-        if ($count < 2) {
-            return 0;
+        if (!is_array($positions) || count($positions) < 2) {
+            return 0.0;
         }
         
-        $totalDistance = 0;
+        $count = count($positions);
+        $totalDistance = 0.0;
         $pairCount = 0;
         
         for ($i = 0; $i < $count - 1; $i++) {
             for ($j = $i + 1; $j < $count; $j++) {
-                $dx = $positions[$i]['x'] - $positions[$j]['x'];
-                $dy = $positions[$i]['y'] - $positions[$j]['y'];
+                $dx = (float)($positions[$i]['x'] ?? 0) - (float)($positions[$j]['x'] ?? 0);
+                $dy = (float)($positions[$i]['y'] ?? 0) - (float)($positions[$j]['y'] ?? 0);
                 $totalDistance += sqrt($dx * $dx + $dy * $dy);
                 $pairCount++;
             }
         }
         
-        return $pairCount > 0 ? $totalDistance / $pairCount : 0;
+        return $pairCount > 0 ? $totalDistance / $pairCount : 0.0;
     }
     
     /**
@@ -1447,7 +1433,7 @@ class RiskControlService
      */
     public function setRequestData($data)
     {
-        $this->requestData = $data;
+        $this->requestData = is_array($data) ? $data : [];
         return $this;
     }
     
@@ -1455,12 +1441,6 @@ class RiskControlService
     
     /**
      * 快速风控检查
-     * 
-     * @param int $userId 用户ID
-     * @param string $ruleType 规则类型
-     * @param string $action 行为动作
-     * @param array $context 上下文
-     * @return array
      */
     public static function quickCheck($userId, $ruleType, $action, array $context = [])
     {
@@ -1472,9 +1452,6 @@ class RiskControlService
     
     /**
      * 获取用户风险信息
-     * 
-     * @param int $userId 用户ID
-     * @return array
      */
     public static function getUserRiskInfo($userId)
     {
@@ -1489,16 +1466,16 @@ class RiskControlService
         }
         
         return [
-            'risk_score' => $userScore['total_score'],
-            'risk_level' => $userScore['risk_level'],
-            'status' => $userScore['status'],
-            'violation_count' => $userScore['violation_count'],
-            'video_score' => $userScore['video_score'],
-            'task_score' => $userScore['task_score'],
-            'withdraw_score' => $userScore['withdraw_score'],
-            'redpacket_score' => $userScore['redpacket_score'],
-            'invite_score' => $userScore['invite_score'],
-            'global_score' => $userScore['global_score'],
+            'risk_score' => (int)$userScore['total_score'],
+            'risk_level' => (string)$userScore['risk_level'],
+            'status' => (string)$userScore['status'],
+            'violation_count' => (int)$userScore['violation_count'],
+            'video_score' => (int)$userScore['video_score'],
+            'task_score' => (int)$userScore['task_score'],
+            'withdraw_score' => (int)$userScore['withdraw_score'],
+            'redpacket_score' => (int)$userScore['redpacket_score'],
+            'invite_score' => (int)$userScore['invite_score'],
+            'global_score' => (int)$userScore['global_score'],
         ];
     }
     
@@ -1511,8 +1488,11 @@ class RiskControlService
         
         // 解冻过期冻结用户
         $frozenUsers = UserRiskScore::where('status', 'frozen')
+            ->whereNotNull('freeze_expire_time')
             ->where('freeze_expire_time', '<=', $now)
             ->select();
+        
+        $released = count($frozenUsers);
         
         foreach ($frozenUsers as $userScore) {
             Db::startTrans();
@@ -1526,15 +1506,6 @@ class RiskControlService
                     'updatetime' => time(),
                 ]);
                 
-                // 更新封禁记录状态
-                BanRecord::where('user_id', $userScore['user_id'])
-                    ->where('status', 'active')
-                    ->update([
-                        'status' => 'expired',
-                        'release_time' => $now,
-                        'release_reason' => '系统自动解冻',
-                    ]);
-                
                 Db::commit();
             } catch (\Exception $e) {
                 Db::rollback();
@@ -1546,6 +1517,8 @@ class RiskControlService
             ->whereNotNull('ban_expire_time')
             ->where('ban_expire_time', '<=', $now)
             ->select();
+        
+        $releasedBanned = count($bannedUsers);
         
         foreach ($bannedUsers as $userScore) {
             Db::startTrans();
@@ -1559,14 +1532,6 @@ class RiskControlService
                     'updatetime' => time(),
                 ]);
                 
-                BanRecord::where('user_id', $userScore['user_id'])
-                    ->where('status', 'active')
-                    ->update([
-                        'status' => 'released',
-                        'release_time' => $now,
-                        'release_reason' => '封禁期满自动解封',
-                    ]);
-                
                 Db::commit();
             } catch (\Exception $e) {
                 Db::rollback();
@@ -1574,8 +1539,8 @@ class RiskControlService
         }
         
         return [
-            'released_frozen' => count($frozenUsers),
-            'released_banned' => count($bannedUsers),
+            'released_frozen' => $released,
+            'released_banned' => $releasedBanned,
         ];
     }
 }
