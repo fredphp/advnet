@@ -256,6 +256,13 @@ class DataMigrationService
         $fullTable = $this->tablePrefix . $table;
         $fullArchiveTable = $this->tablePrefix . $archiveTable;
         
+        // 先检查源表是否存在
+        $sourceExists = Db::query("SHOW TABLES LIKE '{$fullTable}'");
+        if (empty($sourceExists)) {
+            $this->log("错误: 源表 {$fullTable} 不存在，请先执行SQL创建表结构");
+            return false;
+        }
+        
         // 检查归档表是否存在
         $exists = Db::query("SHOW TABLES LIKE '{$fullArchiveTable}'");
         if (!empty($exists)) {
@@ -284,6 +291,34 @@ class DataMigrationService
     }
     
     /**
+     * 检查表是否存在
+     * @param string $table 表名（不含前缀）
+     * @return bool
+     */
+    public function tableExists($table)
+    {
+        $fullTable = $this->tablePrefix . $table;
+        $exists = Db::query("SHOW TABLES LIKE '{$fullTable}'");
+        return !empty($exists);
+    }
+    
+    /**
+     * 获取缺失的表列表
+     * @param array $tables 需要检查的表名列表
+     * @return array 缺失的表名列表
+     */
+    public function getMissingTables($tables)
+    {
+        $missing = [];
+        foreach ($tables as $table) {
+            if (!$this->tableExists($table)) {
+                $missing[] = $this->tablePrefix . $table;
+            }
+        }
+        return $missing;
+    }
+    
+    /**
      * 迁移金币流水数据
      * @param int $days 迁移多少天前的数据
      * @param bool $deleteSource 是否删除源数据
@@ -294,6 +329,22 @@ class DataMigrationService
         $this->log("开始迁移金币流水数据...");
         
         $table = 'coin_log';
+        $fullTable = $this->tablePrefix . $table;
+        
+        // 检查源表是否存在
+        if (!$this->tableExists($table)) {
+            $this->log("错误: 表 {$fullTable} 不存在");
+            $this->log("请先执行SQL创建表结构: sql/video_coin.sql");
+            return [
+                'table' => $table,
+                'total' => 0,
+                'migrated' => 0,
+                'failed' => 0,
+                'deleted' => 0,
+                'error' => "表 {$fullTable} 不存在，请先执行SQL创建表结构"
+            ];
+        }
+        
         $archiveTable = $table . '_archive';
         $this->ensureArchiveTableExists($table);
         

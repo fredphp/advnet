@@ -70,6 +70,11 @@ class DataMigration extends Command
                 $this->showStats($service, $output, $table, $days);
                 break;
                 
+            case 'check':
+                // 检查表是否存在
+                $this->checkTables($service, $output);
+                break;
+                
             case 'coin_log':
                 // 迁移金币流水
                 $output->writeln("迁移金币流水数据 ({$days}天前)...\n");
@@ -176,6 +181,7 @@ class DataMigration extends Command
             default:
                 $output->writeln("<error>未知操作: {$action}</error>");
                 $output->writeln("\n可用操作:");
+                $output->writeln("  check         - 检查表是否存在");
                 $output->writeln("  stats         - 查看数据统计");
                 $output->writeln("  coin_log      - 迁移金币流水");
                 $output->writeln("  watch_record  - 迁移观看记录");
@@ -205,6 +211,35 @@ class DataMigration extends Command
      */
     protected function showStats($service, $output, $table = null, $days = 30)
     {
+        // 先检查表是否存在
+        $requiredTables = $table ? [$table] : [
+            'coin_log',
+            'video_watch_record',
+            'video_watch_session',
+            'risk_log',
+            'user_behavior',
+            'anticheat_log',
+            'red_packet_record',
+            'invite_commission_log',
+            'wechat_transfer_log',
+        ];
+        
+        $missingTables = $service->getMissingTables($requiredTables);
+        
+        if (!empty($missingTables)) {
+            $output->writeln("<error>警告: 以下表不存在:</error>");
+            foreach ($missingTables as $missingTable) {
+                $output->writeln("  - {$missingTable}");
+            }
+            $output->writeln("\n请先执行SQL创建表结构:");
+            $output->writeln("  mysql -u root advnet < sql/video_coin.sql");
+            $output->writeln("  mysql -u root advnet < sql/red_packet_task.sql");
+            $output->writeln("  mysql -u root advnet < sql/risk_control_system.sql");
+            $output->writeln("  mysql -u root advnet < sql/withdraw_system.sql");
+            $output->writeln("  mysql -u root advnet < sql/invite_commission.sql");
+            $output->writeln("\n使用 --action=check 查看详细的表检查结果\n");
+        }
+        
         $output->writeln("数据表统计信息 (统计{$days}天前的数据)");
         $output->writeln(str_repeat("-", 80));
         $output->writeln(sprintf("%-25s | %12s | %12s | %12s | %10s", 
@@ -225,6 +260,60 @@ class DataMigration extends Command
         
         $output->writeln(str_repeat("-", 80));
         $output->writeln("\n提示: 使用 --action=migrate --table=表名 进行迁移");
+    }
+    
+    /**
+     * 检查表是否存在
+     */
+    protected function checkTables($service, $output)
+    {
+        $output->writeln("检查数据表是否存在...\n");
+        
+        $tables = [
+            'coin_log' => '金币流水表',
+            'video_watch_record' => '视频观看记录表',
+            'video_watch_session' => '观看会话表',
+            'risk_log' => '风控日志表',
+            'user_behavior' => '用户行为记录表',
+            'anticheat_log' => '防刷日志表',
+            'red_packet_record' => '红包领取记录表',
+            'invite_commission_log' => '邀请分佣日志表',
+            'wechat_transfer_log' => '微信打款日志表',
+            'user_daily_reward_stat' => '用户每日收益统计表',
+            'user_behavior_stat' => '用户行为统计表',
+            'user' => '用户表',
+            'coin_account' => '金币账户表',
+        ];
+        
+        $output->writeln(str_repeat("-", 60));
+        $output->writeln(sprintf("%-30s | %-12s | %s", '表名', '状态', '说明'));
+        $output->writeln(str_repeat("-", 60));
+        
+        $missing = [];
+        foreach ($tables as $table => $desc) {
+            $exists = $service->tableExists($table);
+            $status = $exists ? '<info>存在</info>' : '<error>不存在</error>';
+            $output->writeln(sprintf("%-30s | %-20s | %s", $table, $status, $desc));
+            if (!$exists) {
+                $missing[] = $table;
+            }
+        }
+        
+        $output->writeln(str_repeat("-", 60));
+        
+        if (!empty($missing)) {
+            $output->writeln("\n<error>缺少 {$missing} 个表，请执行以下SQL创建表结构:</error>\n");
+            $output->writeln("  # 主表结构");
+            $output->writeln("  mysql -u root advnet < sql/video_coin.sql");
+            $output->writeln("  mysql -u root advnet < sql/red_packet_task.sql");
+            $output->writeln("  mysql -u root advnet < sql/risk_control_system.sql");
+            $output->writeln("  mysql -u root advnet < sql/withdraw_system.sql");
+            $output->writeln("  mysql -u root advnet < sql/invite_commission.sql");
+            $output->writeln("\n  # 配置表");
+            $output->writeln("  mysql -u root advnet < sql/migration_config.sql");
+        } else {
+            $output->writeln("\n<info>所有必要的表都存在，可以执行数据迁移</info>");
+        }
     }
     
     /**
