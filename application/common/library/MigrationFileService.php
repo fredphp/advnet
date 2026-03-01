@@ -485,24 +485,147 @@ class MigrationFileService
      */
     protected function executeSql($sql)
     {
-        // 分割SQL语句
-        $statements = array_filter(array_map('trim', explode(';', $sql)));
+        // 获取PDO连接
+        $pdo = Db::getPdo();
+        
+        // 启用缓冲查询
+        $pdo->setAttribute(\PDO::MYSQL_ATTR_USE_BUFFERED_QUERY, true);
+        
+        // 分割SQL语句（更智能的分割方式）
+        $statements = $this->splitSqlStatements($sql);
         
         foreach ($statements as $statement) {
-            if (empty($statement) || strpos($statement, '--') === 0) {
-                continue;
-            }
-            
-            // 跳过注释行
-            $statement = preg_replace('/^--.*$/m', '', $statement);
             $statement = trim($statement);
             
             if (empty($statement)) {
                 continue;
             }
             
-            Db::execute($statement);
+            // 跳过纯注释
+            if (preg_match('/^--|^\s*$/m', $statement) && !preg_match('/[^\s\-]/', $statement)) {
+                continue;
+            }
+            
+            try {
+                // 使用PDO原生执行，关闭游标以避免缓冲问题
+                $stmt = $pdo->prepare($statement);
+                $stmt->execute();
+                
+                // 完全读取结果集并关闭游标
+                $stmt->fetchAll();
+                $stmt->closeCursor();
+                $stmt = null;
+                
+            } catch (\PDOException $e) {
+                $errorMsg = $e->getMessage();
+                
+                // 忽略"已存在"类型的错误
+                $ignorePatterns = [
+                    'already exists',
+                    'Duplicate',
+                    'duplicate key',
+                    'Duplicate column',
+                    'Duplicate index',
+                    'Duplicate key name',
+                    'check that column/key exists',
+                ];
+                
+                $shouldIgnore = false;
+                foreach ($ignorePatterns as $pattern) {
+                    if (stripos($errorMsg, $pattern) !== false) {
+                        $shouldIgnore = true;
+                        break;
+                    }
+                }
+                
+                if (!$shouldIgnore) {
+                    throw new Exception("SQL执行错误: " . $errorMsg . "\nSQL: " . substr($statement, 0, 500));
+                }
+            }
         }
+    }
+    
+    /**
+     * 智能分割SQL语句
+     * 处理包含 DELIMITER、存储过程、PREPARE 等复杂语句
+     * @param string $sql SQL内容
+     * @return array SQL语句数组
+     */
+    protected function splitSqlStatements($sql)
+    {
+        $statements = [];
+        $current = '';
+        $delimiter = ';';
+        $inProcedure = false;
+        $procedureDepth = 0;
+        
+        // 按行处理
+        $lines = explode("\n", $sql);
+        
+        foreach ($lines as $line) {
+            $trimmedLine = trim($line);
+            $upperLine = strtoupper($trimmedLine);
+            
+            // 跳过空行
+            if (empty($trimmedLine)) {
+                continue;
+            }
+            
+            // 跳过单行注释
+            if (strpos($trimmedLine, '--') === 0) {
+                continue;
+            }
+            
+            // 处理 DELIMITER 变更
+            if (preg_match('/^DELIMITER\s+(.+)$/i', $trimmedLine, $matches)) {
+                if ($current && $delimiter === ';') {
+                    $statements[] = trim($current);
+                    $current = '';
+                }
+                $delimiter = trim($matches[1]);
+                continue;
+            }
+            
+            // 检测存储过程/函数开始
+            if (preg_match('/^\s*CREATE\s+(PROCEDURE|FUNCTION)/i', $trimmedLine)) {
+                $inProcedure = true;
+                $procedureDepth = 1;
+            }
+            
+            // 在存储过程内，计算 BEGIN...END 深度
+            if ($inProcedure) {
+                $procedureDepth += substr_count($upperLine, 'BEGIN');
+                $procedureDepth -= substr_count($upperLine, 'END');
+                $procedureDepth = max(0, $procedureDepth);
+            }
+            
+            $current .= $line . "\n";
+            
+            // 检查是否到达语句结束
+            if ($inProcedure) {
+                // 存储过程结束时
+                if ($procedureDepth <= 0 && strpos($line, $delimiter) !== false) {
+                    $statements[] = trim($current);
+                    $current = '';
+                    $inProcedure = false;
+                    $delimiter = ';';
+                }
+            } else {
+                // 普通语句
+                if (substr($trimmedLine, -strlen($delimiter)) === $delimiter) {
+                    $statements[] = trim($current);
+                    $current = '';
+                    $delimiter = ';';
+                }
+            }
+        }
+        
+        // 处理最后一个语句
+        if (trim($current)) {
+            $statements[] = trim($current);
+        }
+        
+        return $statements;
     }
     
     /**

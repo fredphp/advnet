@@ -2,19 +2,63 @@
 
 ## 概述
 
-数据迁移工具用于将历史冷数据迁移到归档表，优化主表性能，提高查询效率。支持按时间范围迁移未访问的数据。
+数据迁移工具包含两个主要功能：
+1. **SQL迁移文件管理** - 类似Laravel迁移机制，管理数据库结构变更
+2. **数据归档迁移** - 将历史冷数据迁移到归档表，优化主表性能
+
+## 命令速查表
+
+### SQL迁移文件命令
+
+| 命令 | 说明 |
+|------|------|
+| `php think data:migrate --action=file:sync` | 同步迁移文件到数据库 |
+| `php think data:migrate --action=file:status` | 查看迁移状态统计 |
+| `php think data:migrate --action=file:pending` | 查看待执行的迁移 |
+| `php think data:migrate --action=file:run` | 执行所有待执行的迁移 |
+| `php think data:migrate --action=file:run --file=xxx.sql` | 执行单个迁移文件 |
+| `php think data:migrate --action=file:reset` | 重置失败的迁移 |
+| `php think data:migrate --action=file:rollback --rollback=N` | 回滚指定批次 |
+
+### 数据归档迁移命令
+
+| 命令 | 说明 |
+|------|------|
+| `php think data:migrate --action=stats` | 查看所有表数据统计 |
+| `php think data:migrate --action=stats --table=coin_log` | 查看指定表统计 |
+| `php think data:migrate --action=coin_log --days=90` | 迁移金币流水(90天前) |
+| `php think data:migrate --action=all` | 执行所有归档迁移 |
+| `php think data:migrate --action=all --delete` | 执行归档并删除源数据 |
+| `php think data:migrate --action=inactive --days=90` | 标记未活跃用户 |
+| `php think data:migrate --action=clean --days=365` | 清理过期统计 |
+
+### 常用选项
+
+| 选项 | 说明 | 示例 |
+|------|------|------|
+| `--days=N` | 迁移N天前的数据 | `--days=180` |
+| `--batch=N` | 批量处理数量 | `--batch=500` |
+| `--delete` | 迁移后删除源数据 | `--delete` |
+| `--table=表名` | 指定单个表 | `--table=coin_log` |
+| `--file=文件名` | 指定迁移文件 | `--file=20250115_001.sql` |
+| `--rollback=N` | 回滚批次号 | `--rollback=1` |
 
 ## 文件结构
 
 ```
 application/
 ├── common/library/
-│   └── DataMigrationService.php    # 数据迁移服务类
+│   ├── DataMigrationService.php    # 数据归档迁移服务类
+│   └── MigrationFileService.php    # SQL迁移文件管理服务
 ├── command/
 │   └── DataMigration.php           # 数据迁移命令
 └── command.php                     # 命令注册配置
 
 sql/
+├── migrations/                     # SQL迁移文件目录
+│   ├── 000_create_migration_tables.sql    # 迁移记录表
+│   ├── 20250115_001_add_user_source_field.sql
+│   └── 20250115_002_fix_tables_and_fields.sql
 ├── data_migration_archive_tables.sql  # 归档表结构SQL
 └── migration_config.sql               # 迁移配置SQL（写入advn_config表）
 
@@ -22,7 +66,214 @@ docs/
 └── DATA_MIGRATION_GUIDE.md            # 本使用指南
 ```
 
-## 支持迁移的数据表
+---
+
+## 一、SQL迁移文件管理
+
+### 1.1 概述
+
+SQL迁移文件管理系统类似于Laravel的迁移机制，用于：
+- 跟踪数据库结构变更
+- 记录已执行的迁移文件
+- 避免重复执行迁移
+
+### 1.2 迁移文件命名规范
+
+迁移文件放置在 `sql/migrations/` 目录，命名格式：
+
+```
+YYYYMMDD_序号_描述.sql
+```
+
+示例：
+- `000_create_migration_tables.sql` - 创建迁移记录表
+- `20250115_001_add_user_source_field.sql` - 添加用户来源字段
+- `20250115_002_fix_tables_and_fields.sql` - 修复表和字段
+
+### 1.3 迁移记录表
+
+系统自动创建 `advn_migration_record` 表记录迁移状态：
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| id | INT | 主键 |
+| migration_name | VARCHAR(255) | 迁移文件名 |
+| migration_path | VARCHAR(500) | 文件路径 |
+| batch | INT | 批次号 |
+| status | ENUM | pending/running/completed/failed |
+| executed_at | INT | 执行时间 |
+| execution_time | DECIMAL | 执行耗时(秒) |
+| error_message | TEXT | 错误信息 |
+| checksum | VARCHAR(64) | 文件MD5校验 |
+
+### 1.4 迁移命令
+
+#### 基本语法
+
+```bash
+php think data:migrate --action=文件操作 [选项]
+```
+
+#### 可用的文件操作
+
+| 操作 | 说明 |
+|------|------|
+| `file:sync` | 扫描并同步迁移文件到数据库 |
+| `file:status` | 查看迁移状态统计 |
+| `file:pending` | 查看待执行的迁移文件 |
+| `file:run` | 执行迁移文件 |
+| `file:reset` | 重置失败的迁移状态 |
+| `file:rollback` | 回滚指定批次的迁移 |
+
+### 1.5 使用示例
+
+#### 1. 同步迁移文件
+
+首次使用或添加新迁移文件后，需要同步：
+
+```bash
+php think data:migrate --action=file:sync
+```
+
+输出示例：
+```
+========================================
+数据迁移工具
+时间: 2025-01-15 10:00:00
+========================================
+
+扫描并同步迁移文件...
+
+同步完成:
+  - 扫描文件数: 3
+  - 新增记录: 1
+  - 更新记录: 0
+  - 跳过记录: 2
+
+========================================
+执行完成，总耗时: 0.05 秒
+========================================
+```
+
+#### 2. 查看迁移状态
+
+```bash
+php think data:migrate --action=file:status
+```
+
+输出示例：
+```
+迁移文件状态:
+
+总文件数: 3
+记录总数: 3
+待执行: 1
+执行中: 0
+已完成: 2
+失败: 0
+
+最近的迁移记录:
+--------------------------------------------------------------------------------
+20250115_002_fix_tables_and_fields.sql     | 完成     | 1 | 2025-01-15 10:05:30
+20250115_001_add_user_source_field.sql     | 完成     | 1 | 2025-01-15 10:05:29
+000_create_migration_tables.sql            | 完成     | 1 | 2025-01-15 10:05:28
+```
+
+#### 3. 查看待执行的迁移
+
+```bash
+php think data:migrate --action=file:pending
+```
+
+输出示例：
+```
+待执行的迁移文件:
+
+--------------------------------------------------------------------------------
+文件名                                     | 状态       | 校验和
+--------------------------------------------------------------------------------
+20250115_003_add_new_field.sql             | 新文件     | a1b2c3d4
+
+提示: 执行 php think data:migrate --action=file:run 来执行所有待执行的迁移
+```
+
+#### 4. 执行所有待执行的迁移
+
+```bash
+php think data:migrate --action=file:run
+```
+
+输出示例：
+```
+执行所有待执行的迁移文件...
+
+执行结果:
+  - 总数: 1
+  - 成功: 1
+  - 失败: 0
+```
+
+#### 5. 执行单个迁移文件
+
+```bash
+php think data:migrate --action=file:run --file=20250115_001_add_user_source_field.sql
+```
+
+#### 6. 重置失败的迁移
+
+如果迁移执行失败，修复问题后可重置状态：
+
+```bash
+php think data:migrate --action=file:reset
+```
+
+#### 7. 回滚指定批次
+
+```bash
+php think data:migrate --action=file:rollback --rollback=1
+```
+
+### 1.6 迁移文件编写规范
+
+迁移文件支持标准SQL语法，可以使用占位符：
+
+```sql
+-- 使用表前缀占位符
+ALTER TABLE `__PREFIX__user` ADD COLUMN `source` VARCHAR(50) DEFAULT '' COMMENT '来源';
+
+-- 或直接使用表前缀
+ALTER TABLE `advn_user` ADD COLUMN `source` VARCHAR(50) DEFAULT '' COMMENT '来源';
+```
+
+### 1.7 迁移流程
+
+```
+开始迁移
+    ↓
+检查迁移记录表是否存在
+    ↓ (不存在)
+自动创建迁移记录表和配置表
+    ↓
+扫描 sql/migrations/ 目录
+    ↓
+对比迁移记录表
+    ↓
+执行未完成/新增的迁移文件
+    ↓
+更新迁移状态为 completed/failed
+    ↓
+完成
+```
+
+---
+
+## 二、数据归档迁移
+
+### 2.1 概述
+
+数据归档迁移用于将历史冷数据迁移到归档表，优化主表性能，提高查询效率。
+
+### 2.2 支持迁移的数据表
 
 | 表名 | 说明 | 默认迁移天数 |
 |------|------|-------------|
@@ -36,15 +287,15 @@ docs/
 | `invite_commission_log` | 邀请分佣日志 | 365天 |
 | `wechat_transfer_log` | 微信打款日志 | 365天 |
 
-## 命令使用方法
+### 2.3 归档迁移命令
 
-### 基本语法
+#### 基本语法
 
 ```bash
 php think data:migrate [选项]
 ```
 
-### 选项说明
+#### 选项说明
 
 | 选项 | 简写 | 说明 | 默认值 |
 |------|------|------|--------|
@@ -54,7 +305,7 @@ php think data:migrate [选项]
 | `--delete` | 无 | 迁移后删除源数据 | false |
 | `--table` | `-t` | 指定单个表（用于stats） | null |
 
-### 可用操作 (action)
+#### 可用的归档操作 (action)
 
 | 操作 | 说明 |
 |------|------|
@@ -70,11 +321,11 @@ php think data:migrate [选项]
 | `transfer` | 迁移微信打款日志 |
 | `inactive` | 标记未活跃用户 |
 | `clean` | 清理过期统计数据 |
-| `all` | 执行所有迁移任务 |
+| `all` | 执行所有归档迁移任务 |
 
-## 使用示例
+### 2.4 使用示例
 
-### 1. 查看数据统计
+#### 1. 查看数据统计
 
 ```bash
 # 查看所有表的数据统计
@@ -146,18 +397,18 @@ php think data:migrate --action=all --delete
 php think data:migrate --action=all --days=180
 ```
 
-## 定时任务配置
+### 2.5 定时任务配置
 
 建议配置定时任务自动执行数据迁移，在业务低峰期（如凌晨3点）执行：
 
-### Crontab 配置
+#### Crontab 配置
 
 ```bash
 # 每天凌晨3点执行数据迁移
 0 3 * * * cd /path/to/project && php think data:migrate --action=all >> /var/log/data_migration.log 2>&1
 ```
 
-### Supervisor 配置
+#### Supervisor 配置
 
 创建 `/etc/supervisor/conf.d/data_migration.conf`：
 
@@ -172,7 +423,7 @@ redirect_stderr=true
 stdout_logfile=/var/log/data_migration.log
 ```
 
-## 归档表命名规则
+### 2.6 归档表命名规则
 
 归档表命名格式：`原表名_archive`
 
@@ -180,9 +431,9 @@ stdout_logfile=/var/log/data_migration.log
 - `advn_coin_log` → `advn_coin_log_archive`
 - `advn_video_watch_record` → `advn_video_watch_record_archive`
 
-## 迁移流程说明
+### 2.7 迁移流程说明
 
-### 1. 迁移流程
+#### 迁移流程
 
 ```
 开始迁移
@@ -204,29 +455,31 @@ stdout_logfile=/var/log/data_migration.log
 继续下一批，直到完成
 ```
 
-### 2. 事务保护
+#### 事务保护
 
 每批数据迁移都在独立事务中执行：
 - 写入归档表成功 → 提交事务
 - 写入失败 → 回滚事务，记录错误
 - 删除源数据仅在写入成功后执行
 
-### 3. 性能优化
+#### 性能优化
 
 - 分批处理，避免大表锁表
 - 每批处理后短暂休眠（10ms）
 - 使用事务保证数据一致性
 - 支持调整批量大小
 
-## 系统配置管理
+---
+
+## 三、系统配置管理
 
 数据迁移工具使用 `advn_config` 配置表管理所有迁移参数，可通过后台管理系统动态修改。
 
-### 配置分组
+### 3.1 配置分组
 
 配置项位于 `migration` 分组，可在后台「常规管理 → 系统配置 → 数据迁移」中修改。
 
-### 配置项列表
+### 3.2 配置项列表
 
 #### 基础配置
 
@@ -269,7 +522,7 @@ stdout_logfile=/var/log/data_migration.log
 | `migration_transaction` | 启用事务 | 1 |
 | `migration_max_runtime` | 最大运行时间(秒) | 3600 |
 
-### 修改配置
+### 3.3 修改配置
 
 #### 方式1：后台管理
 
@@ -306,7 +559,7 @@ $allConfig = $service->getAllConfig();
 \app\common\library\DataMigrationService::clearConfigCache();
 ```
 
-### 配置优先级
+### 3.4 配置优先级
 
 1. 命令行参数（最高优先级）
 2. 配置表 `advn_config` 中的值
@@ -320,7 +573,9 @@ $allConfig = $service->getAllConfig();
 php think data:migrate --action=coin_log --days=180
 ```
 
-## 迁移日志
+---
+
+## 四、迁移日志
 
 所有迁移操作都记录在日志表中：
 
@@ -337,21 +592,23 @@ FROM advn_data_migration_log
 GROUP BY table_name;
 ```
 
-## 注意事项
+---
 
-### 1. 迁移前
+## 五、注意事项
+
+### 5.1 迁移前
 
 - **备份数据**：执行迁移前建议备份相关表
 - **测试环境**：先在测试环境验证
 - **业务低峰**：在业务低峰期执行
 
-### 2. 迁移中
+### 5.2 迁移中
 
 - **监控进度**：观察迁移进度和错误日志
 - **避免中断**：不要强制中断迁移进程
 - **磁盘空间**：确保有足够磁盘空间
 
-### 3. 迁移后
+### 5.3 迁移后
 
 - **验证数据**：检查归档表数据完整性
 - **更新统计**：更新表统计信息
@@ -365,7 +622,9 @@ ANALYZE TABLE advn_coin_log;
 OPTIMIZE TABLE advn_coin_log;
 ```
 
-## 常见问题
+---
+
+## 六、常见问题
 
 ### Q1: 迁移过程中出现锁表怎么办？
 

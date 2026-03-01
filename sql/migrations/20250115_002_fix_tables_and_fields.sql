@@ -1,30 +1,18 @@
 -- =============================================
 -- 数据库迁移：修复缺失的表和字段
 -- 版本：20250115_002
--- 执行顺序：在 fix_permissions.sql 之后执行
+-- 说明：使用简单语法，错误会被忽略
 -- =============================================
 
 -- =============================================
--- 1. 为 user 表添加缺失字段
+-- 1. 为 user 表添加缺失字段和索引
 -- =============================================
 
--- 添加 source 字段（如果不存在）
-SET @exist_source := (SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'advn_user' AND COLUMN_NAME = 'source');
-SET @sql_source = IF(@exist_source = 0, 
-    'ALTER TABLE `advn_user` ADD COLUMN `source` VARCHAR(50) NULL DEFAULT ''default'' COMMENT ''注册来源'' AFTER `status`', 
-    'SELECT ''source column already exists''');
-PREPARE stmt FROM @sql_source;
-EXECUTE stmt;
-DEALLOCATE PREPARE stmt;
+-- 添加 source 字段（如果已存在会报错，忽略即可）
+ALTER TABLE `advn_user` ADD COLUMN `source` VARCHAR(50) NULL DEFAULT 'default' COMMENT '注册来源' AFTER `status`;
 
--- 添加 source 索引（如果不存在）
-SET @exist_idx_source := (SELECT COUNT(*) FROM information_schema.STATISTICS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'advn_user' AND INDEX_NAME = 'idx_source');
-SET @sql_idx_source = IF(@exist_idx_source = 0, 
-    'ALTER TABLE `advn_user` ADD INDEX `idx_source` (`source`)', 
-    'SELECT ''idx_source already exists''');
-PREPARE stmt FROM @sql_idx_source;
-EXECUTE stmt;
-DEALLOCATE PREPARE stmt;
+-- 添加 source 索引（如果已存在会报错，忽略即可）
+ALTER TABLE `advn_user` ADD INDEX `idx_source` (`source`);
 
 -- =============================================
 -- 2. 创建 user_behavior_stat 表（如果不存在）
@@ -89,10 +77,8 @@ CREATE TABLE IF NOT EXISTS `advn_user_behavior` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户行为记录表';
 
 -- =============================================
--- 5. 创建其他可能缺失的表
+-- 5. 创建风险统计表
 -- =============================================
-
--- 风险统计表
 CREATE TABLE IF NOT EXISTS `advn_risk_stat` (
     `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
     `stat_date` DATE NOT NULL COMMENT '统计日期',
@@ -108,7 +94,9 @@ CREATE TABLE IF NOT EXISTS `advn_risk_stat` (
     UNIQUE KEY `uk_stat_date` (`stat_date`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='风险统计表';
 
--- 风险日志表
+-- =============================================
+-- 6. 创建风险日志表
+-- =============================================
 CREATE TABLE IF NOT EXISTS `advn_risk_log` (
     `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
     `user_id` INT UNSIGNED DEFAULT 0 COMMENT '用户ID',
@@ -127,7 +115,9 @@ CREATE TABLE IF NOT EXISTS `advn_risk_log` (
     KEY `idx_createtime` (`createtime`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='风险日志表';
 
--- 封禁记录表
+-- =============================================
+-- 7. 创建封禁记录表
+-- =============================================
 CREATE TABLE IF NOT EXISTS `advn_ban_record` (
     `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
     `user_id` INT UNSIGNED NOT NULL COMMENT '用户ID',
@@ -144,7 +134,9 @@ CREATE TABLE IF NOT EXISTS `advn_ban_record` (
     KEY `idx_createtime` (`createtime`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='封禁记录表';
 
--- IP风险表
+-- =============================================
+-- 8. 创建IP风险表
+-- =============================================
 CREATE TABLE IF NOT EXISTS `advn_ip_risk` (
     `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
     `ip` VARCHAR(50) NOT NULL COMMENT 'IP地址',
@@ -164,4 +156,4 @@ CREATE TABLE IF NOT EXISTS `advn_ip_risk` (
 -- =============================================
 -- 完成
 -- =============================================
-SELECT 'Migration completed successfully!' AS message;
+SELECT 'Migration 20250115_002 completed!' AS message;
