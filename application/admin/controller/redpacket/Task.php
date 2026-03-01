@@ -33,16 +33,20 @@ class Task extends Backend
                 ->limit($offset, $limit)
                 ->select();
 
-            foreach ($list as &$item) {
-                $item['grabbed_count'] = Db::name('task_participation')
-                    ->where('task_id', $item['id'])
+            // 转换为数组并添加统计信息
+            $data = [];
+            foreach ($list as $item) {
+                $row = $item->toArray();
+                $row['grabbed_count'] = Db::name('task_participation')
+                    ->where('task_id', $row['id'])
                     ->count();
-                $item['total_grabbed_amount'] = Db::name('task_participation')
-                    ->where('task_id', $item['id'])
+                $row['total_grabbed_amount'] = Db::name('task_participation')
+                    ->where('task_id', $row['id'])
                     ->sum('reward_coin');
+                $data[] = $row;
             }
 
-            $result = ['total' => $total, 'rows' => $list];
+            $result = ['total' => $total, 'rows' => $data];
             return json($result);
         }
         return $this->view->fetch();

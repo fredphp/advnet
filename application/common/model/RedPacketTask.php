@@ -58,10 +58,10 @@ class RedPacketTask extends Model
     
     // 状态
     public static $statusList = [
-        0 => '禁用',
-        1 => '进行中',
-        2 => '已结束',
-        3 => '已抢完'
+        'pending' => '待发布',
+        'active' => '进行中',
+        'completed' => '已完成',
+        'revoked' => '已撤回'
     ];
     
     public function getTaskTypeTextAttr($value, $data)
