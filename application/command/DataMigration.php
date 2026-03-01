@@ -39,11 +39,13 @@ class DataMigration extends Command
     {
         $this->setName('data:migrate')
             ->setDescription('数据迁移工具 - 迁移历史冷数据到归档表')
-            ->addOption('action', 'a', Option::VALUE_OPTIONAL, '执行动作: stats/coin_log/watch_record/watch_session/risk_log/user_behavior/anticheat/red_packet/commission/transfer/inactive/clean/all', 'stats')
+            ->addOption('action', 'a', Option::VALUE_OPTIONAL, '执行动作: stats/coin_log/watch_record/watch_session/risk_log/user_behavior/anticheat/red_packet/commission/transfer/inactive/clean/all/file:sync/file:status/file:run/file:pending/file:reset', 'stats')
             ->addOption('days', 'd', Option::VALUE_OPTIONAL, '迁移多少天前的数据', 90)
             ->addOption('batch', 'b', Option::VALUE_OPTIONAL, '批量处理数量', 1000)
             ->addOption('delete', null, Option::VALUE_NONE, '迁移后删除源数据')
-            ->addOption('table', 't', Option::VALUE_OPTIONAL, '指定单个表（用于stats操作）', null);
+            ->addOption('table', 't', Option::VALUE_OPTIONAL, '指定单个表（用于stats操作）', null)
+            ->addOption('file', 'f', Option::VALUE_OPTIONAL, '指定迁移文件名', null)
+            ->addOption('rollback', 'r', Option::VALUE_OPTIONAL, '回滚指定批次', null);
     }
     
     protected function execute(Input $input, Output $output)
@@ -53,6 +55,8 @@ class DataMigration extends Command
         $batch = (int) $input->getOption('batch');
         $delete = $input->getOption('delete');
         $table = $input->getOption('table');
+        $file = $input->getOption('file');
+        $rollback = $input->getOption('rollback');
         
         $service = new DataMigrationService();
         $service->setBatchSize($batch);
@@ -63,6 +67,17 @@ class DataMigration extends Command
         $output->writeln("========================================\n");
         
         $startTime = microtime(true);
+        
+        // 处理迁移文件相关操作
+        if (strpos($action, 'file:') === 0) {
+            $this->handleFileMigration($action, $output, $file, $rollback);
+            $endTime = microtime(true);
+            $duration = round(($endTime - $startTime), 2);
+            $output->writeln("\n========================================");
+            $output->writeln("执行完成，总耗时: {$duration} 秒");
+            $output->writeln("========================================");
+            return;
+        }
         
         switch ($action) {
             case 'stats':
@@ -379,6 +394,151 @@ class DataMigration extends Command
         
         if (isset($result['duration'])) {
             $output->writeln("耗时: {$result['duration']} 秒");
+        }
+    }
+    
+    /**
+     * 处理迁移文件操作
+     */
+    protected function handleFileMigration($action, $output, $file = null, $rollback = null)
+    {
+        $fileService = new \app\common\library\MigrationFileService();
+        
+        switch ($action) {
+            case 'file:sync':
+                // 同步迁移文件到数据库
+                $output->writeln("扫描并同步迁移文件...\n");
+                $result = $fileService->syncMigrationFiles();
+                $output->writeln("同步完成:");
+                $output->writeln("  - 扫描文件数: {$result['total_files']}");
+                $output->writeln("  - 新增记录: {$result['added']}");
+                $output->writeln("  - 更新记录: {$result['updated']}");
+                $output->writeln("  - 跳过记录: {$result['skipped']}");
+                break;
+                
+            case 'file:status':
+                // 查看迁移状态
+                $output->writeln("迁移文件状态:\n");
+                $stats = $fileService->getMigrationStats();
+                $output->writeln("总文件数: {$stats['total_files']}");
+                $output->writeln("记录总数: {$stats['total_records']}");
+                $output->writeln("待执行: {$stats['pending']}");
+                $output->writeln("执行中: {$stats['running']}");
+                $output->writeln("已完成: {$stats['completed']}");
+                $output->writeln("失败: {$stats['failed']}");
+                
+                $output->writeln("\n最近的迁移记录:");
+                $output->writeln(str_repeat("-", 80));
+                $records = $fileService->getAllMigrationRecords();
+                foreach (array_slice($records, 0, 10) as $record) {
+                    $status = $record['status'];
+                    $statusText = $status == 'completed' ? '<info>完成</info>' : 
+                                 ($status == 'failed' ? '<error>失败</error>' : 
+                                 ($status == 'running' ? '<comment>运行中</comment>' : '待执行'));
+                    $executedAt = $record['executed_at'] ? date('Y-m-d H:i:s', $record['executed_at']) : '-';
+                    $output->writeln(sprintf("%-40s | %-8s | %s | %s", 
+                        $record['migration_name'], $statusText, $record['batch'] ?: '-', $executedAt));
+                }
+                break;
+                
+            case 'file:pending':
+                // 查看待执行的迁移
+                $output->writeln("待执行的迁移文件:\n");
+                $pending = $fileService->getPendingMigrations();
+                
+                if (empty($pending)) {
+                    $output->writeln("<info>没有待执行的迁移文件</info>");
+                    break;
+                }
+                
+                $output->writeln(str_repeat("-", 80));
+                $output->writeln(sprintf("%-40s | %-10s | %s", '文件名', '状态', '校验和'));
+                $output->writeln(str_repeat("-", 80));
+                
+                foreach ($pending as $migration) {
+                    $status = $migration['status'];
+                    $statusText = $status == 'new' ? '<comment>新文件</comment>' : 
+                                 ($status == 'modified' ? '<comment>已修改</comment>' : 
+                                 ($status == 'failed' ? '<error>失败</error>' : '待执行'));
+                    $output->writeln(sprintf("%-40s | %-20s | %s", 
+                        $migration['name'], $statusText, substr($migration['checksum'], 0, 8)));
+                }
+                
+                $output->writeln("\n提示: 执行 php think data:migrate --action=file:run 来执行所有待执行的迁移");
+                break;
+                
+            case 'file:run':
+                // 执行迁移文件
+                if ($file) {
+                    // 执行单个文件
+                    $output->writeln("执行迁移文件: {$file}\n");
+                    $result = $fileService->executeMigration($file);
+                    
+                    if ($result['success']) {
+                        if (isset($result['skipped']) && $result['skipped']) {
+                            $output->writeln("<comment>{$result['message']}</comment>");
+                        } else {
+                            $output->writeln("<info>执行成功</info>");
+                            $output->writeln("批次: {$result['batch']}");
+                            $output->writeln("耗时: {$result['execution_time']} 秒");
+                        }
+                    } else {
+                        $output->writeln("<error>执行失败: {$result['error']}</error>");
+                    }
+                } else {
+                    // 执行所有待执行的迁移
+                    $output->writeln("执行所有待执行的迁移文件...\n");
+                    $result = $fileService->executeAllPending();
+                    
+                    $output->writeln("\n执行结果:");
+                    $output->writeln("  - 总数: {$result['total']}");
+                    $output->writeln("  - 成功: {$result['executed']}");
+                    $output->writeln("  - 失败: {$result['failed']}");
+                    
+                    if ($result['failed'] > 0) {
+                        $output->writeln("\n失败的迁移:");
+                        foreach ($result['results'] as $r) {
+                            if (!$r['success']) {
+                                $output->writeln("  - {$r['name']}: {$r['error']}");
+                            }
+                        }
+                    }
+                }
+                break;
+                
+            case 'file:reset':
+                // 重置失败的迁移
+                $output->writeln("重置失败的迁移状态...\n");
+                $count = $fileService->resetFailedMigrations();
+                $output->writeln("<info>已重置 {$count} 个失败的迁移</info>");
+                break;
+                
+            case 'file:rollback':
+                // 回滚指定批次
+                if (!$rollback) {
+                    $output->writeln("<error>请指定回滚批次号: --rollback=N</error>");
+                    break;
+                }
+                
+                $output->writeln("回滚批次 {$rollback} 的迁移...\n");
+                $result = $fileService->rollbackBatch($rollback);
+                $output->writeln("<info>已回滚 {$result['rolled_back']} 个迁移</info>");
+                
+                foreach ($result['migrations'] as $m) {
+                    $output->writeln("  - {$m['name']}");
+                }
+                break;
+                
+            default:
+                $output->writeln("<error>未知操作: {$action}</error>");
+                $output->writeln("\n可用的迁移文件操作:");
+                $output->writeln("  file:sync     - 扫描并同步迁移文件");
+                $output->writeln("  file:status   - 查看迁移状态");
+                $output->writeln("  file:pending  - 查看待执行的迁移");
+                $output->writeln("  file:run      - 执行迁移 (使用 --file=xxx.sql 指定单个文件)");
+                $output->writeln("  file:reset    - 重置失败的迁移");
+                $output->writeln("  file:rollback - 回滚指定批次 (使用 --rollback=N)");
+                break;
         }
     }
 }
