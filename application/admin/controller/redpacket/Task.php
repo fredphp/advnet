@@ -119,6 +119,39 @@ class Task extends Backend
     }
 
     /**
+     * 删除红包任务
+     */
+    public function del($ids = '')
+    {
+        if (!$this->request->isPost()) {
+            $this->error(__('参数错误'));
+        }
+        $ids = $ids ? $ids : $this->request->post('ids');
+        if (empty($ids)) {
+            $this->error(__('参数错误'));
+        }
+        $pk = $this->model->getPk();
+        $list = $this->model->where($pk, 'in', $ids)->select();
+
+        $count = 0;
+        Db::startTrans();
+        try {
+            foreach ($list as $item) {
+                $count += $item->delete();
+            }
+            Db::commit();
+        } catch (\Exception $e) {
+            Db::rollback();
+            $this->error($e->getMessage());
+        }
+        if ($count) {
+            $this->success();
+        } else {
+            $this->error(__('删除失败'));
+        }
+    }
+
+    /**
      * 发布红包
      */
     public function publish($ids = null)
@@ -160,9 +193,6 @@ class Task extends Backend
             $row->updatetime = time();
             $row->save();
 
-            // 退还剩余金额给发布者（如果有）
-            // 这里可以根据业务逻辑处理
-
             Db::commit();
             $this->success('撤回成功');
         } catch (Exception $e) {
@@ -197,11 +227,10 @@ class Task extends Backend
             'avg_amount' => count($participations) > 0 ? array_sum(array_column($participations, 'coin_reward')) / count($participations) : 0,
         ];
 
-        $this->success('', [
-            'task' => $task,
-            'participations' => $participations,
-            'stats' => $stats,
-        ]);
+        $this->view->assign('task', $task);
+        $this->view->assign('participations', $participations);
+        $this->view->assign('stats', $stats);
+        return $this->view->fetch();
     }
 
     /**
@@ -223,183 +252,5 @@ class Task extends Backend
             ]);
 
         $this->success();
-    }
-}
-
-/**
- * 红包领取记录
- */
-class Participation extends Backend
-{
-    protected $model = null;
-
-    public function _initialize()
-    {
-        parent::_initialize();
-        $this->model = new \app\common\model\TaskParticipation();
-    }
-
-    /**
-     * 领取记录列表
-     */
-    public function index()
-    {
-        if ($this->request->isAjax()) {
-            list($where, $sort, $order, $offset, $limit) = $this->buildparams();
-
-            $total = $this->model->where($where)->count();
-            $list = $this->model->alias('tp')
-                ->join('user u', 'u.id = tp.user_id', 'LEFT')
-                ->join('red_packet_task rpt', 'rpt.id = tp.task_id', 'LEFT')
-                ->field('tp.*, u.username, u.nickname, rpt.title as task_title')
-                ->where($where)
-                ->order("tp.{$sort}", $order)
-                ->limit($offset, $limit)
-                ->select();
-
-            $result = ['total' => $total, 'rows' => $list];
-            return json($result);
-        }
-        return $this->view->fetch();
-    }
-
-    /**
-     * 领取统计
-     */
-    public function statistics()
-    {
-        $startDate = $this->request->get('start_date', date('Y-m-d', strtotime('-7 days')));
-        $endDate = $this->request->get('end_date', date('Y-m-d'));
-
-        $startTimestamp = strtotime($startDate);
-        $endTimestamp = strtotime($endDate . ' 23:59:59');
-
-        // 总体统计
-        $totalStats = Db::name('task_participation')
-            ->where('createtime', 'between', [$startTimestamp, $endTimestamp])
-            ->field('COUNT(*) as total_count, COUNT(DISTINCT user_id) as unique_users,
-                     SUM(coin_reward) as total_coin, AVG(coin_reward) as avg_coin')
-            ->find();
-
-        // 每日统计
-        $dailyStats = Db::name('task_participation')
-            ->field('FROM_UNIXTIME(createtime, "%Y-%m-%d") as date,
-                     COUNT(*) as count, SUM(coin_reward) as coin')
-            ->where('createtime', 'between', [$startTimestamp, $endTimestamp])
-            ->group('date')
-            ->order('date', 'asc')
-            ->select();
-
-        // 用户领取排行
-        $topUsers = Db::name('task_participation')
-            ->alias('tp')
-            ->join('user u', 'u.id = tp.user_id', 'LEFT')
-            ->field('u.id, u.username, u.nickname, COUNT(*) as grab_count, SUM(tp.coin_reward) as total_coin')
-            ->where('tp.createtime', 'between', [$startTimestamp, $endTimestamp])
-            ->group('tp.user_id')
-            ->order('total_coin', 'desc')
-            ->limit(20)
-            ->select();
-
-        $this->success('', [
-            'total_stats' => $totalStats,
-            'daily_stats' => $dailyStats,
-            'top_users' => $topUsers,
-        ]);
-    }
-}
-
-/**
- * 红包分类管理
- */
-class Category extends Backend
-{
-    protected $model = null;
-
-    public function _initialize()
-    {
-        parent::_initialize();
-        $this->model = new \app\common\model\TaskCategory();
-    }
-
-    public function index()
-    {
-        if ($this->request->isAjax()) {
-            list($where, $sort, $order, $offset, $limit) = $this->buildparams();
-
-            $total = $this->model->where($where)->count();
-            $list = $this->model->where($where)
-                ->order($sort, $order)
-                ->limit($offset, $limit)
-                ->select();
-
-            $result = ['total' => $total, 'rows' => $list];
-            return json($result);
-        }
-        return $this->view->fetch();
-    }
-}
-
-/**
- * 红包统计
- */
-class Stat extends Backend
-{
-    /**
-     * 红包统计概览
-     */
-    public function index()
-    {
-        $startDate = $this->request->get('start_date', date('Y-m-d', strtotime('-30 days')));
-        $endDate = $this->request->get('end_date', date('Y-m-d'));
-
-        $startTimestamp = strtotime($startDate);
-        $endTimestamp = strtotime($endDate . ' 23:59:59');
-
-        // 发放统计
-        $sendStats = Db::name('red_packet_task')
-            ->where('createtime', 'between', [$startTimestamp, $endTimestamp])
-            ->field('COUNT(*) as total_tasks, SUM(total_amount) as total_amount,
-                     SUM(total_count) as total_count, SUM(remain_amount) as remain_amount')
-            ->find();
-
-        // 领取统计
-        $grabStats = Db::name('task_participation')
-            ->where('createtime', 'between', [$startTimestamp, $endTimestamp])
-            ->field('COUNT(*) as total_grab, SUM(coin_reward) as total_coin')
-            ->find();
-
-        // 每日发放趋势
-        $dailySend = Db::name('red_packet_task')
-            ->field('FROM_UNIXTIME(createtime, "%Y-%m-%d") as date,
-                     COUNT(*) as tasks, SUM(total_amount) as amount')
-            ->where('createtime', 'between', [$startTimestamp, $endTimestamp])
-            ->group('date')
-            ->order('date', 'asc')
-            ->select();
-
-        // 每日领取趋势
-        $dailyGrab = Db::name('task_participation')
-            ->field('FROM_UNIXTIME(createtime, "%Y-%m-%d") as date,
-                     COUNT(*) as grabs, SUM(coin_reward) as coin')
-            ->where('createtime', 'between', [$startTimestamp, $endTimestamp])
-            ->group('date')
-            ->order('date', 'asc')
-            ->select();
-
-        // 红包类型分布
-        $typeDistribution = Db::name('red_packet_task')
-            ->field('type, COUNT(*) as count, SUM(total_amount) as amount')
-            ->where('createtime', 'between', [$startTimestamp, $endTimestamp])
-            ->group('type')
-            ->select();
-
-        $this->success('', [
-            'send_stats' => $sendStats,
-            'grab_stats' => $grabStats,
-            'daily_send' => $dailySend,
-            'daily_grab' => $dailyGrab,
-            'type_distribution' => $typeDistribution,
-        ]);
     }
 }
