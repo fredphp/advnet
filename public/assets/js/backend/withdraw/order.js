@@ -31,6 +31,15 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
             // 为表格绑定事件
             Table.api.bindevent(table);
         },
+        pending: function () {
+            Controller.index();
+        },
+        statistics: function () {
+            Controller.api.loadStatistics();
+            $('#start_date, #end_date').on('change', function () {
+                Controller.api.loadStatistics();
+            });
+        },
         add: function () {
             Controller.api.bindevent();
         },
@@ -40,6 +49,26 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
         api: {
             bindevent: function () {
                 Form.api.bindevent($("form[role=form]"));
+            },
+            loadStatistics: function () {
+                var startDate = $('#start_date').val();
+                var endDate = $('#end_date').val();
+
+                $.ajax({
+                    url: 'withdraw/order/statistics',
+                    type: 'GET',
+                    data: {start_date: startDate, end_date: endDate},
+                    dataType: 'json',
+                    success: function (ret) {
+                        if (ret.code == 1) {
+                            var data = ret.data;
+                            $('#total-count').text(data.total_stats.total_count || 0);
+                            $('#total-amount').text(data.total_stats.total_amount || 0);
+                            $('#completed-amount').text(data.total_stats.completed_amount || 0);
+                            $('#rejected-amount').text(data.total_stats.rejected_amount || 0);
+                        }
+                    }
+                });
             }
         }
     };

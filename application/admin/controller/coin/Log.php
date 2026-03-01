@@ -98,13 +98,24 @@ class Log extends Backend
             ->limit(20)
             ->select();
 
-        $this->success('', [
-            'total_stats' => $totalStats,
-            'type_stats' => $typeStats,
-            'daily_stats' => $dailyStats,
-            'top_income_users' => $topIncomeUsers,
-            'top_expense_users' => $topExpenseUsers,
-        ]);
+        if ($this->request->isAjax()) {
+            $this->success('', [
+                'total_stats' => $totalStats,
+                'type_stats' => $typeStats,
+                'daily_stats' => $dailyStats,
+                'top_income_users' => $topIncomeUsers,
+                'top_expense_users' => $topExpenseUsers,
+            ]);
+        }
+
+        $this->view->assign('start_date', $startDate);
+        $this->view->assign('end_date', $endDate);
+        $this->view->assign('total_stats', $totalStats);
+        $this->view->assign('type_stats', $typeStats);
+        $this->view->assign('daily_stats', $dailyStats);
+        $this->view->assign('top_income_users', $topIncomeUsers);
+        $this->view->assign('top_expense_users', $topExpenseUsers);
+        return $this->view->fetch();
     }
 
     /**
@@ -197,63 +208,5 @@ class Log extends Backend
 
         fclose($output);
         exit;
-    }
-}
-
-/**
- * 金币账户管理
- */
-class Account extends Backend
-{
-    /**
-     * 账户列表
-     */
-    public function index()
-    {
-        if ($this->request->isAjax()) {
-            $offset = $this->request->get('offset', 0);
-            $limit = $this->request->get('limit', 10);
-            $sort = $this->request->get('sort', 'balance');
-            $order = $this->request->get('order', 'desc');
-
-            $total = Db::name('coin_account')->count();
-            $list = Db::name('coin_account ca')
-                ->join('user u', 'u.id = ca.user_id', 'LEFT')
-                ->field('ca.*, u.username, u.nickname, u.mobile, u.avatar')
-                ->order("ca.{$sort}", $order)
-                ->limit($offset, $limit)
-                ->select();
-
-            return json(['total' => $total, 'rows' => $list]);
-        }
-        return $this->view->fetch();
-    }
-
-    /**
-     * 账户统计
-     */
-    public function summary()
-    {
-        $stats = Db::name('coin_account')
-            ->field('COUNT(*) as total_accounts,
-                     SUM(balance) as total_balance,
-                     SUM(frozen) as total_frozen,
-                     AVG(balance) as avg_balance,
-                     MAX(balance) as max_balance')
-            ->find();
-
-        // 余额分布
-        $distribution = [
-            '0' => Db::name('coin_account')->where('balance', 0)->count(),
-            '1-1000' => Db::name('coin_account')->where('balance', 'between', [1, 1000])->count(),
-            '1001-5000' => Db::name('coin_account')->where('balance', 'between', [1001, 5000])->count(),
-            '5001-10000' => Db::name('coin_account')->where('balance', 'between', [5001, 10000])->count(),
-            '10000+' => Db::name('coin_account')->where('balance', '>', 10000)->count(),
-        ];
-
-        $this->success('', [
-            'stats' => $stats,
-            'distribution' => $distribution,
-        ]);
     }
 }

@@ -1,0 +1,111 @@
+<div class="panel panel-default panel-intro">
+    <div class="panel-heading">
+        <div class="panel-lead"><em>金币统计</em></div>
+    </div>
+
+    <div class="panel-body">
+        <div class="row" style="margin-bottom:15px;">
+            <div class="col-xs-12 col-sm-6">
+                <label>开始日期:</label>
+                <input type="text" id="start_date" class="form-control datetimepicker" value="{$start_date|default=''}" data-date-format="YYYY-MM-DD">
+            </div>
+            <div class="col-xs-12 col-sm-6">
+                <label>结束日期:</label>
+                <input type="text" id="end_date" class="form-control datetimepicker" value="{$end_date|default=''}" data-date-format="YYYY-MM-DD">
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-4">
+                <div class="panel panel-success">
+                    <div class="panel-heading">金币收入总计</div>
+                    <div class="panel-body text-center">
+                        <h2 id="total-income">{$total_stats.total_income|default=0}</h2>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="panel panel-danger">
+                    <div class="panel-heading">金币支出总计</div>
+                    <div class="panel-body text-center">
+                        <h2 id="total-expense">{$total_stats.total_expense|default=0}</h2>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="panel panel-info">
+                    <div class="panel-heading">流水笔数</div>
+                    <div class="panel-body text-center">
+                        <h2 id="total-count">{$total_stats.total_count|default=0}</h2>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-12">
+                <div class="panel panel-default">
+                    <div class="panel-heading">按类型统计</div>
+                    <div class="panel-body">
+                        <table class="table table-striped">
+                            <thead><tr><th>类型</th><th>收入金币</th><th>支出金币</th><th>笔数</th></tr></thead>
+                            <tbody id="type-stats">
+                                {volist name="type_stats" id="item"}
+                                <tr>
+                                    <td>{$item.type}</td>
+                                    <td>{$item.income}</td>
+                                    <td>{$item.expense}</td>
+                                    <td>{$item.count}</td>
+                                </tr>
+                                {/volist}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-6">
+                <div class="panel panel-default">
+                    <div class="panel-heading">收入排行 TOP20</div>
+                    <div class="panel-body">
+                        <table class="table table-striped">
+                            <thead><tr><th>排名</th><th>用户ID</th><th>用户名</th><th>金币收入</th></tr></thead>
+                            <tbody id="top-income-users">
+                                {volist name="top_income_users" id="item" key="k"}
+                                <tr>
+                                    <td>{$k}</td>
+                                    <td>{$item.id}</td>
+                                    <td>{$item.nickname|default=$item.username}</td>
+                                    <td>{$item.total_income}</td>
+                                </tr>
+                                {/volist}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="panel panel-default">
+                    <div class="panel-heading">支出排行 TOP20</div>
+                    <div class="panel-body">
+                        <table class="table table-striped">
+                            <thead><tr><th>排名</th><th>用户ID</th><th>用户名</th><th>金币支出</th></tr></thead>
+                            <tbody id="top-expense-users">
+                                {volist name="top_expense_users" id="item" key="k"}
+                                <tr>
+                                    <td>{$k}</td>
+                                    <td>{$item.id}</td>
+                                    <td>{$item.nickname|default=$item.username}</td>
+                                    <td>{$item.total_expense}</td>
+                                </tr>
+                                {/volist}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

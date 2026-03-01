@@ -276,13 +276,24 @@ class User extends Backend
             ->group('device_type')
             ->select();
 
-        $this->success('', [
-            'total_stats' => $totalStats,
-            'daily_new' => $dailyNew,
-            'daily_active' => $dailyActive,
-            'source_distribution' => $sourceDistribution,
-            'device_distribution' => $deviceDistribution,
-        ]);
+        if ($this->request->isAjax()) {
+            $this->success('', [
+                'total_stats' => $totalStats,
+                'daily_new' => $dailyNew,
+                'daily_active' => $dailyActive,
+                'source_distribution' => $sourceDistribution,
+                'device_distribution' => $deviceDistribution,
+            ]);
+        }
+
+        $this->view->assign('start_date', $startDate);
+        $this->view->assign('end_date', $endDate);
+        $this->view->assign('total_stats', $totalStats);
+        $this->view->assign('daily_new', $dailyNew);
+        $this->view->assign('daily_active', $dailyActive);
+        $this->view->assign('source_distribution', $sourceDistribution);
+        $this->view->assign('device_distribution', $deviceDistribution);
+        return $this->view->fetch();
     }
 
     /**

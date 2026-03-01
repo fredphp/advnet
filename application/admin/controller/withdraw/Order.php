@@ -302,13 +302,24 @@ class Order extends Backend
             ->limit(20)
             ->select();
 
-        $this->success('', [
-            'total_stats' => $totalStats,
-            'status_distribution' => $statusDistribution,
-            'daily_stats' => $dailyStats,
-            'amount_distribution' => $amountDistribution,
-            'top_users' => $topUsers,
-        ]);
+        if ($this->request->isAjax()) {
+            $this->success('', [
+                'total_stats' => $totalStats,
+                'status_distribution' => $statusDistribution,
+                'daily_stats' => $dailyStats,
+                'amount_distribution' => $amountDistribution,
+                'top_users' => $topUsers,
+            ]);
+        }
+
+        $this->view->assign('start_date', $startDate);
+        $this->view->assign('end_date', $endDate);
+        $this->view->assign('total_stats', $totalStats);
+        $this->view->assign('status_distribution', $statusDistribution);
+        $this->view->assign('daily_stats', $dailyStats);
+        $this->view->assign('amount_distribution', $amountDistribution);
+        $this->view->assign('top_users', $topUsers);
+        return $this->view->fetch();
     }
 
     /**

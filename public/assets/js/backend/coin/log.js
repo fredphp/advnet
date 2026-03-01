@@ -24,9 +24,34 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
             });
             Table.api.bindevent(table);
         },
+        statistics: function () {
+            Controller.api.loadStatistics();
+            $('#start_date, #end_date').on('change', function () {
+                Controller.api.loadStatistics();
+            });
+        },
         api: {
             bindevent: function () {
                 Form.api.bindevent($("form[role=form]"));
+            },
+            loadStatistics: function () {
+                var startDate = $('#start_date').val();
+                var endDate = $('#end_date').val();
+
+                $.ajax({
+                    url: 'coin/log/statistics',
+                    type: 'GET',
+                    data: {start_date: startDate, end_date: endDate},
+                    dataType: 'json',
+                    success: function (ret) {
+                        if (ret.code == 1) {
+                            var data = ret.data;
+                            $('#total-income').text(data.total_stats.total_income || 0);
+                            $('#total-expense').text(data.total_stats.total_expense || 0);
+                            $('#total-count').text(data.total_stats.total_count || 0);
+                        }
+                    }
+                });
             }
         }
     };

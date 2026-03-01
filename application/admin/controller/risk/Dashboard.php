@@ -63,17 +63,33 @@ class Dashboard extends Backend
             ->select();
         
         // 风险预警
-        $alerts = (new AutoBanService())->getRiskUserAlerts();
+        $alerts = [];
+        try {
+            $alerts = (new AutoBanService())->getRiskUserAlerts();
+        } catch (\Exception $e) {
+            $alerts = [];
+        }
         
-        $this->success('', [
-            'today_stats' => $todayStats,
-            'risk_user_stats' => $riskUserStats,
-            'user_status_stats' => $userStatusStats,
-            'hourly_violations' => $hourlyViolations,
-            'rule_trigger_stats' => $ruleTriggerStats,
-            'recent_bans' => $recentBans,
-            'alerts' => $alerts,
-        ]);
+        if ($this->request->isAjax()) {
+            $this->success('', [
+                'today_stats' => $todayStats,
+                'risk_user_stats' => $riskUserStats,
+                'user_status_stats' => $userStatusStats,
+                'hourly_violations' => $hourlyViolations,
+                'rule_trigger_stats' => $ruleTriggerStats,
+                'recent_bans' => $recentBans,
+                'alerts' => $alerts,
+            ]);
+        }
+        
+        $this->view->assign('today_stats', $todayStats);
+        $this->view->assign('risk_user_stats', $riskUserStats);
+        $this->view->assign('user_status_stats', $userStatusStats);
+        $this->view->assign('hourly_violations', $hourlyViolations);
+        $this->view->assign('rule_trigger_stats', $ruleTriggerStats);
+        $this->view->assign('recent_bans', $recentBans);
+        $this->view->assign('alerts', $alerts);
+        return $this->view->fetch();
     }
     
     /**
