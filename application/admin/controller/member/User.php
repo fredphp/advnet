@@ -272,16 +272,11 @@ class User extends Backend
             $dailyActive = [];
         }
 
-        // 尝试获取用户来源分布，如果字段不存在则返回空数组
-        $sourceDistribution = [];
-        try {
-            $sourceDistribution = $this->model
-                ->field('source, COUNT(*) as count')
-                ->group('source')
-                ->select();
-        } catch (\Exception $e) {
-            $sourceDistribution = [];
-        }
+        // 获取用户来源分布
+        $sourceDistribution = $this->model
+            ->field('source, COUNT(*) as count')
+            ->group('source')
+            ->select();
 
         // 尝试获取设备分布，如果表不存在则返回空数组
         $deviceDistribution = [];
