@@ -197,3 +197,47 @@ Stage Summary:
 - 任务类型: 6种 (下载App/小程序/游戏/视频/分享/签到)
 - 状态流转: 7种状态 (已领取→已完成→待审核→已发放)
 - 防作弊: 四层检测 (网关/业务/验证/风险评估)
+
+---
+Task ID: 6
+Agent: Main Agent
+Task: 创建数据迁移命令行工具
+
+Work Log:
+- 创建数据迁移服务类 `application/common/library/DataMigrationService.php`:
+  - 支持迁移金币流水数据 (migrateCoinLog)
+  - 支持迁移视频观看记录 (migrateVideoWatchRecord)
+  - 支持迁移观看会话记录 (migrateVideoWatchSession)
+  - 支持迁移风控日志 (migrateRiskLog)
+  - 支持迁移用户行为记录 (migrateUserBehavior)
+  - 支持迁移防刷日志 (migrateAnticheatLog)
+  - 支持迁移红包领取记录 (migrateRedPacketRecord)
+  - 支持迁移邀请分佣日志 (migrateInviteCommissionLog)
+  - 支持迁移微信打款日志 (migrateWechatTransferLog)
+  - 支持标记未活跃用户 (markInactiveUsers)
+  - 支持清理过期统计数据 (cleanDailyRewardStats, cleanBehaviorStats)
+  - 自动创建归档表结构 (ensureArchiveTableExists)
+  - 分批处理机制，避免锁表
+  - 可选删除源数据选项
+- 创建数据迁移命令 `application/command/DataMigration.php`:
+  - 支持查看数据统计 (stats)
+  - 支持单表迁移操作
+  - 支持执行所有迁移 (all)
+  - 支持配置迁移天数、批量大小
+  - 支持迁移后删除源数据选项
+- 创建归档表SQL脚本 `sql/data_migration_archive_tables.sql`:
+  - 9张归档表结构
+  - 数据迁移配置表
+  - 数据迁移日志表
+  - 默认迁移配置数据
+- 注册命令到 `application/command.php`
+
+Stage Summary:
+- 数据迁移服务: `application/common/library/DataMigrationService.php`
+- 迁移命令: `application/command/DataMigration.php`
+- 归档表SQL: `sql/data_migration_archive_tables.sql`
+- 支持迁移表: 9张核心业务表
+- 使用方式:
+  - `php think data:migrate --action=stats` 查看统计
+  - `php think data:migrate --action=all --days=90` 执行所有迁移
+  - `php think data:migrate --action=coin_log --days=90 --delete` 迁移并删除源数据
