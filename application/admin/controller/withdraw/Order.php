@@ -4,21 +4,22 @@ namespace app\admin\controller\withdraw;
 
 use app\common\controller\Backend;
 use app\common\library\WithdrawService;
-use think\facade\Db;
+use think\Db;
+use think\Exception;
 
 /**
- * 提现订单管理
+ * 提现审核管理
  */
 class Order extends Backend
 {
     protected $model = null;
-    
-    public function initialize()
+
+    public function _initialize()
     {
-        parent::initialize();
+        parent::_initialize();
         $this->model = new \app\common\model\WithdrawOrder();
     }
-    
+
     /**
      * 提现订单列表
      */
@@ -26,163 +27,170 @@ class Order extends Backend
     {
         if ($this->request->isAjax()) {
             list($where, $sort, $order, $offset, $limit) = $this->buildparams();
-            
+
             $total = $this->model->where($where)->count();
-            $list = $this->model->where($where)
-                ->with(['user'])
-                ->order($sort, $order)
+            $list = $this->model->alias('wo')
+                ->join('user u', 'u.id = wo.user_id', 'LEFT')
+                ->field('wo.*, u.username, u.nickname, u.mobile, u.avatar')
+                ->where($where)
+                ->order("wo.{$sort}", $order)
                 ->limit($offset, $limit)
                 ->select();
-            
-            foreach ($list as $item) {
-                $item->user_nickname = $item->user ? $item->user->nickname : '';
-                $item->status_text = $item->status_text;
-                $item->withdraw_type_text = $item->withdraw_type_text;
-            }
-            
+
             $result = ['total' => $total, 'rows' => $list];
             return json($result);
         }
-        
         return $this->view->fetch();
     }
-    
+
     /**
-     * 订单详情
+     * 提现详情
      */
     public function detail($ids = null)
     {
-        $row = $this->model->with(['user'])->find($ids);
-        if (!$row) {
-            $this->error(__('No Results were found'));
+        $order = $this->model->get($ids);
+        if (!$order) {
+            $this->error('订单不存在');
         }
-        
-        // 获取用户提现统计
-        $stat = Db::name('withdraw_stat')->where('user_id', $row->user_id)->find();
-        
-        // 获取风控记录
-        $riskLogs = Db::name('withdraw_risk_log')
-            ->where('order_no', $row->order_no)
-            ->order('id', 'desc')
+
+        // 用户信息
+        $user = Db::name('user')->where('id', $order['user_id'])->find();
+
+        // 用户提现统计
+        $userStats = Db::name('withdraw_order')
+            ->where('user_id', $order['user_id'])
+            ->field('COUNT(*) as total_count, SUM(CASE WHEN status = "completed" THEN amount ELSE 0 END) as total_amount')
+            ->find();
+
+        // 风险信息
+        $riskInfo = Db::name('user_risk_score')
+            ->where('user_id', $order['user_id'])
+            ->find();
+
+        // 最近提现记录
+        $recentOrders = $this->model->where('user_id', $order['user_id'])
+            ->where('id', '<>', $ids)
+            ->order('createtime', 'desc')
+            ->limit(5)
             ->select();
-        
-        // 获取打款日志
-        $transferLogs = Db::name('wechat_transfer_log')
-            ->where('order_no', $row->order_no)
-            ->order('id', 'desc')
-            ->select();
-        
-        $this->view->assign('row', $row);
-        $this->view->assign('stat', $stat);
-        $this->view->assign('risk_logs', $riskLogs);
-        $this->view->assign('transfer_logs', $transferLogs);
-        
-        return $this->view->fetch();
+
+        $this->success('', [
+            'order' => $order,
+            'user' => $user,
+            'user_stats' => $userStats,
+            'risk_info' => $riskInfo,
+            'recent_orders' => $recentOrders,
+        ]);
     }
-    
+
     /**
      * 审核通过
      */
     public function approve($ids = null)
     {
-        $row = $this->model->find($ids);
-        if (!$row) {
+        $order = $this->model->get($ids);
+        if (!$order) {
             $this->error('订单不存在');
         }
-        
-        if ($row->status != 0) {
-            $this->error('订单状态异常');
+
+        if ($order['status'] != 'pending') {
+            $this->error('该订单已处理');
         }
-        
+
         $remark = $this->request->post('remark', '');
-        
-        $service = new WithdrawService();
-        $result = $service->approveOrder($ids, $this->auth->id, $this->auth->nickname, $remark);
-        
-        if ($result['success']) {
-            $this->success($result['message']);
-        } else {
-            $this->error($result['message']);
+
+        Db::startTrans();
+        try {
+            $order->status = 'approved';
+            $order->admin_id = $this->auth->id;
+            $order->admin_name = $this->auth->username;
+            $order->approve_time = time();
+            $order->admin_remark = $remark;
+            $order->updatetime = time();
+            $order->save();
+
+            // 可以在这里触发自动打款
+            // 或者手动打款后调用 complete 方法
+
+            Db::commit();
+            $this->success('审核通过');
+        } catch (Exception $e) {
+            Db::rollback();
+            $this->error($e->getMessage());
         }
     }
-    
+
     /**
      * 审核拒绝
      */
     public function reject($ids = null)
     {
-        $row = $this->model->find($ids);
-        if (!$row) {
+        $order = $this->model->get($ids);
+        if (!$order) {
             $this->error('订单不存在');
         }
-        
-        if (!in_array($row->status, [0, 1])) {
-            $this->error('订单状态异常');
+
+        if ($order['status'] != 'pending') {
+            $this->error('该订单已处理');
         }
-        
+
         $reason = $this->request->post('reason', '');
-        if (empty($reason)) {
+
+        if (!$reason) {
             $this->error('请填写拒绝原因');
         }
-        
-        $service = new WithdrawService();
-        $result = $service->rejectOrder($ids, $reason, $this->auth->id, $this->auth->nickname);
-        
-        if ($result['success']) {
-            $this->success($result['message']);
-        } else {
-            $this->error($result['message']);
+
+        Db::startTrans();
+        try {
+            $withdrawService = new WithdrawService();
+            $result = $withdrawService->reject($ids, $reason, $this->auth->id);
+
+            if (!$result['success']) {
+                throw new Exception($result['message']);
+            }
+
+            Db::commit();
+            $this->success('已拒绝并退还金币');
+        } catch (Exception $e) {
+            Db::rollback();
+            $this->error($e->getMessage());
         }
     }
-    
+
     /**
-     * 发起打款
+     * 确认打款
      */
-    public function transfer($ids = null)
+    public function complete($ids = null)
     {
-        $row = $this->model->find($ids);
-        if (!$row) {
+        $order = $this->model->get($ids);
+        if (!$order) {
             $this->error('订单不存在');
         }
-        
-        if ($row->status != 1) {
-            $this->error('订单状态异常，请先审核通过');
+
+        if (!in_array($order['status'], ['pending', 'approved'])) {
+            $this->error('该订单状态不允许打款');
         }
-        
-        $service = new WithdrawService();
-        $result = $service->transfer($ids);
-        
-        if ($result['success']) {
-            $this->success($result['message'], null, $result['data']);
-        } else {
-            $this->error($result['message']);
-        }
-    }
-    
-    /**
-     * 重试打款
-     */
-    public function retry($ids = null)
-    {
-        $row = $this->model->find($ids);
-        if (!$row) {
-            $this->error('订单不存在');
-        }
-        
-        if ($row->status != 5) {
-            $this->error('订单状态异常');
-        }
-        
-        $service = new WithdrawService();
-        $result = $service->retryTransfer($ids);
-        
-        if ($result['success']) {
-            $this->success($result['message']);
-        } else {
-            $this->error($result['message']);
+
+        $transferNo = $this->request->post('transfer_no', '');
+        $remark = $this->request->post('remark', '');
+
+        Db::startTrans();
+        try {
+            $withdrawService = new WithdrawService();
+            $result = $withdrawService->complete($ids, $transferNo, $this->auth->id, $remark);
+
+            if (!$result['success']) {
+                throw new Exception($result['message']);
+            }
+
+            Db::commit();
+            $this->success('打款成功');
+        } catch (Exception $e) {
+            Db::rollback();
+            $this->error($e->getMessage());
         }
     }
-    
+
     /**
      * 批量审核通过
      */
@@ -190,106 +198,195 @@ class Order extends Backend
     {
         $ids = $this->request->post('ids');
         if (empty($ids)) {
-            $this->error('请选择要审核的订单');
+            $this->error(__('参数错误'));
         }
-        
-        $ids = explode(',', $ids);
-        $remark = $this->request->post('remark', '');
-        
-        $service = new WithdrawService();
+
+        $count = $this->model->where('id', 'in', $ids)
+            ->where('status', 'pending')
+            ->update([
+                'status' => 'approved',
+                'admin_id' => $this->auth->id,
+                'admin_name' => $this->auth->username,
+                'approve_time' => time(),
+                'updatetime' => time()
+            ]);
+
+        $this->success("成功审核{$count}条记录");
+    }
+
+    /**
+     * 批量打款
+     */
+    public function batchPay()
+    {
+        $ids = $this->request->post('ids');
+        if (empty($ids)) {
+            $this->error(__('参数错误'));
+        }
+
+        $orders = $this->model->where('id', 'in', $ids)
+            ->where('status', 'approved')
+            ->select();
+
         $success = 0;
         $failed = 0;
-        
-        foreach ($ids as $id) {
-            $result = $service->approveOrder($id, $this->auth->id, $this->auth->nickname, $remark);
-            if ($result['success']) {
-                $success++;
-            } else {
+
+        foreach ($orders as $order) {
+            try {
+                $withdrawService = new WithdrawService();
+                $result = $withdrawService->complete($order['id'], '', $this->auth->id);
+                if ($result['success']) {
+                    $success++;
+                } else {
+                    $failed++;
+                }
+            } catch (Exception $e) {
                 $failed++;
             }
         }
-        
-        $this->success("审核完成: 成功{$success}条, 失败{$failed}条");
+
+        $this->success("成功打款{$success}笔，失败{$failed}笔");
     }
-    
+
     /**
-     * 统计数据
+     * 提现统计
      */
-    public function stat()
+    public function statistics()
     {
-        $startDate = $this->request->get('start_date', date('Y-m-d', strtotime('-7 days')));
+        $startDate = $this->request->get('start_date', date('Y-m-d', strtotime('-30 days')));
         $endDate = $this->request->get('end_date', date('Y-m-d'));
-        
+
+        $startTimestamp = strtotime($startDate);
+        $endTimestamp = strtotime($endDate . ' 23:59:59');
+
         // 总体统计
-        $totalStat = [
-            'total_count' => $this->model->count(),
-            'total_amount' => $this->model->sum('cash_amount'),
-            'total_coin' => $this->model->sum('coin_amount'),
-            'total_fee' => $this->model->sum('fee_amount'),
-            'pending_count' => $this->model->where('status', 0)->count(),
-            'pending_amount' => $this->model->where('status', 0)->sum('cash_amount'),
-            'success_count' => $this->model->where('status', 3)->count(),
-            'success_amount' => $this->model->where('status', 3)->sum('cash_amount'),
-            'failed_count' => $this->model->where('status', 4)->count() + $this->model->where('status', 5)->count(),
-        ];
-        
+        $totalStats = $this->model->where('createtime', 'between', [$startTimestamp, $endTimestamp])
+            ->field('COUNT(*) as total_count, SUM(amount) as total_amount,
+                     SUM(CASE WHEN status = "completed" THEN amount ELSE 0 END) as completed_amount,
+                     SUM(CASE WHEN status = "rejected" THEN amount ELSE 0 END) as rejected_amount')
+            ->find();
+
+        // 状态分布
+        $statusDistribution = $this->model->field('status, COUNT(*) as count, SUM(amount) as amount')
+            ->where('createtime', 'between', [$startTimestamp, $endTimestamp])
+            ->group('status')
+            ->select();
+
         // 每日趋势
-        $dailyStat = $this->model->where('status', 3)
-            ->where('complete_time', '>=', strtotime($startDate . ' 00:00:00'))
-            ->where('complete_time', '<=', strtotime($endDate . ' 23:59:59'))
-            ->field([
-                'DATE(FROM_UNIXTIME(complete_time)) as date',
-                'COUNT(*) as count',
-                'SUM(cash_amount) as amount',
-            ])
+        $dailyStats = $this->model
+            ->field('FROM_UNIXTIME(createtime, "%Y-%m-%d") as date,
+                     COUNT(*) as count, SUM(amount) as amount,
+                     SUM(CASE WHEN status = "completed" THEN amount ELSE 0 END) as completed')
+            ->where('createtime', 'between', [$startTimestamp, $endTimestamp])
             ->group('date')
             ->order('date', 'asc')
             ->select();
-        
-        // 状态分布
-        $statusStat = $this->model->field([
-            'status',
-            'COUNT(*) as count',
-            'SUM(cash_amount) as amount',
-        ])->group('status')->select();
-        
-        // 提现方式分布
-        $typeStat = $this->model->field([
-            'withdraw_type',
-            'COUNT(*) as count',
-            'SUM(cash_amount) as amount',
-        ])->group('withdraw_type')->select();
-        
-        $this->success('', null, [
-            'total' => $totalStat,
-            'daily' => $dailyStat,
-            'status' => $statusStat,
-            'type' => $typeStat,
+
+        // 提现金额分布
+        $amountDistribution = [
+            ['range' => '0-10', 'count' => $this->model->where('amount', 'between', [0, 10])->where('createtime', 'between', [$startTimestamp, $endTimestamp])->count()],
+            ['range' => '10-50', 'count' => $this->model->where('amount', 'between', [10, 50])->where('createtime', 'between', [$startTimestamp, $endTimestamp])->count()],
+            ['range' => '50-100', 'count' => $this->model->where('amount', 'between', [50, 100])->where('createtime', 'between', [$startTimestamp, $endTimestamp])->count()],
+            ['range' => '100-500', 'count' => $this->model->where('amount', 'between', [100, 500])->where('createtime', 'between', [$startTimestamp, $endTimestamp])->count()],
+            ['range' => '500+', 'count' => $this->model->where('amount', '>', 500)->where('createtime', 'between', [$startTimestamp, $endTimestamp])->count()],
+        ];
+
+        // 用户提现排行
+        $topUsers = $this->model->alias('wo')
+            ->join('user u', 'u.id = wo.user_id', 'LEFT')
+            ->field('u.id, u.username, u.nickname, COUNT(*) as withdraw_count, SUM(wo.amount) as total_amount')
+            ->where('wo.createtime', 'between', [$startTimestamp, $endTimestamp])
+            ->where('wo.status', 'completed')
+            ->group('wo.user_id')
+            ->order('total_amount', 'desc')
+            ->limit(20)
+            ->select();
+
+        $this->success('', [
+            'total_stats' => $totalStats,
+            'status_distribution' => $statusDistribution,
+            'daily_stats' => $dailyStats,
+            'amount_distribution' => $amountDistribution,
+            'top_users' => $topUsers,
         ]);
     }
-    
+
     /**
-     * 导出
+     * 待审核列表（快捷入口）
+     */
+    public function pending()
+    {
+        if ($this->request->isAjax()) {
+            $offset = $this->request->get('offset', 0);
+            $limit = $this->request->get('limit', 10);
+
+            $total = $this->model->where('status', 'pending')->count();
+            $list = $this->model->alias('wo')
+                ->join('user u', 'u.id = wo.user_id', 'LEFT')
+                ->field('wo.*, u.username, u.nickname, u.mobile')
+                ->where('wo.status', 'pending')
+                ->order('wo.createtime', 'asc')
+                ->limit($offset, $limit)
+                ->select();
+
+            return json(['total' => $total, 'rows' => $list]);
+        }
+        return $this->view->fetch('index');
+    }
+
+    /**
+     * 导出提现记录
      */
     public function export()
     {
-        $ids = $this->request->get('ids');
         $status = $this->request->get('status');
-        
-        $query = $this->model->with(['user']);
-        
-        if ($ids) {
-            $query->whereIn('id', explode(',', $ids));
+        $startDate = $this->request->get('start_date');
+        $endDate = $this->request->get('end_date');
+
+        $query = $this->model->alias('wo')
+            ->join('user u', 'u.id = wo.user_id', 'LEFT')
+            ->field('wo.*, u.username, u.nickname, u.mobile');
+
+        if ($status) {
+            $query->where('wo.status', $status);
         }
-        
-        if ($status !== null && $status !== '') {
-            $query->where('status', $status);
+
+        if ($startDate) {
+            $query->where('wo.createtime', '>=', strtotime($startDate));
         }
-        
-        $list = $query->order('id', 'desc')->limit(10000)->select();
-        
-        // TODO: 实现导出逻辑
-        
-        $this->success('导出成功');
+
+        if ($endDate) {
+            $query->where('wo.createtime', '<=', strtotime($endDate . ' 23:59:59'));
+        }
+
+        $list = $query->order('wo.createtime', 'desc')->select();
+
+        // 导出CSV
+        $filename = 'withdraw_orders_' . date('YmdHis') . '.csv';
+        header('Content-Type: text/csv');
+        header('Content-Disposition: attachment; filename="' . $filename . '"');
+
+        $output = fopen('php://output', 'w');
+        fprintf($output, chr(0xEF) . chr(0xBB) . chr(0xBF));
+
+        fputcsv($output, ['订单号', '用户ID', '用户名', '手机号', '提现金额', '提现方式', '收款账号', '状态', '申请时间', '处理时间']);
+
+        foreach ($list as $row) {
+            fputcsv($output, [
+                $row['order_no'],
+                $row['user_id'],
+                $row['username'],
+                $row['mobile'],
+                $row['amount'],
+                $row['withdraw_type'],
+                $row['account_no'],
+                $row['status'],
+                date('Y-m-d H:i:s', $row['createtime']),
+                $row['complete_time'] ? date('Y-m-d H:i:s', $row['complete_time']) : '',
+            ]);
+        }
+
+        fclose($output);
+        exit;
     }
 }
