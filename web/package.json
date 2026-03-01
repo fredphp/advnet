@@ -15,7 +15,8 @@
     "@dcloudio/uni-components": "latest",
     "@dcloudio/uni-h5": "latest",
     "@dcloudio/uni-mp-weixin": "latest",
-    "vue": "^3.2.45"
+    "vue": "^3.2.45",
+    "pinia": "^2.0.36"
   },
   "devDependencies": {
     "@dcloudio/types": "latest",

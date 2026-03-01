@@ -1,467 +1,560 @@
 <template>
   <view class="video-player">
-    <!-- 视频播放器 -->
-    <video 
-      ref="videoRef"
-      :id="playerId"
-      :src="videoSrc"
-      :poster="poster"
-      :initial-time="initialTime"
-      :autoplay="autoplay"
-      :loop="loop"
-      :muted="muted"
-      :show-center-play-btn="showCenterPlayBtn"
-      :show-progress="showProgress"
-      :enable-progress-gesture="enableProgressGesture"
-      object-fit="cover"
-      @play="onPlay"
-      @pause="onPause"
-      @ended="onEnded"
-      @timeupdate="onTimeUpdate"
-      @error="onError"
-      @waiting="onWaiting"
-      @loadedmetadata="onLoadedMetadata"
-    />
-    
-    <!-- 奖励领取浮层 -->
-    <view v-if="showRewardTip" class="reward-tip" @click="handleClaim">
-      <view class="reward-content">
-        <image class="coin-icon" src="/static/images/coin.png" mode="aspectFit" />
-        <text class="reward-text">领取 +{{ rewardCoin }} 金币</text>
+    <!-- 视频容器 -->
+    <view class="video-container" :style="{ height: videoHeight + 'px' }">
+      <video
+        v-if="videoSrc"
+        :id="'video-' + videoId"
+        :src="videoSrc"
+        :poster="posterSrc"
+        :initial-time="initialTime"
+        :autoplay="autoplay"
+        :loop="loop"
+        :muted="muted"
+        :show-center-play-btn="false"
+        :show-play-btn="false"
+        :show-progress="false"
+        :show-fullscreen-btn="false"
+        :enable-progress-gesture="false"
+        :object-fit="objectFit"
+        class="video-element"
+        @play="onPlay"
+        @pause="onPause"
+        @ended="onEnded"
+        @timeupdate="onTimeUpdate"
+        @error="onError"
+        @waiting="onWaiting"
+        @loadedmetadata="onLoadedMetadata"
+      ></video>
+      
+      <!-- 加载中 -->
+      <view v-if="isLoading" class="loading-mask">
+        <view class="loading-spinner"></view>
+      </view>
+      
+      <!-- 播放按钮 -->
+      <view v-if="showPlayBtn && !isPlaying" class="play-btn" @click="togglePlay">
+        <image class="play-icon" src="/static/images/play.png" mode="aspectFit"></image>
+      </view>
+      
+      <!-- 静音按钮 -->
+      <view class="mute-btn" @click="toggleMute">
+        <image 
+          class="mute-icon" 
+          :src="muted ? '/static/images/mute.png' : '/static/images/unmute.png'" 
+          mode="aspectFit"
+        ></image>
+      </view>
+      
+      <!-- 进度条 -->
+      <view v-if="showProgress" class="progress-bar">
+        <view class="progress-played" :style="{ width: progressPercent + '%' }"></view>
       </view>
     </view>
     
-    <!-- 奖励已领取标记 -->
-    <view v-if="rewarded" class="rewarded-mark">
-      <text class="rewarded-text">+{{ rewardCoin }}</text>
+    <!-- 视频信息 -->
+    <view v-if="showInfo" class="video-info">
+      <!-- 用户信息 -->
+      <view class="user-info">
+        <image class="avatar" :src="videoInfo.author_avatar || '/static/images/avatar.png'" mode="aspectFill"></image>
+        <text class="nickname">{{ videoInfo.author_nickname || '用户' }}</text>
+        <view class="follow-btn" v-if="!videoInfo.is_followed" @click="handleFollow">关注</view>
+      </view>
+      
+      <!-- 描述 -->
+      <view class="description" v-if="videoInfo.description">
+        <text>{{ videoInfo.description }}</text>
+      </view>
+      
+      <!-- 标签 -->
+      <view class="tags" v-if="videoInfo.tags && videoInfo.tags.length">
+        <text class="tag" v-for="(tag, index) in videoInfo.tags" :key="index">#{{ tag }}</text>
+      </view>
+    </view>
+    
+    <!-- 右侧操作栏 -->
+    <view class="action-bar">
+      <!-- 点赞 -->
+      <view class="action-item" @click="handleLike">
+        <image 
+          class="action-icon" 
+          :src="videoInfo.is_liked ? '/static/images/like-active.png' : '/static/images/like.png'"
+          mode="aspectFit"
+        ></image>
+        <text class="action-text">{{ formatCount(videoInfo.like_count) }}</text>
+      </view>
+      
+      <!-- 评论 -->
+      <view class="action-item" @click="handleComment">
+        <image class="action-icon" src="/static/images/comment.png" mode="aspectFit"></image>
+        <text class="action-text">{{ formatCount(videoInfo.comment_count) }}</text>
+      </view>
+      
+      <!-- 分享 -->
+      <view class="action-item" @click="handleShare">
+        <image class="action-icon" src="/static/images/share.png" mode="aspectFit"></image>
+        <text class="action-text">{{ formatCount(videoInfo.share_count) }}</text>
+      </view>
+      
+      <!-- 金币奖励 -->
+      <view class="action-item reward" v-if="showReward">
+        <view class="coin-icon">
+          <image class="action-icon" src="/static/images/coin.png" mode="aspectFit"></image>
+        </view>
+        <text class="reward-text">+{{ videoInfo.reward_coin || 100 }}</text>
+        <text class="reward-tip" v-if="rewardStatus === 'pending'">待领取</text>
+        <text class="reward-tip claimed" v-if="rewardStatus === 'claimed'">已领取</text>
+      </view>
     </view>
   </view>
 </template>
 
-<script>
-import { reportWatchProgress, claimReward } from '@/api/video'
+<script setup>
+import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
 
-export default {
-  name: 'VideoPlayer',
-  props: {
-    // 视频ID
-    videoId: {
-      type: [Number, String],
-      required: true
-    },
-    // 视频地址
-    src: {
-      type: String,
-      default: ''
-    },
-    // 封面图
-    poster: {
-      type: String,
-      default: ''
-    },
-    // 初始播放位置
-    initialTime: {
-      type: Number,
-      default: 0
-    },
-    // 自动播放
-    autoplay: {
-      type: Boolean,
-      default: false
-    },
-    // 循环播放
-    loop: {
-      type: Boolean,
-      default: false
-    },
-    // 静音
-    muted: {
-      type: Boolean,
-      default: false
-    },
-    // 显示中间播放按钮
-    showCenterPlayBtn: {
-      type: Boolean,
-      default: true
-    },
-    // 显示进度条
-    showProgress: {
-      type: Boolean,
-      default: true
-    },
-    // 启用进度手势
-    enableProgressGesture: {
-      type: Boolean,
-      default: true
-    },
-    // 视频时长(秒)
-    duration: {
-      type: Number,
-      default: 0
-    },
-    // 合集ID
-    collectionId: {
-      type: [Number, String],
-      default: null
-    }
+// Props
+const props = defineProps({
+  videoId: {
+    type: [String, Number],
+    required: true
   },
-  
-  data() {
-    return {
-      playerId: 'video_' + this.videoId,
-      videoContext: null,
-      currentTime: 0,
-      videoDuration: this.duration,
-      watchStartTime: 0,
-      sessionId: '',
-      
-      // 奖励相关
-      rewarded: false,
-      rewardCoin: 0,
-      showRewardTip: false,
-      
-      // 上报相关
-      lastReportTime: 0,
-      watchDuration: 0,
-      
-      // 配置
-      config: {
-        watch_complete_threshold: 95,
-        default_reward_coin: 100
-      }
-    }
+  videoSrc: {
+    type: String,
+    default: ''
   },
-  
-  computed: {
-    videoSrc() {
-      return this.src
-    }
+  posterSrc: {
+    type: String,
+    default: ''
   },
-  
-  watch: {
-    src(newVal) {
-      if (newVal && this.videoContext) {
-        this.resetWatchData()
-      }
-    }
+  videoInfo: {
+    type: Object,
+    default: () => ({})
   },
-  
-  mounted() {
-    this.videoContext = uni.createVideoContext(this.playerId, this)
-    this.sessionId = 'sess_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9)
-    this.loadConfig()
+  autoplay: {
+    type: Boolean,
+    default: false
   },
-  
-  beforeDestroy() {
-    // 组件销毁时上报最后的观看进度
-    this.reportProgress()
+  loop: {
+    type: Boolean,
+    default: true
   },
+  muted: {
+    type: Boolean,
+    default: true
+  },
+  objectFit: {
+    type: String,
+    default: 'contain' // contain | cover | fill
+  },
+  initialTime: {
+    type: Number,
+    default: 0
+  },
+  showPlayBtn: {
+    type: Boolean,
+    default: true
+  },
+  showProgress: {
+    type: Boolean,
+    default: true
+  },
+  showInfo: {
+    type: Boolean,
+    default: true
+  },
+  showReward: {
+    type: Boolean,
+    default: true
+  },
+  watchRewardThreshold: {
+    type: Number,
+    default: 95 // 观看进度阈值(%)，达到后可领取奖励
+  }
+})
+
+// Emits
+const emit = defineEmits([
+  'play',
+  'pause',
+  'ended',
+  'timeUpdate',
+  'error',
+  'reward',
+  'like',
+  'comment',
+  'share',
+  'follow'
+])
+
+// 视频上下文
+let videoContext = null
+
+// 状态
+const isLoading = ref(true)
+const isPlaying = ref(false)
+const currentTime = ref(0)
+const duration = ref(0)
+const progressPercent = computed(() => {
+  if (duration.value === 0) return 0
+  return Math.min((currentTime.value / duration.value) * 100, 100)
+})
+const rewardStatus = ref('pending') // pending | ready | claimed
+
+// 视频高度
+const videoHeight = ref(0)
+
+// 初始化视频高度
+onMounted(() => {
+  const systemInfo = uni.getSystemInfoSync()
+  videoHeight.value = systemInfo.windowHeight
   
-  methods: {
-    /**
-     * 加载配置
-     */
-    async loadConfig() {
-      try {
-        const res = await this.$api.getRewardConfig()
-        if (res.code === 1) {
-          this.config = { ...this.config, ...res.data }
-        }
-      } catch (e) {
-        console.error('加载配置失败', e)
-      }
-    },
-    
-    /**
-     * 重置观看数据
-     */
-    resetWatchData() {
-      this.currentTime = 0
-      this.watchDuration = 0
-      this.watchStartTime = 0
-      this.lastReportTime = 0
-      this.showRewardTip = false
-      this.sessionId = 'sess_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9)
-    },
-    
-    /**
-     * 视频开始播放
-     */
-    onPlay() {
-      this.watchStartTime = Date.now()
-      this.$emit('play')
-    },
-    
-    /**
-     * 视频暂停
-     */
-    onPause() {
-      this.reportProgress()
-      this.$emit('pause')
-    },
-    
-    /**
-     * 视频播放结束
-     */
-    onEnded() {
-      this.reportProgress()
-      this.checkAndShowReward()
-      this.$emit('ended')
-    },
-    
-    /**
-     * 时间更新
-     */
-    onTimeUpdate(e) {
-      this.currentTime = e.detail.currentTime
-      this.videoDuration = e.detail.duration || this.duration
-      
-      // 每秒上报一次进度
-      const now = Date.now()
-      if (now - this.lastReportTime > 1000) {
-        this.watchDuration++
-        this.lastReportTime = now
-      }
-      
-      // 计算进度百分比
-      const progress = this.videoDuration > 0 
-        ? Math.min(100, Math.round((this.currentTime / this.videoDuration) * 100))
-        : 0
-      
-      // 每5秒上报一次
-      if (this.watchDuration % 5 === 0) {
-        this.reportProgress()
-      }
-      
-      // 检查是否可以领取奖励
-      if (!this.rewarded && !this.showRewardTip) {
-        if (progress >= this.config.watch_complete_threshold) {
-          this.checkAndShowReward()
-        }
-      }
-      
-      this.$emit('timeupdate', {
-        currentTime: this.currentTime,
-        duration: this.videoDuration,
-        progress
-      })
-    },
-    
-    /**
-     * 视频加载完成
-     */
-    onLoadedMetadata(e) {
-      this.videoDuration = e.detail.duration || this.duration
-      this.$emit('loaded', {
-        duration: this.videoDuration
-      })
-    },
-    
-    /**
-     * 视频错误
-     */
-    onError(e) {
-      console.error('视频播放错误', e)
-      this.$emit('error', e)
-    },
-    
-    /**
-     * 视频加载中
-     */
-    onWaiting() {
-      this.$emit('waiting')
-    },
-    
-    /**
-     * 上报观看进度
-     */
-    async reportProgress() {
-      if (this.watchDuration <= 0) return
-      
-      const progress = this.videoDuration > 0 
-        ? Math.min(100, Math.round((this.currentTime / this.videoDuration) * 100))
-        : 0
-      
-      try {
-        const res = await reportWatchProgress(this.videoId, {
-          watch_duration: this.watchDuration,
-          watch_progress: progress,
-          current_position: Math.floor(this.currentTime),
-          session_id: this.sessionId
-        })
-        
-        // 更新奖励状态
-        if (res.data && res.data.can_reward) {
-          this.rewardCoin = res.data.reward_coin || this.config.default_reward_coin
-          this.checkAndShowReward()
-        }
-        
-        this.$emit('reported', res.data)
-      } catch (e) {
-        console.error('上报进度失败', e)
-      }
-    },
-    
-    /**
-     * 检查并显示奖励提示
-     */
-    checkAndShowReward() {
-      if (this.rewarded) return
-      
-      // 检查进度是否达到阈值
-      const progress = this.videoDuration > 0 
-        ? Math.min(100, Math.round((this.currentTime / this.videoDuration) * 100))
-        : 0
-      
-      if (progress >= this.config.watch_complete_threshold) {
-        this.showRewardTip = true
-        this.rewardCoin = this.rewardCoin || this.config.default_reward_coin
-      }
-    },
-    
-    /**
-     * 领取奖励
-     */
-    async handleClaim() {
-      if (this.rewarded) return
-      
-      try {
-        uni.showLoading({ title: '领取中...' })
-        
-        const res = await claimReward(this.videoId)
-        
-        uni.hideLoading()
-        
-        if (res.code === 1) {
-          this.rewarded = true
-          this.showRewardTip = false
-          this.rewardCoin = res.data.reward_coin || this.rewardCoin
-          
-          // 显示成功动画
-          uni.showToast({
-            title: `+${this.rewardCoin} 金币`,
-            icon: 'success'
-          })
-          
-          this.$emit('reward', {
-            coin: this.rewardCoin,
-            balance: res.data.balance
-          })
-        } else {
-          uni.showToast({
-            title: res.msg || '领取失败',
-            icon: 'none'
-          })
-        }
-      } catch (e) {
-        uni.hideLoading()
-        uni.showToast({
-          title: '领取失败',
-          icon: 'none'
-        })
-      }
-    },
-    
-    /**
-     * 播放视频
-     */
-    play() {
-      if (this.videoContext) {
-        this.videoContext.play()
-      }
-    },
-    
-    /**
-     * 暂停视频
-     */
-    pause() {
-      if (this.videoContext) {
-        this.videoContext.pause()
-      }
-    },
-    
-    /**
-     * 跳转到指定位置
-     */
-    seek(position) {
-      if (this.videoContext) {
-        this.videoContext.seek(position)
-      }
-    },
-    
-    /**
-     * 停止视频
-     */
-    stop() {
-      if (this.videoContext) {
-        this.videoContext.stop()
-      }
-    }
+  // 创建视频上下文
+  nextTick(() => {
+    videoContext = uni.createVideoContext(`video-${props.videoId}`)
+  })
+})
+
+// 监听播放状态
+watch(() => props.autoplay, (val) => {
+  if (val && videoContext) {
+    videoContext.play()
+  }
+})
+
+// 播放
+const play = () => {
+  if (videoContext) {
+    videoContext.play()
   }
 }
+
+// 暂停
+const pause = () => {
+  if (videoContext) {
+    videoContext.pause()
+  }
+}
+
+// 切换播放/暂停
+const togglePlay = () => {
+  if (isPlaying.value) {
+    pause()
+  } else {
+    play()
+  }
+}
+
+// 切换静音
+const toggleMute = () => {
+  emit('mute', !props.muted)
+}
+
+// 事件处理
+const onPlay = () => {
+  isPlaying.value = true
+  isLoading.value = false
+  emit('play')
+}
+
+const onPause = () => {
+  isPlaying.value = false
+  emit('pause')
+}
+
+const onEnded = () => {
+  isPlaying.value = false
+  if (props.loop && videoContext) {
+    videoContext.seek(0)
+    videoContext.play()
+  }
+  emit('ended')
+}
+
+const onTimeUpdate = (e) => {
+  currentTime.value = e.detail.currentTime
+  duration.value = e.detail.duration
+  
+  // 检查是否达到奖励阈值
+  if (rewardStatus.value === 'pending' && progressPercent.value >= props.watchRewardThreshold) {
+    rewardStatus.value = 'ready'
+  }
+  
+  emit('timeUpdate', {
+    currentTime: e.detail.currentTime,
+    duration: e.detail.duration,
+    progress: progressPercent.value
+  })
+}
+
+const onError = (e) => {
+  isLoading.value = false
+  console.error('视频播放错误:', e)
+  emit('error', e)
+}
+
+const onWaiting = () => {
+  isLoading.value = true
+}
+
+const onLoadedMetadata = () => {
+  isLoading.value = false
+}
+
+// 操作处理
+const handleLike = () => {
+  emit('like', props.videoId)
+}
+
+const handleComment = () => {
+  emit('comment', props.videoId)
+}
+
+const handleShare = () => {
+  emit('share', props.videoId)
+}
+
+const handleFollow = () => {
+  emit('follow', props.videoId)
+}
+
+// 格式化数量
+const formatCount = (count) => {
+  if (!count) return '0'
+  if (count >= 10000) {
+    return (count / 10000).toFixed(1) + 'w'
+  }
+  if (count >= 1000) {
+    return (count / 1000).toFixed(1) + 'k'
+  }
+  return count.toString()
+}
+
+// 暴露方法
+defineExpose({
+  play,
+  pause,
+  togglePlay,
+  currentTime,
+  duration,
+  progressPercent,
+  rewardStatus
+})
+
+onUnmounted(() => {
+  if (videoContext) {
+    videoContext.pause()
+  }
+})
 </script>
 
 <style lang="scss" scoped>
 .video-player {
   position: relative;
   width: 100%;
+  background: #000;
+}
+
+.video-container {
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+}
+
+.video-element {
+  width: 100%;
   height: 100%;
+}
+
+.loading-mask {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.3);
+}
+
+.loading-spinner {
+  width: 60rpx;
+  height: 60rpx;
+  border: 4rpx solid rgba(255, 255, 255, 0.3);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.play-btn {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 120rpx;
+  height: 120rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.5);
+  border-radius: 50%;
+}
+
+.play-icon {
+  width: 60rpx;
+  height: 60rpx;
+}
+
+.mute-btn {
+  position: absolute;
+  right: 30rpx;
+  bottom: 200rpx;
+  width: 80rpx;
+  height: 80rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.5);
+  border-radius: 50%;
+}
+
+.mute-icon {
+  width: 40rpx;
+  height: 40rpx;
+}
+
+.progress-bar {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 4rpx;
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.progress-played {
+  height: 100%;
+  background: #FF6B00;
+  transition: width 0.3s;
+}
+
+.video-info {
+  position: absolute;
+  left: 30rpx;
+  right: 140rpx;
+  bottom: 100rpx;
+  color: #fff;
+}
+
+.user-info {
+  display: flex;
+  align-items: center;
+  margin-bottom: 20rpx;
+}
+
+.avatar {
+  width: 80rpx;
+  height: 80rpx;
+  border-radius: 50%;
+  border: 2rpx solid #fff;
+}
+
+.nickname {
+  margin-left: 16rpx;
+  font-size: 30rpx;
+  font-weight: 500;
+}
+
+.follow-btn {
+  margin-left: 20rpx;
+  padding: 8rpx 24rpx;
+  background: #FF2D55;
+  border-radius: 8rpx;
+  font-size: 24rpx;
+}
+
+.description {
+  margin-bottom: 16rpx;
+  font-size: 28rpx;
+  line-height: 1.5;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.tags {
+  display: flex;
+  flex-wrap: wrap;
+}
+
+.tag {
+  margin-right: 16rpx;
+  font-size: 26rpx;
+  color: #FFD700;
+}
+
+.action-bar {
+  position: absolute;
+  right: 20rpx;
+  bottom: 200rpx;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.action-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 40rpx;
+}
+
+.action-icon {
+  width: 60rpx;
+  height: 60rpx;
+}
+
+.action-text {
+  margin-top: 8rpx;
+  font-size: 24rpx;
+  color: #fff;
+}
+
+.action-item.reward {
+  .coin-icon {
+    width: 80rpx;
+    height: 80rpx;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);
+    border-radius: 50%;
+  }
   
-  video {
-    width: 100%;
-    height: 100%;
+  .coin-icon .action-icon {
+    width: 50rpx;
+    height: 50rpx;
+  }
+  
+  .reward-text {
+    margin-top: 8rpx;
+    font-size: 28rpx;
+    font-weight: bold;
+    color: #FFD700;
   }
   
   .reward-tip {
-    position: absolute;
-    right: 20rpx;
-    bottom: 120rpx;
-    z-index: 10;
+    font-size: 20rpx;
+    color: #fff;
     
-    .reward-content {
-      display: flex;
-      align-items: center;
-      padding: 16rpx 24rpx;
-      background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);
-      border-radius: 40rpx;
-      box-shadow: 0 4rpx 12rpx rgba(255, 165, 0, 0.4);
-      animation: pulse 1.5s ease-in-out infinite;
+    &.claimed {
+      color: #999;
     }
-    
-    .coin-icon {
-      width: 40rpx;
-      height: 40rpx;
-      margin-right: 8rpx;
-    }
-    
-    .reward-text {
-      font-size: 28rpx;
-      font-weight: bold;
-      color: #fff;
-    }
-  }
-  
-  .rewarded-mark {
-    position: absolute;
-    right: 20rpx;
-    bottom: 120rpx;
-    padding: 8rpx 20rpx;
-    background: rgba(0, 0, 0, 0.5);
-    border-radius: 20rpx;
-    
-    .rewarded-text {
-      font-size: 24rpx;
-      color: #FFD700;
-    }
-  }
-}
-
-@keyframes pulse {
-  0%, 100% {
-    transform: scale(1);
-  }
-  50% {
-    transform: scale(1.05);
   }
 }
 </style>
