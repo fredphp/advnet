@@ -39,7 +39,7 @@ class Task extends Backend
                     ->count();
                 $item['total_grabbed_amount'] = Db::name('task_participation')
                     ->where('task_id', $item['id'])
-                    ->sum('coin_reward');
+                    ->sum('reward_coin');
             }
 
             $result = ['total' => $total, 'rows' => $list];
@@ -223,8 +223,8 @@ class Task extends Backend
         // 统计信息
         $stats = [
             'total_grabbed' => count($participations),
-            'total_amount' => array_sum(array_column($participations, 'coin_reward')),
-            'avg_amount' => count($participations) > 0 ? array_sum(array_column($participations, 'coin_reward')) / count($participations) : 0,
+            'total_amount' => array_sum(array_column($participations, 'reward_coin')),
+            'avg_amount' => count($participations) > 0 ? array_sum(array_column($participations, 'reward_coin')) / count($participations) : 0,
         ];
 
         $this->view->assign('task', $task);

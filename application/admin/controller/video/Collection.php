@@ -162,7 +162,7 @@ class Collection extends Backend
             $list = Db::name('video_collection_item')
                 ->alias('vci')
                 ->join('video v', 'v.id = vci.video_id', 'LEFT')
-                ->field('vci.*, v.title, v.cover, v.duration, v.coin_reward')
+                ->field('vci.*, v.title, v.cover, v.duration, v.reward_coin')
                 ->where('vci.collection_id', $collectionId)
                 ->order('vci.sort', 'asc')
                 ->limit($offset, $limit)
