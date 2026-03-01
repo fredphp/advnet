@@ -241,3 +241,39 @@ Stage Summary:
   - `php think data:migrate --action=stats` 查看统计
   - `php think data:migrate --action=all --days=90` 执行所有迁移
   - `php think data:migrate --action=coin_log --days=90 --delete` 迁移并删除源数据
+
+---
+Task ID: 7
+Agent: Main Agent
+Task: 将数据迁移配置写入advn_config配置表
+
+Work Log:
+- 创建迁移配置SQL脚本 `sql/migration_config.sql`:
+  - 更新configgroup添加migration分组
+  - 插入基础配置项(启用开关、批量大小、自动归档、计划任务等)
+  - 插入各表迁移天数配置(金币流水、观看记录、风控日志等)
+  - 插入清理配置(每日统计、行为统计、未活跃用户)
+  - 插入性能配置(批次间隔、事务开关、最大运行时间)
+  - 插入通知配置(邮箱、Webhook)
+  - 插入后台菜单(迁移配置、迁移日志、数据统计、执行迁移)
+- 修改DataMigrationService服务类:
+  - 添加配置缓存机制(内存缓存 + Cache缓存)
+  - 添加loadConfig方法从advn_config表加载配置
+  - 添加getConfig方法获取单个配置项
+  - 添加getAllConfig方法获取所有配置
+  - 添加clearConfigCache方法清除缓存
+  - 添加getSleepMicroseconds方法从配置获取休眠时间
+  - 添加shouldDeleteSource方法判断是否删除源数据
+  - 修改migrateAll方法使用配置表中的值作为默认参数
+- 更新使用指南文档 `docs/DATA_MIGRATION_GUIDE.md`:
+  - 添加系统配置管理章节
+  - 添加配置项列表说明
+  - 添加修改配置的三种方式
+  - 添加配置优先级说明
+
+Stage Summary:
+- 配置SQL: `sql/migration_config.sql`
+- 服务类更新: 从advn_config表读取配置
+- 文档更新: 添加配置管理说明
+- 配置分组: migration (可在后台管理)
+- 配置项: 22个(基础配置、迁移天数、清理配置、性能配置、通知配置)

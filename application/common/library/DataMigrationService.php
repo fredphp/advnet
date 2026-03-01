@@ -5,12 +5,14 @@ namespace app\common\library;
 use think\Db;
 use think\Exception;
 use think\Config;
+use think\Cache;
 
 /**
  * 数据迁移服务类
  * 
  * 用于将历史冷数据迁移到归档表，优化主表性能
  * 支持按时间范围迁移未访问的数据
+ * 配置参数从 advn_config 配置表读取
  */
 class DataMigrationService
 {
@@ -32,6 +34,52 @@ class DataMigrationService
     // 迁移统计
     protected $stats = [];
     
+    // 配置缓存
+    protected static $configCache = null;
+    
+    // 配置缓存键
+    const CACHE_KEY = 'migration_config';
+    
+    // 配置缓存时间（秒）
+    const CACHE_TTL = 3600;
+    
+    // 默认配置
+    protected static $defaultConfig = [
+        // 基础配置
+        'migration_enabled' => 1,
+        'migration_batch_size' => 1000,
+        'migration_auto_archive' => 0,
+        'migration_schedule' => '0 3 * * *',
+        'migration_delete_source' => 0,
+        'migration_log_retention' => 365,
+        
+        // 各表迁移天数
+        'migration_coin_log_days' => 90,
+        'migration_watch_record_days' => 180,
+        'migration_watch_session_days' => 30,
+        'migration_risk_log_days' => 180,
+        'migration_user_behavior_days' => 90,
+        'migration_anticheat_days' => 90,
+        'migration_red_packet_days' => 365,
+        'migration_commission_days' => 365,
+        'migration_transfer_days' => 365,
+        
+        // 清理配置
+        'migration_daily_stats_keep' => 365,
+        'migration_behavior_stats_keep' => 365,
+        'migration_inactive_days' => 90,
+        
+        // 性能配置
+        'migration_sleep_ms' => 10,
+        'migration_transaction' => 1,
+        'migration_max_runtime' => 3600,
+        
+        // 通知配置
+        'migration_notify_enabled' => 0,
+        'migration_notify_email' => '',
+        'migration_notify_webhook' => '',
+    ];
+    
     /**
      * 构造函数
      */
@@ -39,6 +87,93 @@ class DataMigrationService
     {
         $this->dbConfig = Config::get('database');
         $this->tablePrefix = Config::get('database.prefix');
+        
+        // 加载配置
+        $this->loadConfig();
+    }
+    
+    /**
+     * 加载配置
+     */
+    protected function loadConfig()
+    {
+        if (self::$configCache !== null) {
+            return;
+        }
+        
+        // 尝试从缓存读取
+        $cached = Cache::get(self::CACHE_KEY);
+        if ($cached !== null) {
+            self::$configCache = $cached;
+            return;
+        }
+        
+        // 从数据库读取
+        try {
+            $configs = Db::name('config')
+                ->where('`group`', 'migration')
+                ->column('value', 'name');
+            
+            self::$configCache = array_merge(self::$defaultConfig, $configs);
+            
+            // 写入缓存
+            Cache::set(self::CACHE_KEY, self::$configCache, self::CACHE_TTL);
+        } catch (\Exception $e) {
+            // 数据库异常时使用默认配置
+            self::$configCache = self::$defaultConfig;
+        }
+    }
+    
+    /**
+     * 获取配置值
+     * 
+     * @param string $key 配置键名
+     * @param mixed $default 默认值
+     * @return mixed
+     */
+    public function getConfig($key, $default = null)
+    {
+        $this->loadConfig();
+        
+        if (isset(self::$configCache[$key])) {
+            $value = self::$configCache[$key];
+            
+            // 类型转换
+            if (isset(self::$defaultConfig[$key])) {
+                $defaultValue = self::$defaultConfig[$key];
+                if (is_int($defaultValue)) {
+                    return intval($value);
+                } elseif (is_bool($defaultValue)) {
+                    return in_array($value, [1, '1', 'true', 'yes'], true);
+                } elseif (is_float($defaultValue)) {
+                    return floatval($value);
+                }
+            }
+            
+            return $value;
+        }
+        
+        return $default;
+    }
+    
+    /**
+     * 获取所有配置
+     * 
+     * @return array
+     */
+    public function getAllConfig()
+    {
+        $this->loadConfig();
+        return self::$configCache;
+    }
+    
+    /**
+     * 清除配置缓存
+     */
+    public static function clearConfigCache()
+    {
+        Cache::delete(self::CACHE_KEY);
+        self::$configCache = null;
     }
     
     /**
@@ -48,6 +183,39 @@ class DataMigrationService
     {
         $this->batchSize = (int) $size;
         return $this;
+    }
+    
+    /**
+     * 从配置获取批量处理数量
+     */
+    protected function getBatchSize()
+    {
+        return $this->batchSize ?: $this->getConfig('migration_batch_size', 1000);
+    }
+    
+    /**
+     * 从配置获取休眠时间（微秒）
+     */
+    protected function getSleepMicroseconds()
+    {
+        $ms = $this->getConfig('migration_sleep_ms', 10);
+        return $ms * 1000;
+    }
+    
+    /**
+     * 从配置判断是否删除源数据
+     */
+    protected function shouldDeleteSource()
+    {
+        return $this->getConfig('migration_delete_source', 0) == 1;
+    }
+    
+    /**
+     * 从配置判断是否启用事务
+     */
+    protected function shouldUseTransaction()
+    {
+        return $this->getConfig('migration_transaction', 1) == 1;
     }
     
     /**
@@ -196,7 +364,7 @@ class DataMigrationService
                     $this->log("已迁移 {$migrated}/{$stats['total']} 条");
                     
                     // 避免锁表时间过长，短暂休眠
-                    usleep(10000); // 10ms
+                    usleep($this->getSleepMicroseconds());
                     
                 } catch (\Exception $e) {
                     Db::rollback();
@@ -1076,29 +1244,34 @@ class DataMigrationService
     
     /**
      * 执行所有迁移任务
-     * @param array $options 配置选项
+     * @param array $options 配置选项（覆盖配置表中的值）
      * @return array
      */
     public function migrateAll($options = [])
     {
         $this->log("========== 开始执行全部迁移任务 ==========");
         
+        // 从配置表读取默认值
         $defaultOptions = [
-            'coin_log_days' => 90,
-            'watch_record_days' => 180,
-            'watch_session_days' => 30,
-            'risk_log_days' => 180,
-            'behavior_days' => 90,
-            'anticheat_days' => 90,
-            'red_packet_days' => 365,
-            'commission_days' => 365,
-            'transfer_days' => 365,
-            'delete_source' => false,
-            'inactive_days' => 90,
-            'stats_keep_days' => 365,
+            'coin_log_days' => $this->getConfig('migration_coin_log_days', 90),
+            'watch_record_days' => $this->getConfig('migration_watch_record_days', 180),
+            'watch_session_days' => $this->getConfig('migration_watch_session_days', 30),
+            'risk_log_days' => $this->getConfig('migration_risk_log_days', 180),
+            'behavior_days' => $this->getConfig('migration_user_behavior_days', 90),
+            'anticheat_days' => $this->getConfig('migration_anticheat_days', 90),
+            'red_packet_days' => $this->getConfig('migration_red_packet_days', 365),
+            'commission_days' => $this->getConfig('migration_commission_days', 365),
+            'transfer_days' => $this->getConfig('migration_transfer_days', 365),
+            'delete_source' => $this->shouldDeleteSource(),
+            'inactive_days' => $this->getConfig('migration_inactive_days', 90),
+            'stats_keep_days' => $this->getConfig('migration_daily_stats_keep', 365),
         ];
         
+        // 用户传入的选项覆盖配置表的值
         $options = array_merge($defaultOptions, $options);
+        
+        // 设置批量处理数量
+        $this->batchSize = $this->getConfig('migration_batch_size', 1000);
         $results = [];
         
         // 迁移金币流水

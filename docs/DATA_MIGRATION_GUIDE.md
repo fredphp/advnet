@@ -15,7 +15,11 @@ application/
 └── command.php                     # 命令注册配置
 
 sql/
-└── data_migration_archive_tables.sql  # 归档表结构SQL
+├── data_migration_archive_tables.sql  # 归档表结构SQL
+└── migration_config.sql               # 迁移配置SQL（写入advn_config表）
+
+docs/
+└── DATA_MIGRATION_GUIDE.md            # 本使用指南
 ```
 
 ## 支持迁移的数据表
@@ -214,33 +218,107 @@ stdout_logfile=/var/log/data_migration.log
 - 使用事务保证数据一致性
 - 支持调整批量大小
 
-## 数据迁移配置表
+## 系统配置管理
 
-系统提供配置表管理迁移参数：
+数据迁移工具使用 `advn_config` 配置表管理所有迁移参数，可通过后台管理系统动态修改。
+
+### 配置分组
+
+配置项位于 `migration` 分组，可在后台「常规管理 → 系统配置 → 数据迁移」中修改。
+
+### 配置项列表
+
+#### 基础配置
+
+| 配置项 | 说明 | 默认值 |
+|--------|------|--------|
+| `migration_enabled` | 启用数据迁移 | 1 |
+| `migration_batch_size` | 批量处理数量 | 1000 |
+| `migration_auto_archive` | 自动归档 | 0 |
+| `migration_schedule` | 归档计划(Cron) | 0 3 * * * |
+| `migration_delete_source` | 删除源数据 | 0 |
+| `migration_log_retention` | 日志保留天数 | 365 |
+
+#### 各表迁移天数
+
+| 配置项 | 说明 | 默认值 |
+|--------|------|--------|
+| `migration_coin_log_days` | 金币流水归档天数 | 90 |
+| `migration_watch_record_days` | 观看记录归档天数 | 180 |
+| `migration_watch_session_days` | 观看会话归档天数 | 30 |
+| `migration_risk_log_days` | 风控日志归档天数 | 180 |
+| `migration_user_behavior_days` | 用户行为归档天数 | 90 |
+| `migration_anticheat_days` | 防刷日志归档天数 | 90 |
+| `migration_red_packet_days` | 红包记录归档天数 | 365 |
+| `migration_commission_days` | 分佣日志归档天数 | 365 |
+| `migration_transfer_days` | 打款日志归档天数 | 365 |
+
+#### 清理配置
+
+| 配置项 | 说明 | 默认值 |
+|--------|------|--------|
+| `migration_daily_stats_keep` | 每日统计保留天数 | 365 |
+| `migration_behavior_stats_keep` | 行为统计保留天数 | 365 |
+| `migration_inactive_days` | 未活跃用户天数 | 90 |
+
+#### 性能配置
+
+| 配置项 | 说明 | 默认值 |
+|--------|------|--------|
+| `migration_sleep_ms` | 批次间隔(毫秒) | 10 |
+| `migration_transaction` | 启用事务 | 1 |
+| `migration_max_runtime` | 最大运行时间(秒) | 3600 |
+
+### 修改配置
+
+#### 方式1：后台管理
+
+进入「常规管理 → 系统配置 → 数据迁移」，直接修改配置值。
+
+#### 方式2：SQL修改
 
 ```sql
 -- 查看迁移配置
-SELECT * FROM advn_data_migration_config;
+SELECT * FROM advn_config WHERE `group` = 'migration';
 
--- 修改迁移天数
-UPDATE advn_data_migration_config SET archive_days = 120 WHERE table_name = 'coin_log';
+-- 修改金币流水归档天数为120天
+UPDATE advn_config SET value = '120' WHERE name = 'migration_coin_log_days';
 
--- 启用/禁用自动归档
-UPDATE advn_data_migration_config SET auto_archive = 1 WHERE table_name = 'coin_log';
+-- 启用自动归档
+UPDATE advn_config SET value = '1' WHERE name = 'migration_auto_archive';
+
+-- 启用删除源数据（谨慎操作）
+UPDATE advn_config SET value = '1' WHERE name = 'migration_delete_source';
 ```
 
-### 配置字段说明
+#### 方式3：代码中获取配置
 
-| 字段 | 说明 |
-|------|------|
-| `table_name` | 表名 |
-| `archive_days` | 归档天数 |
-| `batch_size` | 批处理数量 |
-| `delete_source` | 是否删除源数据 |
-| `auto_archive` | 是否自动归档 |
-| `archive_schedule` | 归档计划（cron表达式） |
-| `last_archive_time` | 最后归档时间 |
-| `total_archive_count` | 累计归档数量 |
+```php
+$service = new \app\common\library\DataMigrationService();
+
+// 获取单个配置
+$days = $service->getConfig('migration_coin_log_days', 90);
+
+// 获取所有配置
+$allConfig = $service->getAllConfig();
+
+// 清除配置缓存（修改配置后需要调用）
+\app\common\library\DataMigrationService::clearConfigCache();
+```
+
+### 配置优先级
+
+1. 命令行参数（最高优先级）
+2. 配置表 `advn_config` 中的值
+3. 代码中的默认值（最低优先级）
+
+例如：
+```bash
+# 配置表中 migration_coin_log_days = 90
+# 命令行传入 --days=180
+# 实际使用 180 天
+php think data:migrate --action=coin_log --days=180
+```
 
 ## 迁移日志
 
