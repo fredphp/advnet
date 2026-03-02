@@ -64,35 +64,35 @@
         </div>
     </div>
     
-    <!-- 统计信息（只读） -->
+    <!-- 统计信息 -->
     <div class="panel panel-info" style="margin-bottom: 15px;">
         <div class="panel-heading">
-            <h3 class="panel-title"><i class="fa fa-info-circle"></i> 红包统计</h3>
+            <h4 class="panel-title"><i class="fa fa-bar-chart"></i> 红包统计</h4>
         </div>
         <div class="panel-body">
             <div class="row">
                 <div class="col-xs-6 col-sm-3">
-                    <div class="form-group" style="margin-bottom: 10px;">
-                        <label class="control-label" style="color: #337ab7;">总金额</label>
-                        <input class="form-control" type="text" value="{$row.total_amount}" readonly style="background-color: #f9f9f9;">
+                    <div class="stat-box">
+                        <span class="stat-label">总金额</span>
+                        <span class="stat-value">{$row.total_amount} 金币</span>
                     </div>
                 </div>
                 <div class="col-xs-6 col-sm-3">
-                    <div class="form-group" style="margin-bottom: 10px;">
-                        <label class="control-label" style="color: #d9534f;">剩余金额</label>
-                        <input class="form-control" type="text" value="{$row.remain_amount}" readonly style="background-color: #f9f9f9;">
+                    <div class="stat-box">
+                        <span class="stat-label">剩余金额</span>
+                        <span class="stat-value text-danger">{$row.remain_amount} 金币</span>
                     </div>
                 </div>
                 <div class="col-xs-6 col-sm-3">
-                    <div class="form-group" style="margin-bottom: 10px;">
-                        <label class="control-label" style="color: #5cb85c;">总数量</label>
-                        <input class="form-control" type="text" value="{$row.total_count}" readonly style="background-color: #f9f9f9;">
+                    <div class="stat-box">
+                        <span class="stat-label">总数量</span>
+                        <span class="stat-value">{$row.total_count} 个</span>
                     </div>
                 </div>
                 <div class="col-xs-6 col-sm-3">
-                    <div class="form-group" style="margin-bottom: 10px;">
-                        <label class="control-label" style="color: #f0ad4e;">剩余数量</label>
-                        <input class="form-control" type="text" value="{$row.remain_count}" readonly style="background-color: #f9f9f9;">
+                    <div class="stat-box">
+                        <span class="stat-label">剩余数量</span>
+                        <span class="stat-value text-warning">{$row.remain_count} 个</span>
                     </div>
                 </div>
             </div>
@@ -211,3 +211,24 @@
         </div>
     </div>
 </form>
+
+<style>
+.stat-box {
+    text-align: center;
+    padding: 10px;
+    background: #f9f9f9;
+    border-radius: 8px;
+}
+.stat-label {
+    display: block;
+    color: #666;
+    font-size: 12px;
+    margin-bottom: 5px;
+}
+.stat-value {
+    display: block;
+    font-size: 18px;
+    font-weight: bold;
+    color: #333;
+}
+</style>
