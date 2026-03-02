@@ -177,18 +177,15 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
             
             /**
              * 重新初始化selectpage
-             * 关键：销毁现有实例，更新data-params，然后重新初始化
+             * 关键：销毁现有实例，更新data-source URL，然后重新初始化
              */
             reinitSelectPage: function($element, resourceType) {
                 // 保存当前值
                 var currentValue = $element.val();
-                var currentHiddenValue = '';
                 
                 // 获取隐藏字段的值
                 var $hidden = $element.next('.sp_hidden');
-                if ($hidden.length) {
-                    currentHiddenValue = $hidden.val();
-                }
+                var currentHiddenValue = $hidden.length ? $hidden.val() : '';
                 
                 // 销毁现有的selectpage实例
                 var selectPageObj = $element.data('selectPageObject');
@@ -205,15 +202,24 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
                     $element.show();
                 }
                 
-                // 更新data-params属性 - 这是关键！
+                // 方法1: 更新data-params属性
                 $element.attr('data-params', JSON.stringify({type: resourceType}));
                 
-                // 获取初始值
-                var initValue = $element.attr('data-init-value');
+                // 方法2: 同时更新data-source URL添加type参数（双重保障）
+                var baseUrl = 'redpacket/resource/select';
+                $element.attr('data-source', baseUrl);
                 
                 // 重新初始化selectpage
                 require(['selectpage'], function() {
                     $element.selectPage({
+                        // 重要：使用params函数动态返回type参数
+                        params: function() {
+                            return { type: resourceType };
+                        },
+                        // 同时设置data参数
+                        data: { type: resourceType },
+                        // 设置custom参数
+                        custom: { type: resourceType },
                         eAjaxSuccess: function(data) {
                             data.list = typeof data.rows !== 'undefined' ? data.rows : (typeof data.list !== 'undefined' ? data.list : []);
                             data.totalRow = typeof data.total !== 'undefined' ? data.total : (typeof data.totalRow !== 'undefined' ? data.totalRow : data.list.length);
@@ -223,6 +229,8 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
                     
                     // 如果有初始值且任务类型没变，恢复选中状态
                     var initTaskType = $element.attr('data-init-task-type');
+                    var initValue = $element.attr('data-init-value');
+                    
                     if (initValue && initTaskType === resourceType) {
                         // 使用定时器确保selectpage初始化完成
                         setTimeout(function() {

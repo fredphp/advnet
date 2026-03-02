@@ -162,6 +162,12 @@ class Resource extends Backend
 
     /**
      * 根据类型获取资源列表（供selectpage使用）
+     * 
+     * 支持以下方式传递type参数：
+     * 1. custom[type] - selectpage的data-params方式
+     * 2. type - 直接参数
+     * 3. params.type - params JSON参数
+     * 4. data.type - data JSON参数
      */
     public function select()
     {
@@ -177,32 +183,55 @@ class Resource extends Backend
         // 搜索字段
         $searchfield = (array)$this->request->request("searchField/a");
         
-        // 自定义搜索条件（data-params传递的参数）
-        // selectpage会将data-params作为custom参数发送
-        $custom = $this->request->request("custom");
-        
-        // 调试日志
-        \think\Log::write('Resource select - All params: ' . json_encode($this->request->param()), 'debug');
-        \think\Log::write('Resource select - custom param: ' . json_encode($custom), 'debug');
-        
-        // 解析custom参数
+        // 解析资源类型参数 - 支持多种方式
         $resourceType = null;
+        
+        // 方式1: custom[type] - selectpage标准方式
+        $custom = $this->request->request("custom");
         if ($custom) {
             if (is_string($custom)) {
-                $custom = json_decode($custom, true);
+                $customArr = json_decode($custom, true);
+            } else {
+                $customArr = (array)$custom;
             }
-            if (is_array($custom) && isset($custom['type']) && $custom['type']) {
-                $resourceType = $custom['type'];
+            if (is_array($customArr) && isset($customArr['type']) && $customArr['type']) {
+                $resourceType = $customArr['type'];
             }
         }
         
-        // 也支持直接的type参数
-        $typeParam = $this->request->request("type");
-        if (!$resourceType && $typeParam) {
-            $resourceType = $typeParam;
+        // 方式2: 直接type参数
+        if (!$resourceType) {
+            $typeParam = $this->request->request("type");
+            if ($typeParam) {
+                $resourceType = $typeParam;
+            }
         }
         
+        // 方式3: params参数(JSON)
+        if (!$resourceType) {
+            $paramsParam = $this->request->request("params");
+            if ($paramsParam) {
+                $paramsArr = is_string($paramsParam) ? json_decode($paramsParam, true) : (array)$paramsParam;
+                if (is_array($paramsArr) && isset($paramsArr['type']) && $paramsArr['type']) {
+                    $resourceType = $paramsArr['type'];
+                }
+            }
+        }
+        
+        // 方式4: data参数(JSON)
+        if (!$resourceType) {
+            $dataParam = $this->request->request("data");
+            if ($dataParam) {
+                $dataArr = is_string($dataParam) ? json_decode($dataParam, true) : (array)$dataParam;
+                if (is_array($dataArr) && isset($dataArr['type']) && $dataArr['type']) {
+                    $resourceType = $dataArr['type'];
+                }
+            }
+        }
+        
+        // 调试日志
         \think\Log::write('Resource select - resourceType: ' . $resourceType, 'debug');
+        \think\Log::write('Resource select - all params: ' . json_encode($this->request->param()), 'debug');
         
         // 构建查询
         $query = $this->model->where('status', 1);
