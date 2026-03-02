@@ -80,6 +80,8 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
                     var $resourceId = $('#c-resource_id');
                     var initTaskType = $resourceId.attr('data-init-task-type');
                     
+                    console.log('task_type changed to:', taskType);
+                    
                     // 签到任务不需要选择资源
                     if (taskType && taskType !== 'sign_in') {
                         var typeName = typeList[taskType] || '资源';
@@ -97,7 +99,7 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
                             $('.resource-info-area').hide();
                         }
                         
-                        // 重新初始化selectpage，使用新的type参数
+                        // 关键：重新初始化selectpage，传入新的type值
                         Controller.api.reinitSelectPage($resourceId, taskType);
                     } else {
                         $resourceArea.hide();
@@ -153,7 +155,7 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
                     $('#c-new_user_days').closest('.form-group').hide();
                 }
                 
-                // 页面加载时如果已有任务类型，触发change事件
+                // 页面加载时如果已有任务类型，初始化selectpage
                 var initTaskType = $('#c-task_type').val();
                 if (initTaskType) {
                     // 保存初始任务类型到 data 属性
@@ -165,61 +167,56 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
                         $('#c-resource_id').attr('data-init-value', initValue);
                     }
                     
-                    // 初始化selectpage
-                    Controller.api.reinitSelectPage($('#c-resource_id'), initTaskType);
-                    
-                    // 延迟触发change事件
+                    // 延迟初始化selectpage
                     setTimeout(function() {
-                        $('#c-task_type').trigger('change');
-                    }, 100);
+                        Controller.api.reinitSelectPage($('#c-resource_id'), initTaskType);
+                    }, 300);
                 }
             },
             
             /**
              * 重新初始化selectpage
-             * 关键：销毁现有实例，更新data-source URL，然后重新初始化
+             * 核心方法：销毁旧实例，更新data-source URL（直接在URL中添加type参数），重建selectpage
              */
             reinitSelectPage: function($element, resourceType) {
-                // 保存当前值
-                var currentValue = $element.val();
+                console.log('reinitSelectPage called with type:', resourceType);
                 
-                // 获取隐藏字段的值
-                var $hidden = $element.next('.sp_hidden');
-                var currentHiddenValue = $hidden.length ? $hidden.val() : '';
+                // 保存初始值
+                var initValue = $element.attr('data-init-value') || $element.val();
+                var initTaskType = $element.attr('data-init-task-type');
                 
                 // 销毁现有的selectpage实例
                 var selectPageObj = $element.data('selectPageObject');
                 if (selectPageObj) {
-                    // 移除selectpage相关的DOM元素
+                    // 获取容器
                     var $container = $element.closest('.sp_container');
+                    // 移除selectpage生成的DOM元素
                     $container.find('.sp_result_area').remove();
                     $container.find('.sp_element_box').remove();
                     $container.find('.sp_clear_btn').remove();
                     $container.find('.sp_hidden').remove();
+                    // 移除容器包装
                     $element.unwrap('.sp_container');
+                    // 清除数据和class
                     $element.removeData('selectPageObject');
                     $element.removeClass('sp_input');
+                    $element.val('');
                     $element.show();
                 }
                 
-                // 方法1: 更新data-params属性
+                // 关键：直接在data-source URL中添加type参数
+                // 这样selectpage请求时会自动带上这个参数
+                var sourceUrl = 'redpacket/resource/select?type=' + encodeURIComponent(resourceType);
+                $element.attr('data-source', sourceUrl);
+                
+                // 同时更新data-params（备用）
                 $element.attr('data-params', JSON.stringify({type: resourceType}));
                 
-                // 方法2: 同时更新data-source URL添加type参数（双重保障）
-                var baseUrl = 'redpacket/resource/select';
-                $element.attr('data-source', baseUrl);
+                console.log('data-source set to:', sourceUrl);
                 
                 // 重新初始化selectpage
                 require(['selectpage'], function() {
                     $element.selectPage({
-                        // 重要：使用params函数动态返回type参数
-                        params: function() {
-                            return { type: resourceType };
-                        },
-                        // 同时设置data参数
-                        data: { type: resourceType },
-                        // 设置custom参数
-                        custom: { type: resourceType },
                         eAjaxSuccess: function(data) {
                             data.list = typeof data.rows !== 'undefined' ? data.rows : (typeof data.list !== 'undefined' ? data.list : []);
                             data.totalRow = typeof data.total !== 'undefined' ? data.total : (typeof data.totalRow !== 'undefined' ? data.totalRow : data.list.length);
@@ -228,26 +225,21 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
                     });
                     
                     // 如果有初始值且任务类型没变，恢复选中状态
-                    var initTaskType = $element.attr('data-init-task-type');
-                    var initValue = $element.attr('data-init-value');
-                    
                     if (initValue && initTaskType === resourceType) {
-                        // 使用定时器确保selectpage初始化完成
                         setTimeout(function() {
-                            // 通过AJAX获取选中项的数据
                             $.ajax({
                                 url: Backend.api.fixurl('redpacket/resource/select'),
                                 type: 'GET',
                                 data: {
                                     keyField: 'id',
                                     showField: 'name',
-                                    keyValue: initValue
+                                    keyValue: initValue,
+                                    type: resourceType
                                 },
                                 dataType: 'json',
                                 success: function(ret) {
                                     if (ret && ret.list && ret.list.length > 0) {
-                                        var item = ret.list[0];
-                                        $element.selectPageData(item);
+                                        $element.selectPageData(ret.list[0]);
                                     }
                                 }
                             });
