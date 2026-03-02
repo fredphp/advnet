@@ -140,7 +140,7 @@ class Collection extends Backend
      */
     public function videos($ids = null)
     {
-        $collectionId = $ids ?: $this->request->get('id');
+        $collectionId = $ids ?: $this->request->get('ids');
         
         if (!$collectionId) {
             $this->error('请指定合集ID');
@@ -151,28 +151,40 @@ class Collection extends Backend
             $this->error('合集不存在');
         }
 
-        if ($this->request->isAjax()) {
-            $offset = $this->request->get('offset', 0);
-            $limit = $this->request->get('limit', 10);
-
-            $total = Db::name('video_collection_item')
-                ->where('collection_id', $collectionId)
-                ->count();
-
-            $list = Db::name('video_collection_item')
-                ->alias('vci')
-                ->join('video v', 'v.id = vci.video_id', 'LEFT')
-                ->field('vci.*, v.title, v.cover, v.duration, v.reward_coin')
-                ->where('vci.collection_id', $collectionId)
-                ->order('vci.sort', 'asc')
-                ->limit($offset, $limit)
-                ->select();
-
-            return json(['total' => $total, 'rows' => $list]);
-        }
-
         $this->view->assign('collection', $collection);
         return $this->view->fetch();
+    }
+
+    /**
+     * 获取合集视频列表（AJAX）
+     */
+    public function getVideos()
+    {
+        $collectionId = $this->request->get('id');
+        
+        if (!$collectionId) {
+            return json(['total' => 0, 'rows' => []]);
+        }
+
+        $offset = $this->request->get('offset', 0);
+        $limit = $this->request->get('limit', 10);
+        $sort = $this->request->get('sort', 'sort');
+        $order = $this->request->get('order', 'asc');
+
+        $total = Db::name('video_collection_item')
+            ->where('collection_id', $collectionId)
+            ->count();
+
+        $list = Db::name('video_collection_item')
+            ->alias('vci')
+            ->join('video v', 'v.id = vci.video_id', 'LEFT')
+            ->field('vci.id, vci.collection_id, vci.video_id, vci.sort, vci.createtime, v.title, v.cover, v.duration, v.reward_coin')
+            ->where('vci.collection_id', $collectionId)
+            ->order('vci.' . $sort, $order)
+            ->limit($offset, $limit)
+            ->select();
+
+        return json(['total' => $total, 'rows' => $list]);
     }
 
     /**

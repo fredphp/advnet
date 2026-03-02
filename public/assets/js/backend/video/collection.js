@@ -62,6 +62,9 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
         edit: function () {
             Controller.api.bindevent();
         },
+        videos: function () {
+            // 管理视频页面的JS逻辑在视图中内联
+        },
         api: {
             bindevent: function () {
                 Form.api.bindevent($("form[role=form]"));

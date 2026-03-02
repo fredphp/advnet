@@ -1,0 +1,245 @@
+<style>
+.collection-header {
+    padding: 15px;
+    background: #f5f5f5;
+    border-radius: 4px;
+    margin-bottom: 15px;
+}
+.collection-header h4 {
+    margin: 0 0 5px 0;
+    color: #333;
+}
+.collection-header p {
+    margin: 0;
+    color: #666;
+    font-size: 13px;
+}
+</style>
+
+<div class="panel panel-default panel-intro">
+    <div class="panel-heading">
+        {:build_heading()}
+    </div>
+    <div class="panel-body">
+        <div class="collection-header">
+            <h4><i class="fa fa-film"></i> {$collection.title}</h4>
+            <p>{$collection.description|default='暂无描述'}</p>
+        </div>
+        
+        <div id="myTabContent" class="tab-content">
+            <div class="tab-pane fade active in" id="one">
+                <div class="widget-body no-padding">
+                    <div id="toolbar" class="toolbar">
+                        <a href="javascript:;" class="btn btn-primary btn-add-video">
+                            <i class="fa fa-plus"></i> {:__('Add')}
+                        </a>
+                        <a href="javascript:;" class="btn btn-danger btn-del-video">
+                            <i class="fa fa-trash"></i> {:__('Delete')}
+                        </a>
+                        <a href="javascript:;" class="btn btn-default btn-refresh">
+                            <i class="fa fa-refresh"></i> {:__('Refresh')}
+                        </a>
+                    </div>
+                    <table id="table" class="table table-striped table-bordered table-hover table-nowrap" width="100%">
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 选择视频弹窗 -->
+<div id="select-video-modal" class="modal fade" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal">&times;</button>
+                <h4 class="modal-title">选择视频</h4>
+            </div>
+            <div class="modal-body">
+                <div class="row" style="margin-bottom:10px;">
+                    <div class="col-xs-8">
+                        <input type="text" id="c-search-title" class="form-control" placeholder="搜索视频标题">
+                    </div>
+                    <div class="col-xs-4">
+                        <button type="button" id="btn-search" class="btn btn-primary"><i class="fa fa-search"></i> 搜索</button>
+                    </div>
+                </div>
+                <table id="video-table" class="table table-striped table-bordered table-hover" width="100%">
+                </table>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-default" data-dismiss="modal">取消</button>
+                <button type="button" id="btn-confirm-add" class="btn btn-primary">确认添加</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefined, Backend, Table, Form) {
+    var Controller = {
+        index: function () {
+            var collectionId = '{$collection.id}';
+            
+            // 初始化合集中的视频表格
+            var table = $("#table");
+            
+            table.bootstrapTable({
+                url: 'video/collection/getVideos',
+                pk: 'id',
+                sortName: 'sort',
+                sortOrder: 'asc',
+                queryParams: function(params) {
+                    params.id = collectionId;
+                    return params;
+                },
+                columns: [
+                    [
+                        {checkbox: true},
+                        {field: 'sort', title: '集数', sortable: true},
+                        {field: 'cover', title: '封面', events: Table.api.events.image, formatter: Table.api.formatter.image, operate: false},
+                        {field: 'title', title: '视频标题', operate: 'LIKE'},
+                        {field: 'duration', title: '时长(秒)', operate: false},
+                        {field: 'reward_coin', title: '奖励金币', operate: false},
+                        {field: 'createtime', title: '添加时间', formatter: Table.api.formatter.datetime, operate: false},
+                        {
+                            field: 'operate',
+                            title: '操作',
+                            table: table,
+                            events: Table.api.events.operate,
+                            formatter: Table.api.formatter.operate,
+                            buttons: [
+                                {
+                                    name: 'remove',
+                                    text: '移除',
+                                    title: '移除视频',
+                                    classname: 'btn btn-xs btn-danger btn-ajax',
+                                    icon: 'fa fa-times',
+                                    url: 'video/collection/removeVideo',
+                                    confirm: '确认要从合集中移除这个视频吗？',
+                                    success: function(data, ret) {
+                                        table.bootstrapTable('refresh');
+                                    }
+                                }
+                            ]
+                        }
+                    ]
+                ]
+            });
+
+            // 为表格绑定事件
+            Table.api.bindevent(table);
+
+            // 刷新按钮
+            $('.btn-refresh').on('click', function() {
+                table.bootstrapTable('refresh');
+            });
+
+            // 选择视频表格
+            var videoTable = null;
+            
+            // 添加视频
+            $('.btn-add-video').on('click', function() {
+                $('#select-video-modal').modal('show');
+                
+                if (!videoTable) {
+                    videoTable = $("#video-table");
+                    videoTable.bootstrapTable({
+                        url: 'video/video/index',
+                        pk: 'id',
+                        pagination: true,
+                        pageSize: 10,
+                        columns: [
+                            [
+                                {checkbox: true},
+                                {field: 'id', title: 'ID'},
+                                {field: 'cover', title: '封面', events: Table.api.events.image, formatter: Table.api.formatter.image},
+                                {field: 'title', title: '标题'},
+                                {field: 'duration', title: '时长'},
+                            ]
+                        ]
+                    });
+                } else {
+                    videoTable.bootstrapTable('refresh');
+                }
+            });
+
+            // 搜索视频
+            $('#btn-search, #c-search-title').on('click keypress', function(e) {
+                if (e.type === 'keypress' && e.which !== 13) return;
+                var search = $('#c-search-title').val();
+                videoTable.bootstrapTable('refresh', {
+                    query: {search: search}
+                });
+            });
+
+            // 确认添加视频
+            $('#btn-confirm-add').on('click', function() {
+                var selections = videoTable.bootstrapTable('getSelections');
+                if (selections.length === 0) {
+                    Toastr.warning('请选择要添加的视频');
+                    return;
+                }
+                
+                var videoIds = [];
+                $.each(selections, function(i, row) {
+                    videoIds.push(row.id);
+                });
+
+                $.ajax({
+                    url: 'video/collection/addVideo',
+                    type: 'POST',
+                    data: {collection_id: collectionId, video_ids: videoIds},
+                    dataType: 'json',
+                    success: function(ret) {
+                        if (ret.code === 1) {
+                            Toastr.success(ret.msg || '添加成功');
+                            $('#select-video-modal').modal('hide');
+                            table.bootstrapTable('refresh');
+                        } else {
+                            Toastr.error(ret.msg || '添加失败');
+                        }
+                    },
+                    error: function() {
+                        Toastr.error('网络错误');
+                    }
+                });
+            });
+
+            // 批量移除视频
+            $('.btn-del-video').on('click', function() {
+                var selections = table.bootstrapTable('getSelections');
+                if (selections.length === 0) {
+                    Toastr.warning('请选择要移除的视频');
+                    return;
+                }
+
+                var ids = [];
+                $.each(selections, function(i, row) {
+                    ids.push(row.id);
+                });
+
+                Layer.confirm('确认要移除选中的 ' + ids.length + ' 个视频吗？', function(index) {
+                    $.ajax({
+                        url: 'video/collection/removeVideo',
+                        type: 'POST',
+                        data: {ids: ids.join(',')},
+                        dataType: 'json',
+                        success: function(ret) {
+                            if (ret.code === 1) {
+                                Toastr.success(ret.msg || '移除成功');
+                                table.bootstrapTable('refresh');
+                            } else {
+                                Toastr.error(ret.msg || '移除失败');
+                            }
+                            Layer.close(index);
+                        }
+                    });
+                });
+            });
+        }
+    };
+    return Controller;
+});
+</script>
