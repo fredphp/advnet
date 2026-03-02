@@ -12,22 +12,10 @@
         </div>
     </div>
     <div class="form-group">
-        <label class="control-label col-xs-12 col-sm-2">红包图标:</label>
-        <div class="col-xs-12 col-sm-8">
-            <div class="input-group">
-                <input id="c-icon" class="form-control" name="row[icon]" type="text" value="{$row.icon}">
-                <div class="input-group-addon no-border no-padding">
-                    <span><button type="button" id="faupload-icon" class="btn btn-danger faupload" data-input-id="c-icon" data-mimetype="image/*" data-preview-id="p-icon"><i class="fa fa-upload"></i> {:__('Upload')}</button></span>
-                    <span><button type="button" id="fachoose-icon" class="btn btn-primary fachoose" data-input-id="c-icon" data-mimetype="image/*"><i class="fa fa-list"></i> {:__('Choose')}</button></span>
-                </div>
-            </div>
-            <ul class="row list-inline faupload-preview" id="p-icon"></ul>
-        </div>
-    </div>
-    <div class="form-group">
         <label class="control-label col-xs-12 col-sm-2">任务类型:</label>
         <div class="col-xs-12 col-sm-8">
             <select id="c-task_type" class="form-control" name="row[task_type]" data-rule="required">
+                <option value="">请选择任务类型</option>
                 <option value="download_app" {if $row.task_type=='download_app'}selected{/if}>下载App</option>
                 <option value="mini_program" {if $row.task_type=='mini_program'}selected{/if}>跳转小程序</option>
                 <option value="play_game" {if $row.task_type=='play_game'}selected{/if}>玩游戏时长</option>
@@ -37,34 +25,39 @@
             </select>
         </div>
     </div>
-    <div class="form-group">
-        <label class="control-label col-xs-12 col-sm-2">任务链接:</label>
+    
+    <!-- 资源选择区域 -->
+    <div class="form-group resource-select-area" {if !$resourceInfo && $row.task_type!='sign_in'}style="display:none;"{/if}>
+        <label class="control-label col-xs-12 col-sm-2">选择资源:</label>
         <div class="col-xs-12 col-sm-8">
-            <input id="c-task_url" class="form-control" name="row[task_url]" type="text" value="{$row.task_url}">
+            <div class="input-group">
+                <input id="c-resource_id" type="hidden" name="row[resource_id]" value="{$resourceInfo.id ?? ''}">
+                <input id="c-resource_name" class="form-control" type="text" value="{$resourceInfo.name ?? ''}" placeholder="点击选择资源" readonly style="background-color: #fff; cursor: pointer;">
+                <div class="input-group-addon no-border no-padding">
+                    <span><button type="button" id="btn-select-resource" class="btn btn-primary"><i class="fa fa-list"></i> 选择资源</button></span>
+                </div>
+            </div>
         </div>
     </div>
-    <div class="form-group">
-        <label class="control-label col-xs-12 col-sm-2">金额类型:</label>
+    
+    <!-- 资源信息展示区域 -->
+    <div class="form-group resource-info-area" {if !$resourceInfo}style="display:none;"{/if}>
+        <label class="control-label col-xs-12 col-sm-2">资源信息:</label>
         <div class="col-xs-12 col-sm-8">
-            <select id="c-amount_type" class="form-control" name="row[amount_type]" data-rule="required">
-                <option value="fixed" {if $row.amount_type=='fixed'}selected{/if}>固定金额</option>
-                <option value="random" {if $row.amount_type=='random'}selected{/if}>随机金额</option>
-            </select>
-        </div>
-    </div>
-    <div class="form-group amount-fixed" {if $row.amount_type!='fixed'}style="display:none;"{/if}>
-        <label class="control-label col-xs-12 col-sm-2">单个金额(金币):</label>
-        <div class="col-xs-12 col-sm-8">
-            <input id="c-single_amount" class="form-control" name="row[single_amount]" type="number" value="{$row.single_amount}" step="0.01" min="0">
-        </div>
-    </div>
-    <div class="form-group amount-random" {if $row.amount_type!='random'}style="display:none;"{/if}>
-        <label class="control-label col-xs-12 col-sm-2">金额范围(金币):</label>
-        <div class="col-xs-12 col-sm-4">
-            <input id="c-min_amount" class="form-control" name="row[min_amount]" type="number" value="{$row.min_amount}" step="0.01" min="0" placeholder="最小金额">
-        </div>
-        <div class="col-xs-12 col-sm-4">
-            <input id="c-max_amount" class="form-control" name="row[max_amount]" type="number" value="{$row.max_amount}" step="0.01" min="0" placeholder="最大金额">
+            <div class="panel panel-default" style="margin-bottom: 0;">
+                <div class="panel-body" style="padding: 10px;">
+                    <div class="media">
+                        <div class="media-left">
+                            <img id="resource-logo" src="{$resourceInfo.logo ?? '/assets/img/avatar.png'}" style="width: 64px; height: 64px; object-fit: cover; border-radius: 8px;">
+                        </div>
+                        <div class="media-body">
+                            <h5 id="resource-name" class="media-heading" style="margin-top: 0; margin-bottom: 5px;">{$resourceInfo.name ?? ''}</h5>
+                            <p id="resource-description" class="text-muted" style="margin-bottom: 5px;">{$resourceInfo.description ?? ''}</p>
+                            <p id="resource-extra" class="text-info small" style="margin-bottom: 0;"></p>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
     
@@ -103,6 +96,30 @@
         </div>
     </div>
     
+    <div class="form-group">
+        <label class="control-label col-xs-12 col-sm-2">金额类型:</label>
+        <div class="col-xs-12 col-sm-8">
+            <select id="c-amount_type" class="form-control" name="row[amount_type]" data-rule="required">
+                <option value="fixed" {if $row.amount_type=='fixed'}selected{/if}>固定金额</option>
+                <option value="random" {if $row.amount_type=='random'}selected{/if}>随机金额</option>
+            </select>
+        </div>
+    </div>
+    <div class="form-group amount-fixed" {if $row.amount_type!='fixed'}style="display:none;"{/if}>
+        <label class="control-label col-xs-12 col-sm-2">单个金额(金币):</label>
+        <div class="col-xs-12 col-sm-8">
+            <input id="c-single_amount" class="form-control" name="row[single_amount]" type="number" value="{$row.single_amount}" step="0.01" min="0">
+        </div>
+    </div>
+    <div class="form-group amount-random" {if $row.amount_type!='random'}style="display:none;"{/if}>
+        <label class="control-label col-xs-12 col-sm-2">金额范围(金币):</label>
+        <div class="col-xs-12 col-sm-4">
+            <input id="c-min_amount" class="form-control" name="row[min_amount]" type="number" value="{$row.min_amount}" step="0.01" min="0" placeholder="最小金额">
+        </div>
+        <div class="col-xs-12 col-sm-4">
+            <input id="c-max_amount" class="form-control" name="row[max_amount]" type="number" value="{$row.max_amount}" step="0.01" min="0" placeholder="最大金额">
+        </div>
+    </div>
     <div class="form-group">
         <label class="control-label col-xs-12 col-sm-2">要求时长(秒):</label>
         <div class="col-xs-12 col-sm-8">
@@ -167,10 +184,10 @@
     <div class="form-group">
         <label class="control-label col-xs-12 col-sm-2">活动时间:</label>
         <div class="col-xs-12 col-sm-4">
-            <input id="c-start_time" class="form-control datetimepicker" name="row[start_time]" type="text" value="{$row.start_time|date='Y-m-d H:i:s',###}" data-date-format="YYYY-MM-DD HH:mm:ss">
+            <input id="c-start_time" class="form-control datetimepicker" name="row[start_time]" type="text" value="{$row.start_time}" data-date-format="YYYY-MM-DD HH:mm:ss">
         </div>
         <div class="col-xs-12 col-sm-4">
-            <input id="c-end_time" class="form-control datetimepicker" name="row[end_time]" type="text" value="{$row.end_time|date='Y-m-d H:i:s',###}" data-date-format="YYYY-MM-DD HH:mm:ss">
+            <input id="c-end_time" class="form-control datetimepicker" name="row[end_time]" type="text" value="{$row.end_time}" data-date-format="YYYY-MM-DD HH:mm:ss">
         </div>
     </div>
     <div class="form-group">
@@ -191,8 +208,44 @@
         </div>
     </div>
 </form>
+
+<!-- 资源选择弹窗 -->
+<div class="modal fade" id="resource-select-modal" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
+                <h4 class="modal-title">选择资源</h4>
+            </div>
+            <div class="modal-body">
+                <div class="row resource-list" id="resource-list">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-default" data-dismiss="modal">取消</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
 $(function() {
+    // 初始化资源信息
+    <?php if ($resourceInfo): ?>
+    var extra = '';
+    <?php if ($resourceInfo['package_name']): ?>
+    extra += '包名: {$resourceInfo.package_name} ';
+    <?php endif; ?>
+    <?php if ($resourceInfo['app_id']): ?>
+    extra += 'AppID: {$resourceInfo.app_id} ';
+    <?php endif; ?>
+    <?php if ($resourceInfo['url']): ?>
+    extra += '链接: {$resourceInfo.url}';
+    <?php endif; ?>
+    $('#resource-extra').text(extra);
+    <?php endif; ?>
+    
+    // 金额类型切换
     $('#c-amount_type').on('change', function() {
         if ($(this).val() === 'fixed') {
             $('.amount-fixed').show();
@@ -201,6 +254,91 @@ $(function() {
             $('.amount-fixed').hide();
             $('.amount-random').show();
         }
+    });
+    
+    // 任务类型切换
+    $('#c-task_type').on('change', function() {
+        var taskType = $(this).val();
+        if (taskType && taskType !== 'sign_in') {
+            $('.resource-select-area').show();
+        } else {
+            $('.resource-select-area').hide();
+            $('.resource-info-area').hide();
+        }
+    });
+    
+    // 选择资源按钮
+    $('#btn-select-resource').on('click', function() {
+        var taskType = $('#c-task_type').val();
+        if (!taskType) {
+            Layer.alert('请先选择任务类型');
+            return;
+        }
+        
+        // 加载资源列表
+        $.ajax({
+            url: 'redpacket/task/getResources',
+            type: 'GET',
+            data: { task_type: taskType },
+            dataType: 'json',
+            success: function(ret) {
+                if (ret.code === 1) {
+                    var list = ret.data;
+                    var html = '';
+                    if (list.length === 0) {
+                        html = '<div class="col-xs-12"><p class="text-center text-muted">暂无可用资源，请先在资源管理中添加</p></div>';
+                    } else {
+                        for (var i = 0; i < list.length; i++) {
+                            var item = list[i];
+                            html += '<div class="col-xs-12 col-sm-6 col-md-4" style="margin-bottom: 15px;">';
+                            html += '<div class="panel panel-default resource-item" data-id="' + item.id + '" data-name="' + item.name + '" data-description="' + (item.description || '') + '" data-logo="' + (item.logo || '') + '" data-url="' + (item.url || '') + '" data-package_name="' + (item.package_name || '') + '" data-app_id="' + (item.app_id || '') + '" style="cursor: pointer; margin-bottom: 0;">';
+                            html += '<div class="panel-body" style="padding: 10px;">';
+                            html += '<div class="media">';
+                            html += '<div class="media-left"><img src="' + (item.logo || '/assets/img/avatar.png') + '" style="width: 48px; height: 48px; object-fit: cover; border-radius: 8px;"></div>';
+                            html += '<div class="media-body">';
+                            html += '<h5 style="margin: 0 0 5px 0;">' + item.name + '</h5>';
+                            html += '<p class="text-muted small" style="margin: 0;">' + (item.description || '暂无描述') + '</p>';
+                            html += '</div></div></div></div></div>';
+                        }
+                    }
+                    $('#resource-list').html(html);
+                    $('#resource-select-modal').modal('show');
+                } else {
+                    Layer.alert(ret.msg);
+                }
+            },
+            error: function() {
+                Layer.alert('获取资源列表失败');
+            }
+        });
+    });
+    
+    // 选择资源
+    $(document).on('click', '.resource-item', function() {
+        var id = $(this).data('id');
+        var name = $(this).data('name');
+        var description = $(this).data('description');
+        var logo = $(this).data('logo');
+        var url = $(this).data('url');
+        var packageName = $(this).data('package_name');
+        var appId = $(this).data('app_id');
+        
+        $('#c-resource_id').val(id);
+        $('#c-resource_name').val(name);
+        
+        // 显示资源信息
+        $('#resource-logo').attr('src', logo || '/assets/img/avatar.png');
+        $('#resource-name').text(name);
+        $('#resource-description').text(description || '暂无描述');
+        
+        var extra = '';
+        if (packageName) extra += '包名: ' + packageName + ' ';
+        if (appId) extra += 'AppID: ' + appId + ' ';
+        if (url) extra += '链接: ' + url;
+        $('#resource-extra').text(extra);
+        
+        $('.resource-info-area').show();
+        $('#resource-select-modal').modal('hide');
     });
 });
 </script>

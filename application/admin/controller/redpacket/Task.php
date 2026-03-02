@@ -70,6 +70,25 @@ class Task extends Backend
             if ($params['total_count'] <= 0) {
                 $this->error('红包数量必须大于0');
             }
+            
+            // 处理资源信息
+            if (!empty($params['resource_id'])) {
+                $resource = \app\common\model\RedPacketResource::get($params['resource_id']);
+                if ($resource) {
+                    $params['task_url'] = $resource->url;
+                    $params['task_params'] = json_encode([
+                        'resource_id' => $resource->id,
+                        'resource_type' => $resource->type,
+                        'name' => $resource->name,
+                        'description' => $resource->description,
+                        'logo' => $resource->logo,
+                        'package_name' => $resource->package_name,
+                        'app_id' => $resource->app_id,
+                        'video_id' => $resource->video_id,
+                    ]);
+                    $params['icon'] = $resource->logo;
+                }
+            }
 
             $params['remain_amount'] = $params['total_amount'];
             $params['remain_count'] = $params['total_count'];
@@ -104,6 +123,25 @@ class Task extends Backend
             if (!$params) {
                 $this->error(__('参数不能为空'));
             }
+            
+            // 处理资源信息
+            if (!empty($params['resource_id'])) {
+                $resource = \app\common\model\RedPacketResource::get($params['resource_id']);
+                if ($resource) {
+                    $params['task_url'] = $resource->url;
+                    $params['task_params'] = json_encode([
+                        'resource_id' => $resource->id,
+                        'resource_type' => $resource->type,
+                        'name' => $resource->name,
+                        'description' => $resource->description,
+                        'logo' => $resource->logo,
+                        'package_name' => $resource->package_name,
+                        'app_id' => $resource->app_id,
+                        'video_id' => $resource->video_id,
+                    ]);
+                    $params['icon'] = $resource->logo;
+                }
+            }
 
             $params['updatetime'] = time();
 
@@ -117,9 +155,63 @@ class Task extends Backend
                 $this->error($e->getMessage());
             }
         }
+        
+        // 解析资源信息
+        $resourceInfo = null;
+        if ($row['task_params']) {
+            $params = json_decode($row['task_params'], true);
+            if (isset($params['resource_id'])) {
+                $resourceInfo = \app\common\model\RedPacketResource::get($params['resource_id']);
+            }
+        }
+        
+        // 格式化时间显示
+        $row['start_time'] = $row['start_time'] ? date('Y-m-d H:i:s', $row['start_time']) : '';
+        $row['end_time'] = $row['end_time'] ? date('Y-m-d H:i:s', $row['end_time']) : '';
 
         $this->view->assign('row', $row);
+        $this->view->assign('resourceInfo', $resourceInfo);
         return $this->view->fetch();
+    }
+    
+    /**
+     * 根据任务类型获取资源列表
+     */
+    public function getResources()
+    {
+        $taskType = $this->request->get('task_type');
+        if (!$taskType) {
+            $this->error('请指定任务类型');
+        }
+        
+        // 获取对应的资源类型
+        $resourceType = \app\common\model\RedPacketResource::getResourceTypeByTaskType($taskType);
+        if (!$resourceType) {
+            $this->error('未找到对应的资源类型');
+        }
+        
+        // 获取资源列表
+        $list = \app\common\model\RedPacketResource::where('type', $resourceType)
+            ->where('status', 1)
+            ->order('sort', 'asc')
+            ->order('id', 'desc')
+            ->select();
+        
+        $data = [];
+        foreach ($list as $item) {
+            $data[] = [
+                'id' => $item->id,
+                'name' => $item->name,
+                'description' => $item->description,
+                'logo' => $item->logo,
+                'url' => $item->url,
+                'package_name' => $item->package_name,
+                'app_id' => $item->app_id,
+                'video_id' => $item->video_id,
+            ];
+        }
+        
+        $this->success('获取成功', null, $data);
     }
 
     /**
