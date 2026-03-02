@@ -40,12 +40,14 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
                             buttons: [
                                 {
                                     name: 'videos',
-                                    text: '管理视频',
-                                    title: '管理合集视频',
+                                    text: __('管理视频'),
+                                    title: __('管理合集视频'),
                                     classname: 'btn btn-xs btn-success btn-dialog',
-                                    icon: 'fa fa-list',
+                                    icon: 'fa fa-video-camera',
                                     url: 'video/collection/videos',
-                                    extend: 'data-area=\'["90%","90%"]\''
+                                    callback: function(data) {
+                                        table.bootstrapTable('refresh');
+                                    }
                                 }
                             ]
                         }
@@ -63,7 +65,45 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
             Controller.api.bindevent();
         },
         videos: function () {
-            // 管理视频页面的JS逻辑在视图中内联
+            // 管理视频页面
+            var collectionId = Fast.api.query('ids');
+            
+            // 初始化表格参数配置
+            Table.api.init({
+                extend: {
+                    index_url: 'video/collection/getVideos?id=' + collectionId,
+                    table: 'video_collection_item',
+                }
+            });
+
+            var table = $("#table");
+
+            // 初始化表格
+            table.bootstrapTable({
+                url: $.fn.bootstrapTable.defaults.extend.index_url,
+                pk: 'id',
+                sortName: 'sort',
+                sortOrder: 'asc',
+                columns: [
+                    [
+                        {checkbox: true},
+                        {field: 'sort', title: '集数', sortable: true},
+                        {field: 'cover', title: '封面', events: Table.api.events.image, formatter: Table.api.formatter.image, operate: false},
+                        {field: 'title', title: '视频标题'},
+                        {field: 'duration', title: '时长(秒)'},
+                        {field: 'reward_coin', title: '奖励金币'},
+                        {field: 'operate', title: '操作', table: table, events: Table.api.events.operate, formatter: Table.api.formatter.operate}
+                    ]
+                ]
+            });
+
+            // 为表格绑定事件
+            Table.api.bindevent(table);
+
+            // 添加视频按钮
+            $(document).on('click', '.btn-add-video', function() {
+                Fast.api.open('video/video/select?collection_id=' + collectionId, '选择视频');
+            });
         },
         api: {
             bindevent: function () {
