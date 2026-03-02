@@ -77,18 +77,14 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
         },
         add: function () {
             Controller.api.bindevent();
-            Controller.api.initResourceSelector();
         },
         edit: function () {
             Controller.api.bindevent();
-            Controller.api.initResourceSelector();
         },
         api: {
             bindevent: function () {
                 Form.api.bindevent($("form[role=form]"));
-            },
-            
-            initResourceSelector: function() {
+                
                 // 金额类型切换
                 $('#c-amount_type').on('change', function() {
                     if ($(this).val() === 'fixed') {
@@ -104,7 +100,6 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
                 $('#c-task_type').on('change', function() {
                     var taskType = $(this).val();
                     var $resourceArea = $('.resource-select-area');
-                    var $resourceInfoArea = $('.resource-info-area');
                     var $resourceId = $('#c-resource_id');
                     
                     if (taskType && taskType !== 'sign_in') {
@@ -118,36 +113,52 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
                         $resourceArea.show();
                         
                         // 更新提示文字
-                        $('.resource-type-tip').text('请选择' + typeName + '资源');
+                        $('.resource-type-tip').text('请选择' + typeName + '资源（可在资源管理中添加）');
                         
                         // 清空当前值
-                        $resourceId.val('');
-                        $resourceInfoArea.hide();
+                        $resourceId.val('').removeAttr('data-value');
                         
-                        // 获取selectpage对象并更新参数
-                        var selectPage = $resourceId.data('selectPageObject');
-                        if (selectPage) {
-                            // 更新查询参数
-                            selectPage.option.params = function() {
-                                return {
-                                    custom: { type: resourceType }
-                                };
+                        // 更新selectpage的数据源参数
+                        $resourceId.attr('data-params', JSON.stringify({custom: {type: resourceType}}));
+                        
+                        // 如果selectpage已初始化，需要重新初始化
+                        var selectPageObj = $resourceId.data('selectPageObject');
+                        if (selectPageObj) {
+                            selectPageObj.clear();
+                            // 更新option中的params
+                            selectPageObj.option.params = function() {
+                                return { custom: { type: resourceType } };
                             };
-                            // 重新加载数据
-                            selectPage.clear();
                         } else {
-                            // 如果selectpage还没初始化，更新data属性
-                            $resourceId.attr('data-params', JSON.stringify({custom: {type: resourceType}}));
+                            // 初始化selectpage
+                            require(['selectpage'], function() {
+                                $resourceId.selectPage({
+                                    showField: 'name',
+                                    keyField: 'id',
+                                    searchField: 'name',
+                                    data: { custom: { type: resourceType } },
+                                    params: function() {
+                                        return { custom: { type: resourceType } };
+                                    },
+                                    eAjaxSuccess: function(data) {
+                                        data.list = data.list || [];
+                                        data.totalRow = data.total || data.list.length;
+                                        return data;
+                                    }
+                                });
+                            });
                         }
                         
+                        // 清空资源信息展示
+                        $('.resource-info-area').hide();
                     } else {
                         $resourceArea.hide();
-                        $resourceInfoArea.hide();
+                        $('.resource-info-area').hide();
                     }
                 });
                 
                 // 资源选择变化时显示资源信息
-                $('#c-resource_id').on('change', function() {
+                $('#c-resource_id').on('selectpage:selected change', function(e, data) {
                     var resourceId = $(this).val();
                     if (resourceId) {
                         // 获取资源详情
@@ -178,16 +189,27 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
                     }
                 });
                 
-                // 初始化selectpage的自定义参数
-                $(document).on('selectpage:open', '#c-resource_id', function(e, obj) {
-                    var taskType = $('#c-task_type').val();
-                    var resourceType = taskTypeMap[taskType];
-                    if (resourceType) {
-                        obj.option.params = function() {
-                            return { custom: { type: resourceType } };
-                        };
+                // 新用户限制切换
+                $('input[name="row[new_user_only]"]').on('change', function() {
+                    if ($(this).prop('checked')) {
+                        $('#c-new_user_days').closest('.form-group').show();
+                    } else {
+                        $('#c-new_user_days').closest('.form-group').hide();
                     }
                 });
+                
+                // 触发初始状态
+                if ($('input[name="row[new_user_only]"]').prop('checked')) {
+                    $('#c-new_user_days').closest('.form-group').show();
+                } else {
+                    $('#c-new_user_days').closest('.form-group').hide();
+                }
+                
+                // 页面加载时如果已有任务类型，触发change事件
+                var initTaskType = $('#c-task_type').val();
+                if (initTaskType) {
+                    $('#c-task_type').trigger('change');
+                }
             }
         }
     };
