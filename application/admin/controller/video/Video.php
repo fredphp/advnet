@@ -260,10 +260,10 @@ class Video extends Backend
             ->limit(20)
             ->select();
 
-        $this->view->assign('video', $video);
-        $this->view->assign('watch_stats', $watchStats);
-        $this->view->assign('daily_stats', $dailyStats);
-        $this->view->assign('top_viewers', $topViewers);
+        $this->view->assign('video', $video->toArray());
+        $this->view->assign('watch_stats', $watchStats ?: []);
+        $this->view->assign('daily_stats', $dailyStats ?: []);
+        $this->view->assign('top_viewers', $topViewers ?: []);
         
         return $this->view->fetch();
     }
