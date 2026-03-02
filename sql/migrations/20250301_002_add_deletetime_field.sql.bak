@@ -1,0 +1,41 @@
+-- =============================================
+-- 为相关表添加软删除字段
+-- 版本：20250301_002
+-- 修复：PDO兼容版本，不使用存储过程
+-- =============================================
+
+-- 注意：此迁移文件需要迁移工具支持忽略已存在字段的错误
+-- 如果字段已存在，ALTER TABLE 会报错，这是正常现象，可以忽略
+
+-- 1. 视频相关表
+-- ALTER TABLE `advn_video` ADD COLUMN `deletetime` BIGINT(16) DEFAULT NULL COMMENT '删除时间' AFTER `updatetime`;
+-- ALTER TABLE `advn_video` ADD INDEX `idx_deletetime` (`deletetime`);
+ALTER TABLE `advn_video_collection` ADD COLUMN `deletetime` BIGINT(16) DEFAULT NULL COMMENT '删除时间' AFTER `updatetime`;
+ALTER TABLE `advn_video_collection` ADD INDEX `idx_deletetime` (`deletetime`);
+ALTER TABLE `advn_video_reward_rule` ADD COLUMN `deletetime` BIGINT(16) DEFAULT NULL COMMENT '删除时间' AFTER `updatetime`;
+ALTER TABLE `advn_video_reward_rule` ADD INDEX `idx_deletetime` (`deletetime`);
+
+-- 2. 邀请分佣相关表
+ALTER TABLE `advn_invite_relation` ADD COLUMN `deletetime` BIGINT(16) DEFAULT NULL COMMENT '删除时间' AFTER `updatetime`;
+ALTER TABLE `advn_invite_commission_config` ADD COLUMN `deletetime` BIGINT(16) DEFAULT NULL COMMENT '删除时间' AFTER `updatetime`;
+ALTER TABLE `advn_invite_commission_log` ADD COLUMN `deletetime` BIGINT(16) DEFAULT NULL COMMENT '删除时间' AFTER `updatetime`;
+
+-- 3. 风控相关表
+ALTER TABLE `advn_risk_rule` ADD COLUMN `deletetime` BIGINT(16) DEFAULT NULL COMMENT '删除时间' AFTER `updatetime`;
+ALTER TABLE `advn_blacklist` ADD COLUMN `deletetime` BIGINT(16) DEFAULT NULL COMMENT '删除时间' AFTER `updatetime`;
+ALTER TABLE `advn_whitelist` ADD COLUMN `deletetime` BIGINT(16) DEFAULT NULL COMMENT '删除时间' AFTER `updatetime`;
+
+-- 4. 红包任务相关表
+ALTER TABLE `advn_red_packet_task` ADD COLUMN `deletetime` BIGINT(16) DEFAULT NULL COMMENT '删除时间' AFTER `updatetime`;
+ALTER TABLE `advn_red_packet_task` ADD INDEX `idx_deletetime` (`deletetime`);
+ALTER TABLE `advn_task_category` ADD COLUMN `deletetime` BIGINT(16) DEFAULT NULL COMMENT '删除时间' AFTER `updatetime`;
+ALTER TABLE `advn_task_participation` ADD COLUMN `deletetime` BIGINT(16) DEFAULT NULL COMMENT '删除时间' AFTER `updatetime`;
+
+-- 5. 提现相关表
+ALTER TABLE `advn_withdraw_order` ADD COLUMN `deletetime` BIGINT(16) DEFAULT NULL COMMENT '删除时间' AFTER `updatetime`;
+ALTER TABLE `advn_withdraw_order` ADD INDEX `idx_deletetime` (`deletetime`);
+ALTER TABLE `advn_withdraw_config` ADD COLUMN `deletetime` BIGINT(16) DEFAULT NULL COMMENT '删除时间' AFTER `updatetime`;
+
+-- 6. 其他表
+ALTER TABLE `advn_coin_account` ADD COLUMN `deletetime` BIGINT(16) DEFAULT NULL COMMENT '删除时间' AFTER `updatetime`;
+ALTER TABLE `advn_user_behavior_stat` ADD COLUMN `deletetime` BIGINT(16) DEFAULT NULL COMMENT '删除时间' AFTER `updatetime`;

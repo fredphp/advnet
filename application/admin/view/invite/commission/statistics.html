@@ -1,0 +1,70 @@
+<div class="panel panel-default panel-intro">
+    <div class="panel-heading">
+        <div class="panel-lead"><em>分佣统计</em></div>
+    </div>
+
+    <div class="panel-body">
+        <div class="row" style="margin-bottom:15px;">
+            <div class="col-xs-12 col-sm-6">
+                <label>开始日期:</label>
+                <input type="text" id="start_date" class="form-control datetimepicker" value="{$start_date}" data-date-format="YYYY-MM-DD">
+            </div>
+            <div class="col-xs-12 col-sm-6">
+                <label>结束日期:</label>
+                <input type="text" id="end_date" class="form-control datetimepicker" value="{$end_date}" data-date-format="YYYY-MM-DD">
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-3">
+                <div class="panel panel-info">
+                    <div class="panel-heading">分佣次数</div>
+                    <div class="panel-body text-center">
+                        <h2 id="total-count">-</h2>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="panel panel-success">
+                    <div class="panel-heading">分佣总金额</div>
+                    <div class="panel-body text-center">
+                        <h2 id="total-amount">-</h2>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="panel panel-warning">
+                    <div class="panel-heading">平均分佣</div>
+                    <div class="panel-body text-center">
+                        <h2 id="avg-amount">-</h2>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-6">
+                <div class="panel panel-default">
+                    <div class="panel-heading">用户分佣排行 TOP 20</div>
+                    <div class="panel-body">
+                        <table class="table table-striped">
+                            <thead><tr><th>排名</th><th>用户</th><th>分佣次数</th><th>分佣总额</th></tr></thead>
+                            <tbody id="top-users"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="panel panel-default">
+                    <div class="panel-heading">分佣来源统计</div>
+                    <div class="panel-body">
+                        <table class="table table-striped">
+                            <thead><tr><th>来源</th><th>次数</th><th>金额</th></tr></thead>
+                            <tbody id="source-stats"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
