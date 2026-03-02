@@ -611,4 +611,98 @@ class Backend extends Controller
         //刷新Token
         $this->request->token();
     }
+
+    /**
+     * 操作成功返回的数据
+     * @param string $msg    提示信息
+     * @param mixed  $data   要返回的数据
+     * @param string $url    跳转的URL地址
+     * @param int    $wait   跳转等待时间
+     * @param array  $header 发送的Header信息
+     */
+    protected function success($msg = '', $data = null, $url = null, $wait = 3, array $header = [])
+    {
+        // 如果是AJAX请求，返回JSON格式数据
+        if (IS_AJAX || $this->request->isAjax()) {
+            $result = [
+                'code' => 1,
+                'msg'  => $msg,
+                'time' => $this->request->server('REQUEST_TIME'),
+                'data' => $data,
+                'url'  => $url,
+            ];
+            return json($result);
+        }
+
+        // 非AJAX请求，调用父类的跳转方法
+        // 如果 $data 是数组且 $url 为空，说明调用方式是 success($msg, $data)
+        // 需要调整参数顺序
+        if (is_array($data) && $url === null) {
+            // 保持兼容：$data 作为数据参数，不作为 URL
+            $url = '';
+        }
+
+        $url = $url ?: $this->request->header('referer') ?: '';
+        $result = [
+            'code' => 1,
+            'msg'  => $msg,
+            'data' => $data,
+            'url'  => $url,
+            'wait' => $wait,
+        ];
+
+        $type = $this->getResponseType();
+        // 把跳转模板的渲染下沉，这样在 response_send 行为中通过 data_getter 获取数据时不生效
+        $response = \think\Response::create($result, $type, 200, $header)->header($header);
+
+        throw new \think\exception\HttpResponseException($response);
+    }
+
+    /**
+     * 操作失败返回的数据
+     * @param string $msg    提示信息
+     * @param mixed  $data   要返回的数据
+     * @param string $url    跳转的URL地址
+     * @param int    $wait   跳转等待时间
+     * @param array  $header 发送的Header信息
+     */
+    protected function error($msg = '', $data = null, $url = null, $wait = 3, array $header = [])
+    {
+        // 如果是AJAX请求，返回JSON格式数据
+        if (IS_AJAX || $this->request->isAjax()) {
+            $result = [
+                'code' => 0,
+                'msg'  => $msg,
+                'time' => $this->request->server('REQUEST_TIME'),
+                'data' => $data,
+                'url'  => $url,
+            ];
+            return json($result);
+        }
+
+        // 非AJAX请求，调用父类的跳转方法
+        $url = $url ?: $this->request->header('referer') ?: '';
+        $result = [
+            'code' => 0,
+            'msg'  => $msg,
+            'data' => $data,
+            'url'  => $url,
+            'wait' => $wait,
+        ];
+
+        $type = $this->getResponseType();
+        $response = \think\Response::create($result, $type, 200, $header)->header($header);
+
+        throw new \think\exception\HttpResponseException($response);
+    }
+
+    /**
+     * 获取当前的response 输出类型
+     * @access protected
+     * @return string
+     */
+    protected function getResponseType()
+    {
+        return IS_AJAX ? 'json' : 'html';
+    }
 }
