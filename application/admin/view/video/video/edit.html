@@ -1,73 +1,69 @@
 <form id="edit-form" class="form-horizontal" role="form" data-toggle="validator" method="POST" action="">
     <input type="hidden" name="row[id]" value="{$row.id}">
     
-    <!-- 数据统计卡片 -->
+    <!-- 数据统计编辑卡片 -->
     <div class="panel panel-info" style="margin-bottom: 15px;">
         <div class="panel-heading">
-            <h3 class="panel-title"><i class="fa fa-bar-chart"></i> 视频数据统计</h3>
+            <h3 class="panel-title"><i class="fa fa-bar-chart"></i> 视频数据统计 <small style="color:#fff;">（可编辑）</small></h3>
         </div>
         <div class="panel-body">
-            <div class="row text-center">
-                <div class="col-xs-3">
-                    <div class="stat-item">
-                        <div class="stat-value text-primary">{$row.view_count|default=0}</div>
-                        <div class="stat-label">播放量</div>
+            <div class="row">
+                <div class="col-xs-6 col-sm-3">
+                    <div class="form-group" style="margin-bottom: 10px;">
+                        <label class="control-label" style="color: #337ab7;"><i class="fa fa-play-circle"></i> 播放量</label>
+                        <input type="number" class="form-control" name="row[view_count]" value="{$row.view_count|default=0}" min="0">
                     </div>
                 </div>
-                <div class="col-xs-3">
-                    <div class="stat-item">
-                        <div class="stat-value text-danger">{$row.like_count|default=0}</div>
-                        <div class="stat-label">点赞数</div>
+                <div class="col-xs-6 col-sm-3">
+                    <div class="form-group" style="margin-bottom: 10px;">
+                        <label class="control-label" style="color: #d9534f;"><i class="fa fa-thumbs-up"></i> 点赞数</label>
+                        <input type="number" class="form-control" name="row[like_count]" value="{$row.like_count|default=0}" min="0">
                     </div>
                 </div>
-                <div class="col-xs-3">
-                    <div class="stat-item">
-                        <div class="stat-value text-warning">{$row.collect_count|default=0}</div>
-                        <div class="stat-label">收藏数</div>
+                <div class="col-xs-6 col-sm-3">
+                    <div class="form-group" style="margin-bottom: 10px;">
+                        <label class="control-label" style="color: #f0ad4e;"><i class="fa fa-star"></i> 收藏数</label>
+                        <input type="number" class="form-control" name="row[collect_count]" value="{$row.collect_count|default=0}" min="0">
                     </div>
                 </div>
-                <div class="col-xs-3">
-                    <div class="stat-item">
-                        <div class="stat-value text-info">{$row.comment_count|default=0}</div>
-                        <div class="stat-label">评论数</div>
+                <div class="col-xs-6 col-sm-3">
+                    <div class="form-group" style="margin-bottom: 10px;">
+                        <label class="control-label" style="color: #5bc0de;"><i class="fa fa-comments"></i> 评论数</label>
+                        <input type="number" class="form-control" name="row[comment_count]" value="{$row.comment_count|default=0}" min="0">
                     </div>
                 </div>
             </div>
-            <div class="row text-center" style="margin-top: 15px;">
-                <div class="col-xs-3">
-                    <div class="stat-item">
-                        <div class="stat-value text-success">{$row.share_count|default=0}</div>
-                        <div class="stat-label">分享数</div>
+            <div class="row">
+                <div class="col-xs-6 col-sm-3">
+                    <div class="form-group" style="margin-bottom: 10px;">
+                        <label class="control-label" style="color: #5cb85c;"><i class="fa fa-share-alt"></i> 转发数</label>
+                        <input type="number" class="form-control" name="row[share_count]" value="{$row.share_count|default=0}" min="0">
                     </div>
                 </div>
-                <div class="col-xs-3">
-                    <div class="stat-item">
-                        <div class="stat-value text-purple">{$row.reward_count|default=0}</div>
-                        <div class="stat-label">奖励人数</div>
+                <div class="col-xs-6 col-sm-3">
+                    <div class="form-group" style="margin-bottom: 10px;">
+                        <label class="control-label" style="color: #9b59b6;"><i class="fa fa-gift"></i> 奖励人数</label>
+                        <input type="number" class="form-control" name="row[reward_count]" value="{$row.reward_count|default=0}" min="0">
                     </div>
                 </div>
-                <div class="col-xs-3">
-                    <div class="stat-item">
-                        <div class="stat-value text-gold">{$row.reward_coin_total|default='0.00'}</div>
-                        <div class="stat-label">已发金币</div>
+                <div class="col-xs-6 col-sm-3">
+                    <div class="form-group" style="margin-bottom: 10px;">
+                        <label class="control-label" style="color: #f39c12;"><i class="fa fa-money"></i> 已发金币</label>
+                        <input type="number" class="form-control" name="row[reward_coin_total]" value="{$row.reward_coin_total|default='0.00'}" min="0" step="0.01">
                     </div>
                 </div>
-                <div class="col-xs-3">
-                    <div class="stat-item">
-                        <div class="stat-value">{$row.duration|default=0}秒</div>
-                        <div class="stat-label">视频时长</div>
+                <div class="col-xs-6 col-sm-3">
+                    <div class="form-group" style="margin-bottom: 10px;">
+                        <label class="control-label" style="color: #666;"><i class="fa fa-clock-o"></i> 视频时长</label>
+                        <div class="input-group">
+                            <input type="number" class="form-control" name="row[duration]" value="{$row.duration|default=0}" min="0">
+                            <span class="input-group-addon">秒</span>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
     </div>
-    
-    <style>
-        .stat-value { font-size: 24px; font-weight: bold; }
-        .stat-label { color: #666; font-size: 12px; margin-top: 5px; }
-        .text-purple { color: #9b59b6; }
-        .text-gold { color: #f39c12; }
-    </style>
     
     <div class="form-group">
         <label class="control-label col-xs-12 col-sm-2">{:__('Title')}:</label>
@@ -93,35 +89,21 @@
         <div class="col-xs-12 col-sm-8">
             <ul class="nav nav-tabs" role="tablist">
                 <li role="presentation" class="active">
-                    <a href="#tab-upload" aria-controls="tab-upload" role="tab" data-toggle="tab">上传视频</a>
+                    <a href="#tab-upload" aria-controls="tab-upload" role="tab" data-toggle="tab">当前视频</a>
                 </li>
                 <li role="presentation">
-                    <a href="#tab-url" aria-controls="tab-url" role="tab" data-toggle="tab">视频链接</a>
+                    <a href="#tab-url" aria-controls="tab-url" role="tab" data-toggle="tab">更换链接</a>
                 </li>
             </ul>
             <div class="tab-content" style="margin-top: 10px;">
                 <div role="tabpanel" class="tab-pane active" id="tab-upload">
-                    <div class="input-group">
-                        <input id="c-video_url_upload" class="form-control" name="row[video_url]" type="text" value="{$row.video_url}" placeholder="点击上传按钮上传视频" readonly>
-                        <div class="input-group-addon no-border no-padding">
-                            <span><button type="button" id="faupload-video" class="btn btn-danger faupload-video" data-input-id="c-video_url_upload" data-mimetype="video/mp4,video/quicktime,video/x-msvideo,video/webm" data-maxsize="500mb"><i class="fa fa-upload"></i> 上传视频</button></span>
-                        </div>
-                    </div>
-                    <span class="help-block">支持 MP4, MOV, AVI, WebM 格式，最大 500MB</span>
+                    <input class="form-control" type="text" value="{$row.video_url}" readonly style="background-color: #f9f9f9;">
+                    <span class="help-block">当前视频地址，如需更换请切换到"更换链接"标签</span>
                 </div>
                 <div role="tabpanel" class="tab-pane" id="tab-url">
-                    <input id="c-video_url_link" class="form-control" name="row[video_url_link]" type="text" value="" placeholder="请输入视频完整URL地址，如：https://example.com/video.mp4">
-                    <span class="help-block">请输入视频的完整URL地址（当前：{$row.video_url}）</span>
+                    <input id="c-video_url_link" class="form-control" name="row[video_url]" type="text" value="" placeholder="请输入新的视频URL地址">
+                    <span class="help-block">输入新的视频地址将覆盖原视频</span>
                 </div>
-            </div>
-        </div>
-    </div>
-    <div class="form-group">
-        <label class="control-label col-xs-12 col-sm-2">视频时长:</label>
-        <div class="col-xs-12 col-sm-8">
-            <div class="input-group">
-                <input id="c-duration" class="form-control" name="row[duration]" type="number" value="{$row.duration}" placeholder="视频时长（秒）">
-                <span class="input-group-addon">秒</span>
             </div>
         </div>
     </div>
@@ -146,13 +128,13 @@
                 <div class="col-xs-6">
                     <div class="input-group">
                         <span class="input-group-addon">奖励金币</span>
-                        <input id="c-reward_coin" class="form-control" name="row[reward_coin]" type="number" value="{$row.reward_coin}" step="0.01">
+                        <input id="c-reward_coin" class="form-control" name="row[reward_coin]" type="number" value="{$row.reward_coin}" step="0.01" min="0">
                     </div>
                 </div>
                 <div class="col-xs-6">
                     <div class="input-group">
                         <span class="input-group-addon">观看秒数</span>
-                        <input id="c-reward_duration" class="form-control" name="row[reward_duration]" type="number" value="{$row.reward_duration|default=30}">
+                        <input id="c-reward_duration" class="form-control" name="row[reward_duration]" type="number" value="{$row.reward_duration|default=30}" min="0">
                         <span class="input-group-addon">秒</span>
                     </div>
                 </div>
@@ -163,6 +145,7 @@
         <label class="control-label col-xs-12 col-sm-2">发布者:</label>
         <div class="col-xs-12 col-sm-8">
             <input id="c-user_id" class="form-control" name="row[user_id]" type="number" value="{$row.user_id}">
+            <span class="help-block">用户ID，0表示平台官方发布</span>
         </div>
     </div>
     <div class="form-group">
