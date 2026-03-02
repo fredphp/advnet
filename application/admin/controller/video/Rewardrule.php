@@ -33,12 +33,19 @@ class Rewardrule extends Backend
 
             $total = $this->model->where($where)->count();
             $list = $this->model->where($where)
+                ->field('id,name,code,description,scope_type,scope_id,reward_type,reward_coin,reward_min,reward_max,condition_type,watch_progress,watch_duration,daily_limit,priority,status,start_time,end_time,createtime')
                 ->order($sort, $order)
                 ->limit($offset, $limit)
                 ->select();
 
-            $result = ['total' => $total, 'rows' => $list];
-            return json($result);
+            // 转换为数组并添加文本字段
+            $result = [];
+            foreach ($list as $item) {
+                $data = $item->toArray();
+                $result[] = $data;
+            }
+
+            return json(['total' => $total, 'rows' => $result]);
         }
         return $this->view->fetch();
     }

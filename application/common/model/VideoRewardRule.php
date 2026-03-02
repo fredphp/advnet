@@ -10,14 +10,6 @@ class VideoRewardRule extends BaseModel
     // 表名
     protected $name = 'video_reward_rule';
     
-    // 追加属性
-    protected $append = [
-        'condition_type_text',
-        'reward_type_text',
-        'scope_type_text',
-        'status_text'
-    ];
-    
     // 条件类型
     public static $conditionTypeList = [
         'complete' => '看完领取',
