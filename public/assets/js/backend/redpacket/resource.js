@@ -15,6 +15,16 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
 
             var table = $("#table");
             
+            // 类型列表（与模型定义一致）
+            var typeList = {
+                "download_app": "下载App",
+                "mini_program": "跳转小程序",
+                "play_game": "玩游戏时长",
+                "watch_video": "观看视频",
+                "share_link": "分享链接",
+                "sign_in": "签到任务"
+            };
+            
             // 初始化表格
             table.bootstrapTable({
                 url: $.fn.bootstrapTable.defaults.extend.index_url,
@@ -25,13 +35,10 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
                     [
                         {checkbox: true},
                         {field: 'id', title: 'ID', sortable: true},
-                        {field: 'type', title: '资源类型', searchList: {
-                            "app": "App下载",
-                            "mini_program": "小程序",
-                            "game": "游戏",
-                            "video": "视频",
-                            "link": "分享链接"
-                        }, formatter: Table.api.formatter.normal},
+                        {field: 'type', title: '资源类型', searchList: typeList, formatter: function(value, row) {
+                            // 优先使用后端返回的type_text，否则使用本地映射
+                            return row.type_text || typeList[value] || value;
+                        }},
                         {field: 'logo', title: '图标', events: Table.api.events.image, formatter: Table.api.formatter.image, operate: false},
                         {field: 'name', title: '资源名称', operate: 'LIKE'},
                         {field: 'description', title: '描述', operate: false},
