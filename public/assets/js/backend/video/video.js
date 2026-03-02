@@ -26,7 +26,7 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
                         {checkbox: true},
                         {field: 'id', title: 'ID', sortable: true},
                         {field: 'title', title: '视频标题', operate: 'LIKE'},
-                        {field: 'cover', title: '封面', events: Table.api.events.image, formatter: Table.api.formatter.image, operate: false},
+                        {field: 'cover_url', title: '封面', events: Table.api.events.image, formatter: Table.api.formatter.image, operate: false},
                         {field: 'user_id', title: '发布者ID', operate: '='},
                         {field: 'duration', title: '时长(秒)', operate: 'BETWEEN', sortable: true},
                         {field: 'view_count', title: '播放量', operate: 'BETWEEN', sortable: true},
@@ -99,6 +99,86 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
         },
         edit: function () {
             Controller.api.bindevent();
+        },
+        select: function () {
+            // 初始化表格参数配置
+            Table.api.init({
+                extend: {
+                    index_url: 'video/video/select',
+                }
+            });
+
+            var table = $("#table");
+            var selectedIds = [];
+
+            // 选中事件
+            table.on('check.bs.table uncheck.bs.table check-all.bs.table uncheck-all.bs.table', function (e, row) {
+                if (e.type == 'check' || e.type == 'uncheck') {
+                    row = [row];
+                } else if (e.type == 'check-all' || e.type == 'uncheck-all') {
+                    selectedIds = [];
+                }
+                $.each(row, function (i, j) {
+                    if (e.type.indexOf("uncheck") > -1) {
+                        var index = selectedIds.indexOf(j.id);
+                        if (index > -1) {
+                            selectedIds.splice(index, 1);
+                        }
+                    } else {
+                        if (selectedIds.indexOf(j.id) == -1) {
+                            selectedIds.push(j.id);
+                        }
+                    }
+                });
+            });
+
+            // 初始化表格
+            table.bootstrapTable({
+                url: $.fn.bootstrapTable.defaults.extend.index_url,
+                sortName: 'id',
+                sortOrder: 'desc',
+                showToggle: false,
+                showExport: false,
+                maintainSelected: true,
+                columns: [
+                    [
+                        {field: 'state', checkbox: true, visible: true, operate: false},
+                        {field: 'id', title: 'ID'},
+                        {field: 'title', title: '视频标题', operate: 'LIKE'},
+                        {field: 'cover_url', title: '封面', events: Table.api.events.image, formatter: Table.api.formatter.image, operate: false},
+                        {field: 'duration', title: '时长(秒)', operate: false},
+                        {field: 'reward_coin', title: '奖励金币', operate: false},
+                    ]
+                ]
+            });
+
+            // 为表格绑定事件
+            Table.api.bindevent(table);
+
+            // 选择按钮点击事件
+            $(document).on('click', '.btn-choose-multi', function() {
+                if (selectedIds.length === 0) {
+                    Toastr.error('请至少选择一个视频');
+                    return;
+                }
+                
+                var collectionId = Fast.api.query('collection_id');
+                
+                // 调用添加视频接口
+                Fast.api.ajax({
+                    url: 'video/collection/addVideo',
+                    data: {
+                        collection_id: collectionId,
+                        video_ids: selectedIds
+                    }
+                }, function(data, ret) {
+                    // 关闭弹窗并刷新父页面
+                    var index = parent.layer.getFrameIndex(window.name);
+                    parent.$(".btn-refresh").trigger("click");
+                    parent.layer.close(index);
+                    Toastr.success(ret.msg);
+                });
+            });
         },
         api: {
             bindevent: function () {

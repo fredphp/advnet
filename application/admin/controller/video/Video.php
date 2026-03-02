@@ -229,4 +229,18 @@ class Video extends Backend
             'top_viewers' => $topViewers,
         ]);
     }
+
+    /**
+     * 选择视频（弹窗选择）
+     */
+    public function select()
+    {
+        if ($this->request->isAjax()) {
+            return $this->index();
+        }
+        
+        $collectionId = $this->request->get('collection_id', 0);
+        $this->view->assign('collection_id', $collectionId);
+        return $this->view->fetch();
+    }
 }
