@@ -68,6 +68,11 @@ class Video extends Backend
             
             // 处理奖励设置
             $params['reward_enabled'] = !empty($params['reward_coin']) ? 1 : 0;
+            
+            // 处理发布者：空值表示平台发布
+            if (empty($params['user_id'])) {
+                $params['user_id'] = null;
+            }
 
             $params['createtime'] = time();
             $params['updatetime'] = time();
@@ -79,6 +84,11 @@ class Video extends Backend
                 $this->error($this->model->getError());
             }
         }
+        
+        // 获取发布者列表
+        $authorList = \app\common\model\Author::where('status', 'normal')->column('id,name');
+        $this->view->assign('authorList', $authorList);
+        
         return $this->view->fetch();
     }
 
