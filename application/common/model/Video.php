@@ -60,4 +60,24 @@ class Video extends BaseModel
     {
         return $this->belongsTo('VideoRewardRule', 'reward_rule_id')->setEagerlyType(0);
     }
+    
+    /**
+     * 关联发布者/作者
+     */
+    public function author()
+    {
+        return $this->belongsTo('Author', 'user_id', 'id')->setEagerlyType(0);
+    }
+    
+    /**
+     * 获取发布者名称
+     */
+    public function getAuthorNameAttr($value, $data)
+    {
+        if (!empty($data['user_id'])) {
+            $author = Author::get($data['user_id']);
+            return $author ? $author->name : '平台发布';
+        }
+        return '平台发布';
+    }
 }

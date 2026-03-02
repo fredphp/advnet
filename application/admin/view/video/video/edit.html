@@ -144,8 +144,15 @@
     <div class="form-group">
         <label class="control-label col-xs-12 col-sm-2">发布者:</label>
         <div class="col-xs-12 col-sm-8">
-            <input id="c-user_id" class="form-control" name="row[user_id]" type="number" value="{$row.user_id}">
-            <span class="help-block">用户ID，0表示平台官方发布</span>
+            <div class="input-group">
+                <input id="c-author_name" class="form-control" type="text" value="{$authorName}" readonly placeholder="平台发布">
+                <input id="c-user_id" type="hidden" name="row[user_id]" value="{$row.user_id}">
+                <div class="input-group-addon no-border no-padding">
+                    <span><button type="button" id="btn-select-author" class="btn btn-primary" data-toggle="modal" data-target="#author-select-modal"><i class="fa fa-list"></i> 选择发布者</button></span>
+                    <span><button type="button" id="btn-clear-author" class="btn btn-default"><i class="fa fa-times"></i> 清空</button></span>
+                </div>
+            </div>
+            <span class="help-block">不选择发布者则为"平台发布"</span>
         </div>
     </div>
     <div class="form-group">
@@ -182,3 +189,62 @@
         </div>
     </div>
 </form>
+
+<!-- 发布者选择弹窗 -->
+<div class="modal fade" id="author-select-modal" tabindex="-1" role="dialog" aria-labelledby="author-select-modal-label">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h4 class="modal-title" id="author-select-modal-label">选择发布者</h4>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <input type="text" class="form-control" id="author-search-input" placeholder="搜索发布者...">
+                </div>
+                <div class="list-group" id="author-list">
+                    {foreach name="authorList" item="vo" key="k"}
+                    <a href="javascript:;" class="list-group-item author-item" data-id="{$k}" data-name="{$vo}">
+                        <span class="author-name">{$vo}</span>
+                    </a>
+                    {/foreach}
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-default" data-dismiss="modal">取消</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+$(function() {
+    // 选择发布者
+    $(document).on('click', '.author-item', function() {
+        var id = $(this).data('id');
+        var name = $(this).data('name');
+        $('#c-user_id').val(id);
+        $('#c-author_name').val(name);
+        $('#author-select-modal').modal('hide');
+    });
+
+    // 清空发布者
+    $('#btn-clear-author').on('click', function() {
+        $('#c-user_id').val('');
+        $('#c-author_name').val('平台发布');
+    });
+
+    // 搜索发布者
+    $('#author-search-input').on('input', function() {
+        var keyword = $(this).val().toLowerCase();
+        $('.author-item').each(function() {
+            var name = $(this).data('name').toLowerCase();
+            if (name.indexOf(keyword) > -1) {
+                $(this).show();
+            } else {
+                $(this).hide();
+            }
+        });
+    });
+});
+</script>

@@ -116,6 +116,11 @@ class Video extends Backend
             
             // 处理奖励设置
             $params['reward_enabled'] = !empty($params['reward_coin']) ? 1 : 0;
+            
+            // 处理发布者：空值表示平台发布
+            if (empty($params['user_id'])) {
+                $params['user_id'] = null;
+            }
 
             $params['updatetime'] = time();
             $result = $row->allowField(true)->save($params);
@@ -126,6 +131,20 @@ class Video extends Backend
             }
         }
 
+        // 获取发布者列表
+        $authorList = \app\common\model\Author::where('status', 'normal')->column('id,name');
+        $this->view->assign('authorList', $authorList);
+        
+        // 获取当前发布者名称
+        $authorName = '平台发布';
+        if (!empty($row['user_id'])) {
+            $author = \app\common\model\Author::get($row['user_id']);
+            if ($author) {
+                $authorName = $author->name;
+            }
+        }
+        $this->view->assign('authorName', $authorName);
+        
         $this->view->assign('row', $row);
         return $this->view->fetch();
     }
