@@ -162,28 +162,20 @@ class Resource extends Backend
 
     /**
      * 根据类型获取资源列表（供selectpage使用）
-     * 
-     * 支持以下方式传递type参数：
-     * 1. custom[type] - selectpage的data-params方式
-     * 2. type - 直接参数
-     * 3. params.type - params JSON参数
-     * 4. data.type - data JSON参数
      */
     public function select()
     {
         // 设置过滤方法
         $this->request->filter(['strip_tags', 'htmlspecialchars']);
         
-        // 搜索关键词,客户端输入以空格分开,这里接收为数组
+        // 搜索关键词
         $word = (array)$this->request->request("q_word/a");
         // 当前页
         $page = $this->request->request("pageNumber", 1, 'intval');
         // 分页大小
         $pagesize = $this->request->request("pageSize", 10, 'intval');
-        // 搜索字段
-        $searchfield = (array)$this->request->request("searchField/a");
         
-        // 解析资源类型参数 - 支持多种方式
+        // 解析资源类型参数
         $resourceType = null;
         
         // 方式1: custom[type] - selectpage标准方式
@@ -229,30 +221,20 @@ class Resource extends Backend
             }
         }
         
-        // 调试日志
-        \think\Log::write('Resource select - resourceType: ' . $resourceType, 'debug');
-        \think\Log::write('Resource select - all params: ' . json_encode($this->request->param()), 'debug');
-        
-        // 构建查询
-        $query = $this->model->where('status', 1);
+        // 构建查询条件 - 使用数组方式，避免链式调用问题
+        $where = ['status' => 1];
         
         // 应用资源类型过滤
         if ($resourceType) {
-            $query->where('type', $resourceType);
+            $where['type'] = $resourceType;
         }
         
-        // 处理关键词搜索
-        if ($word) {
-            $word = array_filter(array_unique($word));
-            if (count($word) > 0) {
-                $keyword = reset($word);
-                $query->where('name', 'like', '%' . $keyword . '%');
-            }
-        }
+        // 先计算总数
+        $total = $this->model->where($where)->count();
         
-        $total = $query->count();
-        
-        $list = $query->order('sort', 'asc')
+        // 再查询列表 - 重新构建查询
+        $list = $this->model->where($where)
+            ->order('sort', 'asc')
             ->order('id', 'desc')
             ->page($page, $pagesize)
             ->select();
