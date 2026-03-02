@@ -1,0 +1,206 @@
+<form id="edit-form" class="form-horizontal" role="form" data-toggle="validator" method="POST" action="">
+    <div class="form-group">
+        <label class="control-label col-xs-12 col-sm-2">红包名称:</label>
+        <div class="col-xs-12 col-sm-8">
+            <input id="c-name" class="form-control" name="row[name]" type="text" value="{$row.name}" data-rule="required">
+        </div>
+    </div>
+    <div class="form-group">
+        <label class="control-label col-xs-12 col-sm-2">红包描述:</label>
+        <div class="col-xs-12 col-sm-8">
+            <textarea id="c-description" class="form-control" name="row[description]" rows="3">{$row.description}</textarea>
+        </div>
+    </div>
+    <div class="form-group">
+        <label class="control-label col-xs-12 col-sm-2">红包图标:</label>
+        <div class="col-xs-12 col-sm-8">
+            <div class="input-group">
+                <input id="c-icon" class="form-control" name="row[icon]" type="text" value="{$row.icon}">
+                <div class="input-group-addon no-border no-padding">
+                    <span><button type="button" id="faupload-icon" class="btn btn-danger faupload" data-input-id="c-icon" data-mimetype="image/*" data-preview-id="p-icon"><i class="fa fa-upload"></i> {:__('Upload')}</button></span>
+                    <span><button type="button" id="fachoose-icon" class="btn btn-primary fachoose" data-input-id="c-icon" data-mimetype="image/*"><i class="fa fa-list"></i> {:__('Choose')}</button></span>
+                </div>
+            </div>
+            <ul class="row list-inline faupload-preview" id="p-icon"></ul>
+        </div>
+    </div>
+    <div class="form-group">
+        <label class="control-label col-xs-12 col-sm-2">任务类型:</label>
+        <div class="col-xs-12 col-sm-8">
+            <select id="c-task_type" class="form-control" name="row[task_type]" data-rule="required">
+                <option value="download_app" {if $row.task_type=='download_app'}selected{/if}>下载App</option>
+                <option value="mini_program" {if $row.task_type=='mini_program'}selected{/if}>跳转小程序</option>
+                <option value="play_game" {if $row.task_type=='play_game'}selected{/if}>玩游戏时长</option>
+                <option value="watch_video" {if $row.task_type=='watch_video'}selected{/if}>观看视频</option>
+                <option value="share_link" {if $row.task_type=='share_link'}selected{/if}>分享链接</option>
+                <option value="sign_in" {if $row.task_type=='sign_in'}selected{/if}>签到任务</option>
+            </select>
+        </div>
+    </div>
+    <div class="form-group">
+        <label class="control-label col-xs-12 col-sm-2">任务链接:</label>
+        <div class="col-xs-12 col-sm-8">
+            <input id="c-task_url" class="form-control" name="row[task_url]" type="text" value="{$row.task_url}">
+        </div>
+    </div>
+    <div class="form-group">
+        <label class="control-label col-xs-12 col-sm-2">金额类型:</label>
+        <div class="col-xs-12 col-sm-8">
+            <select id="c-amount_type" class="form-control" name="row[amount_type]" data-rule="required">
+                <option value="fixed" {if $row.amount_type=='fixed'}selected{/if}>固定金额</option>
+                <option value="random" {if $row.amount_type=='random'}selected{/if}>随机金额</option>
+            </select>
+        </div>
+    </div>
+    <div class="form-group amount-fixed" {if $row.amount_type!='fixed'}style="display:none;"{/if}>
+        <label class="control-label col-xs-12 col-sm-2">单个金额(金币):</label>
+        <div class="col-xs-12 col-sm-8">
+            <input id="c-single_amount" class="form-control" name="row[single_amount]" type="number" value="{$row.single_amount}" step="0.01" min="0">
+        </div>
+    </div>
+    <div class="form-group amount-random" {if $row.amount_type!='random'}style="display:none;"{/if}>
+        <label class="control-label col-xs-12 col-sm-2">金额范围(金币):</label>
+        <div class="col-xs-12 col-sm-4">
+            <input id="c-min_amount" class="form-control" name="row[min_amount]" type="number" value="{$row.min_amount}" step="0.01" min="0" placeholder="最小金额">
+        </div>
+        <div class="col-xs-12 col-sm-4">
+            <input id="c-max_amount" class="form-control" name="row[max_amount]" type="number" value="{$row.max_amount}" step="0.01" min="0" placeholder="最大金额">
+        </div>
+    </div>
+    
+    <!-- 统计信息（只读） -->
+    <div class="panel panel-info" style="margin-bottom: 15px;">
+        <div class="panel-heading">
+            <h3 class="panel-title"><i class="fa fa-info-circle"></i> 红包统计</h3>
+        </div>
+        <div class="panel-body">
+            <div class="row">
+                <div class="col-xs-6 col-sm-3">
+                    <div class="form-group" style="margin-bottom: 10px;">
+                        <label class="control-label" style="color: #337ab7;">总金额</label>
+                        <input class="form-control" type="text" value="{$row.total_amount}" readonly style="background-color: #f9f9f9;">
+                    </div>
+                </div>
+                <div class="col-xs-6 col-sm-3">
+                    <div class="form-group" style="margin-bottom: 10px;">
+                        <label class="control-label" style="color: #d9534f;">剩余金额</label>
+                        <input class="form-control" type="text" value="{$row.remain_amount}" readonly style="background-color: #f9f9f9;">
+                    </div>
+                </div>
+                <div class="col-xs-6 col-sm-3">
+                    <div class="form-group" style="margin-bottom: 10px;">
+                        <label class="control-label" style="color: #5cb85c;">总数量</label>
+                        <input class="form-control" type="text" value="{$row.total_count}" readonly style="background-color: #f9f9f9;">
+                    </div>
+                </div>
+                <div class="col-xs-6 col-sm-3">
+                    <div class="form-group" style="margin-bottom: 10px;">
+                        <label class="control-label" style="color: #f0ad4e;">剩余数量</label>
+                        <input class="form-control" type="text" value="{$row.remain_count}" readonly style="background-color: #f9f9f9;">
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="form-group">
+        <label class="control-label col-xs-12 col-sm-2">要求时长(秒):</label>
+        <div class="col-xs-12 col-sm-8">
+            <input id="c-required_duration" class="form-control" name="row[required_duration]" type="number" value="{$row.required_duration}" min="0">
+        </div>
+    </div>
+    <div class="form-group">
+        <label class="control-label col-xs-12 col-sm-2">每人可领次数:</label>
+        <div class="col-xs-12 col-sm-8">
+            <input id="c-user_limit" class="form-control" name="row[user_limit]" type="number" value="{$row.user_limit}" min="1">
+        </div>
+    </div>
+    <div class="form-group">
+        <label class="control-label col-xs-12 col-sm-2">每日限制次数:</label>
+        <div class="col-xs-12 col-sm-8">
+            <input id="c-daily_limit" class="form-control" name="row[daily_limit]" type="number" value="{$row.daily_limit}" min="0">
+        </div>
+    </div>
+    <div class="form-group">
+        <label class="control-label col-xs-12 col-sm-2">用户等级限制:</label>
+        <div class="col-xs-12 col-sm-4">
+            <input id="c-user_level_min" class="form-control" name="row[user_level_min]" type="number" value="{$row.user_level_min}" min="1">
+        </div>
+        <div class="col-xs-12 col-sm-4">
+            <input id="c-user_level_max" class="form-control" name="row[user_level_max]" type="number" value="{$row.user_level_max}" min="1" max="255">
+        </div>
+    </div>
+    <div class="form-group">
+        <label class="control-label col-xs-12 col-sm-2">新用户限制:</label>
+        <div class="col-xs-12 col-sm-8">
+            <div class="checkbox">
+                <label><input type="checkbox" name="row[new_user_only]" value="1" {if $row.new_user_only==1}checked{/if}> 仅限新用户</label>
+            </div>
+            <input id="c-new_user_days" class="form-control" name="row[new_user_days]" type="number" value="{$row.new_user_days}" min="1" style="margin-top:5px;">
+        </div>
+    </div>
+    <div class="form-group">
+        <label class="control-label col-xs-12 col-sm-2">验证方式:</label>
+        <div class="col-xs-12 col-sm-8">
+            <select id="c-verify_method" class="form-control" name="row[verify_method]">
+                <option value="auto" {if $row.verify_method=='auto'}selected{/if}>自动验证</option>
+                <option value="manual" {if $row.verify_method=='manual'}selected{/if}>人工审核</option>
+                <option value="third_party" {if $row.verify_method=='third_party'}selected{/if}>第三方验证</option>
+            </select>
+        </div>
+    </div>
+    <div class="form-group">
+        <label class="control-label col-xs-12 col-sm-2">审核方式:</label>
+        <div class="col-xs-12 col-sm-8">
+            <select id="c-audit_type" class="form-control" name="row[audit_type]">
+                <option value="auto" {if $row.audit_type=='auto'}selected{/if}>自动审核</option>
+                <option value="manual" {if $row.audit_type=='manual'}selected{/if}>人工审核</option>
+            </select>
+        </div>
+    </div>
+    <div class="form-group">
+        <label class="control-label col-xs-12 col-sm-2">有效期(小时):</label>
+        <div class="col-xs-12 col-sm-8">
+            <input id="c-expire_hours" class="form-control" name="row[expire_hours]" type="number" value="{$row.expire_hours}" min="1">
+        </div>
+    </div>
+    <div class="form-group">
+        <label class="control-label col-xs-12 col-sm-2">活动时间:</label>
+        <div class="col-xs-12 col-sm-4">
+            <input id="c-start_time" class="form-control datetimepicker" name="row[start_time]" type="text" value="{$row.start_time|date='Y-m-d H:i:s',###}" data-date-format="YYYY-MM-DD HH:mm:ss">
+        </div>
+        <div class="col-xs-12 col-sm-4">
+            <input id="c-end_time" class="form-control datetimepicker" name="row[end_time]" type="text" value="{$row.end_time|date='Y-m-d H:i:s',###}" data-date-format="YYYY-MM-DD HH:mm:ss">
+        </div>
+    </div>
+    <div class="form-group">
+        <label class="control-label col-xs-12 col-sm-2">{:__('Status')}:</label>
+        <div class="col-xs-12 col-sm-8">
+            <select id="c-status" class="form-control" name="row[status]">
+                <option value="0" {if $row.status==0}selected{/if}>禁用</option>
+                <option value="1" {if $row.status==1}selected{/if}>启用</option>
+                <option value="2" {if $row.status==2}selected{/if}>已结束</option>
+                <option value="3" {if $row.status==3}selected{/if}>已抢完</option>
+            </select>
+        </div>
+    </div>
+    <div class="form-group layer-footer">
+        <label class="control-label col-xs-12 col-sm-2"></label>
+        <div class="col-xs-12 col-sm-8">
+            <button type="submit" class="btn btn-primary btn-embossed disabled">{:__('OK')}</button>
+        </div>
+    </div>
+</form>
+<script>
+$(function() {
+    $('#c-amount_type').on('change', function() {
+        if ($(this).val() === 'fixed') {
+            $('.amount-fixed').show();
+            $('.amount-random').hide();
+        } else {
+            $('.amount-fixed').hide();
+            $('.amount-random').show();
+        }
+    });
+});
+</script>
