@@ -2,6 +2,7 @@
 
 namespace app\common\library;
 
+use app\admin\library\Auth;
 use app\common\exception\UploadException;
 use app\common\model\Attachment;
 use fast\Random;
