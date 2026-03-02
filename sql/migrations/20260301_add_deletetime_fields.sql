@@ -12,7 +12,7 @@
 -- This fixes the error: Unknown column 'advn_video.deletetime' in 'where clause'
 -- =====================================================
 
--- Check if advn_video table exists, if not create it
+-- Create advn_video table if not exists
 CREATE TABLE IF NOT EXISTS `advn_video` (
   `id` int(10) unsigned NOT NULL AUTO_INCREMENT COMMENT 'ID',
   `title` varchar(255) NOT NULL DEFAULT '' COMMENT '标题',
@@ -36,18 +36,76 @@ CREATE TABLE IF NOT EXISTS `advn_video` (
   KEY `idx_status` (`status`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='视频表';
 
--- If table already exists, add deletetime field
--- ALTER TABLE `advn_video` ADD COLUMN `deletetime` bigint(16) DEFAULT NULL COMMENT '删除时间' AFTER `updatetime`;
--- ALTER TABLE `advn_video` ADD INDEX `idx_deletetime` (`deletetime`);
-
 -- =====================================================
 -- Fix 2: advn_user table (member module)
--- Add deletetime field if not exists
+-- Add deletetime field using stored procedure
 -- =====================================================
 
--- Add deletetime field to advn_user table for soft delete support
-ALTER TABLE `advn_user` ADD COLUMN IF NOT EXISTS `deletetime` bigint(16) DEFAULT NULL COMMENT '删除时间' AFTER `updatetime`;
-ALTER TABLE `advn_user` ADD INDEX IF NOT EXISTS `idx_deletetime` (`deletetime`);
+-- 创建辅助存储过程：添加字段（如果表存在且字段不存在）
+DROP PROCEDURE IF EXISTS add_column_if_not_exists;
+
+DELIMITER //
+CREATE PROCEDURE add_column_if_not_exists(
+    IN table_name VARCHAR(100),
+    IN column_name VARCHAR(100),
+    IN column_definition VARCHAR(500)
+)
+BEGIN
+    DECLARE column_count INT DEFAULT 0;
+
+    -- 检查字段是否已存在
+    SELECT COUNT(*) INTO column_count
+    FROM information_schema.columns
+    WHERE table_schema = DATABASE()
+    AND table_name = table_name
+    AND column_name = column_name;
+
+    IF column_count = 0 THEN
+        SET @sql = CONCAT('ALTER TABLE `', table_name, '` ADD COLUMN `', column_name, '` ', column_definition);
+        PREPARE stmt FROM @sql;
+        EXECUTE stmt;
+        DEALLOCATE PREPARE stmt;
+    END IF;
+END //
+DELIMITER ;
+
+-- Add deletetime field to advn_user table
+CALL add_column_if_not_exists('advn_user', 'deletetime', 'BIGINT(16) DEFAULT NULL COMMENT "删除时间" AFTER `updatetime`');
+
+-- Add index if not exists
+DROP PROCEDURE IF EXISTS add_index_if_not_exists;
+
+DELIMITER //
+CREATE PROCEDURE add_index_if_not_exists(
+    IN table_name VARCHAR(100),
+    IN index_name VARCHAR(100),
+    IN index_columns VARCHAR(500)
+)
+BEGIN
+    DECLARE index_count INT DEFAULT 0;
+
+    -- 检查索引是否已存在
+    SELECT COUNT(*) INTO index_count
+    FROM information_schema.statistics
+    WHERE table_schema = DATABASE()
+    AND table_name = table_name
+    AND index_name = index_name;
+
+    IF index_count = 0 THEN
+        SET @sql = CONCAT('ALTER TABLE `', table_name, '` ADD INDEX `', index_name, '` (', index_columns, ')');
+        PREPARE stmt FROM @sql;
+        EXECUTE stmt;
+        DEALLOCATE PREPARE stmt;
+    END IF;
+END //
+DELIMITER ;
+
+-- Add index for deletetime
+CALL add_index_if_not_exists('advn_user', 'idx_deletetime', '`deletetime`');
+
+-- 清理存储过程
+DROP PROCEDURE IF EXISTS add_column_if_not_exists;
+DROP PROCEDURE IF EXISTS add_index_if_not_exists;
 
 -- =====================================================
 -- Add menu entries for member and video modules
