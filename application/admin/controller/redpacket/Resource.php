@@ -156,7 +156,7 @@ class Resource extends Backend
         if ($count) {
             $this->success();
         } else {
-            $this->error(__('删除失败'));
+            $this->error(__('No rows were deleted'));
         }
     }
 
@@ -176,32 +176,38 @@ class Resource extends Backend
         $pagesize = $this->request->request("pageSize", 10, 'intval');
         // 搜索字段
         $searchfield = (array)$this->request->request("searchField/a");
-        // 自定义搜索条件（data-params传递的参数）
-        $custom = (array)$this->request->request("custom/a");
         
-        // 也支持直接的type参数和params参数
+        // 自定义搜索条件（data-params传递的参数）
+        // selectpage会将data-params作为custom参数发送
+        $custom = $this->request->request("custom");
+        
+        // 调试日志
+        \think\Log::write('Resource select - All params: ' . json_encode($this->request->param()), 'debug');
+        \think\Log::write('Resource select - custom param: ' . json_encode($custom), 'debug');
+        
+        // 解析custom参数
+        $resourceType = null;
+        if ($custom) {
+            if (is_string($custom)) {
+                $custom = json_decode($custom, true);
+            }
+            if (is_array($custom) && isset($custom['type']) && $custom['type']) {
+                $resourceType = $custom['type'];
+            }
+        }
+        
+        // 也支持直接的type参数
         $typeParam = $this->request->request("type");
-        $paramsParam = $this->request->request("params");
+        if (!$resourceType && $typeParam) {
+            $resourceType = $typeParam;
+        }
+        
+        \think\Log::write('Resource select - resourceType: ' . $resourceType, 'debug');
         
         // 构建查询
         $query = $this->model->where('status', 1);
         
-        // 处理资源类型过滤（支持多种方式传递type参数）
-        $resourceType = null;
-        if (isset($custom['type']) && $custom['type']) {
-            // data-params='{"type":"xxx"}' 方式
-            $resourceType = $custom['type'];
-        } elseif ($typeParam) {
-            // 直接 type 参数
-            $resourceType = $typeParam;
-        } elseif ($paramsParam) {
-            // params 参数（JSON格式）
-            $params = is_string($paramsParam) ? json_decode($paramsParam, true) : $paramsParam;
-            if (is_array($params) && isset($params['type'])) {
-                $resourceType = $params['type'];
-            }
-        }
-        
+        // 应用资源类型过滤
         if ($resourceType) {
             $query->where('type', $resourceType);
         }
