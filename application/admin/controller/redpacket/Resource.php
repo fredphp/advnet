@@ -176,21 +176,30 @@ class Resource extends Backend
         $pagesize = $this->request->request("pageSize", 10, 'intval');
         // 搜索字段
         $searchfield = (array)$this->request->request("searchField/a");
-        // 自定义搜索条件
+        // 自定义搜索条件（data-params传递的参数）
         $custom = (array)$this->request->request("custom/a");
         
-        // 也支持直接的type参数
+        // 也支持直接的type参数和params参数
         $typeParam = $this->request->request("type");
+        $paramsParam = $this->request->request("params");
         
         // 构建查询
         $query = $this->model->where('status', 1);
         
-        // 处理资源类型过滤（支持custom.type和直接type参数）
+        // 处理资源类型过滤（支持多种方式传递type参数）
         $resourceType = null;
         if (isset($custom['type']) && $custom['type']) {
+            // data-params='{"type":"xxx"}' 方式
             $resourceType = $custom['type'];
         } elseif ($typeParam) {
+            // 直接 type 参数
             $resourceType = $typeParam;
+        } elseif ($paramsParam) {
+            // params 参数（JSON格式）
+            $params = is_string($paramsParam) ? json_decode($paramsParam, true) : $paramsParam;
+            if (is_array($params) && isset($params['type'])) {
+                $resourceType = $params['type'];
+            }
         }
         
         if ($resourceType) {

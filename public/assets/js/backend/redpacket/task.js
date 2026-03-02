@@ -76,7 +76,7 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
                     }
                 });
                 
-                // 任务类型切换 - 核心逻辑（任务类型=资源类型，无需映射）
+                // 任务类型切换 - 核心逻辑
                 $('#c-task_type').on('change', function() {
                     var taskType = $(this).val();
                     var $resourceArea = $('.resource-select-area');
@@ -86,7 +86,7 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
                     if (taskType && taskType !== 'sign_in') {
                         var typeName = typeList[taskType] || '资源';
                         
-                        // 更新当前资源类型（任务类型就是资源类型）
+                        // 更新当前资源类型
                         currentResourceType = taskType;
                         
                         // 显示资源选择区域
@@ -95,31 +95,17 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
                         // 更新提示文字
                         $('.resource-type-tip').text('请选择【' + typeName + '】类型的资源（可在资源管理中添加）');
                         
+                        // 更新 selectpage 的 data-params 属性
+                        $resourceId.attr('data-params', JSON.stringify({type: taskType}));
+                        
                         // 清空当前值（编辑页面有初始值时不清空）
                         var initId = $('#c-resource_id_init').val();
                         if (!initId) {
-                            $resourceId.val('').removeAttr('data-value');
+                            $resourceId.val('');
                         }
                         
-                        // 销毁现有的selectpage实例
-                        Controller.api.destroySelectPage($resourceId);
-                        
-                        // 重新初始化selectpage（任务类型直接作为资源类型传递）
-                        Controller.api.initSelectPage($resourceId, taskType);
-                        
-                        // 如果有初始值，设置初始值
-                        if (initId) {
-                            var initName = $('#c-resource_name_init').val();
-                            setTimeout(function() {
-                                $resourceId.val(initId);
-                                $resourceId.attr('data-value', initId);
-                                // 尝试设置selectpage的显示值
-                                var selectPageObj = $resourceId.data('selectPageObject');
-                                if (selectPageObj && selectPageObj.setInitValue) {
-                                    selectPageObj.setInitValue(initId, initName || initId);
-                                }
-                            }, 200);
-                        }
+                        // 刷新 selectpage 组件
+                        Controller.api.refreshSelectPage($resourceId, taskType);
                         
                         // 清空资源信息展示
                         if (!initId) {
@@ -128,7 +114,6 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
                     } else {
                         $resourceArea.hide();
                         $('.resource-info-area').hide();
-                        Controller.api.destroySelectPage($resourceId);
                     }
                 });
                 
@@ -186,60 +171,49 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
                     // 延迟触发，确保selectpage已加载
                     setTimeout(function() {
                         $('#c-task_type').trigger('change');
-                    }, 100);
+                    }, 300);
                 }
             },
             
             /**
-             * 初始化selectpage
+             * 刷新 selectpage 组件
              */
-            initSelectPage: function($element, resourceType) {
-                require(['selectpage'], function() {
-                    $element.selectPage({
-                        showField: 'name',
-                        keyField: 'id',
-                        searchField: 'name',
-                        // 关键修复：添加正确的URL
-                        url: Backend.api.fixurl('redpacket/resource/select'),
-                        // 传递类型参数
-                        data: { type: resourceType },
-                        pagination: true,
-                        pageSize: 10,
-                        // 确保参数正确传递
-                        params: function() {
-                            return { type: resourceType };
-                        },
-                        eAjaxSuccess: function(data) {
-                            data.list = data.list || [];
-                            data.totalRow = data.total || data.list.length;
-                            return data;
-                        },
-                        eSelect: function(data) {
-                            // 触发change事件
-                            $element.trigger('change');
-                        }
-                    });
-                });
-            },
-            
-            /**
-             * 销毁selectpage实例
-             */
-            destroySelectPage: function($element) {
+            refreshSelectPage: function($element, resourceType) {
+                // 获取 selectpage 实例
                 var selectPageObj = $element.data('selectPageObject');
+                
                 if (selectPageObj) {
-                    try {
-                        selectPageObj.clear();
-                        selectPageObj.destroy();
-                    } catch(e) {
-                        // 忽略错误
-                    }
-                    $element.removeData('selectPageObject');
+                    // 更新参数并刷新
+                    selectPageObj.option.data = { type: resourceType };
+                    selectPageObj.option.params = function() {
+                        return { type: resourceType };
+                    };
+                    // 清空当前选择
+                    selectPageObj.clear();
+                    // 刷新列表
+                    selectPageObj.init();
+                } else {
+                    // 如果没有实例，手动初始化
+                    require(['selectpage'], function() {
+                        $element.selectPage({
+                            showField: 'name',
+                            keyField: 'id',
+                            searchField: 'name',
+                            data: { type: resourceType },
+                            params: function() {
+                                return { type: resourceType };
+                            },
+                            eAjaxSuccess: function(data) {
+                                data.list = data.list || [];
+                                data.totalRow = data.total || data.list.length;
+                                return data;
+                            },
+                            eSelect: function(data) {
+                                $element.trigger('change');
+                            }
+                        });
+                    });
                 }
-                // 清除selectpage生成的DOM
-                $element.siblings('.sp_container').remove();
-                $element.siblings('.sp_input').remove();
-                $element.show();
             }
         }
     };
