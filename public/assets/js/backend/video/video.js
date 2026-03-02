@@ -24,21 +24,41 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
                 columns: [
                     [
                         {checkbox: true},
-                        {field: 'id', title: 'ID', sortable: true},
-                        {field: 'title', title: '视频标题', operate: 'LIKE'},
-                        {field: 'cover_url', title: '封面', events: Table.api.events.image, formatter: Table.api.formatter.image, operate: false},
-                        {field: 'user_id', title: '发布者ID', operate: '='},
-                        {field: 'duration', title: '时长(秒)', operate: 'BETWEEN', sortable: true},
-                        {field: 'view_count', title: '播放量', operate: 'BETWEEN', sortable: true},
-                        {field: 'reward_coin', title: '奖励金币', operate: 'BETWEEN', sortable: true},
-                        {field: 'status', title: '状态', searchList: {"0":"待审核","1":"已发布","2":"已下架","3":"已封禁","4":"草稿"}, formatter: Table.api.formatter.status},
-                        {field: 'createtime', title: '创建时间', operate: 'RANGE', addclass: 'datetimerange', formatter: Table.api.formatter.datetime, sortable: true},
+                        {field: 'id', title: 'ID', sortable: true, width: '60px'},
+                        {field: 'cover_url', title: '封面', events: Table.api.events.image, formatter: Table.api.formatter.image, operate: false, width: '80px'},
+                        {field: 'title', title: '视频标题', operate: 'LIKE', width: '200px', formatter: Table.api.formatter.title},
+                        {field: 'duration', title: '时长', operate: false, sortable: true, width: '70px', formatter: function(value) {
+                            if (!value) return '0秒';
+                            var minutes = Math.floor(value / 60);
+                            var seconds = value % 60;
+                            if (minutes > 0) {
+                                return minutes + '分' + seconds + '秒';
+                            }
+                            return seconds + '秒';
+                        }},
+                        {field: 'view_count', title: '播放', operate: 'BETWEEN', sortable: true, width: '70px', formatter: function(value) {
+                            return '<span class="text-primary">' + (value || 0) + '</span>';
+                        }},
+                        {field: 'like_count', title: '点赞', operate: false, sortable: true, width: '70px', formatter: function(value) {
+                            return '<span class="text-danger">' + (value || 0) + '</span>';
+                        }},
+                        {field: 'collect_count', title: '收藏', operate: false, sortable: true, width: '70px', formatter: function(value) {
+                            return '<span class="text-warning">' + (value || 0) + '</span>';
+                        }},
+                        {field: 'comment_count', title: '评论', operate: false, sortable: true, width: '70px', formatter: function(value) {
+                            return '<span class="text-info">' + (value || 0) + '</span>';
+                        }},
+                        {field: 'reward_coin', title: '奖励金币', operate: 'BETWEEN', sortable: true, width: '80px'},
+                        {field: 'reward_count', title: '奖励人数', operate: 'BETWEEN', sortable: true, width: '80px'},
+                        {field: 'status', title: '状态', searchList: {"0":"待审核","1":"已发布","2":"已下架","3":"已封禁","4":"草稿"}, formatter: Table.api.formatter.status, width: '80px'},
+                        {field: 'createtime', title: '创建时间', operate: 'RANGE', addclass: 'datetimerange', formatter: Table.api.formatter.datetime, sortable: true, width: '150px'},
                         {
                             field: 'operate', 
                             title: '操作', 
                             table: table, 
                             events: Table.api.events.operate, 
                             formatter: Table.api.formatter.operate,
+                            width: '150px',
                             buttons: [
                                 {
                                     name: 'stats',
@@ -96,9 +116,54 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
         },
         add: function () {
             Controller.api.bindevent();
+            
+            // 视频URL切换逻辑
+            $('a[data-toggle="tab"]').on('shown.bs.tab', function (e) {
+                var target = $(e.target).attr('href');
+                if (target === '#tab-url') {
+                    // 切换到链接输入时，清空上传输入
+                    $('#c-video_url_upload').val('');
+                } else {
+                    // 切换到上传时，清空链接输入
+                    $('#c-video_url_link').val('');
+                }
+            });
+            
+            // 视频上传按钮自定义处理
+            $(document).on('click', '.faupload-video', function() {
+                var input_id = $(this).data('input-id');
+                var mimetype = $(this).data('mimetype');
+                var maxsize = $(this).data('maxsize') || '100mb';
+                
+                // 打开上传对话框
+                Fast.api.open('general/attachment/select?element_id=' + input_id + '&multiple=false&mimetype=' + encodeURIComponent(mimetype) + '&maxsize=' + maxsize, '选择视频', {
+                    area: ['90%', '90%']
+                });
+            });
         },
         edit: function () {
             Controller.api.bindevent();
+            
+            // 视频URL切换逻辑
+            $('a[data-toggle="tab"]').on('shown.bs.tab', function (e) {
+                var target = $(e.target).attr('href');
+                if (target === '#tab-url') {
+                    $('#c-video_url_upload').val('');
+                } else {
+                    $('#c-video_url_link').val('');
+                }
+            });
+            
+            // 视频上传按钮自定义处理
+            $(document).on('click', '.faupload-video', function() {
+                var input_id = $(this).data('input-id');
+                var mimetype = $(this).data('mimetype');
+                var maxsize = $(this).data('maxsize') || '100mb';
+                
+                Fast.api.open('general/attachment/select?element_id=' + input_id + '&multiple=false&mimetype=' + encodeURIComponent(mimetype) + '&maxsize=' + maxsize, '选择视频', {
+                    area: ['90%', '90%']
+                });
+            });
         },
         select: function () {
             // 初始化表格参数配置

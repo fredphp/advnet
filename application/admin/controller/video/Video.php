@@ -50,6 +50,25 @@ class Video extends Backend
                 $this->error(__('参数不能为空'));
             }
 
+            // 处理视频URL：如果填写了链接，使用链接；否则使用上传的URL
+            if (!empty($params['video_url_link'])) {
+                $params['video_url'] = $params['video_url_link'];
+            }
+            unset($params['video_url_link']);
+
+            // 验证视频URL
+            if (empty($params['video_url'])) {
+                $this->error('请上传视频或输入视频链接');
+            }
+
+            // 处理推荐设置
+            $params['is_recommend'] = isset($params['is_recommend']) ? 1 : 0;
+            $params['is_hot'] = isset($params['is_hot']) ? 1 : 0;
+            $params['is_original'] = isset($params['is_original']) ? 1 : 0;
+            
+            // 处理奖励设置
+            $params['reward_enabled'] = !empty($params['reward_coin']) ? 1 : 0;
+
             $params['createtime'] = time();
             $params['updatetime'] = time();
 
@@ -78,6 +97,25 @@ class Video extends Backend
             if (!$params) {
                 $this->error(__('参数不能为空'));
             }
+
+            // 处理视频URL：如果填写了链接，使用链接；否则使用上传的URL
+            if (!empty($params['video_url_link'])) {
+                $params['video_url'] = $params['video_url_link'];
+            }
+            unset($params['video_url_link']);
+
+            // 验证视频URL
+            if (empty($params['video_url'])) {
+                $this->error('请上传视频或输入视频链接');
+            }
+
+            // 处理推荐设置
+            $params['is_recommend'] = isset($params['is_recommend']) ? 1 : 0;
+            $params['is_hot'] = isset($params['is_hot']) ? 1 : 0;
+            $params['is_original'] = isset($params['is_original']) ? 1 : 0;
+            
+            // 处理奖励设置
+            $params['reward_enabled'] = !empty($params['reward_coin']) ? 1 : 0;
 
             $params['updatetime'] = time();
             $result = $row->allowField(true)->save($params);
