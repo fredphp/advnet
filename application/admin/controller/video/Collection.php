@@ -29,6 +29,11 @@ class Collection extends Backend
         if ($this->request->isAjax()) {
             list($where, $sort, $order, $offset, $limit) = $this->buildparams();
 
+            // 映射排序字段：weigh -> sort
+            if ($sort === 'weigh') {
+                $sort = 'sort';
+            }
+
             $total = $this->model->where($where)->count();
             $list = $this->model->where($where)
                 ->order($sort, $order)
