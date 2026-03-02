@@ -236,7 +236,7 @@ class Video extends Backend
         $watchStats = Db::name('video_watch_record')
             ->where('video_id', $videoId)
             ->field('COUNT(*) as total_watches, COUNT(DISTINCT user_id) as unique_viewers, 
-                     AVG(watch_duration) as avg_duration, SUM(coin_earned) as total_coin')
+                     AVG(watch_duration) as avg_duration, SUM(reward_coin) as total_coin')
             ->find();
 
         // 每日统计
@@ -253,7 +253,7 @@ class Video extends Backend
         $topViewers = Db::name('video_watch_record')
             ->alias('vwr')
             ->join('user u', 'u.id = vwr.user_id', 'LEFT')
-            ->field('u.id, u.username, u.nickname, COUNT(*) as watch_count, SUM(vwr.coin_earned) as coin_earned')
+            ->field('u.id, u.username, u.nickname, COUNT(*) as watch_count, SUM(vwr.reward_coin) as coin_earned')
             ->where('vwr.video_id', $videoId)
             ->group('vwr.user_id')
             ->order('watch_count', 'desc')
