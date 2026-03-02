@@ -2,9 +2,7 @@
 -- Migration: Add deletetime field and create missing tables
 -- Date: 2026-03-01
 -- Updated: 2026-03-02
--- Description: This migration adds deletetime field to tables
---              that use SoftDelete trait in their models
---              and creates missing video table
+-- Description: PDO兼容版本 - 只创建必要的表和菜单
 -- =====================================================
 
 -- =====================================================
@@ -37,112 +35,30 @@ CREATE TABLE IF NOT EXISTS `advn_video` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='视频表';
 
 -- =====================================================
--- Fix 2: advn_user table (member module)
--- Add deletetime field using stored procedure
--- =====================================================
-
--- 创建辅助存储过程：添加字段（如果表存在且字段不存在）
-DROP PROCEDURE IF EXISTS add_column_if_not_exists;
-
-DELIMITER //
-CREATE PROCEDURE add_column_if_not_exists(
-    IN table_name VARCHAR(100),
-    IN column_name VARCHAR(100),
-    IN column_definition VARCHAR(500)
-)
-BEGIN
-    DECLARE column_count INT DEFAULT 0;
-
-    -- 检查字段是否已存在
-    SELECT COUNT(*) INTO column_count
-    FROM information_schema.columns
-    WHERE table_schema = DATABASE()
-    AND table_name = table_name
-    AND column_name = column_name;
-
-    IF column_count = 0 THEN
-        SET @sql = CONCAT('ALTER TABLE `', table_name, '` ADD COLUMN `', column_name, '` ', column_definition);
-        PREPARE stmt FROM @sql;
-        EXECUTE stmt;
-        DEALLOCATE PREPARE stmt;
-    END IF;
-END //
-DELIMITER ;
-
--- Add deletetime field to advn_user table
-CALL add_column_if_not_exists('advn_user', 'deletetime', 'BIGINT(16) DEFAULT NULL COMMENT "删除时间" AFTER `updatetime`');
-
--- Add index if not exists
-DROP PROCEDURE IF EXISTS add_index_if_not_exists;
-
-DELIMITER //
-CREATE PROCEDURE add_index_if_not_exists(
-    IN table_name VARCHAR(100),
-    IN index_name VARCHAR(100),
-    IN index_columns VARCHAR(500)
-)
-BEGIN
-    DECLARE index_count INT DEFAULT 0;
-
-    -- 检查索引是否已存在
-    SELECT COUNT(*) INTO index_count
-    FROM information_schema.statistics
-    WHERE table_schema = DATABASE()
-    AND table_name = table_name
-    AND index_name = index_name;
-
-    IF index_count = 0 THEN
-        SET @sql = CONCAT('ALTER TABLE `', table_name, '` ADD INDEX `', index_name, '` (', index_columns, ')');
-        PREPARE stmt FROM @sql;
-        EXECUTE stmt;
-        DEALLOCATE PREPARE stmt;
-    END IF;
-END //
-DELIMITER ;
-
--- Add index for deletetime
-CALL add_index_if_not_exists('advn_user', 'idx_deletetime', '`deletetime`');
-
--- 清理存储过程
-DROP PROCEDURE IF EXISTS add_column_if_not_exists;
-DROP PROCEDURE IF EXISTS add_index_if_not_exists;
-
--- =====================================================
 -- Add menu entries for member and video modules
 -- =====================================================
 
--- Add member menu
-INSERT INTO `advn_auth_rule` (`type`, `pid`, `name`, `title`, `icon`, `url`, `condition`, `remark`, `ismenu`, `menutype`, `extend`, `py`, `pinyin`, `createtime`, `updatetime`, `weigh`, `status`)
-SELECT 'file', 0, 'member', '会员管理', 'fa fa-user', '', '', '', 1, NULL, '', 'hygl', 'huiyuanguanli', UNIX_TIMESTAMP(), UNIX_TIMESTAMP(), 0, 'normal'
-FROM DUAL
-WHERE NOT EXISTS (SELECT 1 FROM `advn_auth_rule` WHERE `name` = 'member');
+-- Add member menu (ignore if exists)
+INSERT IGNORE INTO `advn_auth_rule` (`type`, `pid`, `name`, `title`, `icon`, `url`, `condition`, `remark`, `ismenu`, `menutype`, `extend`, `py`, `pinyin`, `createtime`, `updatetime`, `weigh`, `status`)
+VALUES ('file', 0, 'member', '会员管理', 'fa fa-user', '', '', '', 1, NULL, '', 'hygl', 'huiyuanguanli', UNIX_TIMESTAMP(), UNIX_TIMESTAMP(), 0, 'normal');
 
 -- Add member/user menu
-INSERT INTO `advn_auth_rule` (`type`, `pid`, `name`, `title`, `icon`, `url`, `condition`, `remark`, `ismenu`, `menutype`, `extend`, `py`, `pinyin`, `createtime`, `updatetime`, `weigh`, `status`)
-SELECT 'file', (SELECT id FROM `advn_auth_rule` WHERE `name` = 'member' LIMIT 1), 'member/user', '会员列表', 'fa fa-users', '', '', '', 1, NULL, '', 'hylb', 'huiyuanliebiao', UNIX_TIMESTAMP(), UNIX_TIMESTAMP(), 0, 'normal'
-FROM DUAL
-WHERE NOT EXISTS (SELECT 1 FROM `advn_auth_rule` WHERE `name` = 'member/user');
+INSERT IGNORE INTO `advn_auth_rule` (`type`, `pid`, `name`, `title`, `icon`, `url`, `condition`, `remark`, `ismenu`, `menutype`, `extend`, `py`, `pinyin`, `createtime`, `updatetime`, `weigh`, `status`)
+VALUES ('file', (SELECT id FROM (SELECT id FROM `advn_auth_rule` WHERE `name` = 'member' LIMIT 1) AS tmp), 'member/user', '会员列表', 'fa fa-users', '', '', '', 1, NULL, '', 'hylb', 'huiyuanliebiao', UNIX_TIMESTAMP(), UNIX_TIMESTAMP(), 0, 'normal');
 
 -- Add member/user/statistics menu
-INSERT INTO `advn_auth_rule` (`type`, `pid`, `name`, `title`, `icon`, `url`, `condition`, `remark`, `ismenu`, `menutype`, `extend`, `py`, `pinyin`, `createtime`, `updatetime`, `weigh`, `status`)
-SELECT 'file', (SELECT id FROM `advn_auth_rule` WHERE `name` = 'member/user' LIMIT 1), 'member/user/statistics', '会员统计', 'fa fa-bar-chart', '', '', '', 0, NULL, '', 'hytj', 'huiyuantongji', UNIX_TIMESTAMP(), UNIX_TIMESTAMP(), 0, 'normal'
-FROM DUAL
-WHERE NOT EXISTS (SELECT 1 FROM `advn_auth_rule` WHERE `name` = 'member/user/statistics');
+INSERT IGNORE INTO `advn_auth_rule` (`type`, `pid`, `name`, `title`, `icon`, `url`, `condition`, `remark`, `ismenu`, `menutype`, `extend`, `py`, `pinyin`, `createtime`, `updatetime`, `weigh`, `status`)
+VALUES ('file', (SELECT id FROM (SELECT id FROM `advn_auth_rule` WHERE `name` = 'member/user' LIMIT 1) AS tmp), 'member/user/statistics', '会员统计', 'fa fa-bar-chart', '', '', '', 0, NULL, '', 'hytj', 'huiyuantongji', UNIX_TIMESTAMP(), UNIX_TIMESTAMP(), 0, 'normal');
 
 -- Add video menu
-INSERT INTO `advn_auth_rule` (`type`, `pid`, `name`, `title`, `icon`, `url`, `condition`, `remark`, `ismenu`, `menutype`, `extend`, `py`, `pinyin`, `createtime`, `updatetime`, `weigh`, `status`)
-SELECT 'file', 0, 'video', '视频管理', 'fa fa-video-camera', '', '', '', 1, NULL, '', 'spgl', 'shipinguanli', UNIX_TIMESTAMP(), UNIX_TIMESTAMP(), 0, 'normal'
-FROM DUAL
-WHERE NOT EXISTS (SELECT 1 FROM `advn_auth_rule` WHERE `name` = 'video');
+INSERT IGNORE INTO `advn_auth_rule` (`type`, `pid`, `name`, `title`, `icon`, `url`, `condition`, `remark`, `ismenu`, `menutype`, `extend`, `py`, `pinyin`, `createtime`, `updatetime`, `weigh`, `status`)
+VALUES ('file', 0, 'video', '视频管理', 'fa fa-video-camera', '', '', '', 1, NULL, '', 'spgl', 'shipinguanli', UNIX_TIMESTAMP(), UNIX_TIMESTAMP(), 0, 'normal');
 
 -- Add video/video menu
-INSERT INTO `advn_auth_rule` (`type`, `pid`, `name`, `title`, `icon`, `url`, `condition`, `remark`, `ismenu`, `menutype`, `extend`, `py`, `pinyin`, `createtime`, `updatetime`, `weigh`, `status`)
-SELECT 'file', (SELECT id FROM `advn_auth_rule` WHERE `name` = 'video' LIMIT 1), 'video/video', '视频列表', 'fa fa-list', '', '', '', 1, NULL, '', 'splb', 'shipinliebiao', UNIX_TIMESTAMP(), UNIX_TIMESTAMP(), 0, 'normal'
-FROM DUAL
-WHERE NOT EXISTS (SELECT 1 FROM `advn_auth_rule` WHERE `name` = 'video/video');
+INSERT IGNORE INTO `advn_auth_rule` (`type`, `pid`, `name`, `title`, `icon`, `url`, `condition`, `remark`, `ismenu`, `menutype`, `extend`, `py`, `pinyin`, `createtime`, `updatetime`, `weigh`, `status`)
+VALUES ('file', (SELECT id FROM (SELECT id FROM `advn_auth_rule` WHERE `name` = 'video' LIMIT 1) AS tmp), 'video/video', '视频列表', 'fa fa-list', '', '', '', 1, NULL, '', 'splb', 'shipinliebiao', UNIX_TIMESTAMP(), UNIX_TIMESTAMP(), 0, 'normal');
 
 -- =====================================================
--- To execute this migration, run:
+-- 执行说明:
 -- mysql -u username -p database_name < sql/migrations/20260301_add_deletetime_fields.sql
--- Or execute the statements directly in your MySQL client
 -- =====================================================
