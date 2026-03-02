@@ -19,6 +19,9 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
         'link': '分享链接'
     };
     
+    // 当前资源类型
+    var currentResourceType = null;
+    
     var Controller = {
         index: function () {
             // 初始化表格配置
@@ -109,61 +112,54 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
                         }
                         var typeName = resourceTypeNames[resourceType] || '资源';
                         
+                        // 更新当前资源类型
+                        currentResourceType = resourceType;
+                        
                         // 显示资源选择区域
                         $resourceArea.show();
                         
                         // 更新提示文字
                         $('.resource-type-tip').text('请选择' + typeName + '资源（可在资源管理中添加）');
                         
-                        // 清空当前值
-                        $resourceId.val('').removeAttr('data-value');
-                        
-                        // 更新selectpage的数据源参数
-                        $resourceId.attr('data-params', JSON.stringify({custom: {type: resourceType}}));
-                        
-                        // 如果selectpage已初始化，需要重新初始化
-                        var selectPageObj = $resourceId.data('selectPageObject');
-                        if (selectPageObj) {
-                            selectPageObj.clear();
-                            // 更新option中的params
-                            selectPageObj.option.params = function() {
-                                return { custom: { type: resourceType } };
-                            };
-                        } else {
-                            // 初始化selectpage
-                            require(['selectpage'], function() {
-                                $resourceId.selectPage({
-                                    showField: 'name',
-                                    keyField: 'id',
-                                    searchField: 'name',
-                                    data: { custom: { type: resourceType } },
-                                    params: function() {
-                                        return { custom: { type: resourceType } };
-                                    },
-                                    eAjaxSuccess: function(data) {
-                                        data.list = data.list || [];
-                                        data.totalRow = data.total || data.list.length;
-                                        return data;
-                                    }
-                                });
-                            });
+                        // 清空当前值（仅在切换类型时）
+                        var initId = $('#c-resource_id_init').val();
+                        if (!initId) {
+                            $resourceId.val('').removeAttr('data-value');
                         }
                         
-                        // 清空资源信息展示
-                        $('.resource-info-area').hide();
+                        // 销毁现有的selectpage实例
+                        Controller.api.destroySelectPage($resourceId);
+                        
+                        // 重新初始化selectpage
+                        Controller.api.initSelectPage($resourceId, resourceType);
+                        
+                        // 如果有初始值，设置初始值
+                        if (initId) {
+                            var initName = $('#c-resource_name_init').val();
+                            setTimeout(function() {
+                                $resourceId.val(initId);
+                                $resourceId.attr('data-value', initId);
+                                // 尝试设置selectpage的显示值
+                                var selectPageObj = $resourceId.data('selectPageObject');
+                                if (selectPageObj) {
+                                    selectPageObj.setInitValue(initId, initName || initId);
+                                }
+                            }, 200);
+                        }
                     } else {
                         $resourceArea.hide();
                         $('.resource-info-area').hide();
+                        Controller.api.destroySelectPage($resourceId);
                     }
                 });
                 
                 // 资源选择变化时显示资源信息
-                $('#c-resource_id').on('selectpage:selected change', function(e, data) {
+                $(document).on('change', '#c-resource_id', function() {
                     var resourceId = $(this).val();
                     if (resourceId) {
                         // 获取资源详情
                         $.ajax({
-                            url: 'redpacket/resource/detail',
+                            url: Backend.api.fixurl('redpacket/resource/detail'),
                             type: 'GET',
                             data: { ids: resourceId },
                             dataType: 'json',
@@ -208,8 +204,59 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
                 // 页面加载时如果已有任务类型，触发change事件
                 var initTaskType = $('#c-task_type').val();
                 if (initTaskType) {
-                    $('#c-task_type').trigger('change');
+                    // 延迟触发，确保selectpage已加载
+                    setTimeout(function() {
+                        $('#c-task_type').trigger('change');
+                    }, 100);
                 }
+            },
+            
+            /**
+             * 初始化selectpage
+             */
+            initSelectPage: function($element, resourceType) {
+                require(['selectpage'], function() {
+                    $element.selectPage({
+                        showField: 'name',
+                        keyField: 'id',
+                        searchField: 'name',
+                        data: { type: resourceType },
+                        pagination: true,
+                        pageSize: 10,
+                        params: function() {
+                            return { type: resourceType };
+                        },
+                        eAjaxSuccess: function(data) {
+                            data.list = data.list || [];
+                            data.totalRow = data.total || data.list.length;
+                            return data;
+                        },
+                        eSelect: function(data) {
+                            // 触发change事件
+                            $element.trigger('change');
+                        }
+                    });
+                });
+            },
+            
+            /**
+             * 销毁selectpage实例
+             */
+            destroySelectPage: function($element) {
+                var selectPageObj = $element.data('selectPageObject');
+                if (selectPageObj) {
+                    try {
+                        selectPageObj.clear();
+                        selectPageObj.destroy();
+                    } catch(e) {
+                        // 忽略错误
+                    }
+                    $element.removeData('selectPageObject');
+                }
+                // 清除selectpage生成的DOM
+                $element.siblings('.sp_container').remove();
+                $element.siblings('.sp_input').remove();
+                $element.show();
             }
         }
     };

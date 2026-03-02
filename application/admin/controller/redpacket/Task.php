@@ -181,13 +181,13 @@ class Task extends Backend
     {
         $taskType = $this->request->get('task_type');
         if (!$taskType) {
-            $this->error('请指定任务类型');
+            return json(['code' => 0, 'msg' => '请指定任务类型']);
         }
         
         // 获取对应的资源类型
         $resourceType = \app\common\model\RedPacketResource::getResourceTypeByTaskType($taskType);
         if (!$resourceType) {
-            $this->error('未找到对应的资源类型');
+            return json(['code' => 0, 'msg' => '未找到对应的资源类型']);
         }
         
         // 获取资源列表
@@ -211,7 +211,25 @@ class Task extends Backend
             ];
         }
         
-        $this->success('获取成功', null, $data);
+        return json(['code' => 1, 'msg' => '获取成功', 'data' => $data, 'total' => count($data)]);
+    }
+    
+    /**
+     * 获取资源详情
+     */
+    public function getResourceDetail()
+    {
+        $id = $this->request->get('id');
+        if (!$id) {
+            return json(['code' => 0, 'msg' => '参数错误']);
+        }
+        
+        $resource = \app\common\model\RedPacketResource::get($id);
+        if (!$resource) {
+            return json(['code' => 0, 'msg' => '资源不存在']);
+        }
+        
+        return json(['code' => 1, 'msg' => '获取成功', 'data' => $resource->toArray()]);
     }
 
     /**

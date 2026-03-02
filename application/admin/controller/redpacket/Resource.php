@@ -179,19 +179,30 @@ class Resource extends Backend
         // 自定义搜索条件
         $custom = (array)$this->request->request("custom/a");
         
+        // 也支持直接的type参数
+        $typeParam = $this->request->request("type");
+        
         // 构建查询
         $query = $this->model->where('status', 1);
         
-        // 处理资源类型过滤
+        // 处理资源类型过滤（支持custom.type和直接type参数）
+        $resourceType = null;
         if (isset($custom['type']) && $custom['type']) {
-            $query->where('type', $custom['type']);
+            $resourceType = $custom['type'];
+        } elseif ($typeParam) {
+            $resourceType = $typeParam;
+        }
+        
+        if ($resourceType) {
+            $query->where('type', $resourceType);
         }
         
         // 处理关键词搜索
         if ($word) {
             $word = array_filter(array_unique($word));
             if (count($word) > 0) {
-                $query->where('name', 'like', '%' . reset($word) . '%');
+                $keyword = reset($word);
+                $query->where('name', 'like', '%' . $keyword . '%');
             }
         }
         
