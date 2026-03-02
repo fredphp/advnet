@@ -1,9 +1,21 @@
 define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefined, Backend, Table, Form) {
     var Controller = {
         index: function () {
+            // 初始化表格参数配置
+            Table.api.init({
+                extend: {
+                    index_url: 'migration/log/index',
+                    del_url: 'migration/log/del',
+                    multi_url: 'migration/log/multi',
+                    table: 'migration_log',
+                }
+            });
+
             var table = $("#table");
+
+            // 初始化表格
             table.bootstrapTable({
-                url: 'migration/log/index',
+                url: $.fn.bootstrapTable.defaults.extend.index_url,
                 pk: 'id',
                 sortName: 'id',
                 sortOrder: 'desc',
@@ -18,6 +30,8 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
                     ]
                 ]
             });
+
+            // 为表格绑定事件
             Table.api.bindevent(table);
         },
         api: {
