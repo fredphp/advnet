@@ -93,7 +93,7 @@ class Ajax extends Backend
                 } catch (UploadException $e) {
                     $this->error($e->getMessage());
                 }
-                $this->success(__('Uploaded successful'), '', ['url' => $attachment->url, 'fullurl' => cdnurl($attachment->url, true)]);
+                $this->success(__('Uploaded successful'), ['url' => $attachment->url, 'fullurl' => cdnurl($attachment->url, true)]);
             } elseif ($method == 'clean') {
                 //删除冗余的分片文件
                 try {
@@ -126,7 +126,7 @@ class Ajax extends Backend
                 $this->error($e->getMessage());
             }
 
-            $this->success(__('Uploaded successful'), '', ['url' => $attachment->url, 'fullurl' => cdnurl($attachment->url, true)]);
+            $this->success(__('Uploaded successful'), ['url' => $attachment->url, 'fullurl' => cdnurl($attachment->url, true)]);
         }
     }
 
@@ -278,7 +278,7 @@ class Ajax extends Backend
 
         $categorylist = Db::name('category')->where($where)->field('id as value,name')->order('weigh desc,id desc')->select();
 
-        $this->success('', '', $categorylist);
+        $this->success('', $categorylist);
     }
 
     /**
@@ -305,7 +305,7 @@ class Ajax extends Backend
             }
         }
         $provincelist = Db::name('area')->where($where)->field('id as value,name')->select();
-        $this->success('', '', $provincelist);
+        $this->success('', $provincelist);
     }
 
     /**
