@@ -32,7 +32,7 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
                             "video": "视频",
                             "link": "分享链接"
                         }, formatter: Table.api.formatter.normal},
-                        {field: 'logo', title: '图标', events: Table.api.events.image, formatter: Table.api.formatter.image},
+                        {field: 'logo', title: '图标', events: Table.api.events.image, formatter: Table.api.formatter.image, operate: false},
                         {field: 'name', title: '资源名称', operate: 'LIKE'},
                         {field: 'description', title: '描述', operate: false},
                         {field: 'url', title: '链接', operate: false, formatter: function(value) {
@@ -51,13 +51,26 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
         },
         add: function () {
             Controller.api.bindevent();
+            Controller.api.initTypeChange();
         },
         edit: function () {
             Controller.api.bindevent();
+            Controller.api.initTypeChange();
         },
         api: {
             bindevent: function () {
                 Form.api.bindevent($("form[role=form]"));
+            },
+            initTypeChange: function() {
+                // 根据资源类型显示/隐藏对应字段
+                $('#c-type').on('change', function() {
+                    var type = $(this).val();
+                    $('.type-field').hide();
+                    $('.type-' + type).show();
+                });
+                
+                // 页面加载时触发一次
+                $('#c-type').trigger('change');
             }
         }
     };
