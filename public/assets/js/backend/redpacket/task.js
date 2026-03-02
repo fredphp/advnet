@@ -81,6 +81,8 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
                     var taskType = $(this).val();
                     var $resourceArea = $('.resource-select-area');
                     var $resourceId = $('#c-resource_id');
+                    var initId = $('#c-resource_id_init').val();
+                    var initTaskType = $resourceId.attr('data-init-task-type');
                     
                     // 签到任务不需要选择资源
                     if (taskType && taskType !== 'sign_in') {
@@ -98,19 +100,14 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
                         // 更新 selectpage 的 data-params 属性
                         $resourceId.attr('data-params', JSON.stringify({type: taskType}));
                         
-                        // 清空当前值（编辑页面有初始值时不清空）
-                        var initId = $('#c-resource_id_init').val();
-                        if (!initId) {
+                        // 判断是否需要清空值：如果任务类型发生变化，则清空
+                        if (initTaskType && initTaskType !== taskType) {
                             $resourceId.val('');
+                            $('.resource-info-area').hide();
                         }
                         
                         // 刷新 selectpage 组件
                         Controller.api.refreshSelectPage($resourceId, taskType);
-                        
-                        // 清空资源信息展示
-                        if (!initId) {
-                            $('.resource-info-area').hide();
-                        }
                     } else {
                         $resourceArea.hide();
                         $('.resource-info-area').hide();
@@ -168,6 +165,9 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
                 // 页面加载时如果已有任务类型，触发change事件
                 var initTaskType = $('#c-task_type').val();
                 if (initTaskType) {
+                    // 保存初始任务类型到 data 属性
+                    $('#c-resource_id').attr('data-init-task-type', initTaskType);
+                    
                     // 延迟触发，确保selectpage已加载
                     setTimeout(function() {
                         $('#c-task_type').trigger('change');
@@ -183,36 +183,21 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
                 var selectPageObj = $element.data('selectPageObject');
                 
                 if (selectPageObj) {
-                    // 更新参数并刷新
+                    // 更新 option 中的参数
                     selectPageObj.option.data = { type: resourceType };
                     selectPageObj.option.params = function() {
                         return { type: resourceType };
                     };
-                    // 清空当前选择
-                    selectPageObj.clear();
-                    // 刷新列表
+                    
+                    // 重新设置数据源URL参数
+                    var sourceUrl = selectPageObj.option.source;
+                    if (sourceUrl) {
+                        // 更新URL中的自定义参数
+                        selectPageObj.option.custom = { type: resourceType };
+                    }
+                    
+                    // 强制刷新列表数据
                     selectPageObj.init();
-                } else {
-                    // 如果没有实例，手动初始化
-                    require(['selectpage'], function() {
-                        $element.selectPage({
-                            showField: 'name',
-                            keyField: 'id',
-                            searchField: 'name',
-                            data: { type: resourceType },
-                            params: function() {
-                                return { type: resourceType };
-                            },
-                            eAjaxSuccess: function(data) {
-                                data.list = data.list || [];
-                                data.totalRow = data.total || data.list.length;
-                                return data;
-                            },
-                            eSelect: function(data) {
-                                $element.trigger('change');
-                            }
-                        });
-                    });
                 }
             }
         }

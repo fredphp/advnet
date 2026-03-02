@@ -39,7 +39,7 @@ var typeList = {:json_encode($typeList)};
                    data-primary-key="id"
                    data-pagination="true"
                    data-page-size="10"
-                   data-params='{"type":""}'
+                   data-params='{"type":"{$row.task_type}"}'
                    placeholder="请选择资源">
             <input type="hidden" id="c-resource_id_init" value="{$resourceInfo.id ?? ''}">
             <input type="hidden" id="c-resource_name_init" value="{$resourceInfo.name ?? ''}">
