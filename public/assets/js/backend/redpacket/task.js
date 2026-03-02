@@ -3,6 +3,9 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
     // 类型列表（从HTML页面传递的全局变量）
     // var typeList 在HTML模板中定义
     
+    // 全局变量存储当前资源类型，用于selectpage的动态参数
+    var currentResourceType = null;
+    
     var Controller = {
         index: function () {
             // 初始化表格配置
@@ -85,6 +88,9 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
                     if (taskType && taskType !== 'sign_in') {
                         var typeName = typeList[taskType] || '资源';
                         
+                        // 更新全局资源类型变量 - 关键！
+                        currentResourceType = taskType;
+                        
                         // 显示资源选择区域
                         $resourceArea.show();
                         
@@ -97,11 +103,12 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
                             $('.resource-info-area').hide();
                         }
                         
-                        // 刷新 selectpage 组件，传入新的类型参数
+                        // 刷新 selectpage 组件
                         Controller.api.refreshSelectPage($resourceId, taskType);
                     } else {
                         $resourceArea.hide();
                         $('.resource-info-area').hide();
+                        currentResourceType = null;
                     }
                 });
                 
@@ -153,11 +160,15 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
                     $('#c-new_user_days').closest('.form-group').hide();
                 }
                 
+                // 初始化资源类型的selectpage，使用动态params函数
+                Controller.api.initResourceSelectPage($('#c-resource_id'));
+                
                 // 页面加载时如果已有任务类型，触发change事件
                 var initTaskType = $('#c-task_type').val();
                 if (initTaskType) {
                     // 保存初始任务类型到 data 属性
                     $('#c-resource_id').attr('data-init-task-type', initTaskType);
+                    currentResourceType = initTaskType;
                     
                     // 延迟触发，确保selectpage已加载
                     setTimeout(function() {
@@ -167,59 +178,78 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
             },
             
             /**
-             * 刷新 selectpage 组件
-             * 关键：销毁现有实例并重新初始化，使用新的参数
+             * 初始化资源选择的selectpage
+             * 使用动态params函数来获取当前资源类型
              */
-            refreshSelectPage: function($element, resourceType) {
-                // 保存当前值
-                var currentValue = '';
-                var currentText = '';
-                
-                // 获取selectpage实例
-                var selectPageObj = $element.data('selectPageObject');
-                
-                if (selectPageObj) {
-                    // 获取当前隐藏字段的值
-                    currentValue = selectPageObj.elem.hidden ? selectPageObj.elem.hidden.val() : '';
-                    currentText = $element.val();
+            initResourceSelectPage: function($element) {
+                // 检查是否已初始化
+                if ($element.data('selectPageObject')) {
+                    return;
                 }
                 
-                // 销毁现有的selectpage实例
-                if (selectPageObj) {
-                    // 移除selectpage容器
-                    $element.closest('.sp_container').find('.sp_result_area').remove();
-                    $element.closest('.sp_container').find('.sp_element_box').remove();
-                    $element.closest('.sp_container').find('.sp_clear_btn').remove();
-                    // 移除容器类
-                    $element.closest('.sp_container').removeClass('sp_container');
-                    // 移除data
-                    $element.removeData('selectPageObject');
+                // 获取初始参数
+                var paramsAttr = $element.attr('data-params');
+                var initParams = {};
+                if (paramsAttr) {
+                    try {
+                        initParams = JSON.parse(paramsAttr);
+                        if (initParams.type) {
+                            currentResourceType = initParams.type;
+                        }
+                    } catch(e) {}
                 }
                 
-                // 更新data-params属性
-                $element.attr('data-params', JSON.stringify({type: resourceType}));
+                // 销毁可能存在的旧selectpage
+                $element.removeData('selectPageObject');
+                $element.closest('.sp_container').find('.sp_result_area, .sp_element_box, .sp_clear_btn').remove();
+                $element.closest('.sp_container').removeClass('sp_container');
+                $element.removeClass('sp_input');
                 
-                // 重新初始化selectpage
+                // 初始化selectpage，使用动态params函数
                 require(['selectpage'], function() {
                     $element.selectPage({
+                        // 动态参数函数 - 每次请求都会调用
+                        params: function() {
+                            return { type: currentResourceType };
+                        },
                         eAjaxSuccess: function(data) {
                             data.list = typeof data.rows !== 'undefined' ? data.rows : (typeof data.list !== 'undefined' ? data.list : []);
                             data.totalRow = typeof data.total !== 'undefined' ? data.total : (typeof data.totalRow !== 'undefined' ? data.totalRow : data.list.length);
                             return data;
                         }
                     });
-                    
-                    // 如果有之前选中的值，且任务类型没变，则恢复
-                    var initTaskType = $element.attr('data-init-task-type');
-                    if (currentValue && initTaskType === resourceType) {
-                        // 设置回原来的值
-                        $element.val(currentText);
-                        var newSelectPageObj = $element.data('selectPageObject');
-                        if (newSelectPageObj && newSelectPageObj.elem.hidden) {
-                            newSelectPageObj.elem.hidden.val(currentValue);
-                        }
-                    }
                 });
+            },
+            
+            /**
+             * 刷新 selectpage 组件
+             * 更新全局变量，然后刷新下拉列表
+             */
+            refreshSelectPage: function($element, resourceType) {
+                // 更新全局变量
+                currentResourceType = resourceType;
+                
+                // 更新data-params属性
+                $element.attr('data-params', JSON.stringify({type: resourceType}));
+                
+                // 获取selectpage实例
+                var selectPageObj = $element.data('selectPageObject');
+                
+                if (selectPageObj) {
+                    // 更新selectpage内部的params函数
+                    selectPageObj.option.params = function() {
+                        return { type: resourceType };
+                    };
+                    
+                    // 清空当前选择
+                    if (selectPageObj.elem.hidden) {
+                        selectPageObj.elem.hidden.val('');
+                    }
+                    $element.val('');
+                    
+                    // 重置分页
+                    selectPageObj.prop.current_page = 1;
+                }
             }
         }
     };
