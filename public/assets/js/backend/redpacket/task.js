@@ -1,7 +1,7 @@
 define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefined, Backend, Table, Form) {
     
-    // 类型列表（任务类型和资源类型统一，从后端传递）
-    var typeList = {:json_encode($typeList)};
+    // 类型列表（从HTML页面传递的全局变量）
+    // var typeList 在HTML模板中定义
     
     // 当前资源类型
     var currentResourceType = null;
@@ -95,8 +95,11 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
                         // 更新提示文字
                         $('.resource-type-tip').text('请选择【' + typeName + '】类型的资源（可在资源管理中添加）');
                         
-                        // 清空当前值
-                        $resourceId.val('').removeAttr('data-value');
+                        // 清空当前值（编辑页面有初始值时不清空）
+                        var initId = $('#c-resource_id_init').val();
+                        if (!initId) {
+                            $resourceId.val('').removeAttr('data-value');
+                        }
                         
                         // 销毁现有的selectpage实例
                         Controller.api.destroySelectPage($resourceId);
@@ -104,8 +107,24 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
                         // 重新初始化selectpage（任务类型直接作为资源类型传递）
                         Controller.api.initSelectPage($resourceId, taskType);
                         
+                        // 如果有初始值，设置初始值
+                        if (initId) {
+                            var initName = $('#c-resource_name_init').val();
+                            setTimeout(function() {
+                                $resourceId.val(initId);
+                                $resourceId.attr('data-value', initId);
+                                // 尝试设置selectpage的显示值
+                                var selectPageObj = $resourceId.data('selectPageObject');
+                                if (selectPageObj && selectPageObj.setInitValue) {
+                                    selectPageObj.setInitValue(initId, initName || initId);
+                                }
+                            }, 200);
+                        }
+                        
                         // 清空资源信息展示
-                        $('.resource-info-area').hide();
+                        if (!initId) {
+                            $('.resource-info-area').hide();
+                        }
                     } else {
                         $resourceArea.hide();
                         $('.resource-info-area').hide();
