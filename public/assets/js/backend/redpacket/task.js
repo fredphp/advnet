@@ -1,13 +1,7 @@
 define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefined, Backend, Table, Form) {
     
-    // 任务类型与资源类型映射（从后端传递）
-    var taskTypeMap = {:json_encode($taskTypeMap)};
-    
-    // 任务类型列表（从后端传递）
-    var taskTypeList = {:json_encode($taskTypeList)};
-    
-    // 资源类型列表（从后端传递）
-    var resourceTypeList = {:json_encode($resourceTypeList)};
+    // 类型列表（任务类型和资源类型统一，从后端传递）
+    var typeList = {:json_encode($typeList)};
     
     // 当前资源类型
     var currentResourceType = null;
@@ -39,7 +33,7 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
                         {checkbox: true},
                         {field: 'id', title: 'ID', sortable: true},
                         {field: 'name', title: '任务名称', operate: 'LIKE'},
-                        {field: 'task_type', title: '任务类型', searchList: taskTypeList, formatter: Table.api.formatter.normal},
+                        {field: 'task_type', title: '任务类型', searchList: typeList, formatter: Table.api.formatter.normal},
                         {field: 'total_amount', title: '总金额(金币)'},
                         {field: 'single_amount', title: '单个金额(金币)'},
                         {field: 'total_count', title: '总数量'},
@@ -82,22 +76,18 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
                     }
                 });
                 
-                // 任务类型切换 - 核心逻辑
+                // 任务类型切换 - 核心逻辑（任务类型=资源类型，无需映射）
                 $('#c-task_type').on('change', function() {
                     var taskType = $(this).val();
                     var $resourceArea = $('.resource-select-area');
                     var $resourceId = $('#c-resource_id');
                     
+                    // 签到任务不需要选择资源
                     if (taskType && taskType !== 'sign_in') {
-                        // 根据任务类型获取对应的资源类型
-                        var resourceType = taskTypeMap[taskType];
-                        if (!resourceType) {
-                            resourceType = 'link'; // 默认
-                        }
-                        var typeName = resourceTypeList[resourceType] || '资源';
+                        var typeName = typeList[taskType] || '资源';
                         
-                        // 更新当前资源类型
-                        currentResourceType = resourceType;
+                        // 更新当前资源类型（任务类型就是资源类型）
+                        currentResourceType = taskType;
                         
                         // 显示资源选择区域
                         $resourceArea.show();
@@ -105,31 +95,17 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
                         // 更新提示文字
                         $('.resource-type-tip').text('请选择【' + typeName + '】类型的资源（可在资源管理中添加）');
                         
-                        // 清空当前值（仅在切换类型时）
-                        var initId = $('#c-resource_id_init').val();
-                        if (!initId) {
-                            $resourceId.val('').removeAttr('data-value');
-                        }
+                        // 清空当前值
+                        $resourceId.val('').removeAttr('data-value');
                         
                         // 销毁现有的selectpage实例
                         Controller.api.destroySelectPage($resourceId);
                         
-                        // 重新初始化selectpage
-                        Controller.api.initSelectPage($resourceId, resourceType);
+                        // 重新初始化selectpage（任务类型直接作为资源类型传递）
+                        Controller.api.initSelectPage($resourceId, taskType);
                         
-                        // 如果有初始值，设置初始值
-                        if (initId) {
-                            var initName = $('#c-resource_name_init').val();
-                            setTimeout(function() {
-                                $resourceId.val(initId);
-                                $resourceId.attr('data-value', initId);
-                                // 尝试设置selectpage的显示值
-                                var selectPageObj = $resourceId.data('selectPageObject');
-                                if (selectPageObj) {
-                                    selectPageObj.setInitValue(initId, initName || initId);
-                                }
-                            }, 200);
-                        }
+                        // 清空资源信息展示
+                        $('.resource-info-area').hide();
                     } else {
                         $resourceArea.hide();
                         $('.resource-info-area').hide();

@@ -16,7 +16,7 @@
         <div class="col-xs-12 col-sm-8">
             <select id="c-task_type" class="form-control" name="row[task_type]" data-rule="required">
                 <option value="">请选择任务类型</option>
-                {foreach name="taskTypeList" item="vo" key="k"}
+                {foreach name="typeList" item="vo" key="k"}
                 <option value="{$k}" {if $row.task_type==$k}selected{/if}>{$vo}</option>
                 {/foreach}
             </select>

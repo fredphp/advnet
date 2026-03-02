@@ -10,33 +10,17 @@ class RedPacketResource extends BaseModel
     // 表名
     protected $name = 'red_packet_resource';
     
-    // 资源类型（与数据库中的type字段对应）
+    /**
+     * 资源/任务类型列表（统一使用相同的类型定义）
+     * 资源管理页面和任务管理页面使用相同的类型
+     */
     public static $typeList = [
-        'app' => 'App下载',
-        'mini_program' => '小程序',
-        'game' => '游戏',
-        'video' => '视频',
-        'link' => '分享链接'
-    ];
-    
-    // 任务类型定义（用于任务管理页面）
-    public static $taskTypeList = [
         'download_app' => '下载App',
         'mini_program' => '跳转小程序',
         'play_game' => '玩游戏时长',
         'watch_video' => '观看视频',
         'share_link' => '分享链接',
         'sign_in' => '签到任务'
-    ];
-    
-    // 任务类型 -> 资源类型 映射关系
-    public static $taskTypeMap = [
-        'download_app' => 'app',        // 下载App -> app资源
-        'mini_program' => 'mini_program', // 小程序 -> mini_program资源
-        'play_game' => 'game',          // 玩游戏 -> game资源
-        'watch_video' => 'video',       // 看视频 -> video资源
-        'share_link' => 'link',         // 分享链接 -> link资源
-        'sign_in' => null               // 签到任务 -> 无资源
     ];
     
     /**
@@ -48,21 +32,26 @@ class RedPacketResource extends BaseModel
     }
     
     /**
-     * 获取任务类型列表
+     * 获取任务类型列表（与资源类型一致）
      */
     public static function getTaskTypeList()
     {
-        return self::$taskTypeList;
+        return self::$typeList;
     }
     
     /**
      * 根据任务类型获取资源类型
+     * 由于类型统一，直接返回任务类型即可
      * @param string $taskType 任务类型
-     * @return string|null 资源类型，如果不需要资源则返回null
+     * @return string|null 资源类型，签到任务返回null
      */
     public static function getResourceTypeByTaskType($taskType)
     {
-        return self::$taskTypeMap[$taskType] ?? null;
+        // 签到任务不需要资源
+        if ($taskType === 'sign_in') {
+            return null;
+        }
+        return $taskType;
     }
     
     /**
