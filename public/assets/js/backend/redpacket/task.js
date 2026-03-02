@@ -199,9 +199,13 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
                         showField: 'name',
                         keyField: 'id',
                         searchField: 'name',
+                        // 关键修复：添加正确的URL
+                        url: Backend.api.fixurl('redpacket/resource/select'),
+                        // 传递类型参数
                         data: { type: resourceType },
                         pagination: true,
                         pageSize: 10,
+                        // 确保参数正确传递
                         params: function() {
                             return { type: resourceType };
                         },
