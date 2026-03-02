@@ -1,6 +1,8 @@
 <form id="edit-form" class="form-horizontal" role="form" data-toggle="validator" method="POST" action="">
     <input type="hidden" name="row[id]" value="{$row.id}">
-    
+    <!-- 保存原始视频URL -->
+    <input type="hidden" id="original_video_url" value="{$row.video_url}">
+
     <!-- 数据统计编辑卡片 -->
     <div class="panel panel-info" style="margin-bottom: 15px;">
         <div class="panel-heading">
@@ -64,7 +66,7 @@
             </div>
         </div>
     </div>
-    
+
     <div class="form-group">
         <label class="control-label col-xs-12 col-sm-2">{:__('Title')}:</label>
         <div class="col-xs-12 col-sm-8">
@@ -89,19 +91,33 @@
         <div class="col-xs-12 col-sm-8">
             <ul class="nav nav-tabs" role="tablist">
                 <li role="presentation" class="active">
-                    <a href="#tab-upload" aria-controls="tab-upload" role="tab" data-toggle="tab">当前视频</a>
+                    <a href="#tab-current" aria-controls="tab-current" role="tab" data-toggle="tab">当前视频</a>
                 </li>
                 <li role="presentation">
-                    <a href="#tab-url" aria-controls="tab-url" role="tab" data-toggle="tab">更换链接</a>
+                    <a href="#tab-upload" aria-controls="tab-upload" role="tab" data-toggle="tab">上传新视频</a>
+                </li>
+                <li role="presentation">
+                    <a href="#tab-url" aria-controls="tab-url" role="tab" data-toggle="tab">视频链接</a>
                 </li>
             </ul>
             <div class="tab-content" style="margin-top: 10px;">
-                <div role="tabpanel" class="tab-pane active" id="tab-upload">
-                    <input class="form-control" type="text" value="{$row.video_url}" readonly style="background-color: #f9f9f9;">
-                    <span class="help-block">当前视频地址，如需更换请切换到"更换链接"标签</span>
+                <div role="tabpanel" class="tab-pane active" id="tab-current">
+                    <div class="input-group">
+                        <input id="c-video_url_current" class="form-control" type="text" value="{$row.video_url}" readonly style="background-color: #f9f9f9;">
+                    </div>
+                    <span class="help-block">当前视频地址，如需更换请切换到"上传新视频"或"视频链接"标签</span>
+                </div>
+                <div role="tabpanel" class="tab-pane" id="tab-upload">
+                    <div class="input-group">
+                        <input id="c-video_url_upload" class="form-control" name="row[video_url_new]" type="text" value="" placeholder="点击上传按钮上传视频" readonly>
+                        <div class="input-group-addon no-border no-padding">
+                            <span><button type="button" id="faupload-video" class="btn btn-danger faupload-video" data-input-id="c-video_url_upload" data-mimetype="video/mp4,video/quicktime,video/x-msvideo,video/webm" data-maxsize="500mb"><i class="fa fa-upload"></i> 上传视频</button></span>
+                        </div>
+                    </div>
+                    <span class="help-block">支持 MP4, MOV, AVI, WebM 格式，最大 500MB</span>
                 </div>
                 <div role="tabpanel" class="tab-pane" id="tab-url">
-                    <input id="c-video_url_link" class="form-control" name="row[video_url]" type="text" value="" placeholder="请输入新的视频URL地址">
+                    <input id="c-video_url_link" class="form-control" name="row[video_url_link]" type="text" value="" placeholder="请输入视频完整URL地址，如：https://example.com/video.mp4">
                     <span class="help-block">输入新的视频地址将覆盖原视频</span>
                 </div>
             </div>

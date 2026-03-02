@@ -108,15 +108,30 @@ class Video extends Backend
                 $this->error(__('参数不能为空'));
             }
 
-            // 处理视频URL：如果填写了链接，使用链接；否则使用上传的URL
-            if (!empty($params['video_url_link'])) {
+            // 处理视频URL逻辑：
+            // 1. 如果上传了新视频(video_url_new)，使用上传的视频
+            // 2. 如果输入了新链接(video_url_link)，使用新链接
+            // 3. 如果都没有，保留原视频URL
+            $originalVideoUrl = $row->video_url;
+            
+            if (!empty($params['video_url_new'])) {
+                // 用户上传了新视频
+                $params['video_url'] = $params['video_url_new'];
+            } elseif (!empty($params['video_url_link'])) {
+                // 用户输入了新链接
                 $params['video_url'] = $params['video_url_link'];
+            } else {
+                // 保留原视频URL
+                $params['video_url'] = $originalVideoUrl;
             }
+            
+            // 清理临时字段
+            unset($params['video_url_new']);
             unset($params['video_url_link']);
 
-            // 验证视频URL
+            // 验证视频URL（最终应该有值，要么新的要么原来的）
             if (empty($params['video_url'])) {
-                $this->error('请上传视频或输入视频链接');
+                $this->error('视频URL不能为空');
             }
 
             // 处理推荐设置
