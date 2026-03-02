@@ -161,41 +161,63 @@ class Resource extends Backend
     }
 
     /**
-     * 根据类型获取资源列表（供选择器使用）
+     * 根据类型获取资源列表（供selectpage使用）
      */
     public function select()
     {
-        $type = $this->request->get('type');
-        if (!$type) {
-            $this->error('请指定资源类型');
+        // 设置过滤方法
+        $this->request->filter(['strip_tags', 'htmlspecialchars']);
+        
+        // 搜索关键词,客户端输入以空格分开,这里接收为数组
+        $word = (array)$this->request->request("q_word/a");
+        // 当前页
+        $page = $this->request->request("pageNumber", 1, 'intval');
+        // 分页大小
+        $pagesize = $this->request->request("pageSize", 10, 'intval');
+        // 搜索字段
+        $searchfield = (array)$this->request->request("searchField/a");
+        // 自定义搜索条件
+        $custom = (array)$this->request->request("custom/a");
+        
+        // 构建查询
+        $query = $this->model->where('status', 1);
+        
+        // 处理资源类型过滤
+        if (isset($custom['type']) && $custom['type']) {
+            $query->where('type', $custom['type']);
         }
-
-        if ($this->request->isAjax()) {
-            $list = $this->model->where('type', $type)
-                ->where('status', 1)
-                ->order('sort', 'asc')
-                ->order('id', 'desc')
-                ->select();
-
-            $data = [];
-            foreach ($list as $item) {
-                $data[] = [
-                    'id' => $item->id,
-                    'name' => $item->name,
-                    'description' => $item->description,
-                    'logo' => $item->logo,
-                    'url' => $item->url,
-                    'package_name' => $item->package_name,
-                    'app_id' => $item->app_id,
-                    'video_id' => $item->video_id,
-                ];
+        
+        // 处理关键词搜索
+        if ($word) {
+            $word = array_filter(array_unique($word));
+            if (count($word) > 0) {
+                $query->where('name', 'like', '%' . reset($word) . '%');
             }
-
-            return json(['list' => $data, 'total' => count($data)]);
         }
-
-        $this->view->assign('type', $type);
-        return $this->view->fetch();
+        
+        $total = $query->count();
+        
+        $list = $query->order('sort', 'asc')
+            ->order('id', 'desc')
+            ->page($page, $pagesize)
+            ->select();
+        
+        $data = [];
+        foreach ($list as $item) {
+            $data[] = [
+                'id' => $item->id,
+                'name' => $item->name,
+                'description' => $item->description,
+                'logo' => $item->logo,
+                'url' => $item->url,
+                'package_name' => $item->package_name,
+                'app_id' => $item->app_id,
+                'video_id' => $item->video_id,
+            ];
+        }
+        
+        // selectpage格式返回
+        return json(['list' => $data, 'total' => $total]);
     }
 
     /**
