@@ -11,9 +11,6 @@ use think\Db;
 class Rewardrule extends Backend
 {
     protected $model = null;
-    
-    // 排序字段映射：weigh -> sort
-    protected $sortFieldMapping = ['weigh' => 'sort'];
 
     public function _initialize()
     {
@@ -28,6 +25,11 @@ class Rewardrule extends Backend
     {
         if ($this->request->isAjax()) {
             list($where, $sort, $order, $offset, $limit) = $this->buildparams();
+
+            // 处理排序字段映射：weigh -> priority
+            if ($sort === 'weigh') {
+                $sort = 'priority';
+            }
 
             $total = $this->model->where($where)->count();
             $list = $this->model->where($where)
