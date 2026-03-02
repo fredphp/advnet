@@ -4,9 +4,9 @@
         <div class="col-xs-12 col-sm-8">
             <select id="c-type" class="form-control" name="row[type]" data-rule="required">
                 {foreach name="typeList" item="vo" key="k"}
-                {if $k != 'sign_in'}
+                <!-- {if $k != 'sign_in'}
+                {/if} -->
                 <option value="{$k}">{$vo}</option>
-                {/if}
                 {/foreach}
             </select>
             <span class="help-block">资源类型与任务类型一一对应</span>
