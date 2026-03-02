@@ -19,17 +19,17 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
             table.bootstrapTable({
                 url: $.fn.bootstrapTable.defaults.extend.index_url,
                 pk: 'id',
-                sortName: 'weigh',
+                sortName: 'sort',
                 sortOrder: 'desc',
                 columns: [
                     [
                         {checkbox: true},
                         {field: 'id', title: 'ID', sortable: true},
                         {field: 'title', title: '合集标题', operate: 'LIKE'},
-                        {field: 'cover', title: '封面', events: Table.api.events.image, formatter: Table.api.formatter.image, operate: false},
+                        {field: 'cover_url', title: '封面', events: Table.api.events.image, formatter: Table.api.formatter.image, operate: false},
                         {field: 'video_count', title: '视频数量', operate: false},
                         {field: 'status', title: '状态', searchList: {"0":"禁用","1":"启用"}, formatter: Table.api.formatter.status},
-                        {field: 'weigh', title: '权重', sortable: true},
+                        {field: 'sort', title: '排序', sortable: true},
                         {field: 'createtime', title: '创建时间', operate: 'RANGE', addclass: 'datetimerange', formatter: Table.api.formatter.datetime, sortable: true},
                         {
                             field: 'operate', 
@@ -100,7 +100,7 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
                     [
                         {checkbox: true},
                         {field: 'sort', title: '集数', sortable: true},
-                        {field: 'cover', title: '封面', events: Table.api.events.image, formatter: Table.api.formatter.image, operate: false},
+                        {field: 'cover_url', title: '封面', events: Table.api.events.image, formatter: Table.api.formatter.image, operate: false},
                         {field: 'title', title: '视频标题'},
                         {field: 'duration', title: '时长(秒)'},
                         {field: 'reward_coin', title: '奖励金币'},
