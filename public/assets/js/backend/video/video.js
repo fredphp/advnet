@@ -51,8 +51,8 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
                         {field: 'share_count', title: '转发', operate: false, sortable: true, width: '70px', formatter: function(value) {
                             return '<span class="text-success">' + (value || 0) + '</span>';
                         }},
-                        {field: 'reward_coin', title: '奖励金币', operate: 'BETWEEN', sortable: true, width: '80px'},
-                        {field: 'reward_count', title: '奖励人数', operate: 'BETWEEN', sortable: true, width: '80px'},
+                        // {field: 'reward_coin', title: '奖励金币', operate: 'BETWEEN', sortable: true, width: '80px'},
+                        // {field: 'reward_count', title: '奖励人数', operate: 'BETWEEN', sortable: true, width: '80px'},
                         {field: 'status', title: '状态', searchList: {"0":"待审核","1":"已发布","2":"已下架","3":"已封禁","4":"草稿"}, formatter: Table.api.formatter.status, width: '80px'},
                         {field: 'createtime', title: '创建时间', operate: 'RANGE', addclass: 'datetimerange', formatter: Table.api.formatter.datetime, sortable: true, width: '150px'},
                         {
