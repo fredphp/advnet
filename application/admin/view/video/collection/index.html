@@ -7,8 +7,8 @@
                 <div class="widget-body no-padding">
                     <div id="toolbar" class="toolbar">
                         {:build_toolbar('refresh,add,edit,del')}
-                        <a href="javascript:;" class="btn btn-info btn-video" title="管理视频">
-                            <i class="fa fa-video-camera"></i> 管理视频
+                        <a href="javascript:;" class="btn btn-info btn-disabled disabled btn-dialog" data-url="video/collection/videos" title="管理视频">
+                            <i class="fa fa-video-camera"></i> {:__('管理视频')}
                         </a>
                     </div>
                     <table id="table" class="table table-striped table-bordered table-hover table-nowrap"

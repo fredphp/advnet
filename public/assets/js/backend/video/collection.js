@@ -57,6 +57,18 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
 
             // 为表格绑定事件
             Table.api.bindevent(table);
+
+            // 工具栏管理视频按钮 - 选中一行后启用
+            table.on('check.bs.table uncheck.bs.table check-all.bs.table uncheck-all.bs.table', function () {
+                var ids = Table.api.selectedids(table);
+                var btn = $('.btn-dialog[data-url="video/collection/videos"]');
+                if (ids.length === 1) {
+                    btn.removeClass('btn-disabled disabled');
+                    btn.data('url', 'video/collection/videos/ids/' + ids[0]);
+                } else {
+                    btn.addClass('btn-disabled disabled');
+                }
+            });
         },
         add: function () {
             Controller.api.bindevent();
