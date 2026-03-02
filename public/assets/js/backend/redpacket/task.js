@@ -1,23 +1,13 @@
 define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefined, Backend, Table, Form) {
     
-    // 任务类型与资源类型映射
-    var taskTypeMap = {
-        'download_app': 'app',
-        'mini_program': 'mini_program',
-        'play_game': 'game',
-        'watch_video': 'video',
-        'share_link': 'link',
-        'sign_in': 'link'
-    };
+    // 任务类型与资源类型映射（从后端传递）
+    var taskTypeMap = {:json_encode($taskTypeMap)};
     
-    // 资源类型名称
-    var resourceTypeNames = {
-        'app': 'App',
-        'mini_program': '小程序',
-        'game': '游戏',
-        'video': '视频',
-        'link': '分享链接'
-    };
+    // 任务类型列表（从后端传递）
+    var taskTypeList = {:json_encode($taskTypeList)};
+    
+    // 资源类型列表（从后端传递）
+    var resourceTypeList = {:json_encode($resourceTypeList)};
     
     // 当前资源类型
     var currentResourceType = null;
@@ -49,14 +39,7 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
                         {checkbox: true},
                         {field: 'id', title: 'ID', sortable: true},
                         {field: 'name', title: '任务名称', operate: 'LIKE'},
-                        {field: 'task_type', title: '任务类型', searchList: {
-                            "download_app": "下载App",
-                            "mini_program": "跳转小程序",
-                            "play_game": "玩游戏时长",
-                            "watch_video": "观看视频",
-                            "share_link": "分享链接",
-                            "sign_in": "签到任务"
-                        }, formatter: Table.api.formatter.normal},
+                        {field: 'task_type', title: '任务类型', searchList: taskTypeList, formatter: Table.api.formatter.normal},
                         {field: 'total_amount', title: '总金额(金币)'},
                         {field: 'single_amount', title: '单个金额(金币)'},
                         {field: 'total_count', title: '总数量'},
@@ -106,11 +89,12 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
                     var $resourceId = $('#c-resource_id');
                     
                     if (taskType && taskType !== 'sign_in') {
+                        // 根据任务类型获取对应的资源类型
                         var resourceType = taskTypeMap[taskType];
                         if (!resourceType) {
                             resourceType = 'link'; // 默认
                         }
-                        var typeName = resourceTypeNames[resourceType] || '资源';
+                        var typeName = resourceTypeList[resourceType] || '资源';
                         
                         // 更新当前资源类型
                         currentResourceType = resourceType;
@@ -119,7 +103,7 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
                         $resourceArea.show();
                         
                         // 更新提示文字
-                        $('.resource-type-tip').text('请选择' + typeName + '资源（可在资源管理中添加）');
+                        $('.resource-type-tip').text('请选择【' + typeName + '】类型的资源（可在资源管理中添加）');
                         
                         // 清空当前值（仅在切换类型时）
                         var initId = $('#c-resource_id_init').val();

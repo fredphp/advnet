@@ -10,7 +10,7 @@ class RedPacketResource extends BaseModel
     // 表名
     protected $name = 'red_packet_resource';
     
-    // 资源类型
+    // 资源类型（与数据库中的type字段对应）
     public static $typeList = [
         'app' => 'App下载',
         'mini_program' => '小程序',
@@ -19,14 +19,24 @@ class RedPacketResource extends BaseModel
         'link' => '分享链接'
     ];
     
-    // 资源类型对应的任务类型映射
+    // 任务类型定义（用于任务管理页面）
+    public static $taskTypeList = [
+        'download_app' => '下载App',
+        'mini_program' => '跳转小程序',
+        'play_game' => '玩游戏时长',
+        'watch_video' => '观看视频',
+        'share_link' => '分享链接',
+        'sign_in' => '签到任务'
+    ];
+    
+    // 任务类型 -> 资源类型 映射关系
     public static $taskTypeMap = [
-        'download_app' => 'app',
-        'mini_program' => 'mini_program',
-        'play_game' => 'game',
-        'watch_video' => 'video',
-        'share_link' => 'link',
-        'sign_in' => 'link'
+        'download_app' => 'app',        // 下载App -> app资源
+        'mini_program' => 'mini_program', // 小程序 -> mini_program资源
+        'play_game' => 'game',          // 玩游戏 -> game资源
+        'watch_video' => 'video',       // 看视频 -> video资源
+        'share_link' => 'link',         // 分享链接 -> link资源
+        'sign_in' => null               // 签到任务 -> 无资源
     ];
     
     /**
@@ -38,7 +48,17 @@ class RedPacketResource extends BaseModel
     }
     
     /**
+     * 获取任务类型列表
+     */
+    public static function getTaskTypeList()
+    {
+        return self::$taskTypeList;
+    }
+    
+    /**
      * 根据任务类型获取资源类型
+     * @param string $taskType 任务类型
+     * @return string|null 资源类型，如果不需要资源则返回null
      */
     public static function getResourceTypeByTaskType($taskType)
     {

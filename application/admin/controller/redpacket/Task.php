@@ -17,6 +17,13 @@ class Task extends Backend
     {
         parent::_initialize();
         $this->model = new \app\common\model\RedPacketTask();
+        
+        // 传递任务类型列表到视图
+        $this->view->assign('taskTypeList', \app\common\model\RedPacketResource::getTaskTypeList());
+        // 传递任务类型到资源类型的映射
+        $this->view->assign('taskTypeMap', \app\common\model\RedPacketResource::$taskTypeMap);
+        // 传递资源类型列表
+        $this->view->assign('resourceTypeList', \app\common\model\RedPacketResource::getTypeList());
     }
 
     /**

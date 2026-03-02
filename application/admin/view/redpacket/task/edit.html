@@ -16,12 +16,9 @@
         <div class="col-xs-12 col-sm-8">
             <select id="c-task_type" class="form-control" name="row[task_type]" data-rule="required">
                 <option value="">请选择任务类型</option>
-                <option value="download_app" {if $row.task_type=='download_app'}selected{/if}>下载App</option>
-                <option value="mini_program" {if $row.task_type=='mini_program'}selected{/if}>跳转小程序</option>
-                <option value="play_game" {if $row.task_type=='play_game'}selected{/if}>玩游戏时长</option>
-                <option value="watch_video" {if $row.task_type=='watch_video'}selected{/if}>观看视频</option>
-                <option value="share_link" {if $row.task_type=='share_link'}selected{/if}>分享链接</option>
-                <option value="sign_in" {if $row.task_type=='sign_in'}selected{/if}>签到任务</option>
+                {foreach name="taskTypeList" item="vo" key="k"}
+                <option value="{$k}" {if $row.task_type==$k}selected{/if}>{$vo}</option>
+                {/foreach}
             </select>
         </div>
     </div>
