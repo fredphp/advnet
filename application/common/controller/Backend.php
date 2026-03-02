@@ -624,4 +624,48 @@ class Backend extends Controller
         //刷新Token
         $this->request->token();
     }
+
+    /**
+     * 操作成功跳转的快捷方法（重写以支持数组作为第二个参数）
+     * @access protected
+     * @param mixed  $msg    提示信息
+     * @param mixed  $url    跳转的 URL 地址 或 返回的数据（数组）
+     * @param mixed  $data   返回的数据
+     * @param int    $wait   跳转等待时间
+     * @param array  $header 发送的 Header 信息
+     * @return void
+     */
+    protected function success($msg = '', $url = null, $data = '', $wait = 3, array $header = [])
+    {
+        // 如果第二个参数是数组，则将其作为 $data 参数
+        if (is_array($url)) {
+            $data = $url;
+            $url = null;
+        }
+        
+        // 调用父类的 success 方法
+        parent::success($msg, $url, $data, $wait, $header);
+    }
+
+    /**
+     * 操作错误跳转的快捷方法（重写以支持数组作为第二个参数）
+     * @access protected
+     * @param mixed  $msg    提示信息
+     * @param mixed  $url    跳转的 URL 地址 或 返回的数据（数组）
+     * @param mixed  $data   返回的数据
+     * @param int    $wait   跳转等待时间
+     * @param array  $header 发送的 Header 信息
+     * @return void
+     */
+    protected function error($msg = '', $url = null, $data = '', $wait = 3, array $header = [])
+    {
+        // 如果第二个参数是数组，则将其作为 $data 参数
+        if (is_array($url)) {
+            $data = $url;
+            $url = null;
+        }
+        
+        // 调用父类的 error 方法
+        parent::error($msg, $url, $data, $wait, $header);
+    }
 }
