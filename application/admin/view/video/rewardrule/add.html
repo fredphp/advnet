@@ -1,32 +1,72 @@
 <form id="add-form" class="form-horizontal" role="form" data-toggle="validator" method="POST" action="">
     <div class="form-group">
-        <label class="control-label col-xs-12 col-sm-2">{:__('Title')}:</label>
+        <label class="control-label col-xs-12 col-sm-2">规则名称:</label>
         <div class="col-xs-12 col-sm-8">
-            <input id="c-title" class="form-control" name="row[title]" type="text" placeholder="规则名称" data-rule="required">
+            <input id="c-name" class="form-control" name="row[name]" type="text" placeholder="规则名称" data-rule="required">
+        </div>
+    </div>
+    <div class="form-group">
+        <label class="control-label col-xs-12 col-sm-2">规则代码:</label>
+        <div class="col-xs-12 col-sm-8">
+            <input id="c-code" class="form-control" name="row[code]" type="text" placeholder="唯一标识（可选）">
+        </div>
+    </div>
+    <div class="form-group">
+        <label class="control-label col-xs-12 col-sm-2">规则描述:</label>
+        <div class="col-xs-12 col-sm-8">
+            <textarea id="c-description" class="form-control" name="row[description]" rows="2" placeholder="规则描述"></textarea>
+        </div>
+    </div>
+    <div class="form-group">
+        <label class="control-label col-xs-12 col-sm-2">适用范围:</label>
+        <div class="col-xs-12 col-sm-8">
+            <select id="c-scope_type" class="form-control" name="row[scope_type]" data-rule="required">
+                <option value="global" selected>全局</option>
+                <option value="category">分类</option>
+                <option value="video">单视频</option>
+                <option value="collection">合集</option>
+            </select>
         </div>
     </div>
     <div class="form-group">
         <label class="control-label col-xs-12 col-sm-2">奖励类型:</label>
         <div class="col-xs-12 col-sm-8">
             <select id="c-reward_type" class="form-control" name="row[reward_type]" data-rule="required">
-                <option value="fixed">固定奖励</option>
+                <option value="fixed" selected>固定奖励</option>
                 <option value="random">随机奖励</option>
+                <option value="progressive">递进奖励</option>
             </select>
         </div>
     </div>
     <div class="form-group reward-fixed">
         <label class="control-label col-xs-12 col-sm-2">固定金币:</label>
         <div class="col-xs-12 col-sm-8">
-            <input id="c-coin_reward" class="form-control" name="row[coin_reward]" type="number" value="0" placeholder="固定奖励金币数">
+            <input id="c-reward_coin" class="form-control" name="row[reward_coin]" type="number" value="100" placeholder="固定奖励金币数" step="0.01">
         </div>
     </div>
     <div class="form-group reward-random" style="display:none;">
         <label class="control-label col-xs-12 col-sm-2">金币范围:</label>
         <div class="col-xs-12 col-sm-4">
-            <input id="c-reward_min" class="form-control" name="row[reward_min]" type="number" value="0" placeholder="最小金币">
+            <input id="c-reward_min" class="form-control" name="row[reward_min]" type="number" value="0" placeholder="最小金币" step="0.01">
         </div>
         <div class="col-xs-12 col-sm-4">
-            <input id="c-reward_max" class="form-control" name="row[reward_max]" type="number" value="0" placeholder="最大金币">
+            <input id="c-reward_max" class="form-control" name="row[reward_max]" type="number" value="0" placeholder="最大金币" step="0.01">
+        </div>
+    </div>
+    <div class="form-group">
+        <label class="control-label col-xs-12 col-sm-2">条件类型:</label>
+        <div class="col-xs-12 col-sm-8">
+            <select id="c-condition_type" class="form-control" name="row[condition_type]">
+                <option value="complete" selected>看完领取</option>
+                <option value="duration">时长领取</option>
+                <option value="count">集数领取</option>
+            </select>
+        </div>
+    </div>
+    <div class="form-group">
+        <label class="control-label col-xs-12 col-sm-2">观看进度(%):</label>
+        <div class="col-xs-12 col-sm-8">
+            <input id="c-watch_progress" class="form-control" name="row[watch_progress]" type="number" value="95" placeholder="达到此进度视为看完" min="0" max="100">
         </div>
     </div>
     <div class="form-group">
@@ -42,6 +82,15 @@
         </div>
     </div>
     <div class="form-group">
+        <label class="control-label col-xs-12 col-sm-2">用户等级限制:</label>
+        <div class="col-xs-12 col-sm-4">
+            <input id="c-user_level_min" class="form-control" name="row[user_level_min]" type="number" value="1" placeholder="最低等级" min="1">
+        </div>
+        <div class="col-xs-12 col-sm-4">
+            <input id="c-user_level_max" class="form-control" name="row[user_level_max]" type="number" value="255" placeholder="最高等级(255=不限)" min="1" max="255">
+        </div>
+    </div>
+    <div class="form-group">
         <label class="control-label col-xs-12 col-sm-2">有效期:</label>
         <div class="col-xs-12 col-sm-4">
             <input id="c-start_time" class="form-control datetimepicker" name="row[start_time]" type="text" placeholder="开始时间" data-date-format="YYYY-MM-DD HH:mm:ss">
@@ -51,18 +100,19 @@
         </div>
     </div>
     <div class="form-group">
+        <label class="control-label col-xs-12 col-sm-2">优先级:</label>
+        <div class="col-xs-12 col-sm-8">
+            <input id="c-priority" class="form-control" name="row[priority]" type="number" value="0" placeholder="优先级越大越高">
+            <span class="help-block">优先级越大越优先匹配</span>
+        </div>
+    </div>
+    <div class="form-group">
         <label class="control-label col-xs-12 col-sm-2">{:__('Status')}:</label>
         <div class="col-xs-12 col-sm-8">
             <select id="c-status" class="form-control" name="row[status]">
                 <option value="1" selected>启用</option>
                 <option value="0">禁用</option>
             </select>
-        </div>
-    </div>
-    <div class="form-group">
-        <label class="control-label col-xs-12 col-sm-2">{:__('Weigh')}:</label>
-        <div class="col-xs-12 col-sm-8">
-            <input id="c-weigh" class="form-control" name="row[weigh]" type="number" value="0">
         </div>
     </div>
     <div class="form-group layer-footer">
@@ -75,12 +125,16 @@
 <script>
 $(function() {
     $('#c-reward_type').on('change', function() {
-        if ($(this).val() === 'fixed') {
+        var val = $(this).val();
+        if (val === 'fixed') {
             $('.reward-fixed').show();
             $('.reward-random').hide();
-        } else {
+        } else if (val === 'random') {
             $('.reward-fixed').hide();
             $('.reward-random').show();
+        } else {
+            $('.reward-fixed').show();
+            $('.reward-random').hide();
         }
     });
 });
