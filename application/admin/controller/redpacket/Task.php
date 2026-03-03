@@ -4,6 +4,7 @@ namespace app\admin\controller\redpacket;
 
 use app\common\controller\Backend;
 use app\common\model\TaskMessage;
+use app\common\service\PushService;
 use think\Db;
 use think\Exception;
 
@@ -19,7 +20,7 @@ class Task extends Backend
         parent::_initialize();
         $this->model = new \app\common\model\RedPacketTask();
         
-        // 传递类型列表到视图（资源类型和任务类型统一）
+        // 传递类型列表到视图
         $this->view->assign('typeList', \app\common\model\RedPacketResource::getTypeList());
     }
 
@@ -37,7 +38,6 @@ class Task extends Backend
                 ->limit($offset, $limit)
                 ->select();
 
-            // 转换为数组并添加统计信息
             $data = [];
             foreach ($list as $item) {
                 $row = $item->toArray();
@@ -68,7 +68,6 @@ class Task extends Backend
                 $this->error(__('参数不能为空'));
             }
 
-            // 验证参数
             if ($params['total_amount'] <= 0) {
                 $this->error('红包总金额必须大于0');
             }
@@ -76,7 +75,6 @@ class Task extends Backend
                 $this->error('红包数量必须大于0');
             }
             
-            // 处理资源信息
             if (!empty($params['resource_id'])) {
                 $resource = \app\common\model\RedPacketResource::get($params['resource_id']);
                 if ($resource) {
@@ -129,7 +127,6 @@ class Task extends Backend
                 $this->error(__('参数不能为空'));
             }
             
-            // 处理资源信息
             if (!empty($params['resource_id'])) {
                 $resource = \app\common\model\RedPacketResource::get($params['resource_id']);
                 if ($resource) {
@@ -161,7 +158,6 @@ class Task extends Backend
             }
         }
         
-        // 解析资源信息
         $resourceInfo = null;
         if ($row['task_params']) {
             $params = json_decode($row['task_params'], true);
@@ -170,7 +166,6 @@ class Task extends Backend
             }
         }
         
-        // 格式化时间显示
         $row['start_time'] = $row['start_time'] ? date('Y-m-d H:i:s', $row['start_time']) : '';
         $row['end_time'] = $row['end_time'] ? date('Y-m-d H:i:s', $row['end_time']) : '';
 
@@ -180,8 +175,7 @@ class Task extends Backend
     }
 
     /**
-     * 推送任务到客户端
-     * 创建推送消息，客户端可以通过API获取
+     * 推送任务到客户端（WebSocket 实时推送）
      */
     public function push($ids = null)
     {
@@ -209,7 +203,7 @@ class Task extends Backend
         // 解析任务参数
         $taskParams = json_decode($row->task_params, true) ?: [];
 
-        // 构建推送消息
+        // 1. 保存推送记录到数据库
         $messageData = [
             'task_id' => $row->id,
             'task_type' => $row->task_type,
@@ -227,7 +221,6 @@ class Task extends Backend
             'resource' => $taskParams,
         ];
 
-        // 创建推送消息
         $message = new TaskMessage();
         $message->task_id = $ids;
         $message->type = TaskMessage::TYPE_TASK_PUSH;
@@ -241,16 +234,34 @@ class Task extends Backend
         );
         $message->message_data = json_encode($messageData);
         $message->status = TaskMessage::STATUS_SENT;
-        $message->target_users = json_encode([]); // 空表示全部用户
+        $message->target_users = json_encode([]);
         $message->send_time = time();
         $message->expire_time = $row->end_time ?: (time() + 86400 * 7);
         $message->save();
 
-        $this->success('推送成功！客户端将在下次刷新时收到任务通知');
+        // 2. 通过 WebSocket 实时推送到客户端
+        $pushResult = PushService::pushTask([
+            'id' => $row->id,
+            'name' => $row->name,
+            'task_type' => $row->task_type,
+            'task_type_text' => $taskTypeName,
+            'single_amount' => $row->amount_type == 'fixed' ? $row->single_amount : $row->max_amount,
+            'icon' => $row->icon ?: ($taskParams['logo'] ?? ''),
+            'total_count' => $row->total_count,
+            'remain_count' => $row->remain_count,
+        ]);
+
+        if (isset($pushResult['success']) && $pushResult['success']) {
+            $onlineCount = $pushResult['delivered'] ?? 0;
+            $this->success("推送成功！已实时推送到 {$onlineCount} 个在线用户");
+        } else {
+            // WebSocket 推送失败，但数据库记录已保存，客户端轮询时仍可获取
+            $this->success('推送记录已保存，客户端将在下次刷新时收到通知');
+        }
     }
 
     /**
-     * 发送自定义消息
+     * 发送自定义消息（WebSocket 实时推送）
      */
     public function sendMessage($ids = null)
     {
@@ -267,9 +278,9 @@ class Task extends Backend
                 $this->error('标题和内容不能为空');
             }
 
-            // 解析任务参数
             $taskParams = json_decode($row->task_params, true) ?: [];
 
+            // 保存到数据库
             $messageData = [
                 'task_id' => $row->id,
                 'task_type' => $row->task_type,
@@ -290,7 +301,14 @@ class Task extends Backend
             $message->expire_time = $row->end_time ?: (time() + 86400 * 7);
             $message->save();
 
-            $this->success('消息发送成功');
+            // WebSocket 实时推送
+            $pushResult = PushService::sendSystemMessage($title, $content, 'info');
+
+            if (isset($pushResult['success']) && $pushResult['success']) {
+                $this->success('消息发送成功，已实时推送到客户端');
+            } else {
+                $this->success('消息已保存，客户端将在下次刷新时收到');
+            }
         }
 
         $this->view->assign('task', $row);
@@ -298,69 +316,7 @@ class Task extends Backend
     }
 
     /**
-     * 查看推送记录
-     */
-    public function pushList($ids = null)
-    {
-        if ($this->request->isAjax()) {
-            $list = TaskMessage::where('task_id', $ids)
-                ->order('id', 'desc')
-                ->select();
-            
-            $data = [];
-            foreach ($list as $item) {
-                $data[] = $item->getFormattedData();
-            }
-            
-            return json(['total' => count($data), 'rows' => $data]);
-        }
-        
-        $this->view->assign('task_id', $ids);
-        return $this->view->fetch();
-    }
-    
-    /**
-     * 根据任务类型获取资源列表
-     */
-    public function getResources()
-    {
-        $taskType = $this->request->get('task_type');
-        if (!$taskType) {
-            return json(['code' => 0, 'msg' => '请指定任务类型']);
-        }
-        
-        // 获取对应的资源类型
-        $resourceType = \app\common\model\RedPacketResource::getResourceTypeByTaskType($taskType);
-        if (!$resourceType) {
-            return json(['code' => 0, 'msg' => '未找到对应的资源类型']);
-        }
-        
-        // 获取资源列表
-        $list = \app\common\model\RedPacketResource::where('type', $resourceType)
-            ->where('status', 1)
-            ->order('sort', 'asc')
-            ->order('id', 'desc')
-            ->select();
-        
-        $data = [];
-        foreach ($list as $item) {
-            $data[] = [
-                'id' => $item->id,
-                'name' => $item->name,
-                'description' => $item->description,
-                'logo' => $item->logo,
-                'url' => $item->url,
-                'package_name' => $item->package_name,
-                'app_id' => $item->app_id,
-                'video_id' => $item->video_id,
-            ];
-        }
-        
-        return json(['code' => 1, 'msg' => '获取成功', 'data' => $data, 'total' => count($data)]);
-    }
-
-    /**
-     * 删除红包任务
+     * 删除任务
      */
     public function del($ids = '')
     {
@@ -393,7 +349,7 @@ class Task extends Backend
     }
 
     /**
-     * 发布红包
+     * 发布任务
      */
     public function publish($ids = null)
     {
@@ -403,7 +359,7 @@ class Task extends Backend
         }
 
         if ($row->status != 0) {
-            $this->error('该红包已发布');
+            $this->error('该任务已发布');
         }
 
         $row->status = 1;
@@ -414,44 +370,15 @@ class Task extends Backend
     }
 
     /**
-     * 撤回红包
-     */
-    public function revoke($ids = null)
-    {
-        $row = $this->model->get($ids);
-        if (!$row) {
-            $this->error(__('未找到记录'));
-        }
-
-        if ($row->status != 1) {
-            $this->error('只能撤回进行中的红包');
-        }
-
-        Db::startTrans();
-        try {
-            $row->status = 0;
-            $row->updatetime = time();
-            $row->save();
-
-            Db::commit();
-            $this->success('撤回成功');
-        } catch (Exception $e) {
-            Db::rollback();
-            $this->error($e->getMessage());
-        }
-    }
-
-    /**
-     * 红包详情
+     * 任务详情
      */
     public function detail($ids = null)
     {
         $task = $this->model->get($ids);
         if (!$task) {
-            $this->error('红包不存在');
+            $this->error('任务不存在');
         }
 
-        // 领取记录
         $participations = Db::name('task_participation tp')
             ->join('user u', 'u.id = tp.user_id', 'LEFT')
             ->field('tp.*, u.username, u.nickname, u.avatar')
@@ -460,7 +387,6 @@ class Task extends Backend
             ->limit(100)
             ->select();
 
-        // 统计信息
         $stats = [
             'total_grabbed' => count($participations),
             'total_amount' => array_sum(array_column($participations, 'reward_coin')),
@@ -471,25 +397,5 @@ class Task extends Backend
         $this->view->assign('participations', $participations);
         $this->view->assign('stats', $stats);
         return $this->view->fetch();
-    }
-
-    /**
-     * 批量发布
-     */
-    public function batchPublish()
-    {
-        $ids = $this->request->post('ids');
-        if (empty($ids)) {
-            $this->error(__('参数错误'));
-        }
-
-        $this->model->where('id', 'in', $ids)
-            ->where('status', 0)
-            ->update([
-                'status' => 1,
-                'updatetime' => time()
-            ]);
-
-        $this->success();
     }
 }
