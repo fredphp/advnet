@@ -3,6 +3,7 @@
 namespace app\admin\controller\redpacket;
 
 use app\common\controller\Backend;
+use app\common\model\TaskMessage;
 use think\Db;
 use think\Exception;
 
@@ -46,6 +47,7 @@ class Task extends Backend
                 $row['total_grabbed_amount'] = Db::name('task_participation')
                     ->where('task_id', $row['id'])
                     ->sum('reward_coin');
+                $row['push_status'] = TaskMessage::where('task_id', $row['id'])->count() > 0 ? 1 : 0;
                 $data[] = $row;
             }
 
@@ -176,6 +178,146 @@ class Task extends Backend
         $this->view->assign('resourceInfo', $resourceInfo);
         return $this->view->fetch();
     }
+
+    /**
+     * 推送任务到客户端
+     * 创建推送消息，客户端可以通过API获取
+     */
+    public function push($ids = null)
+    {
+        $row = $this->model->get($ids);
+        if (!$row) {
+            $this->error(__('未找到记录'));
+        }
+
+        if ($row->status != 1) {
+            $this->error('只能推送已启用的任务');
+        }
+
+        // 检查是否已经推送过
+        $exists = TaskMessage::where('task_id', $ids)
+            ->where('status', '<>', TaskMessage::STATUS_EXPIRED)
+            ->find();
+        if ($exists) {
+            $this->error('该任务已推送，请勿重复推送');
+        }
+
+        // 获取任务类型名称
+        $typeList = \app\common\model\RedPacketResource::getTypeList();
+        $taskTypeName = $typeList[$row->task_type] ?? $row->task_type;
+
+        // 解析任务参数
+        $taskParams = json_decode($row->task_params, true) ?: [];
+
+        // 构建推送消息
+        $messageData = [
+            'task_id' => $row->id,
+            'task_type' => $row->task_type,
+            'task_type_name' => $taskTypeName,
+            'name' => $row->name,
+            'description' => $row->description,
+            'icon' => $row->icon ?: ($taskParams['logo'] ?? '/assets/img/avatar.png'),
+            'total_amount' => $row->total_amount,
+            'single_amount' => $row->single_amount,
+            'total_count' => $row->total_count,
+            'remain_count' => $row->remain_count,
+            'start_time' => $row->start_time,
+            'end_time' => $row->end_time,
+            'task_url' => $row->task_url,
+            'resource' => $taskParams,
+        ];
+
+        // 创建推送消息
+        $message = new TaskMessage();
+        $message->task_id = $ids;
+        $message->type = TaskMessage::TYPE_TASK_PUSH;
+        $message->title = '🎉 新任务推送：' . $row->name;
+        $message->content = sprintf(
+            '【%s】%s，完成可获得 %.2f 金币奖励！剩余%d个名额',
+            $taskTypeName,
+            $row->name,
+            $row->amount_type == 'fixed' ? $row->single_amount : $row->max_amount,
+            $row->remain_count
+        );
+        $message->message_data = json_encode($messageData);
+        $message->status = TaskMessage::STATUS_SENT;
+        $message->target_users = json_encode([]); // 空表示全部用户
+        $message->send_time = time();
+        $message->expire_time = $row->end_time ?: (time() + 86400 * 7);
+        $message->save();
+
+        $this->success('推送成功！客户端将在下次刷新时收到任务通知');
+    }
+
+    /**
+     * 发送自定义消息
+     */
+    public function sendMessage($ids = null)
+    {
+        $row = $this->model->get($ids);
+        if (!$row) {
+            $this->error(__('未找到记录'));
+        }
+
+        if ($this->request->isPost()) {
+            $title = $this->request->post('title');
+            $content = $this->request->post('content');
+            
+            if (empty($title) || empty($content)) {
+                $this->error('标题和内容不能为空');
+            }
+
+            // 解析任务参数
+            $taskParams = json_decode($row->task_params, true) ?: [];
+
+            $messageData = [
+                'task_id' => $row->id,
+                'task_type' => $row->task_type,
+                'name' => $row->name,
+                'icon' => $row->icon ?: ($taskParams['logo'] ?? '/assets/img/avatar.png'),
+                'task_url' => $row->task_url,
+            ];
+
+            $message = new TaskMessage();
+            $message->task_id = $ids;
+            $message->type = TaskMessage::TYPE_SYSTEM_NOTICE;
+            $message->title = $title;
+            $message->content = $content;
+            $message->message_data = json_encode($messageData);
+            $message->status = TaskMessage::STATUS_SENT;
+            $message->target_users = json_encode([]);
+            $message->send_time = time();
+            $message->expire_time = $row->end_time ?: (time() + 86400 * 7);
+            $message->save();
+
+            $this->success('消息发送成功');
+        }
+
+        $this->view->assign('task', $row);
+        return $this->view->fetch();
+    }
+
+    /**
+     * 查看推送记录
+     */
+    public function pushList($ids = null)
+    {
+        if ($this->request->isAjax()) {
+            $list = TaskMessage::where('task_id', $ids)
+                ->order('id', 'desc')
+                ->select();
+            
+            $data = [];
+            foreach ($list as $item) {
+                $data[] = $item->getFormattedData();
+            }
+            
+            return json(['total' => count($data), 'rows' => $data]);
+        }
+        
+        $this->view->assign('task_id', $ids);
+        return $this->view->fetch();
+    }
     
     /**
      * 根据任务类型获取资源列表
@@ -215,24 +357,6 @@ class Task extends Backend
         }
         
         return json(['code' => 1, 'msg' => '获取成功', 'data' => $data, 'total' => count($data)]);
-    }
-    
-    /**
-     * 获取资源详情
-     */
-    public function getResourceDetail()
-    {
-        $id = $this->request->get('id');
-        if (!$id) {
-            return json(['code' => 0, 'msg' => '参数错误']);
-        }
-        
-        $resource = \app\common\model\RedPacketResource::get($id);
-        if (!$resource) {
-            return json(['code' => 0, 'msg' => '资源不存在']);
-        }
-        
-        return json(['code' => 1, 'msg' => '获取成功', 'data' => $resource->toArray()]);
     }
 
     /**
