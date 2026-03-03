@@ -1,0 +1,319 @@
+<style>
+.stats-card {
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    padding: 20px;
+    margin-bottom: 20px;
+}
+.stats-title {
+    font-size: 16px;
+    font-weight: bold;
+    color: #333;
+    margin-bottom: 15px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #eee;
+}
+.stat-item {
+    text-align: center;
+    padding: 15px;
+}
+.stat-value {
+    font-size: 28px;
+    font-weight: bold;
+    margin-bottom: 5px;
+}
+.stat-label {
+    color: #666;
+    font-size: 13px;
+}
+.chart-container {
+    height: 300px;
+    margin-top: 15px;
+}
+.table-ranking th, .table-ranking td {
+    text-align: center;
+}
+.rank-badge {
+    display: inline-block;
+    width: 24px;
+    height: 24px;
+    line-height: 24px;
+    border-radius: 50%;
+    text-align: center;
+    font-size: 12px;
+    font-weight: bold;
+}
+.rank-1 { background: #ffd700; color: #fff; }
+.rank-2 { background: #c0c0c0; color: #fff; }
+.rank-3 { background: #cd7f32; color: #fff; }
+.rank-other { background: #e0e0e0; color: #666; }
+</style>
+
+<div class="row">
+    <!-- 视频基本信息 -->
+    <div class="col-md-12">
+        <div class="stats-card">
+            <div class="stats-title">
+                <i class="fa fa-video-camera"></i> 视频信息
+            </div>
+            <div class="row">
+                <div class="col-md-2">
+                    <img src="{$video.cover_url|default=''}" style="width: 100%; border-radius: 4px;" alt="封面">
+                </div>
+                <div class="col-md-10">
+                    <h4 style="margin-top: 0;">{$video.title}</h4>
+                    <p class="text-muted" style="margin-bottom: 5px;">ID: {$video.id}</p>
+                    <p class="text-muted" style="margin-bottom: 5px;">
+                        时长: {$video.duration|default=0} 秒 | 
+                        状态: {if $video.status==1}<span class="label label-success">已发布</span>{else/}<span class="label label-default">其他</span>{/if} |
+                        创建时间: {$video.createtime|date='Y-m-d H:i',###}
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 核心数据 -->
+    <div class="col-md-12">
+        <div class="stats-card">
+            <div class="stats-title">
+                <i class="fa fa-bar-chart"></i> 核心数据
+            </div>
+            <div class="row">
+                <div class="col-md-2 col-sm-4 col-xs-6">
+                    <div class="stat-item">
+                        <div class="stat-value text-primary">{$video.view_count|default=0}</div>
+                        <div class="stat-label">播放量</div>
+                    </div>
+                </div>
+                <div class="col-md-2 col-sm-4 col-xs-6">
+                    <div class="stat-item">
+                        <div class="stat-value text-danger">{$video.like_count|default=0}</div>
+                        <div class="stat-label">点赞数</div>
+                    </div>
+                </div>
+                <div class="col-md-2 col-sm-4 col-xs-6">
+                    <div class="stat-item">
+                        <div class="stat-value text-warning">{$video.collect_count|default=0}</div>
+                        <div class="stat-label">收藏数</div>
+                    </div>
+                </div>
+                <div class="col-md-2 col-sm-4 col-xs-6">
+                    <div class="stat-item">
+                        <div class="stat-value text-info">{$video.comment_count|default=0}</div>
+                        <div class="stat-label">评论数</div>
+                    </div>
+                </div>
+                <div class="col-md-2 col-sm-4 col-xs-6">
+                    <div class="stat-item">
+                        <div class="stat-value text-success">{$video.share_count|default=0}</div>
+                        <div class="stat-label">转发数</div>
+                    </div>
+                </div>
+                <div class="col-md-2 col-sm-4 col-xs-6">
+                    <div class="stat-item">
+                        <div class="stat-value text-purple">{$video.reward_count|default=0}</div>
+                        <div class="stat-label">奖励人数</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 观看统计 -->
+    <div class="col-md-6">
+        <div class="stats-card">
+            <div class="stats-title">
+                <i class="fa fa-eye"></i> 观看统计
+            </div>
+            <div class="row">
+                <div class="col-xs-6">
+                    <div class="stat-item">
+                        <div class="stat-value text-primary">{$watch_stats.total_watches|default=0}</div>
+                        <div class="stat-label">总观看次数</div>
+                    </div>
+                </div>
+                <div class="col-xs-6">
+                    <div class="stat-item">
+                        <div class="stat-value text-info">{$watch_stats.unique_viewers|default=0}</div>
+                        <div class="stat-label">独立观众数</div>
+                    </div>
+                </div>
+                <div class="col-xs-6">
+                    <div class="stat-item">
+                        <div class="stat-value text-warning">{$watch_stats.avg_duration|sprintf='%.1f',###}</div>
+                        <div class="stat-label">平均观看时长(秒)</div>
+                    </div>
+                </div>
+                <div class="col-xs-6">
+                    <div class="stat-item">
+                        <div class="stat-value text-success">{$watch_stats.total_coin|default='0.00'}</div>
+                        <div class="stat-label">发放金币总额</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 奖励统计 -->
+    <div class="col-md-6">
+        <div class="stats-card">
+            <div class="stats-title">
+                <i class="fa fa-gift"></i> 奖励统计
+            </div>
+            <div class="row">
+                <div class="col-xs-6">
+                    <div class="stat-item">
+                        <div class="stat-value text-gold">{$video.reward_coin|default='0.00'}</div>
+                        <div class="stat-label">单次奖励金币</div>
+                    </div>
+                </div>
+                <div class="col-xs-6">
+                    <div class="stat-item">
+                        <div class="stat-value text-danger">{$video.reward_coin_total|default='0.00'}</div>
+                        <div class="stat-label">已发放金币总额</div>
+                    </div>
+                </div>
+                <div class="col-xs-6">
+                    <div class="stat-item">
+                        <div class="stat-value text-purple">{$video.reward_count|default=0}</div>
+                        <div class="stat-label">获得奖励人数</div>
+                    </div>
+                </div>
+                <div class="col-xs-6">
+                    <div class="stat-item">
+                        <div class="stat-value text-info">{$video.reward_duration|default=0}秒</div>
+                        <div class="stat-label">奖励所需时长</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 每日趋势 -->
+    <div class="col-md-12">
+        <div class="stats-card">
+            <div class="stats-title">
+                <i class="fa fa-line-chart"></i> 近30天观看趋势
+            </div>
+            <div class="chart-container" id="chart-trend"></div>
+        </div>
+    </div>
+    
+    <!-- 用户排行 -->
+    <div class="col-md-12">
+        <div class="stats-card">
+            <div class="stats-title">
+                <i class="fa fa-trophy"></i> 观看排行 TOP 20
+            </div>
+            <table class="table table-striped table-ranking">
+                <thead>
+                    <tr>
+                        <th width="60">排名</th>
+                        <th>用户ID</th>
+                        <th>用户名</th>
+                        <th>观看次数</th>
+                        <th>获得金币</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {volist name="top_viewers" id="vo"}
+                    <tr>
+                        <td>
+                            {if $i <= 3}
+                            <span class="rank-badge rank-{$i}">{$i}</span>
+                            {else/}
+                            <span class="rank-badge rank-other">{$i}</span>
+                            {/if}
+                        </td>
+                        <td>{$vo.id}</td>
+                        <td>{$vo.nickname|default=$vo.username}</td>
+                        <td>{$vo.watch_count}</td>
+                        <td>{$vo.coin_earned|default='0.00'}</td>
+                    </tr>
+                    {/volist}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+<script>
+$(function() {
+    // 初始化图表
+    var chartDom = document.getElementById('chart-trend');
+    var myChart = echarts.init(chartDom);
+    
+    var dates = [];
+    var watches = [];
+    var viewers = [];
+    
+    {volist name="daily_stats" id="stat"}
+    dates.push('{$stat.date}');
+    watches.push({$stat.watches});
+    viewers.push({$stat.viewers});
+    {/volist}
+    
+    var option = {
+        tooltip: {
+            trigger: 'axis',
+            axisPointer: {
+                type: 'cross'
+            }
+        },
+        legend: {
+            data: ['观看次数', '独立观众数']
+        },
+        grid: {
+            left: '3%',
+            right: '4%',
+            bottom: '3%',
+            containLabel: true
+        },
+        xAxis: {
+            type: 'category',
+            boundaryGap: false,
+            data: dates
+        },
+        yAxis: [
+            {
+                type: 'value',
+                name: '观看次数',
+                position: 'left'
+            },
+            {
+                type: 'value',
+                name: '观众数',
+                position: 'right'
+            }
+        ],
+        series: [
+            {
+                name: '观看次数',
+                type: 'line',
+                smooth: true,
+                areaStyle: {
+                    opacity: 0.3
+                },
+                data: watches
+            },
+            {
+                name: '独立观众数',
+                type: 'line',
+                smooth: true,
+                yAxisIndex: 1,
+                data: viewers
+            }
+        ]
+    };
+    
+    myChart.setOption(option);
+    
+    // 窗口大小变化时重新调整图表
+    $(window).resize(function() {
+        myChart.resize();
+    });
+});
+</script>

@@ -1,0 +1,47 @@
+<div class="panel panel-default">
+    <div class="panel-heading">
+        <h3 class="panel-title">推送任务确认</h3>
+    </div>
+    <div class="panel-body">
+        <form id="push-form" class="form-horizontal" role="form">
+            <div class="form-group">
+                <label class="control-label col-xs-12 col-sm-2">任务名称:</label>
+                <div class="col-xs-12 col-sm-8">
+                    <p class="form-control-static">{$task.name}</p>
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="control-label col-xs-12 col-sm-2">任务类型:</label>
+                <div class="col-xs-12 col-sm-8">
+                    <p class="form-control-static">{$task.task_type_text}</p>
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="control-label col-xs-12 col-sm-2">奖励金额:</label>
+                <div class="col-xs-12 col-sm-8">
+                    <p class="form-control-static text-danger">
+                        {$task.single_amount} 金币
+                        {if $task.amount_type == 'random'}
+                        (随机: {$task.min_amount} ~ {$task.max_amount})
+                        {/if}
+                    </p>
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="control-label col-xs-12 col-sm-2">剩余数量:</label>
+                <div class="col-xs-12 col-sm-8">
+                    <p class="form-control-static">{$task.remain_count} / {$task.total_count}</p>
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="control-label col-xs-12 col-sm-2">推送说明:</label>
+                <div class="col-xs-12 col-sm-8">
+                    <div class="alert alert-info">
+                        <p>推送后，所有客户端用户将在消息列表中收到此任务通知。</p>
+                        <p>用户点击消息可查看任务详情并参与。</p>
+                    </div>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>

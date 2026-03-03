@@ -631,7 +631,8 @@ class Backend extends Controller
                 'data' => $data,
                 'url'  => $url,
             ];
-            return json($result);
+            $response = json($result);
+            throw new \think\exception\HttpResponseException($response);
         }
 
         // 非AJAX请求，调用父类的跳转方法
@@ -677,7 +678,8 @@ class Backend extends Controller
                 'data' => $data,
                 'url'  => $url,
             ];
-            return json($result);
+            $response = json($result);
+            throw new \think\exception\HttpResponseException($response);
         }
 
         // 非AJAX请求，调用父类的跳转方法
