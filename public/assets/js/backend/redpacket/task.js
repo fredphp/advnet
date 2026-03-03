@@ -86,7 +86,7 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form', 'selectpage'], functi
                         
                         // 更新提示文字
                         var typeName = typeList[taskType] || '资源';
-                        $('.resource-type-tip').text('请选择【' + typeName + '】类型的资源');
+                        $('.resource-type-tip').text('请选择【' + typeName + '】类型的资源，支持搜索名称');
                         
                         // 任务类型变化时清空选中值并刷新
                         if (initTaskType && initTaskType !== taskType) {
@@ -155,15 +155,36 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form', 'selectpage'], functi
                     $('#c-resource_id').data('init-task-type', initTaskType);
                 }
                 
-                // 初始化selectpage，使用params函数动态传参
+                // 初始化selectpage，完整配置支持分页和搜索
                 $('#c-resource_id').selectPage({
+                    // 数据源
+                    source: 'redpacket/resource/select',
+                    // 显示字段
+                    showField: 'name',
+                    // 主键字段
+                    keyField: 'id',
+                    // 搜索字段（后端会使用name字段搜索）
+                    searchField: 'name',
+                    // 启用分页
+                    pagination: true,
+                    // 每页显示数量
+                    pageSize: 10,
+                    // 动态参数函数
                     params: function() {
                         return { type: currentTaskType };
                     },
+                    // 处理返回数据
                     eAjaxSuccess: function(data) {
                         data.list = typeof data.rows !== 'undefined' ? data.rows : (typeof data.list !== 'undefined' ? data.list : []);
                         data.totalRow = typeof data.total !== 'undefined' ? data.total : (typeof data.totalRow !== 'undefined' ? data.totalRow : data.list.length);
                         return data;
+                    },
+                    // 列表项格式化显示
+                    eListStyle: function(data) {
+                        return '<div style="padding:5px 0;">' + 
+                            '<strong>' + data.name + '</strong>' +
+                            (data.description ? '<br><small class="text-muted">' + data.description.substring(0, 50) + '</small>' : '') +
+                            '</div>';
                     }
                 });
                 
