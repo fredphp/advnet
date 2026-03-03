@@ -1,4 +1,4 @@
-define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefined, Backend, Table, Form) {
+define(['jquery', 'bootstrap', 'backend', 'table', 'form', 'selectpage'], function ($, undefined, Backend, Table, Form) {
     
     // 当前选中的任务类型，用于selectpage动态参数
     var currentTaskType = '';
@@ -90,7 +90,6 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
                         
                         // 任务类型变化时清空选中值并刷新
                         if (initTaskType && initTaskType !== taskType) {
-                            $resourceId.val('');
                             $resourceId.selectPageClear();
                             $('.resource-info-area').hide();
                         }
