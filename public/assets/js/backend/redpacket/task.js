@@ -1,11 +1,10 @@
 define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefined, Backend, Table, Form) {
     
-    // 类型列表（从HTML页面传递的全局变量）
-    // var typeList 在HTML模板中定义
+    // 当前选中的任务类型，用于selectpage动态参数
+    var currentTaskType = '';
     
     var Controller = {
         index: function () {
-            // 初始化表格配置
             Table.api.init({
                 extend: {
                     index_url: 'redpacket/task/index',
@@ -19,7 +18,6 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
 
             var table = $("#table");
             
-            // 初始化表格
             table.bootstrapTable({
                 url: $.fn.bootstrapTable.defaults.extend.index_url,
                 pk: 'id',
@@ -49,7 +47,6 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
                 ]
             });
 
-            // 为表格绑定事件
             Table.api.bindevent(table);
         },
         add: function () {
@@ -73,45 +70,44 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
                     }
                 });
                 
-                // 任务类型切换 - 核心逻辑
+                // 任务类型切换
                 $('#c-task_type').on('change', function() {
                     var taskType = $(this).val();
-                    var $resourceArea = $('.resource-select-area');
                     var $resourceId = $('#c-resource_id');
-                    var initTaskType = $resourceId.attr('data-init-task-type');
+                    var $resourceArea = $('.resource-select-area');
+                    var initTaskType = $resourceId.data('init-task-type');
                     
-                    console.log('task_type changed to:', taskType);
-                    
-                    // 签到任务不需要选择资源
                     if (taskType && taskType !== 'sign_in') {
-                        var typeName = typeList[taskType] || '资源';
+                        // 更新当前任务类型
+                        currentTaskType = taskType;
                         
                         // 显示资源选择区域
                         $resourceArea.show();
                         
                         // 更新提示文字
-                        $('.resource-type-tip').text('请选择【' + typeName + '】类型的资源（可在资源管理中添加）');
+                        var typeName = typeList[taskType] || '资源';
+                        $('.resource-type-tip').text('请选择【' + typeName + '】类型的资源');
                         
-                        // 判断是否需要清空值：如果任务类型发生变化，则清空
+                        // 任务类型变化时清空选中值并刷新
                         if (initTaskType && initTaskType !== taskType) {
                             $resourceId.val('');
-                            $resourceId.attr('data-init-value', '');
+                            $resourceId.selectPageClear();
                             $('.resource-info-area').hide();
                         }
                         
-                        // 关键：重新初始化selectpage，传入新的type值
-                        Controller.api.reinitSelectPage($resourceId, taskType);
+                        // 刷新selectpage数据
+                        $resourceId.selectPageRefresh();
                     } else {
                         $resourceArea.hide();
                         $('.resource-info-area').hide();
+                        currentTaskType = '';
                     }
                 });
                 
-                // 资源选择变化时显示资源信息
+                // 资源选择变化
                 $(document).on('change', '#c-resource_id', function() {
                     var resourceId = $(this).val();
                     if (resourceId) {
-                        // 获取资源详情
                         $.ajax({
                             url: Backend.api.fixurl('redpacket/resource/detail'),
                             type: 'GET',
@@ -148,104 +144,34 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
                     }
                 });
                 
-                // 触发初始状态
+                // 初始状态
                 if ($('input[name="row[new_user_only]"]').prop('checked')) {
                     $('#c-new_user_days').closest('.form-group').show();
-                } else {
-                    $('#c-new_user_days').closest('.form-group').hide();
                 }
                 
-                // 页面加载时如果已有任务类型，初始化selectpage
+                // 初始化任务类型
                 var initTaskType = $('#c-task_type').val();
                 if (initTaskType) {
-                    // 保存初始任务类型到 data 属性
-                    $('#c-resource_id').attr('data-init-task-type', initTaskType);
-                    
-                    // 保存初始值
-                    var initValue = $('#c-resource_id_init').val() || $('#c-resource_id').val();
-                    if (initValue) {
-                        $('#c-resource_id').attr('data-init-value', initValue);
-                    }
-                    
-                    // 延迟初始化selectpage
-                    setTimeout(function() {
-                        Controller.api.reinitSelectPage($('#c-resource_id'), initTaskType);
-                    }, 300);
-                }
-            },
-            
-            /**
-             * 重新初始化selectpage
-             * 核心方法：销毁旧实例，更新data-source URL（直接在URL中添加type参数），重建selectpage
-             */
-            reinitSelectPage: function($element, resourceType) {
-                console.log('reinitSelectPage called with type:', resourceType);
-                
-                // 保存初始值
-                var initValue = $element.attr('data-init-value') || $element.val();
-                var initTaskType = $element.attr('data-init-task-type');
-                
-                // 销毁现有的selectpage实例
-                var selectPageObj = $element.data('selectPageObject');
-                if (selectPageObj) {
-                    // 获取容器
-                    var $container = $element.closest('.sp_container');
-                    // 移除selectpage生成的DOM元素
-                    $container.find('.sp_result_area').remove();
-                    $container.find('.sp_element_box').remove();
-                    $container.find('.sp_clear_btn').remove();
-                    $container.find('.sp_hidden').remove();
-                    // 移除容器包装
-                    $element.unwrap('.sp_container');
-                    // 清除数据和class
-                    $element.removeData('selectPageObject');
-                    $element.removeClass('sp_input');
-                    $element.val('');
-                    $element.show();
+                    currentTaskType = initTaskType;
+                    $('#c-resource_id').data('init-task-type', initTaskType);
                 }
                 
-                // 关键：直接在data-source URL中添加type参数
-                // 这样selectpage请求时会自动带上这个参数
-                var sourceUrl = 'redpacket/resource/select?type=' + encodeURIComponent(resourceType);
-                $element.attr('data-source', sourceUrl);
-                
-                // 同时更新data-params（备用）
-                $element.attr('data-params', JSON.stringify({type: resourceType}));
-                
-                console.log('data-source set to:', sourceUrl);
-                
-                // 重新初始化selectpage
-                require(['selectpage'], function() {
-                    $element.selectPage({
-                        eAjaxSuccess: function(data) {
-                            data.list = typeof data.rows !== 'undefined' ? data.rows : (typeof data.list !== 'undefined' ? data.list : []);
-                            data.totalRow = typeof data.total !== 'undefined' ? data.total : (typeof data.totalRow !== 'undefined' ? data.totalRow : data.list.length);
-                            return data;
-                        }
-                    });
-                    
-                    // 如果有初始值且任务类型没变，恢复选中状态
-                    if (initValue && initTaskType === resourceType) {
-                        setTimeout(function() {
-                            $.ajax({
-                                url: Backend.api.fixurl('redpacket/resource/select'),
-                                type: 'GET',
-                                data: {
-                                    keyField: 'id',
-                                    showField: 'name',
-                                    keyValue: initValue,
-                                    type: resourceType
-                                },
-                                dataType: 'json',
-                                success: function(ret) {
-                                    if (ret && ret.list && ret.list.length > 0) {
-                                        $element.selectPageData(ret.list[0]);
-                                    }
-                                }
-                            });
-                        }, 100);
+                // 初始化selectpage，使用params函数动态传参
+                $('#c-resource_id').selectPage({
+                    params: function() {
+                        return { type: currentTaskType };
+                    },
+                    eAjaxSuccess: function(data) {
+                        data.list = typeof data.rows !== 'undefined' ? data.rows : (typeof data.list !== 'undefined' ? data.list : []);
+                        data.totalRow = typeof data.total !== 'undefined' ? data.total : (typeof data.totalRow !== 'undefined' ? data.totalRow : data.list.length);
+                        return data;
                     }
                 });
+                
+                // 延迟触发change
+                setTimeout(function() {
+                    $('#c-task_type').trigger('change');
+                }, 100);
             }
         }
     };
