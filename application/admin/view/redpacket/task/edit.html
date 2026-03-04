@@ -14,10 +14,11 @@
     <div class="form-group">
         <label class="control-label col-xs-12 col-sm-2">任务类型:</label>
         <div class="col-xs-12 col-sm-8">
-            <select id="c-task_type" class="form-control selectpicker" name="row[task_type]" data-init-type="{$row.task_type}">
-                {foreach name="typeList" item="vo" key="k"}
-                <option value="{$k}" {if $k==$row.task_type}selected{/if}>{$vo}</option>
-                {/foreach}
+            <select id="c-task_type" class="form-control selectpicker" name="row[task_type]">
+                <option value="download" {if $row.task_type=='download'}selected{/if}>下载App</option>
+                <option value="miniapp" {if $row.task_type=='miniapp'}selected{/if}>小程序游戏</option>
+                <option value="adv" {if $row.task_type=='adv'}selected{/if}>广告时长</option>
+                <option value="video" {if $row.task_type=='video'}selected{/if}>观看视频</option>
             </select>
         </div>
     </div>
@@ -26,7 +27,7 @@
     <div class="form-group resource-select-area">
         <label class="control-label col-xs-12 col-sm-2">关联资源:</label>
         <div class="col-xs-12 col-sm-8">
-            <input id="c-resource_id" class="form-control" name="row[resource_id]" type="text" value="{$row.resource_id}" placeholder="请选择关联资源" data-init-task-type="{$row.task_type}">
+            <input id="c-resource_id" class="form-control" name="row[resource_id]" type="text" value="{$row.resource_id}" placeholder="请选择关联资源">
             <span class="help-block resource-type-tip">选择任务类型后，可根据类型筛选资源</span>
         </div>
     </div>
@@ -68,9 +69,10 @@
         <label class="control-label col-xs-12 col-sm-2">状态:</label>
         <div class="col-xs-12 col-sm-8">
             <select id="c-status" class="form-control selectpicker" name="row[status]">
-                {foreach name="statusList" item="vo" key="k"}
-                <option value="{$k}" {if $k==$row.status}selected{/if}>{$vo}</option>
-                {/foreach}
+                <option value="pending" {if $row.status=='pending'}selected{/if}>待发送</option>
+                <option value="normal" {if $row.status=='normal'}selected{/if}>进行中</option>
+                <option value="finished" {if $row.status=='finished'}selected{/if}>已抢完</option>
+                <option value="expired" {if $row.status=='expired'}selected{/if}>已过期</option>
             </select>
         </div>
     </div>

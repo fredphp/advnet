@@ -15,9 +15,10 @@
         <label class="control-label col-xs-12 col-sm-2">任务类型:</label>
         <div class="col-xs-12 col-sm-8">
             <select id="c-task_type" class="form-control selectpicker" name="row[task_type]" required>
-                {foreach name="typeList" item="vo" key="k"}
-                <option value="{$k}" {if $k=='download'}selected{/if}>{$vo}</option>
-                {/foreach}
+                <option value="download">下载App</option>
+                <option value="miniapp">小程序游戏</option>
+                <option value="adv">广告时长</option>
+                <option value="video">观看视频</option>
             </select>
         </div>
     </div>
@@ -66,9 +67,10 @@
         <label class="control-label col-xs-12 col-sm-2">状态:</label>
         <div class="col-xs-12 col-sm-8">
             <select id="c-status" class="form-control selectpicker" name="row[status]">
-                {foreach name="statusList" item="vo" key="k"}
-                <option value="{$k}" {if $k=='pending'}selected{/if}>{$vo}</option>
-                {/foreach}
+                <option value="pending" selected>待发送</option>
+                <option value="normal">进行中</option>
+                <option value="finished">已抢完</option>
+                <option value="expired">已过期</option>
             </select>
         </div>
     </div>

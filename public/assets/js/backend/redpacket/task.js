@@ -41,7 +41,6 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form', 'selectpage', 'templa
                         {field: 'id', title: 'ID', sortable: true},
                         {field: 'name', title: '任务名称', operate: 'LIKE', formatter: Table.api.formatter.title},
                         {field: 'task_type', title: '任务类型', searchList: typeList, formatter: Table.api.formatter.normal},
-                        {field: 'icon', title: '图标', events: Table.api.events.image, formatter: Table.api.formatter.image},
                         {field: 'total_amount', title: '总金额(金币)', sortable: true},
                         {field: 'remain_amount', title: '剩余金额', sortable: true},
                         {field: 'total_count', title: '总数量', sortable: true},
@@ -52,13 +51,6 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form', 'selectpage', 'templa
                             "finished": "已抢完",
                             "expired": "已过期"
                         }, formatter: Table.api.formatter.status},
-                        {field: 'push_status', title: '推送状态', searchList: {"0":"未推送","1":"已推送"}, formatter: function(val, row) {
-                            if (val == 1) {
-                                return '<span class="label label-success">已推送</span>';
-                            }
-                            return '<span class="label label-default">未推送</span>';
-                        }},
-                        {field: 'start_time', title: '开始时间', formatter: Table.api.formatter.datetime, operate: 'RANGE', addclass: 'datetimerange', sortable: true},
                         {field: 'createtime', title: '创建时间', formatter: Table.api.formatter.datetime, operate: 'RANGE', addclass: 'datetimerange', sortable: true},
                         {field: 'operate', title: '操作', table: table, events: Table.api.events.operate, formatter: Table.api.formatter.operate, buttons: [
                             {
@@ -76,19 +68,6 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form', 'selectpage', 'templa
                                 }
                             },
                             {
-                                name: 'message',
-                                text: '发消息',
-                                title: '发送消息通知',
-                                classname: 'btn btn-xs btn-warning btn-dialog',
-                                icon: 'fa fa-envelope',
-                                url: function(row) {
-                                    return 'redpacket/task/sendMessage?ids=' + row.id;
-                                },
-                                hidden: function(row) {
-                                    return row.status != 'normal';
-                                }
-                            },
-                            {
                                 name: 'detail',
                                 text: '详情',
                                 title: '任务详情',
@@ -103,34 +82,6 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form', 'selectpage', 'templa
 
             // 为表格绑定事件
             Table.api.bindevent(table);
-
-            // 批量推送按钮
-            $(document).on('click', '.btn-push', function() {
-                var ids = Table.api.selectedids(table);
-                if (ids.length === 0) {
-                    Toastr.error('请选择要推送的任务');
-                    return;
-                }
-                Layer.confirm('确定要推送选中的任务吗？', {icon: 3, title: '提示'}, function(index) {
-                    $.ajax({
-                        url: 'redpacket/task/push',
-                        type: 'POST',
-                        data: {ids: ids.join(',')},
-                        success: function(ret) {
-                            if (ret.code === 1) {
-                                Toastr.success('推送成功');
-                                table.bootstrapTable('refresh');
-                            } else {
-                                Toastr.error(ret.msg || '推送失败');
-                            }
-                        },
-                        error: function() {
-                            Toastr.error('推送失败');
-                        }
-                    });
-                    Layer.close(index);
-                });
-            });
         },
         add: function () {
             Controller.api.bindevent();
@@ -155,27 +106,27 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form', 'selectpage', 'templa
                 $('#c-task_type').on('change', function() {
                     var taskType = $(this).val();
                     var $resourceId = $('#c-resource_id');
-                    var $resourceArea = $('.resource-select-area');
                     var initTaskType = $resourceId.data('init-task-type');
 
-                    // 所有类型都需要选择资源
                     if (taskType) {
                         currentTaskType = taskType;
-                        $resourceArea.show();
 
                         var typeName = typeList[taskType] || '资源';
-                        $('.resource-type-tip').text('请选择【' + typeName + '】类型的资源，支持搜索名称');
+                        $('.resource-type-tip').text('请选择【' + typeName + '】类型的资源');
 
                         // 任务类型变化时清空选中值并刷新
                         if (initTaskType && initTaskType !== taskType) {
-                            $resourceId.selectPageClear();
+                            if ($resourceId.data('selectPage')) {
+                                $resourceId.selectPageClear();
+                            }
                             $('.resource-info-area').hide();
                         }
 
                         // 刷新selectpage数据
-                        $resourceId.selectPageRefresh();
+                        if ($resourceId.data('selectPage')) {
+                            $resourceId.selectPageRefresh();
+                        }
                     } else {
-                        $resourceArea.hide();
                         $('.resource-info-area').hide();
                         currentTaskType = '';
                     }
@@ -213,35 +164,45 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form', 'selectpage', 'templa
                     // 选择资源后的回调
                     eSelect: function(data) {
                         if (data && data.id) {
-                            Controller.api.showResourceInfo(data.id);
+                            Controller.api.showResourceInfo(data);
                         } else {
                             $('.resource-info-area').hide();
                         }
                     }
                 });
 
-                // 显示资源信息
-                $('#c-resource_id').on('change', function() {
-                    var resourceId = $(this).val();
-                    if (resourceId) {
-                        Controller.api.showResourceInfo(resourceId);
-                    } else {
-                        $('.resource-info-area').hide();
-                    }
-                });
-
-                // 延迟触发change
+                // 延迟触发change和加载已选资源
                 setTimeout(function() {
                     $('#c-task_type').trigger('change');
-                    // 编辑页面如果有已选资源，显示信息
+                    // 编辑页面如果有已选资源ID，加载资源信息
                     var existingResourceId = $('#c-resource_id').val();
-                    if (existingResourceId) {
-                        Controller.api.showResourceInfo(existingResourceId);
+                    if (existingResourceId && !isNaN(existingResourceId)) {
+                        Controller.api.loadResourceInfo(existingResourceId);
                     }
-                }, 100);
+                }, 300);
             },
-            // 显示资源信息
-            showResourceInfo: function(resourceId) {
+            // 显示资源信息（从selectpage选择的数据）
+            showResourceInfo: function(data) {
+                if (!data || !data.id) {
+                    $('.resource-info-area').hide();
+                    return;
+                }
+
+                var logoUrl = data.logo || '/assets/img/avatar.png';
+                $('#resource-logo').attr('src', logoUrl);
+                $('#resource-name').text(data.name || '');
+                $('#resource-description').text(data.description || '暂无描述');
+
+                var extraInfo = [];
+                if (data.type) {
+                    extraInfo.push('类型: ' + (typeList[data.type] || data.type));
+                }
+                $('#resource-extra').html(extraInfo.join(' | '));
+
+                $('.resource-info-area').show();
+            },
+            // 加载资源信息（通过AJAX）
+            loadResourceInfo: function(resourceId) {
                 if (!resourceId) {
                     $('.resource-info-area').hide();
                     return;
@@ -253,50 +214,7 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form', 'selectpage', 'templa
                     dataType: 'json',
                     success: function(ret) {
                         if (ret.code === 1 && ret.data) {
-                            var data = ret.data;
-                            // 设置logo
-                            var logoUrl = data.logo || '/assets/img/avatar.png';
-                            $('#resource-logo').attr('src', logoUrl);
-
-                            // 设置名称和描述
-                            $('#resource-name').text(data.name || '');
-                            $('#resource-description').text(data.description || '暂无描述');
-
-                            // 设置额外信息
-                            var extraInfo = [];
-                            if (data.type) {
-                                extraInfo.push('类型: ' + (typeList[data.type] || data.type));
-                            }
-                            if (data.package_name) {
-                                extraInfo.push('包名: ' + data.package_name);
-                            }
-                            if (data.miniapp_id) {
-                                extraInfo.push('AppID: ' + data.miniapp_id);
-                            }
-                            if (data.download_url) {
-                                extraInfo.push('下载链接: ' + data.download_url);
-                            }
-                            if (data.video_url) {
-                                extraInfo.push('视频链接: ' + data.video_url);
-                            }
-                            if (data.adv_id) {
-                                extraInfo.push('广告ID: ' + data.adv_id);
-                            }
-                            // 显示要求时长
-                            if (data.miniapp_duration) {
-                                extraInfo.push('要求时长: ' + data.miniapp_duration + '秒');
-                            }
-                            if (data.adv_duration) {
-                                extraInfo.push('要求时长: ' + data.adv_duration + '秒');
-                            }
-                            if (data.video_duration) {
-                                extraInfo.push('要求时长: ' + data.video_duration + '秒');
-                            }
-
-                            $('#resource-extra').html(extraInfo.join('<br>'));
-
-                            // 显示资源信息区域
-                            $('.resource-info-area').show();
+                            Controller.api.showResourceInfo(ret.data);
                         } else {
                             $('.resource-info-area').hide();
                         }
