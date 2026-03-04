@@ -7,6 +7,7 @@ use app\common\model\RedPacketTask as RedPacketTaskModel;
 use app\common\model\RedPacketResource;
 use think\Db;
 use think\Exception;
+use think\Env;
 
 /**
  * 红包任务管理
@@ -294,8 +295,8 @@ class Task extends Backend
     protected function sendPushNotification($data)
     {
         // 推送服务配置 - 使用网关访问
-        $pushServiceUrl = env('push.service_url', 'http://localhost:3003/api/push-task?XTransformPort=3003');
-        $pushApiKey = env('push.api_key', 'redpacket-push-secret-key-2024');
+        $pushServiceUrl = Env::get('push.service_url', 'http://localhost:3003/api/push-task?XTransformPort=3003');
+        $pushApiKey = Env::get('push.api_key', 'redpacket-push-secret-key-2024');
 
         try {
             $ch = curl_init();
