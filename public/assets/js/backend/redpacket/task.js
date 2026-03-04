@@ -22,6 +22,7 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form', 'selectpage', 'templa
                     edit_url: 'redpacket/task/edit',
                     del_url: 'redpacket/task/del',
                     push_url: 'redpacket/task/push',
+                    send_url: 'redpacket/task/send',
                     sendmessage_url: 'redpacket/task/sendMessage',
                     multi_url: 'redpacket/task/multi',
                     table: '',
@@ -52,27 +53,38 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form', 'selectpage', 'templa
                             "finished": "已抢完",
                             "expired": "已过期"
                         }, formatter: Table.api.formatter.status},
+                        {field: 'push_status', title: '发送状态', searchList: {"0":"未发送","1":"已发送"}, formatter: Table.api.formatter.status},
                         {field: 'createtime', title: '创建时间', formatter: Table.api.formatter.datetime, operate: 'RANGE', addclass: 'datetimerange', sortable: true},
                         {field: 'operate', title: '操作', table: table, events: Table.api.events.operate, formatter: Table.api.formatter.operate, buttons: [
                             {
-                                name: 'push',
-                                text: '推送',
-                                title: '推送任务到客户端',
-                                classname: 'btn btn-xs btn-info btn-ajax',
-                                icon: 'fa fa-paper-plane',
-                                url: 'redpacket/task/push',
+                                name: 'send',
+                                text: '发送',
+                                title: '发送任务到客户端',
+                                classname: 'btn btn-xs btn-warning btn-dialog',
+                                icon: 'fa fa-send',
+                                url: 'redpacket/task/send',
                                 hidden: function(row) {
-                                    return row.status != 'normal' || row.push_status == 1;
-                                },
-                                success: function(data, ret) {
-                                    table.bootstrapTable('refresh');
+                                    // 已发送的任务隐藏发送按钮
+                                    return row.push_status == 1;
+                                }
+                            },
+                            {
+                                name: 'edit',
+                                text: '编辑',
+                                title: '编辑任务',
+                                classname: 'btn btn-xs btn-success btn-dialog',
+                                icon: 'fa fa-pencil',
+                                url: 'redpacket/task/edit',
+                                hidden: function(row) {
+                                    // 已发送的任务隐藏编辑按钮
+                                    return row.push_status == 1;
                                 }
                             },
                             {
                                 name: 'detail',
                                 text: '详情',
                                 title: '任务详情',
-                                classname: 'btn btn-xs btn-success btn-dialog',
+                                classname: 'btn btn-xs btn-info btn-dialog',
                                 icon: 'fa fa-list',
                                 url: 'redpacket/task/detail'
                             }
@@ -89,6 +101,9 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form', 'selectpage', 'templa
         },
         edit: function () {
             Controller.api.bindevent();
+        },
+        send: function() {
+            Controller.api.bindeventSend();
         },
         push: function() {
             Form.api.bindevent($("form[role=form]"));
@@ -181,6 +196,49 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form', 'selectpage', 'templa
                         Controller.api.loadResourceInfo(existingResourceId);
                     }
                 }, 300);
+            },
+            // 发送页面绑定事件
+            bindeventSend: function() {
+                // 确认发送按钮
+                $('#btn-confirm-send').on('click', function() {
+                    var $btn = $(this);
+                    var taskId = $btn.data('task-id');
+                    
+                    Layer.confirm('确定要发送该任务到客户端吗？发送后将无法修改。', {
+                        title: '发送确认',
+                        btn: ['确定发送', '取消']
+                    }, function(index) {
+                        Layer.close(index);
+                        
+                        // 显示发送中
+                        $btn.prop('disabled', true).text('发送中...');
+                        
+                        // 发送请求
+                        $.ajax({
+                            url: Backend.api.fixurl('redpacket/task/doSend'),
+                            type: 'POST',
+                            data: { ids: taskId },
+                            dataType: 'json',
+                            success: function(ret) {
+                                if (ret.code === 1) {
+                                    Layer.alert('发送成功！', { icon: 1 }, function() {
+                                        // 关闭弹窗并刷新列表
+                                        var index2 = parent.layer.getFrameIndex(window.name);
+                                        parent.$("#table").bootstrapTable('refresh');
+                                        parent.layer.close(index2);
+                                    });
+                                } else {
+                                    $btn.prop('disabled', false).text('确认发送');
+                                    Layer.alert(ret.msg || '发送失败', { icon: 2 });
+                                }
+                            },
+                            error: function() {
+                                $btn.prop('disabled', false).text('确认发送');
+                                Layer.alert('网络错误，请稍后重试', { icon: 2 });
+                            }
+                        });
+                    });
+                });
             },
             // 显示资源信息（从selectpage选择的数据）
             showResourceInfo: function(data) {

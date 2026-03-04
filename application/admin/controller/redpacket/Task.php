@@ -131,6 +131,11 @@ class Task extends Backend
             $this->error(__('No Results were found'));
         }
         
+        // 检查是否已发送，已发送的不允许修改
+        if ($row->push_status == 1) {
+            $this->error('该任务已发送，不允许修改');
+        }
+        
         $adminIds = $this->getDataLimitAdminIds();
         if (is_array($adminIds)) {
             if (!in_array($row[$this->dataLimitField], $adminIds)) {
@@ -162,6 +167,83 @@ class Task extends Backend
         
         $this->view->assign('row', $row);
         return $this->view->fetch();
+    }
+    
+    /**
+     * 发送预览页面
+     */
+    public function send($ids = null)
+    {
+        $row = $this->model->with(['resource'])->find($ids);
+        if (!$row) {
+            $this->error(__('No Results were found'));
+        }
+        
+        // 已发送的任务不能再发送
+        if ($row->push_status == 1) {
+            $this->error('该任务已发送，请勿重复发送');
+        }
+        
+        // 获取发送数据预览
+        $sendData = $row->getPushData();
+        
+        // 根据任务类型获取聊天内容
+        $chatContent = '';
+        if ($row->type === 'chat') {
+            if ($row->resource) {
+                // 有关联资源，使用资源的聊天要求
+                $chatContent = $row->resource->chat_requirement ?: $row->description;
+            } else {
+                // 无关联资源，使用任务描述作为聊天内容
+                $chatContent = $row->description ?: '';
+            }
+        }
+        
+        $this->view->assign('row', $row);
+        $this->view->assign('sendData', $sendData);
+        $this->view->assign('chatContent', $chatContent);
+        
+        return $this->view->fetch();
+    }
+    
+    /**
+     * 执行发送
+     */
+    public function doSend($ids = null)
+    {
+        $row = $this->model->get($ids);
+        if (!$row) {
+            $this->error(__('No Results were found'));
+        }
+        
+        // 已发送的任务不能再发送
+        if ($row->push_status == 1) {
+            $this->error('该任务已发送，请勿重复发送');
+        }
+        
+        if ($row->remain_count <= 0) {
+            $this->error('红包数量已用完');
+        }
+        
+        try {
+            // 调用推送服务
+            $pushData = $row->getPushData();
+            $pushResult = $this->sendPushNotification($pushData);
+            
+            if ($pushResult['success']) {
+                // 更新推送状态
+                $row->push_status = 1;
+                $row->push_time = time();
+                $row->status = 'normal';
+                $row->save();
+                
+                $this->success('发送成功', null, $pushResult);
+            } else {
+                $this->error('发送失败: ' . ($pushResult['message'] ?? '未知错误'));
+            }
+        } catch (Exception $e) {
+            $this->error('发送失败: ' . $e->getMessage());
+        }
     }
     
     /**
