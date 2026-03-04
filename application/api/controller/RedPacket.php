@@ -3,7 +3,7 @@
 namespace app\api\controller;
 
 use app\common\controller\Api;
-use app\common\library\RedPacketService;
+use app\common\library\RedPacketClickService;
 use think\facade\Db;
 
 /**
@@ -13,22 +13,21 @@ class RedPacket extends Api
 {
     protected $noNeedLogin = [];
     protected $noNeedRight = ['*'];
-    
+
     protected $service = null;
-    
+
     public function _initialize()
     {
         parent::_initialize();
-        $this->service = new RedPacketService();
+        $this->service = new RedPacketClickService();
     }
-    
+
     /**
      * 获取任务列表
      * @api {get} /api/redpacket/tasks 获取任务列表
      * @apiName GetTaskList
      * @apiGroup 红包任务
      * @apiParam {String} [type] 任务类型筛选
-     * @apiParam {Number} [category_id] 分类ID筛选
      * @apiParam {Number} [page=1] 页码
      * @apiParam {Number} [limit=20] 每页数量
      */
@@ -38,14 +37,13 @@ class RedPacket extends Api
             'page' => $this->request->get('page/d', 1),
             'limit' => $this->request->get('limit/d', 20),
             'type' => $this->request->get('type/s', ''),
-            'category_id' => $this->request->get('category_id/d', 0)
         ];
-        
+
         $result = $this->service->getTaskList($this->auth->id, $filters);
-        
+
         $this->success('获取成功', $result);
     }
-    
+
     /**
      * 获取任务详情
      * @api {get} /api/redpacket/detail 获取任务详情
@@ -56,130 +54,99 @@ class RedPacket extends Api
     public function detail()
     {
         $taskId = $this->request->get('task_id/d');
-        
+
         if (!$taskId) {
             $this->error('任务ID不能为空');
         }
-        
+
         $task = $this->service->getTaskDetail($taskId, $this->auth->id);
-        
+
         if (!$task) {
             $this->error('任务不存在');
         }
-        
+
         $this->success('获取成功', $task);
     }
-    
+
     /**
-     * 获取任务分类
-     * @api {get} /api/redpacket/categories 获取任务分类
-     * @apiName GetCategories
-     * @apiGroup 红包任务
-     */
-    public function categories()
-    {
-        $list = \app\common\model\TaskCategory::getActiveCategories();
-        
-        $this->success('获取成功', ['list' => $list]);
-    }
-    
-    /**
-     * 领取任务
-     * @api {post} /api/redpacket/receive 领取任务
-     * @apiName ReceiveTask
+     * 点击红包
+     * @api {post} /api/redpacket/click 点击红包
+     * @apiName ClickRedPacket
      * @apiGroup 红包任务
      * @apiParam {Number} task_id 任务ID
+     * @apiDescription
+     * 第一次点击：生成基础金额（新用户使用新用户红包金额，老用户根据今日领取金额确定基础额度）
+     * 后续点击：在现有金额上累加随机金额
      */
-    public function receive()
+    public function click()
     {
         $taskId = $this->request->post('task_id/d');
-        
+
         if (!$taskId) {
             $this->error('任务ID不能为空');
         }
-        
+
         $options = [
             'ip' => $this->request->ip(),
             'device_id' => $this->request->header('x-device-id', ''),
             'platform' => $this->request->header('x-platform', ''),
-            'app_version' => $this->request->header('x-app-version', ''),
-            'device_info' => json_decode($this->request->post('device_info', '{}'), true)
         ];
-        
-        $result = $this->service->receiveTask($this->auth->id, $taskId, $options);
-        
+
+        $result = $this->service->clickRedPacket($this->auth->id, $taskId, $options);
+
         if ($result['success']) {
             $this->success($result['message'], $result['data']);
         } else {
             $this->error($result['message']);
         }
     }
-    
+
     /**
-     * 提交任务完成
-     * @api {post} /api/redpacket/submit 提交任务完成
-     * @apiName SubmitTask
+     * 领取红包
+     * @api {post} /api/redpacket/collect 领取红包
+     * @apiName CollectRedPacket
      * @apiGroup 红包任务
-     * @apiParam {String} order_no 订单号
-     * @apiParam {Number} [duration] 实际耗时(秒)
-     * @apiParam {Number} [progress] 完成进度(%)
-     * @apiParam {String[]} [screenshots] 截图URL数组
-     * @apiParam {Object} [proof_data] 证明数据
+     * @apiParam {Number} task_id 任务ID
+     * @apiDescription 领取累计的红包金额，金币将发放到用户账户
      */
-    public function submit()
+    public function collect()
     {
-        $orderNo = $this->request->post('order_no/s');
-        
-        if (!$orderNo) {
-            $this->error('订单号不能为空');
+        $taskId = $this->request->post('task_id/d');
+
+        if (!$taskId) {
+            $this->error('任务ID不能为空');
         }
-        
-        $data = [
-            'duration' => $this->request->post('duration/d', 0),
-            'progress' => $this->request->post('progress/d', 100),
-            'screenshots' => json_decode($this->request->post('screenshots', '[]'), true) ?: [],
-            'proof_data' => json_decode($this->request->post('proof_data', '{}'), true) ?: [],
-            'extra_data' => [
-                'ip' => $this->request->ip(),
-                'device_id' => $this->request->header('x-device-id', ''),
-            ]
-        ];
-        
-        $result = $this->service->submitTask($this->auth->id, $orderNo, $data);
-        
+
+        $result = $this->service->collectRedPacket($this->auth->id, $taskId);
+
         if ($result['success']) {
             $this->success($result['message'], $result['data']);
         } else {
             $this->error($result['message']);
         }
     }
-    
+
     /**
-     * 获取我的参与记录
-     * @api {get} /api/redpacket/records 获取我的参与记录
-     * @apiName GetRecords
+     * 获取用户红包状态
+     * @api {get} /api/redpacket/status 获取用户红包状态
+     * @apiName GetRedPacketStatus
      * @apiGroup 红包任务
-     * @apiParam {Number} [status] 状态筛选
-     * @apiParam {Number} [page=1] 页码
-     * @apiParam {Number} [limit=20] 每页数量
+     * @apiParam {Number} task_id 任务ID
+     * @apiDescription 获取用户对某个任务的红包累计状态
      */
-    public function records()
+    public function status()
     {
-        $status = $this->request->get('status');
-        $page = $this->request->get('page/d', 1);
-        $limit = $this->request->get('limit/d', 20);
-        
-        if ($status !== null && $status !== '') {
-            $status = intval($status);
-        } else {
-            $status = null;
+        $taskId = $this->request->get('task_id/d');
+
+        if (!$taskId) {
+            $this->error('任务ID不能为空');
         }
-        
-        $result = $this->service->getUserParticipations($this->auth->id, $status, $page, $limit);
-        
+
+        $result = $this->service->getUserRedPacketStatus($this->auth->id, $taskId);
+
         $this->success('获取成功', $result);
     }
-    
+
     /**
      * 获取今日统计
      * @api {get} /api/redpacket/today 获取今日统计
@@ -188,46 +155,41 @@ class RedPacket extends Api
      */
     public function today()
     {
-        $stat = \app\common\model\UserTaskStat::getToday($this->auth->id);
-        
+        // 获取今日已领取金额
+        $todayStart = strtotime(date('Y-m-d'));
+        $todayAmount = Db::name('coin_log')
+            ->where('user_id', $this->auth->id)
+            ->where('type', 'red_packet_click')
+            ->where('createtime', '>=', $todayStart)
+            ->sum('amount');
+
+        // 获取今日点击次数
+        $todayClickCount = Db::name('user_red_packet_accumulate')
+            ->where('user_id', $this->auth->id)
+            ->where('createtime', '>=', $todayStart)
+            ->count();
+
         $this->success('获取成功', [
-            'receive_count' => $stat->receive_count,
-            'complete_count' => $stat->complete_count,
-            'reward_count' => $stat->reward_count,
-            'reward_coin' => $stat->reward_coin
+            'today_amount' => intval($todayAmount),
+            'today_click_count' => $todayClickCount,
         ]);
     }
-    
+
     /**
-     * 取消任务
-     * @api {post} /api/redpacket/cancel 取消任务
-     * @apiName CancelTask
+     * 获取我的参与记录
+     * @api {get} /api/redpacket/records 获取我的参与记录
+     * @apiName GetRecords
      * @apiGroup 红包任务
-     * @apiParam {String} order_no 订单号
+     * @apiParam {Number} [page=1] 页码
+     * @apiParam {Number} [limit=20] 每页数量
      */
-    public function cancel()
+    public function records()
     {
-        $orderNo = $this->request->post('order_no/s');
-        
-        if (!$orderNo) {
-            $this->error('订单号不能为空');
-        }
-        
-        $participation = \app\common\model\TaskParticipation::where('order_no', $orderNo)
-            ->where('user_id', $this->auth->id)
-            ->find();
-        
-        if (!$participation) {
-            $this->error('参与记录不存在');
-        }
-        
-        if ($participation->status != \app\common\model\TaskParticipation::STATUS_RECEIVED) {
-            $this->error('任务状态不可取消');
-        }
-        
-        $participation->status = \app\common\model\TaskParticipation::STATUS_CANCELLED;
-        $participation->save();
-        
-        $this->success('已取消');
+        $page = $this->request->get('page/d', 1);
+        $limit = $this->request->get('limit/d', 20);
+
+        $result = $this->service->getUserRecords($this->auth->id, $page, $limit);
+
+        $this->success('获取成功', $result);
     }
 }

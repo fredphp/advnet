@@ -17,25 +17,29 @@ class Task extends Backend
      * RedPacketTask模型对象
      */
     protected $model = null;
-    
+
     public function _initialize()
     {
         parent::_initialize();
         $this->model = new RedPacketTaskModel;
-        
+
         // 类型列表
         $typeList = RedPacketTaskModel::$typeList;
         $this->view->assign('typeList', $typeList);
-        
+
         // 状态列表
         $statusList = RedPacketTaskModel::$statusList;
         $this->view->assign('statusList', $statusList);
-        
+
+        // 是否显示红包
+        $showRedPacketList = RedPacketTaskModel::$showRedPacketList;
+        $this->view->assign('showRedPacketList', $showRedPacketList);
+
         // 资源列表
         $resourceList = RedPacketResource::where('status', 'normal')->column('id,name,type');
         $this->view->assign('resourceList', $resourceList);
     }
-    
+
     /**
      * 查看
      */
@@ -43,13 +47,13 @@ class Task extends Backend
     {
         // 设置过滤方法
         $this->request->filter(['strip_tags', 'trim']);
-        
+
         if ($this->request->isAjax()) {
             // 如果发送的来源是Selectpage，则转发到Selectpage
             if ($this->request->request('keyField')) {
                 return $this->selectpage();
             }
-            
+
             list($where, $sort, $order, $offset, $limit) = $this->buildparams();
 
             // 默认按ID排序，避免sort字段不存在的问题
@@ -66,15 +70,16 @@ class Task extends Backend
             // 确保返回 type_text
             foreach ($list as $row) {
                 $row->type_text = $row->type_text ?? '';
+                $row->show_red_packet_text = $row->show_red_packet_text ?? '';
             }
 
             $result = ['total' => $list->total(), 'rows' => $list->items()];
             return json($result);
         }
-        
+
         return $this->view->fetch();
     }
-    
+
     /**
      * 添加
      */
@@ -84,31 +89,37 @@ class Task extends Backend
             $params = $this->request->post('row/a');
             if ($params) {
                 $params = $this->preExcludeFields($params);
-                
+
                 if ($this->dataLimit && $this->dataLimitFieldAutoFill) {
                     $params[$this->dataLimitField] = $this->auth->id;
                 }
-                
+
                 $result = false;
                 Db::startTrans();
                 try {
-                    // 计算单个红包金额
-                    $params['remain_count'] = $params['total_count'];
-                    $params['remain_amount'] = $params['total_amount'];
-                    $params['reward'] = round($params['total_amount'] / $params['total_count'], 2);
-                    
                     // 设置发送者信息
                     $params['sender_id'] = $this->auth->id;
                     $params['sender_name'] = $this->auth->nickname;
                     $params['sender_avatar'] = $this->auth->avatar;
-                    
+
+                    // 默认值
+                    if (!isset($params['show_red_packet'])) {
+                        // 如果是小程序游戏类型，默认显示红包
+                        $type = $params['type'] ?? 'chat';
+                        $params['show_red_packet'] = ($type === 'miniapp') ? 1 : 0;
+                    }
+
+                    if (!isset($params['max_click_per_day']) || empty($params['max_click_per_day'])) {
+                        $params['max_click_per_day'] = 10;
+                    }
+
                     $result = $this->model->allowField(true)->save($params);
                     Db::commit();
                 } catch (Exception $e) {
                     Db::rollback();
                     $this->error($e->getMessage());
                 }
-                
+
                 if ($result !== false) {
                     $this->success();
                 } else {
@@ -117,10 +128,10 @@ class Task extends Backend
             }
             $this->error(__('Parameter %s can not be empty', ''));
         }
-        
+
         return $this->view->fetch();
     }
-    
+
     /**
      * 编辑
      */
@@ -130,19 +141,19 @@ class Task extends Backend
         if (!$row) {
             $this->error(__('No Results were found'));
         }
-        
+
         // 检查是否已发送，已发送的不允许修改
         if ($row->push_status == 1) {
             $this->error('该任务已发送，不允许修改');
         }
-        
+
         $adminIds = $this->getDataLimitAdminIds();
         if (is_array($adminIds)) {
             if (!in_array($row[$this->dataLimitField], $adminIds)) {
                 $this->error(__('You have no permission'));
             }
         }
-        
+
         if ($this->request->isPost()) {
             $params = $this->request->post('row/a');
             if ($params) {
@@ -164,11 +175,11 @@ class Task extends Backend
             }
             $this->error(__('Parameter %s can not be empty', ''));
         }
-        
+
         $this->view->assign('row', $row);
         return $this->view->fetch();
     }
-    
+
     /**
      * 发送预览页面
      */
@@ -178,15 +189,15 @@ class Task extends Backend
         if (!$row) {
             $this->error(__('No Results were found'));
         }
-        
+
         // 已发送的任务不能再发送
         if ($row->push_status == 1) {
             $this->error('该任务已发送，请勿重复发送');
         }
-        
+
         // 获取发送数据预览
         $sendData = $row->getPushData();
-        
+
         // 根据任务类型获取聊天内容
         $chatContent = '';
         if ($row->type === 'chat') {
@@ -198,18 +209,18 @@ class Task extends Backend
                 $chatContent = $row->description ?: '';
             }
         }
-        
+
         // JSON数据在PHP中处理
         $sendDataJson = json_encode($sendData, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
-        
+
         $this->view->assign('row', $row);
         $this->view->assign('sendData', $sendData);
         $this->view->assign('sendDataJson', $sendDataJson);
         $this->view->assign('chatContent', $chatContent);
-        
+
         return $this->view->fetch();
     }
-    
+
     /**
      * 执行发送
      */
@@ -219,28 +230,24 @@ class Task extends Backend
         if (!$row) {
             $this->error(__('No Results were found'));
         }
-        
+
         // 已发送的任务不能再发送
         if ($row->push_status == 1) {
             $this->error('该任务已发送，请勿重复发送');
         }
-        
-        if ($row->remain_count <= 0) {
-            $this->error('红包数量已用完');
-        }
-        
+
         try {
             // 调用推送服务
             $pushData = $row->getPushData();
             $pushResult = $this->sendPushNotification($pushData);
-            
+
             if ($pushResult['success']) {
                 // 更新推送状态
                 $row->push_status = 1;
                 $row->push_time = time();
                 $row->status = 'normal';
                 $row->save();
-                
+
                 $this->success('发送成功', null, $pushResult);
             } else {
                 $this->error('发送失败: ' . ($pushResult['message'] ?? '未知错误'));
@@ -249,7 +256,7 @@ class Task extends Backend
             $this->error('发送失败: ' . $e->getMessage());
         }
     }
-    
+
     /**
      * 推送红包
      */
@@ -259,27 +266,23 @@ class Task extends Backend
         if (!$row) {
             $this->error(__('No Results were found'));
         }
-        
+
         if ($row->status != 'normal' && $row->status != 'pending') {
             $this->error('该红包任务状态不允许推送');
         }
-        
-        if ($row->remain_count <= 0) {
-            $this->error('红包已抢完');
-        }
-        
+
         try {
             // 调用推送服务
             $pushData = $row->getPushData();
             $pushResult = $this->sendPushNotification($pushData);
-            
+
             if ($pushResult['success']) {
                 // 更新推送状态
                 $row->push_status = 1;
                 $row->push_time = time();
                 $row->status = 'normal';
                 $row->save();
-                
+
                 $this->success('推送成功', null, $pushResult);
             } else {
                 $this->error('推送失败: ' . ($pushResult['message'] ?? '未知错误'));
@@ -288,7 +291,7 @@ class Task extends Backend
             $this->error('推送失败: ' . $e->getMessage());
         }
     }
-    
+
     /**
      * 发送推送通知
      */
@@ -297,7 +300,7 @@ class Task extends Backend
         // 推送服务配置 - 使用网关访问
         $pushServiceUrl = env('push.service_url', 'http://localhost:3003/api/push-task?XTransformPort=3003');
         $pushApiKey = env('push.api_key', 'redpacket-push-secret-key-2024');
-        
+
         try {
             $ch = curl_init();
             curl_setopt($ch, CURLOPT_URL, $pushServiceUrl);
@@ -309,11 +312,11 @@ class Task extends Backend
             ]);
             curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
             curl_setopt($ch, CURLOPT_TIMEOUT, 10);
-            
+
             $response = curl_exec($ch);
             $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
             curl_close($ch);
-            
+
             if ($httpCode == 200) {
                 return json_decode($response, true);
             } else {
@@ -323,7 +326,7 @@ class Task extends Backend
             return ['success' => false, 'message' => $e->getMessage()];
         }
     }
-    
+
     /**
      * 删除
      */
@@ -332,7 +335,7 @@ class Task extends Backend
         if (!$this->request->isPost()) {
             $this->error(__('Invalid parameters'));
         }
-        
+
         $ids = $ids ? $ids : $this->request->post('ids');
         if ($ids) {
             $pk = $this->model->getPk();
@@ -340,9 +343,9 @@ class Task extends Backend
             if (is_array($adminIds)) {
                 $this->model->where($this->dataLimitField, 'in', $adminIds);
             }
-            
+
             $list = $this->model->where($pk, 'in', $ids)->select();
-            
+
             $count = 0;
             Db::startTrans();
             try {
@@ -354,7 +357,7 @@ class Task extends Backend
                 Db::rollback();
                 $this->error($e->getMessage());
             }
-            
+
             if ($count) {
                 $this->success();
             } else {

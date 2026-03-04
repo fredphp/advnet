@@ -1,0 +1,111 @@
+<form id="edit-form" class="form-horizontal" role="form" data-toggle="validator" method="POST" action="">
+    <div class="form-group">
+        <label class="control-label col-xs-12 col-sm-2">配置类型:</label>
+        <div class="col-xs-12 col-sm-8">
+            <select id="c-config_type" class="form-control selectpicker" name="row[config_type]" required>
+                <option value="new_user" {in_array("new_user",[$row.config_type])}selected{/in_array}>新用户红包</option>
+                <option value="base_amount" {in_array("base_amount",[$row.config_type])}selected{/in_array}>基础额度</option>
+                <option value="accumulate_amount" {in_array("accumulate_amount",[$row.config_type])}selected{/in_array}>累加额度</option>
+            </select>
+            <span class="help-block">
+                <strong>新用户红包</strong>：新用户首次点击红包获得的金额区间<br>
+                <strong>基础额度</strong>：根据今日领取金额确定的基础红包金额<br>
+                <strong>累加额度</strong>：每次点击红包累加的金额区间
+            </span>
+        </div>
+    </div>
+
+    <div class="form-group today-amount-group">
+        <label class="control-label col-xs-12 col-sm-2">今日领取金额区间:</label>
+        <div class="col-xs-12 col-sm-8">
+            <div class="row">
+                <div class="col-xs-5">
+                    <input id="c-min_today_amount" class="form-control" name="row[min_today_amount]" type="number" min="0" value="{$row.min_today_amount}" placeholder="下限">
+                </div>
+                <div class="col-xs-2 text-center" style="padding-top: 7px;">-</div>
+                <div class="col-xs-5">
+                    <input id="c-max_today_amount" class="form-control" name="row[max_today_amount]" type="number" min="0" value="{$row.max_today_amount}" placeholder="上限(0表示无限)">
+                </div>
+            </div>
+            <span class="help-block">设置今日领取金额的范围，系统会根据用户今日已领取金额匹配对应的区间</span>
+        </div>
+    </div>
+
+    <div class="form-group">
+        <label class="control-label col-xs-12 col-sm-2">奖励金额区间(金币):</label>
+        <div class="col-xs-12 col-sm-8">
+            <div class="row">
+                <div class="col-xs-5">
+                    <input id="c-min_reward" class="form-control" name="row[min_reward]" type="number" min="0" value="{$row.min_reward}" placeholder="下限" required>
+                </div>
+                <div class="col-xs-2 text-center" style="padding-top: 7px;">-</div>
+                <div class="col-xs-5">
+                    <input id="c-max_reward" class="form-control" name="row[max_reward]" type="number" min="0" value="{$row.max_reward}" placeholder="上限" required>
+                </div>
+            </div>
+            <span class="help-block">用户获得的金币金额将在此区间内随机生成</span>
+        </div>
+    </div>
+
+    <div class="form-group">
+        <label class="control-label col-xs-12 col-sm-2">配置名称:</label>
+        <div class="col-xs-12 col-sm-8">
+            <input id="c-name" class="form-control" name="row[name]" type="text" value="{$row.name}" placeholder="如：入门级、中级、高级" required>
+        </div>
+    </div>
+
+    <div class="form-group">
+        <label class="control-label col-xs-12 col-sm-2">排序权重:</label>
+        <div class="col-xs-12 col-sm-8">
+            <input id="c-weigh" class="form-control" name="row[weigh]" type="number" value="{$row.weigh}" placeholder="数值越大优先级越高">
+            <span class="help-block">当今日领取金额匹配多个区间时，优先使用权重高的配置</span>
+        </div>
+    </div>
+
+    <div class="form-group">
+        <label class="control-label col-xs-12 col-sm-2">状态:</label>
+        <div class="col-xs-12 col-sm-8">
+            <select id="c-status" class="form-control selectpicker" name="row[status]">
+                <option value="normal" {in_array("normal",[$row.status])}selected{/in_array}>正常</option>
+                <option value="hidden" {in_array("hidden",[$row.status])}selected{/in_array}>禁用</option>
+            </select>
+        </div>
+    </div>
+
+    <div class="form-group">
+        <label class="control-label col-xs-12 col-sm-2">备注说明:</label>
+        <div class="col-xs-12 col-sm-8">
+            <textarea id="c-remark" class="form-control" name="row[remark]" rows="2" placeholder="备注说明">{$row.remark}</textarea>
+        </div>
+    </div>
+
+    <div class="form-group layer-footer">
+        <label class="control-label col-xs-12 col-sm-2"></label>
+        <div class="col-xs-12 col-sm-8">
+            <button type="submit" class="btn btn-success btn-embossed disabled">{:__('OK')}</button>
+            <button type="reset" class="btn btn-default btn-embossed">{:__('Reset')}</button>
+        </div>
+    </div>
+</form>
+
+<script>
+$(function() {
+    // 根据配置类型显示/隐藏今日金额区间
+    function toggleTodayAmountGroup() {
+        var configType = $('#c-config_type').val();
+        if (configType === 'new_user') {
+            $('.today-amount-group').hide();
+        } else {
+            $('.today-amount-group').show();
+        }
+    }
+
+    // 初始化
+    toggleTodayAmountGroup();
+
+    // 监听类型变化
+    $('#c-config_type').on('change', function() {
+        toggleTodayAmountGroup();
+    });
+});
+</script>
