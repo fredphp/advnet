@@ -134,7 +134,7 @@
             </div>
             <div id="sendDataPreview" class="panel-collapse collapse">
                 <div class="panel-body">
-                    <pre style="max-height:300px;overflow:auto;">{$sendData|json_encode:JSON_PRETTY_PRINT|raw}</pre>
+                    <pre style="max-height:300px;overflow:auto;">{$sendDataJson|htmlspecialchars}</pre>
                 </div>
             </div>
         </div>
@@ -148,7 +148,7 @@
                 <table class="table table-bordered">
                     <tr>
                         <td width="120" class="text-right"><strong>发送人ID</strong></td>
-                        <td>{$row.sender_id}</td>
+                        <td>{$row.sender_id|default='-'}</td>
                         <td width="120" class="text-right"><strong>发送人昵称</strong></td>
                         <td>{$row.sender_name|default='未知'}</td>
                     </tr>

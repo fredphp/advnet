@@ -199,8 +199,12 @@ class Task extends Backend
             }
         }
         
+        // JSON数据在PHP中处理
+        $sendDataJson = json_encode($sendData, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
+        
         $this->view->assign('row', $row);
         $this->view->assign('sendData', $sendData);
+        $this->view->assign('sendDataJson', $sendDataJson);
         $this->view->assign('chatContent', $chatContent);
         
         return $this->view->fetch();
