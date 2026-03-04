@@ -143,7 +143,9 @@ class Resource extends Backend
             $this->error(__('Parameter %s can not be empty', ''));
         }
         
-        $this->view->assign('row', $row);
+        // 转换为数组，避免访问不存在的字段时报错
+        $rowData = $row->getData();
+        $this->view->assign('row', $rowData);
         return $this->view->fetch();
     }
     
