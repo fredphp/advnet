@@ -111,6 +111,7 @@ class RedPacketTask extends Model
 
     /**
      * 获取展示数据（用于前端展示）
+     * 背景图、跳转链接等信息从关联资源获取
      */
     public function getDisplayData()
     {
@@ -120,38 +121,57 @@ class RedPacketTask extends Model
             'name' => $this->name,
             'display_title' => $this->display_title ?: $this->name,
             'display_description' => $this->display_description ?: $this->description,
-            'background_image' => $this->background_image ?: '',
-            'jump_url' => $this->jump_url ?: '',
             'type' => $type,
             'type_text' => $this->type_text,
             'show_red_packet' => $this->shouldShowRedPacket(),
+            'background_image' => '',
+            'jump_url' => '',
         ];
 
-        // 如果有关联资源，补充资源信息
+        // 如果有关联资源，使用资源中的信息
         if ($this->resource) {
             $resource = $this->resource;
             $data['resource'] = [
                 'id' => $resource->id,
                 'name' => $resource->name,
                 'logo' => $resource->logo,
+                'images' => $resource->images ? json_decode($resource->images, true) : [],
                 'type' => $resource->type,
             ];
+
+            // 展示标题优先级：任务display_title > 资源name > 任务name
+            if (empty($data['display_title'])) {
+                $data['display_title'] = $resource->name ?: $this->name;
+            }
+
+            // 展示描述优先级：任务display_description > 资源description > 任务description
+            if (empty($data['display_description'])) {
+                $data['display_description'] = $resource->description ?: $this->description;
+            }
+
+            // 背景图：优先使用资源的logo
+            $data['background_image'] = $resource->logo ?: '';
+
+            // 跳转链接：使用资源的url
+            $data['jump_url'] = $resource->url ?: '';
 
             // 根据资源类型补充跳转信息
             switch ($resource->type) {
                 case 'download':
-                    $data['jump_url'] = $resource->download_url ?: $data['jump_url'];
-                    $data['download_type'] = $resource->download_type;
-                    $data['package_name'] = $resource->package_name;
+                case 'download_app':
+                    $data['download_type'] = $resource->download_type ?? '';
+                    $data['package_name'] = $resource->package_name ?: '';
                     break;
                 case 'miniapp':
-                    $data['miniapp_id'] = $resource->miniapp_id;
-                    $data['miniapp_path'] = $resource->miniapp_path;
-                    $data['miniapp_type'] = $resource->miniapp_type;
+                case 'mini_program':
+                    $data['miniapp_id'] = $resource->miniapp_id ?: ($resource->app_id ?? '');
+                    $data['miniapp_path'] = $resource->miniapp_path ?? '';
+                    $data['miniapp_type'] = $resource->miniapp_type ?? 'release';
                     break;
                 case 'video':
-                    $data['video_url'] = $resource->video_url;
-                    $data['video_duration'] = $resource->video_duration;
+                case 'watch_video':
+                    $data['video_url'] = $resource->video_url ?? '';
+                    $data['video_duration'] = $resource->video_duration ?? 0;
                     break;
             }
         }
@@ -171,10 +191,10 @@ class RedPacketTask extends Model
             'description' => $this->description,
             'display_title' => $this->display_title ?: $this->name,
             'display_description' => $this->display_description ?: $this->description,
-            'background_image' => $this->background_image ?: '',
-            'jump_url' => $this->jump_url ?: '',
             'show_red_packet' => $this->shouldShowRedPacket(),
             'max_click_per_day' => $this->max_click_per_day ?: 10,
+            'background_image' => '',
+            'jump_url' => '',
             'status' => $this->status,
             'sender_name' => $this->sender_name,
             'sender_avatar' => $this->sender_avatar,
@@ -189,37 +209,54 @@ class RedPacketTask extends Model
                 'name' => $resource->name,
                 'description' => $resource->description,
                 'logo' => $resource->logo,
+                'images' => $resource->images ? json_decode($resource->images, true) : [],
                 'type' => $resource->type,
             ];
+
+            // 展示标题优先级
+            if (empty($data['display_title'])) {
+                $data['display_title'] = $resource->name ?: $this->name;
+            }
+
+            // 展示描述优先级
+            if (empty($data['display_description'])) {
+                $data['display_description'] = $resource->description ?: $this->description;
+            }
+
+            // 背景图和跳转链接
+            $data['background_image'] = $resource->logo ?: '';
+            $data['jump_url'] = $resource->url ?: '';
 
             // 根据资源类型添加跳转配置
             switch ($resource->type) {
                 case 'chat':
-                    $data['resource']['chat_duration'] = $resource->chat_duration;
-                    $data['resource']['chat_requirement'] = $resource->chat_requirement;
+                    $data['resource']['chat_duration'] = $resource->chat_duration ?? 30;
+                    $data['resource']['chat_requirement'] = $resource->chat_requirement ?? '';
                     break;
                 case 'miniapp':
-                    $data['resource']['miniapp_id'] = $resource->miniapp_id;
-                    $data['resource']['miniapp_path'] = $resource->miniapp_path;
-                    $data['resource']['miniapp_duration'] = $resource->miniapp_duration;
+                case 'mini_program':
+                    $data['resource']['miniapp_id'] = $resource->miniapp_id ?? ($resource->app_id ?? '');
+                    $data['resource']['miniapp_path'] = $resource->miniapp_path ?? '';
+                    $data['resource']['miniapp_duration'] = $resource->miniapp_duration ?? 0;
                     break;
                 case 'download':
-                    $data['resource']['download_url'] = $resource->download_url;
-                    $data['resource']['download_type'] = $resource->download_type;
-                    $data['resource']['package_name'] = $resource->package_name;
-                    // 如果任务本身没有跳转链接，使用资源的下载链接
+                case 'download_app':
+                    $data['resource']['download_url'] = $resource->download_url ?? $resource->url;
+                    $data['resource']['download_type'] = $resource->download_type ?? '';
+                    $data['resource']['package_name'] = $resource->package_name ?? '';
                     if (empty($data['jump_url'])) {
-                        $data['jump_url'] = $resource->download_url;
+                        $data['jump_url'] = $resource->url ?: ($resource->download_url ?? '');
                     }
                     break;
                 case 'adv':
-                    $data['resource']['adv_id'] = $resource->adv_id;
-                    $data['resource']['adv_platform'] = $resource->adv_platform;
-                    $data['resource']['adv_duration'] = $resource->adv_duration;
+                    $data['resource']['adv_id'] = $resource->adv_id ?? '';
+                    $data['resource']['adv_platform'] = $resource->adv_platform ?? '';
+                    $data['resource']['adv_duration'] = $resource->adv_duration ?? 0;
                     break;
                 case 'video':
-                    $data['resource']['video_url'] = $resource->video_url;
-                    $data['resource']['video_duration'] = $resource->video_duration;
+                case 'watch_video':
+                    $data['resource']['video_url'] = $resource->video_url ?? '';
+                    $data['resource']['video_duration'] = $resource->video_duration ?? 0;
                     break;
             }
         } else {
