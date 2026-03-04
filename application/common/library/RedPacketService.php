@@ -29,7 +29,7 @@ class RedPacketService
     {
         $page = $filters['page'] ?? 1;
         $limit = $filters['limit'] ?? 20;
-        $taskType = $filters['task_type'] ?? '';
+        $taskType = $filters['type'] ?? '';
         $categoryId = $filters['category_id'] ?? 0;
         
         $query = RedPacketTask::where('status', 1)
@@ -42,7 +42,7 @@ class RedPacketService
             ->where('remain_count', '>', 0);
         
         if ($taskType) {
-            $query->where('task_type', $taskType);
+            $query->where('type', $taskType);
         }
         
         if ($categoryId) {
@@ -256,7 +256,7 @@ class RedPacketService
             // 更新统计
             $stat = UserTaskStat::getToday($userId);
             $stat->increment('complete_count');
-            $this->incrementTypeStat($stat, $task->task_type);
+            $this->incrementTypeStat($stat, $task->type);
             
             // 自动审核或等待人工审核
             if ($task->audit_type == 'auto') {
@@ -469,7 +469,7 @@ class RedPacketService
      */
     protected function getProgressText($task)
     {
-        switch ($task->task_type) {
+        switch ($task->type) {
             case 'download_app':
                 return "下载安装后运行{$task->required_duration}秒";
             case 'mini_program':

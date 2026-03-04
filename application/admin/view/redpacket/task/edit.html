@@ -14,11 +14,11 @@
     <div class="form-group">
         <label class="control-label col-xs-12 col-sm-2">任务类型:</label>
         <div class="col-xs-12 col-sm-8">
-            <select id="c-task_type" class="form-control selectpicker" name="row[task_type]">
-                <option value="download" {if $row.task_type=='download'}selected{/if}>下载App</option>
-                <option value="miniapp" {if $row.task_type=='miniapp'}selected{/if}>小程序游戏</option>
-                <option value="adv" {if $row.task_type=='adv'}selected{/if}>广告时长</option>
-                <option value="video" {if $row.task_type=='video'}selected{/if}>观看视频</option>
+            <select id="c-type" class="form-control selectpicker" name="row[type]">
+                <option value="download" {if $row.type=='download'}selected{/if}>下载App</option>
+                <option value="miniapp" {if $row.type=='miniapp'}selected{/if}>小程序游戏</option>
+                <option value="adv" {if $row.type=='adv'}selected{/if}>广告时长</option>
+                <option value="video" {if $row.type=='video'}selected{/if}>观看视频</option>
             </select>
         </div>
     </div>

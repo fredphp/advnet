@@ -40,7 +40,7 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form', 'selectpage', 'templa
                         {checkbox: true},
                         {field: 'id', title: 'ID', sortable: true},
                         {field: 'name', title: '任务名称', operate: 'LIKE', formatter: Table.api.formatter.title},
-                        {field: 'task_type', title: '任务类型', searchList: typeList, formatter: Table.api.formatter.normal},
+                        {field: 'type', title: '任务类型', searchList: typeList, formatter: Table.api.formatter.normal},
                         {field: 'total_amount', title: '总金额(金币)', sortable: true},
                         {field: 'remain_amount', title: '剩余金额', sortable: true},
                         {field: 'total_count', title: '总数量', sortable: true},
@@ -103,7 +103,7 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form', 'selectpage', 'templa
                 Form.api.bindevent($("form[role=form]"));
 
                 // 任务类型切换
-                $('#c-task_type').on('change', function() {
+                $('#c-type').on('change', function() {
                     var taskType = $(this).val();
                     var $resourceId = $('#c-resource_id');
                     var initTaskType = $resourceId.data('init-task-type');
@@ -133,7 +133,7 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form', 'selectpage', 'templa
                 });
 
                 // 初始化任务类型
-                var initTaskType = $('#c-task_type').val();
+                var initTaskType = $('#c-type').val();
                 if (initTaskType) {
                     currentTaskType = initTaskType;
                     $('#c-resource_id').data('init-task-type', initTaskType);
@@ -173,7 +173,7 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form', 'selectpage', 'templa
 
                 // 延迟触发change和加载已选资源
                 setTimeout(function() {
-                    $('#c-task_type').trigger('change');
+                    $('#c-type').trigger('change');
                     // 编辑页面如果有已选资源ID，加载资源信息
                     var existingResourceId = $('#c-resource_id').val();
                     if (existingResourceId && !isNaN(existingResourceId)) {

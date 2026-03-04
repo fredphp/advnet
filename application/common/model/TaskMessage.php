@@ -75,7 +75,7 @@ class TaskMessage extends Model
         
         // 获取任务类型名称
         $typeList = RedPacketResource::getTypeList();
-        $taskTypeName = $typeList[$task->task_type] ?? $task->task_type;
+        $taskTypeName = $typeList[$task->type] ?? $task->type;
         
         // 构建消息内容
         $message = [
@@ -87,7 +87,7 @@ class TaskMessage extends Model
                 $task->amount_type == 'fixed' ? $task->single_amount : $task->max_amount
             ),
             'task_id' => $taskId,
-            'task_type' => $task->task_type,
+            'task_type' => $task->type,
             'task_name' => $task->name,
             'reward' => $task->amount_type == 'fixed' ? $task->single_amount : $task->max_amount,
             'total_count' => $task->total_count,

@@ -54,8 +54,8 @@ class Stat extends Backend
             
             // 任务类型分布
             $typeStats = Db::name('red_packet_task')
-                ->field('task_type, COUNT(*) as count, SUM(receive_amount) as amount')
-                ->group('task_type')
+                ->field('type, COUNT(*) as count, SUM(receive_amount) as amount')
+                ->group('type')
                 ->select();
             
             $this->success('', null, [

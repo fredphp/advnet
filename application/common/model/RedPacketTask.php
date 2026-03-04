@@ -21,7 +21,8 @@ class RedPacketTask extends Model
 
     // 追加属性
     protected $append = [
-        'status_text'
+        'status_text',
+        'type_text'
     ];
 
     // 状态列表
@@ -55,17 +56,17 @@ class RedPacketTask extends Model
         return isset($data['status']) ? self::$statusList[$data['status']] ?? '' : '';
     }
 
-    public function getTaskTypeTextAttr($value, $data)
+    public function getTypeTextAttr($value, $data)
     {
-        if (!isset($data['task_type']) || empty($data['task_type'])) {
+        if (!isset($data['type']) || empty($data['type'])) {
             return '';
         }
-        $type = $data['task_type'];
+        $type = $data['type'];
         // 如果是旧类型，映射到新类型
         if (isset(self::$typeMap[$type])) {
             $type = self::$typeMap[$type];
         }
-        return self::$typeList[$type] ?? $data['task_type'];
+        return self::$typeList[$type] ?? $data['type'];
     }
 
     /**
@@ -92,7 +93,7 @@ class RedPacketTask extends Model
         $data = [
             'task_id' => $this->id,
             'task_name' => $this->name,
-            'task_type' => $this->getData('task_type'),
+            'type' => $this->getData('type'),
             'description' => $this->description,
             'total_amount' => $this->total_amount,
             'total_count' => $this->total_count,

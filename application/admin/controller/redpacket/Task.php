@@ -63,9 +63,9 @@ class Task extends Backend
                 ->order($sort, $order)
                 ->paginate($limit);
 
-            // 确保返回 task_type_text
+            // 确保返回 type_text
             foreach ($list as $row) {
-                $row->task_type_text = $row->task_type_text ?? '';
+                $row->type_text = $row->type_text ?? '';
             }
 
             $result = ['total' => $list->total(), 'rows' => $list->items()];

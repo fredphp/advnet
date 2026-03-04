@@ -55,11 +55,11 @@ class PushService
         $data = [
             'taskId' => $taskData['id'] ?? 0,
             'taskName' => $taskData['name'] ?? '',
-            'taskType' => $taskData['task_type'] ?? '',
+            'taskType' => $taskData['type'] ?? '',
             'reward' => $taskData['single_amount'] ?? 0,
             'content' => sprintf(
                 '【%s】%s，完成可获得 %.2f 金币奖励！',
-                $taskData['task_type_text'] ?? '',
+                $taskData['type_text'] ?? '',
                 $taskData['name'] ?? '',
                 $taskData['single_amount'] ?? 0
             ),

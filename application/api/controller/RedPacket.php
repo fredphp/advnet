@@ -27,7 +27,7 @@ class RedPacket extends Api
      * @api {get} /api/redpacket/tasks 获取任务列表
      * @apiName GetTaskList
      * @apiGroup 红包任务
-     * @apiParam {String} [task_type] 任务类型筛选
+     * @apiParam {String} [type] 任务类型筛选
      * @apiParam {Number} [category_id] 分类ID筛选
      * @apiParam {Number} [page=1] 页码
      * @apiParam {Number} [limit=20] 每页数量
@@ -37,7 +37,7 @@ class RedPacket extends Api
         $filters = [
             'page' => $this->request->get('page/d', 1),
             'limit' => $this->request->get('limit/d', 20),
-            'task_type' => $this->request->get('task_type/s', ''),
+            'type' => $this->request->get('type/s', ''),
             'category_id' => $this->request->get('category_id/d', 0)
         ];
         

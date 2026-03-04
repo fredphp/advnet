@@ -66,7 +66,7 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
                                 var typeHtml = '';
                                 $.each(data.type, function (i, item) {
                                     typeHtml += '<tr>' +
-                                        '<td>' + item.task_type + '</td>' +
+                                        '<td>' + item.type + '</td>' +
                                         '<td>' + item.count + '</td>' +
                                         '<td>' + (item.amount || 0) + '</td>' +
                                         '</tr>';

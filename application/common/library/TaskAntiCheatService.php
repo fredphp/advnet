@@ -66,7 +66,7 @@ class TaskAntiCheatService
         ];
         
         $taskId = $taskData['task_id'] ?? 0;
-        $taskType = $taskData['task_type'] ?? '';
+        $taskType = $taskData['type'] ?? '';
         $taskDuration = $taskData['task_duration'] ?? 0;
         $coinReward = $taskData['coin_reward'] ?? 0;
         $expectedDuration = $taskData['expected_duration'] ?? 60;
