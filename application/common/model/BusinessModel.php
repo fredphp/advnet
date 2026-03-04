@@ -113,14 +113,6 @@ class RedPacketTask extends Model
     const TYPE_NEW_USER = 'new_user';
     const TYPE_DAILY = 'daily';
     const TYPE_ACTIVITY = 'activity';
-    
-    /**
-     * 关联分类
-     */
-    public function category()
-    {
-        return $this->belongsTo('TaskCategory', 'category_id');
-    }
 }
 
 /**
@@ -149,18 +141,6 @@ class TaskParticipation extends Model
     {
         return $this->belongsTo('RedPacketTask', 'task_id');
     }
-}
-
-/**
- * 任务分类模型
- */
-class TaskCategory extends Model
-{
-    protected $name = 'task_category';
-    
-    protected $autoWriteTimestamp = true;
-    protected $createTime = 'createtime';
-    protected $updateTime = 'updatetime';
 }
 
 /**

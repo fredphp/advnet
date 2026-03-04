@@ -24,33 +24,37 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
                     [
                         {checkbox: true},
                         {field: 'id', title: 'ID', sortable: true},
-                        {field: 'order_no', title: '订单号', operate: 'LIKE'},
                         {field: 'user_id', title: '用户ID', sortable: true},
-                        {field: 'user.username', title: '用户名', operate: 'LIKE'},
-                        {field: 'user.nickname', title: '昵称', operate: 'LIKE'},
-                        {field: 'task_id', title: '任务ID'},
-                        {field: 'task.name', title: '任务名称', operate: 'LIKE'},
-                        {field: 'duration', title: '完成时长(秒)', operate: 'BETWEEN'},
-                        {field: 'progress', title: '进度(%)', operate: 'BETWEEN'},
-                        {field: 'reward_coin', title: '奖励金币', operate: 'BETWEEN'},
-                        {field: 'status', title: '状态', searchList: {
-                            "0": "已领取待完成",
-                            "1": "已完成待审核",
-                            "2": "审核通过待发放",
-                            "3": "已发放",
-                            "4": "审核拒绝",
-                            "5": "已过期",
-                            "6": "已取消"
+                        {field: 'username', title: '用户名', operate: 'LIKE'},
+                        {field: 'nickname', title: '昵称', operate: 'LIKE'},
+                        {field: 'task_id', title: '任务ID', sortable: true},
+                        {field: 'task_name', title: '任务名称', operate: 'LIKE'},
+                        {field: 'is_new_user', title: '用户类型', searchList: {
+                            "0": "老用户",
+                            "1": "新用户"
                         }, formatter: Table.api.formatter.status},
-                        {field: 'audit_status', title: '审核状态', searchList: {
-                            "0": "待审核",
-                            "1": "通过",
-                            "2": "拒绝"
+                        {field: 'base_amount', title: '基础金额', operate: 'BETWEEN', sortable: true,
+                            formatter: function(value) {
+                                return value ? value.toLocaleString() : '0';
+                            }
+                        },
+                        {field: 'accumulate_amount', title: '累加金额', operate: 'BETWEEN', sortable: true,
+                            formatter: function(value) {
+                                return value ? value.toLocaleString() : '0';
+                            }
+                        },
+                        {field: 'total_amount', title: '总金额', operate: 'BETWEEN', sortable: true,
+                            formatter: function(value) {
+                                return '<span class="text-success"><b>' + (value ? value.toLocaleString() : '0') + '</b></span>';
+                            }
+                        },
+                        {field: 'click_count', title: '点击次数', operate: 'BETWEEN', sortable: true},
+                        {field: 'is_collected', title: '领取状态', searchList: {
+                            "0": "待领取",
+                            "1": "已领取"
                         }, formatter: Table.api.formatter.status},
-                        {field: 'ip', title: 'IP地址', operate: 'LIKE'},
-                        {field: 'device_id', title: '设备ID', operate: 'LIKE'},
-                        {field: 'platform', title: '平台'},
-                        {field: 'createtime', title: '参与时间', formatter: Table.api.formatter.datetime, operate: 'RANGE', addclass: 'datetimerange', sortable: true},
+                        {field: 'createtime', title: '创建时间', formatter: Table.api.formatter.datetime, operate: 'RANGE', addclass: 'datetimerange', sortable: true},
+                        {field: 'collect_time', title: '领取时间', formatter: Table.api.formatter.datetime, operate: 'RANGE', addclass: 'datetimerange', sortable: true},
                         {field: 'operate', title: '操作', table: table, events: Table.api.events.operate, formatter: Table.api.formatter.operate}
                     ]
                 ]

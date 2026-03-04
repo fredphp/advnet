@@ -9,12 +9,20 @@
                         {:build_toolbar('refresh')}
                         <div class="dropdown btn-group">
                             <a class="btn btn-warning dropdown-toggle" data-toggle="dropdown">
-                                {:__('Status')} <span class="caret"></span>
+                                {:__('领取状态')} <span class="caret"></span>
                             </a>
                             <ul class="dropdown-menu">
-                                <li><a href="javascript:;" data-field="status" data-value="0">待完成</a></li>
-                                <li><a href="javascript:;" data-field="status" data-value="1">已完成</a></li>
-                                <li><a href="javascript:;" data-field="status" data-value="2">已取消</a></li>
+                                <li><a href="javascript:;" data-field="is_collected" data-value="0">待领取</a></li>
+                                <li><a href="javascript:;" data-field="is_collected" data-value="1">已领取</a></li>
+                            </ul>
+                        </div>
+                        <div class="dropdown btn-group">
+                            <a class="btn btn-info dropdown-toggle" data-toggle="dropdown">
+                                {:__('用户类型')} <span class="caret"></span>
+                            </a>
+                            <ul class="dropdown-menu">
+                                <li><a href="javascript:;" data-field="is_new_user" data-value="0">老用户</a></li>
+                                <li><a href="javascript:;" data-field="is_new_user" data-value="1">新用户</a></li>
                             </ul>
                         </div>
                     </div>

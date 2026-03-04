@@ -277,3 +277,68 @@ Stage Summary:
 - 文档更新: 添加配置管理说明
 - 配置分组: migration (可在后台管理)
 - 配置项: 22个(基础配置、迁移天数、清理配置、性能配置、通知配置)
+
+---
+Task ID: 8
+Agent: Main Agent
+Task: 修改红包领取记录页面适配单人抢红包模式
+
+Work Log:
+- 分析当前红包系统架构，确认已改为单人抢红包模式
+- 确认使用 `advn_user_red_packet_accumulate` 表记录领取记录
+- 修改 `application/admin/controller/redpacket/Participation.php`:
+  - 改用 `UserRedPacketAccumulate` 模型
+  - 添加关联查询用户和任务信息
+  - 添加领取状态文本转换
+  - 添加统计数据接口
+- 更新 `public/assets/js/backend/redpacket/participation.js`:
+  - 更新表格列配置（基础金额、累加金额、总金额、点击次数）
+  - 添加用户类型筛选（新用户/老用户）
+  - 添加领取状态筛选（待领取/已领取）
+  - 格式化金额显示
+- 更新 `application/admin/view/redpacket/participation/index.html`:
+  - 添加用户类型下拉筛选
+  - 更新领取状态下拉筛选
+- 创建详情页面 `application/admin/view/redpacket/participation/detail.html`:
+  - 显示基本信息、用户信息、金额信息
+  - 状态标签样式美化
+- 创建模拟数据SQL `sql/migrations/20260304_seed_user_red_packet_accumulate.sql`:
+  - 包含红包任务种子数据
+  - 包含测试用户种子数据
+  - 包含14条领取记录模拟数据
+  - 包含统计查询语句
+
+Stage Summary:
+- 控制器: `application/admin/controller/redpacket/Participation.php` (改用新模型)
+- JS文件: `public/assets/js/backend/redpacket/participation.js` (更新列配置)
+- 视图文件: `application/admin/view/redpacket/participation/` (更新index.html, 新增detail.html)
+- 模拟数据: `sql/migrations/20260304_seed_user_red_packet_accumulate.sql`
+- 显示字段: 基础金额、累加金额、总金额、点击次数、用户类型、领取状态
+- 筛选条件: 领取状态、用户类型
+
+---
+Task ID: 9
+Agent: Main Agent
+Task: 删除无用的红包分类功能
+
+Work Log:
+- 分析 `redpacket/category` 页面的使用情况
+- 确认 `TaskCategory` 模型没有被 `RedPacketTask` 实际使用
+- 确认红包任务表单中没有分类选择字段
+- 确认系统使用任务类型(chat/download/miniapp/adv/video)区分，不需要额外分类
+- 删除控制器文件 `application/admin/controller/redpacket/Category.php`
+- 删除模型文件 `application/common/model/TaskCategory.php`
+- 删除视图目录 `application/admin/view/redpacket/category/`
+- 删除JS文件 `public/assets/js/backend/redpacket/category.js`
+- 更新 `application/common/model/BusinessModel.php`:
+  - 移除 `TaskCategory` 类
+  - 移除 `RedPacketTask` 类中的 `category()` 关联方法
+- 更新 `application/common/library/RedPacketService.php`:
+  - 移除 `category_id` 筛选参数
+- 创建菜单删除SQL `sql/migrations/20260304_delete_category_menu.sql`
+
+Stage Summary:
+- 删除文件: Category.php(控制器)、TaskCategory.php(模型)、category.js(JS)、category/(视图目录)
+- 更新文件: BusinessModel.php、RedPacketService.php
+- 新建SQL: `sql/migrations/20260304_delete_category_menu.sql`
+- 清理原因: 分类功能未使用，系统使用任务类型区分即可

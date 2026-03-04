@@ -30,8 +30,7 @@ class RedPacketService
         $page = $filters['page'] ?? 1;
         $limit = $filters['limit'] ?? 20;
         $taskType = $filters['type'] ?? '';
-        $categoryId = $filters['category_id'] ?? 0;
-        
+
         $query = RedPacketTask::where('status', 1)
             ->where(function ($q) {
                 $q->whereNull('start_time')->whereOr('start_time', '<=', time());
@@ -40,13 +39,9 @@ class RedPacketService
                 $q->whereNull('end_time')->whereOr('end_time', '>=', time());
             })
             ->where('remain_count', '>', 0);
-        
+
         if ($taskType) {
             $query->where('type', $taskType);
-        }
-        
-        if ($categoryId) {
-            $query->where('category_id', $categoryId);
         }
         
         $total = $query->count();
