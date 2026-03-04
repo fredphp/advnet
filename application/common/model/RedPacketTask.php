@@ -99,6 +99,14 @@ class RedPacketTask extends Model
     }
 
     /**
+     * 关联累计记录
+     */
+    public function accumulates()
+    {
+        return $this->hasMany('UserRedPacketAccumulate', 'task_id');
+    }
+
+    /**
      * 判断任务类型是否需要显示红包
      * 只有"小程序游戏"类型才显示红包
      */
@@ -107,6 +115,27 @@ class RedPacketTask extends Model
         $type = $this->getData('type');
         // 只有小程序游戏类型显示红包
         return $type === 'miniapp' || $this->show_red_packet == 1;
+    }
+
+    /**
+     * 检查任务是否已被领取
+     */
+    public function isClaimed()
+    {
+        return UserRedPacketAccumulate::where('task_id', $this->id)
+            ->where('is_collected', 1)
+            ->count() > 0;
+    }
+
+    /**
+     * 检查任务是否正在被抢占
+     */
+    public function isBeingGrabbed()
+    {
+        return UserRedPacketAccumulate::where('task_id', $this->id)
+            ->where('is_collected', 0)
+            ->where('total_amount', '>', 0)
+            ->count() > 0;
     }
 
     /**
@@ -126,6 +155,7 @@ class RedPacketTask extends Model
             'show_red_packet' => $this->shouldShowRedPacket(),
             'background_image' => '',
             'jump_url' => '',
+            'is_claimed' => $this->isClaimed(),
         ];
 
         // 如果有关联资源，使用资源中的信息
@@ -192,7 +222,6 @@ class RedPacketTask extends Model
             'display_title' => $this->display_title ?: $this->name,
             'display_description' => $this->display_description ?: $this->description,
             'show_red_packet' => $this->shouldShowRedPacket(),
-            'max_click_per_day' => $this->max_click_per_day ?: 10,
             'background_image' => '',
             'jump_url' => '',
             'status' => $this->status,

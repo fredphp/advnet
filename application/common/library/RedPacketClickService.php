@@ -12,6 +12,7 @@ use app\common\model\UserRedPacketAccumulate;
 /**
  * 红包点击服务类
  * 实现新的红包金额计算逻辑
+ * 每个红包任务只能被一个用户抢到
  */
 class RedPacketClickService
 {
@@ -54,7 +55,7 @@ class RedPacketClickService
         $todayStart = strtotime(date('Y-m-d'));
         $todayAmount = Db::name('coin_log')
             ->where('user_id', $userId)
-            ->where('type', 'red_packet_click')
+            ->where('type', 'red_packet_grab')
             ->where('createtime', '>=', $todayStart)
             ->sum('amount');
 
@@ -66,19 +67,26 @@ class RedPacketClickService
             $task->display_data = $task->getDisplayData();
             $task->show_red_packet = $task->shouldShowRedPacket();
 
-            // 获取用户对当前任务的累计状态
-            $accumulate = UserRedPacketAccumulate::where('user_id', $userId)
-                ->where('task_id', $task->id)
-                ->find();
+            // 获取红包抢夺状态
+            $accumulate = UserRedPacketAccumulate::where('task_id', $task->id)->find();
 
             if ($accumulate) {
-                $task->user_accumulate = [
-                    'total_amount' => $accumulate->total_amount,
-                    'click_count' => $accumulate->click_count,
+                $isOwner = $accumulate->user_id == $userId;
+                $task->red_packet_status = [
+                    'is_grabbed' => true,
+                    'is_owner' => $isOwner,
                     'is_collected' => $accumulate->is_collected,
+                    'total_amount' => $isOwner ? $accumulate->total_amount : 0,
+                    'click_count' => $isOwner ? $accumulate->click_count : 0,
                 ];
             } else {
-                $task->user_accumulate = null;
+                $task->red_packet_status = [
+                    'is_grabbed' => false,
+                    'is_owner' => false,
+                    'is_collected' => false,
+                    'total_amount' => 0,
+                    'click_count' => 0,
+                ];
             }
         }
 
@@ -104,28 +112,35 @@ class RedPacketClickService
         $task->show_red_packet = $task->shouldShowRedPacket();
 
         if ($userId) {
-            // 获取用户累计状态
-            $accumulate = UserRedPacketAccumulate::where('user_id', $userId)
-                ->where('task_id', $task->id)
-                ->find();
+            // 获取红包抢夺状态
+            $accumulate = UserRedPacketAccumulate::where('task_id', $task->id)->find();
 
             if ($accumulate) {
-                $task->user_accumulate = [
-                    'base_amount' => $accumulate->base_amount,
-                    'accumulate_amount' => $accumulate->accumulate_amount,
-                    'total_amount' => $accumulate->total_amount,
-                    'click_count' => $accumulate->click_count,
+                $isOwner = $accumulate->user_id == $userId;
+                $task->red_packet_status = [
+                    'is_grabbed' => true,
+                    'is_owner' => $isOwner,
                     'is_collected' => $accumulate->is_collected,
+                    'base_amount' => $isOwner ? $accumulate->base_amount : 0,
+                    'accumulate_amount' => $isOwner ? $accumulate->accumulate_amount : 0,
+                    'total_amount' => $isOwner ? $accumulate->total_amount : 0,
+                    'click_count' => $isOwner ? $accumulate->click_count : 0,
                 ];
             } else {
-                $task->user_accumulate = null;
+                $task->red_packet_status = [
+                    'is_grabbed' => false,
+                    'is_owner' => false,
+                    'is_collected' => false,
+                    'total_amount' => 0,
+                    'click_count' => 0,
+                ];
             }
 
             // 今日已领取金额
             $todayStart = strtotime(date('Y-m-d'));
             $task->today_amount = Db::name('coin_log')
                 ->where('user_id', $userId)
-                ->where('type', 'red_packet_click')
+                ->where('type', 'red_packet_grab')
                 ->where('createtime', '>=', $todayStart)
                 ->sum('amount');
 
@@ -137,7 +152,10 @@ class RedPacketClickService
     }
 
     /**
-     * 点击红包
+     * 点击红包（抢红包或累加金额）
+     * 第一次点击：抢红包
+     * 后续点击：累加金额（只有抢到红包的用户才能累加）
+     *
      * @param int $userId 用户ID
      * @param int $taskId 任务ID
      * @param array $options 额外选项
@@ -151,49 +169,23 @@ class RedPacketClickService
             'data' => null
         ];
 
-        // 分布式锁
-        $lockKey = self::LOCK_PREFIX . "{$userId}:{$taskId}";
-        $lock = $this->getLock($lockKey, 5);
-
-        if (!$lock) {
-            $result['message'] = '操作过于频繁，请稍后重试';
-            return $result;
-        }
-
         try {
             // 获取任务
             $task = RedPacketTask::find($taskId);
             if (!$task) {
                 $result['message'] = '任务不存在';
-                $this->releaseLock($lockKey);
                 return $result;
             }
 
             // 检查任务状态
             if ($task->status !== 'normal' || $task->push_status != 1) {
                 $result['message'] = '任务状态异常';
-                $this->releaseLock($lockKey);
                 return $result;
             }
 
             // 检查是否显示红包
             if (!$task->shouldShowRedPacket()) {
                 $result['message'] = '该任务不显示红包';
-                $this->releaseLock($lockKey);
-                return $result;
-            }
-
-            // 检查每日点击次数限制
-            $todayStart = strtotime(date('Y-m-d'));
-            $todayClickCount = UserRedPacketAccumulate::where('user_id', $userId)
-                ->where('task_id', $taskId)
-                ->where('updatetime', '>=', $todayStart)
-                ->sum('click_count');
-
-            $maxClickPerDay = $task->max_click_per_day ?: 10;
-            if ($todayClickCount >= $maxClickPerDay) {
-                $result['message'] = '今日点击次数已达上限';
-                $this->releaseLock($lockKey);
                 return $result;
             }
 
@@ -201,32 +193,51 @@ class RedPacketClickService
             $isNewUser = $this->isNewUser($userId);
 
             // 获取今日已领取金额
+            $todayStart = strtotime(date('Y-m-d'));
             $todayAmount = Db::name('coin_log')
                 ->where('user_id', $userId)
-                ->where('type', 'red_packet_click')
+                ->where('type', 'red_packet_grab')
                 ->where('createtime', '>=', $todayStart)
                 ->sum('amount');
 
-            // 点击红包，计算金额
-            $clickResult = UserRedPacketAccumulate::clickRedPacket(
-                $userId,
-                $taskId,
-                $todayAmount,
-                $isNewUser
-            );
+            // 检查红包是否已被抢走
+            $existingClaim = UserRedPacketAccumulate::where('task_id', $taskId)->find();
 
-            $this->releaseLock($lockKey);
+            if ($existingClaim) {
+                // 红包已被抢
+                if ($existingClaim->user_id == $userId && $existingClaim->is_collected == 0) {
+                    // 当前用户抢到的，执行累加
+                    $clickResult = UserRedPacketAccumulate::accumulateRedPacket(
+                        $userId,
+                        $taskId,
+                        $todayAmount
+                    );
+                } else {
+                    // 被其他人抢走了
+                    $result['success'] = false;
+                    $result['message'] = '手慢了，红包已被抢走';
+                    $result['data'] = ['is_owner' => false];
+                    return $result;
+                }
+            } else {
+                // 红包还没被抢，执行抢红包
+                $clickResult = UserRedPacketAccumulate::grabRedPacket(
+                    $userId,
+                    $taskId,
+                    $todayAmount,
+                    $isNewUser
+                );
+            }
 
             if ($clickResult['success']) {
                 $result['success'] = true;
-                $result['message'] = '点击成功';
+                $result['message'] = $clickResult['message'];
                 $result['data'] = $clickResult['data'];
             } else {
                 $result['message'] = $clickResult['message'];
             }
 
         } catch (\Exception $e) {
-            $this->releaseLock($lockKey);
             $result['message'] = '系统错误: ' . $e->getMessage();
             Log::error('点击红包失败: ' . $e->getMessage());
         }
@@ -277,31 +288,40 @@ class RedPacketClickService
             return null;
         }
 
-        $accumulate = UserRedPacketAccumulate::where('user_id', $userId)
-            ->where('task_id', $taskId)
-            ->find();
+        $accumulate = UserRedPacketAccumulate::where('task_id', $taskId)->find();
 
         $todayStart = strtotime(date('Y-m-d'));
         $todayAmount = Db::name('coin_log')
             ->where('user_id', $userId)
-            ->where('type', 'red_packet_click')
+            ->where('type', 'red_packet_grab')
             ->where('createtime', '>=', $todayStart)
             ->sum('amount');
 
-        return [
+        $status = [
             'task_id' => $taskId,
             'show_red_packet' => $task->shouldShowRedPacket(),
-            'max_click_per_day' => $task->max_click_per_day ?: 10,
             'today_amount' => intval($todayAmount),
             'is_new_user' => $this->isNewUser($userId),
-            'accumulate' => $accumulate ? [
-                'base_amount' => $accumulate->base_amount,
-                'accumulate_amount' => $accumulate->accumulate_amount,
-                'total_amount' => $accumulate->total_amount,
-                'click_count' => $accumulate->click_count,
-                'is_collected' => $accumulate->is_collected,
-            ] : null,
         ];
+
+        if ($accumulate) {
+            $isOwner = $accumulate->user_id == $userId;
+            $status['is_grabbed'] = true;
+            $status['is_owner'] = $isOwner;
+            $status['is_collected'] = $accumulate->is_collected;
+            $status['base_amount'] = $isOwner ? $accumulate->base_amount : 0;
+            $status['accumulate_amount'] = $isOwner ? $accumulate->accumulate_amount : 0;
+            $status['total_amount'] = $isOwner ? $accumulate->total_amount : 0;
+            $status['click_count'] = $isOwner ? $accumulate->click_count : 0;
+        } else {
+            $status['is_grabbed'] = false;
+            $status['is_owner'] = false;
+            $status['is_collected'] = false;
+            $status['total_amount'] = 0;
+            $status['click_count'] = 0;
+        }
+
+        return $status;
     }
 
     /**
@@ -332,33 +352,9 @@ class RedPacketClickService
     {
         $count = Db::name('coin_log')
             ->where('user_id', $userId)
-            ->where('type', 'red_packet_click')
+            ->where('type', 'red_packet_grab')
             ->count();
 
         return $count == 0;
-    }
-
-    /**
-     * 获取分布式锁
-     */
-    protected function getLock($key, $expire = 5)
-    {
-        try {
-            $redis = Cache::store('redis')->handler();
-            return $redis->set($key, 1, ['NX', 'EX' => $expire]);
-        } catch (\Exception $e) {
-            return false;
-        }
-    }
-
-    /**
-     * 释放锁
-     */
-    protected function releaseLock($key)
-    {
-        try {
-            Cache::store('redis')->handler()->del($key);
-        } catch (\Exception $e) {
-        }
     }
 }

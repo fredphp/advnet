@@ -69,14 +69,15 @@ class RedPacket extends Api
     }
 
     /**
-     * 点击红包
+     * 点击红包（抢红包或累加金额）
      * @api {post} /api/redpacket/click 点击红包
      * @apiName ClickRedPacket
      * @apiGroup 红包任务
      * @apiParam {Number} task_id 任务ID
      * @apiDescription
-     * 第一次点击：生成基础金额（新用户使用新用户红包金额，老用户根据今日领取金额确定基础额度）
-     * 后续点击：在现有金额上累加随机金额
+     * 每个红包任务只能被一个用户抢到
+     * 第一次点击：抢红包（生成基础金额）
+     * 后续点击：累加金额（只有抢到红包的用户才能累加）
      */
     public function click()
     {
@@ -97,7 +98,7 @@ class RedPacket extends Api
         if ($result['success']) {
             $this->success($result['message'], $result['data']);
         } else {
-            $this->error($result['message']);
+            $this->error($result['message'], $result['data'] ?? null);
         }
     }
 
@@ -132,7 +133,7 @@ class RedPacket extends Api
      * @apiName GetRedPacketStatus
      * @apiGroup 红包任务
      * @apiParam {Number} task_id 任务ID
-     * @apiDescription 获取用户对某个任务的红包累计状态
+     * @apiDescription 获取用户对某个任务的红包抢夺状态
      */
     public function status()
     {
@@ -159,19 +160,19 @@ class RedPacket extends Api
         $todayStart = strtotime(date('Y-m-d'));
         $todayAmount = Db::name('coin_log')
             ->where('user_id', $this->auth->id)
-            ->where('type', 'red_packet_click')
+            ->where('type', 'red_packet_grab')
             ->where('createtime', '>=', $todayStart)
             ->sum('amount');
 
-        // 获取今日点击次数
-        $todayClickCount = Db::name('user_red_packet_accumulate')
+        // 获取今日抢到的红包数
+        $todayGrabCount = Db::name('user_red_packet_accumulate')
             ->where('user_id', $this->auth->id)
             ->where('createtime', '>=', $todayStart)
             ->count();
 
         $this->success('获取成功', [
             'today_amount' => intval($todayAmount),
-            'today_click_count' => $todayClickCount,
+            'today_grab_count' => $todayGrabCount,
         ]);
     }
 

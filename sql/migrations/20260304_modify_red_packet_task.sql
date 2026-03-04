@@ -25,17 +25,11 @@ PREPARE stmt FROM @sql_show;
 EXECUTE stmt;
 DEALLOCATE PREPARE stmt;
 
--- 添加每日最大点击次数字段
-SET @exist_max := (SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'advn_red_packet_task' AND COLUMN_NAME = 'max_click_per_day');
-SET @sql_max := IF(@exist_max = 0, 'ALTER TABLE `advn_red_packet_task` ADD COLUMN `max_click_per_day` INT(10) UNSIGNED DEFAULT 10 COMMENT ''每日最大点击次数'' AFTER `show_red_packet`', 'SELECT 1');
-PREPARE stmt FROM @sql_max;
-EXECUTE stmt;
-DEALLOCATE PREPARE stmt;
-
 -- 注意：
--- 背景图、跳转链接等信息直接使用关联资源表(advn_red_packet_resource)中的字段：
--- - logo: 资源图标/封面（可作为背景图）
--- - images: 宣传图片
--- - url: 跳转链接
--- - package_name: App包名
--- - app_id: 小程序AppID
+-- 1. 每个红包任务只能被一个用户领取（单人领取模式）
+-- 2. 背景图、跳转链接等信息直接使用关联资源表(advn_red_packet_resource)中的字段：
+--    - logo: 资源图标/封面（可作为背景图）
+--    - images: 宣传图片
+--    - url: 跳转链接
+--    - package_name: App包名
+--    - app_id: 小程序AppID

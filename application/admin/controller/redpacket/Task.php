@@ -109,10 +109,6 @@ class Task extends Backend
                         $params['show_red_packet'] = ($type === 'miniapp') ? 1 : 0;
                     }
 
-                    if (!isset($params['max_click_per_day']) || empty($params['max_click_per_day'])) {
-                        $params['max_click_per_day'] = 10;
-                    }
-
                     $result = $this->model->allowField(true)->save($params);
                     Db::commit();
                 } catch (Exception $e) {
@@ -378,7 +374,7 @@ class Task extends Backend
         }
 
         // 获取领取记录
-        $records = \app\common\model\RedPacketRecord::where('task_id', $ids)
+        $records = \app\common\model\UserRedPacketAccumulate::where('task_id', $ids)
             ->with(['user'])
             ->order('id', 'desc')
             ->limit(20)
@@ -386,8 +382,8 @@ class Task extends Backend
 
         // 统计信息
         $stats = [
-            'total_records' => \app\common\model\RedPacketRecord::where('task_id', $ids)->count(),
-            'total_amount_sent' => \app\common\model\RedPacketRecord::where('task_id', $ids)->sum('amount'),
+            'total_records' => \app\common\model\UserRedPacketAccumulate::where('task_id', $ids)->count(),
+            'total_amount_sent' => \app\common\model\UserRedPacketAccumulate::where('task_id', $ids)->where('is_collected', 1)->sum('total_amount'),
         ];
 
         $this->view->assign('row', $row);
