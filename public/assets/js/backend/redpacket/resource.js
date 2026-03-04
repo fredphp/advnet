@@ -17,6 +17,7 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
 
             // 类型列表
             var typeList = {
+                "chat": "普通聊天",
                 "download": "下载App",
                 "miniapp": "小程序游戏",
                 "adv": "广告时长",
@@ -74,7 +75,10 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
                     var type = $(this).val();
                     $('.type-config').hide();
 
-                    if (type === 'miniapp') {
+                    if (type === 'chat') {
+                        // 普通聊天配置
+                        $('.type-chat').show();
+                    } else if (type === 'miniapp') {
                         // 小程序游戏配置
                         $('.type-miniapp').show();
                     } else if (type === 'download') {

@@ -35,6 +35,7 @@ class RedPacketTask extends Model
 
     // 任务类型列表 - 与资源和数据库保持一致
     public static $typeList = [
+        'chat' => '普通聊天',
         'download' => '下载App',
         'miniapp' => '小程序游戏',
         'adv' => '广告时长',
@@ -118,6 +119,10 @@ class RedPacketTask extends Model
 
             // 根据资源类型添加跳转配置
             switch ($resource->type) {
+                case 'chat':
+                    $data['resource']['chat_duration'] = $resource->chat_duration;
+                    $data['resource']['chat_requirement'] = $resource->chat_requirement;
+                    break;
                 case 'miniapp':
                     $data['resource']['miniapp_id'] = $resource->miniapp_id;
                     $data['resource']['miniapp_path'] = $resource->miniapp_path;

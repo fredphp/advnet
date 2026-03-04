@@ -33,6 +33,7 @@ class RedPacketResource extends Model
     
     // 类型列表
     public static $typeList = [
+        'chat' => '普通聊天',
         'download' => '下载App',
         'miniapp' => '小程序游戏',
         'adv' => '广告时长',
@@ -66,6 +67,12 @@ class RedPacketResource extends Model
         $config = [];
         
         switch ($type) {
+            case 'chat':
+                $config = [
+                    'chat_duration' => $data['chat_duration'] ?? 30,
+                    'chat_requirement' => $data['chat_requirement'] ?? '',
+                ];
+                break;
             case 'miniapp':
             case 'game':
                 $config = [

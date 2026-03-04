@@ -2,6 +2,7 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form', 'selectpage', 'templa
 
     // 任务类型列表
     var typeList = {
+        'chat': '普通聊天',
         'download': '下载App',
         'miniapp': '小程序游戏',
         'adv': '广告时长',

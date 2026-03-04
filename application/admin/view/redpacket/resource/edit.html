@@ -36,6 +36,22 @@
         </div>
     </div>
 
+    <!-- 普通聊天配置 -->
+    <div class="form-group type-config type-chat" style="display:none;">
+        <label class="control-label col-xs-12 col-sm-2">聊天时长(秒):</label>
+        <div class="col-xs-12 col-sm-8">
+            <input id="c-chat_duration" class="form-control" name="row[chat_duration]" type="number" min="0" value="{$row.chat_duration|default='30'}" placeholder="需要聊天多少秒才能领红包">
+            <span class="help-block">用户需要聊天达到此时长才能领取红包</span>
+        </div>
+    </div>
+    <div class="form-group type-config type-chat" style="display:none;">
+        <label class="control-label col-xs-12 col-sm-2">聊天内容要求:</label>
+        <div class="col-xs-12 col-sm-8">
+            <textarea id="c-chat_requirement" class="form-control" name="row[chat_requirement]" rows="2" placeholder="如：需要发送至少3条有效消息">{$row.chat_requirement}</textarea>
+            <span class="help-block">对聊天内容的具体要求说明</span>
+        </div>
+    </div>
+
     <!-- 下载App配置 -->
     <div class="form-group type-config type-download">
         <label class="control-label col-xs-12 col-sm-2">下载链接:</label>
