@@ -9,6 +9,7 @@ use think\Exception;
 
 /**
  * 红包金额配置管理
+ * 用于配置新用户红包和不同领取金额区间的奖励额度
  */
 class Amountconfig extends Backend
 {
@@ -47,8 +48,8 @@ class Amountconfig extends Backend
 
             list($where, $sort, $order, $offset, $limit) = $this->buildparams();
 
-            // 默认按ID排序
-            if ($sort == 'sort') {
+            // 默认按权重排序
+            if ($sort == 'sort' || $sort == 'weigh') {
                 $sort = 'weigh';
                 $order = 'desc';
             }
@@ -58,30 +59,6 @@ class Amountconfig extends Backend
                 ->order($sort, $order)
                 ->order('weigh', 'desc')
                 ->paginate($limit);
-
-            // 添加类型文本
-            foreach ($list as $row) {
-                $row->config_type_text = $row->config_type_text;
-                $row->status_text = $row->status_text;
-
-                // 格式化今日金额区间显示
-                if ($row->config_type == 'new_user') {
-                    $row->today_range_text = '-';
-                } else {
-                    $minAmount = number_format($row->min_today_amount);
-                    if ($row->max_today_amount > 0) {
-                        $maxAmount = number_format($row->max_today_amount);
-                        $row->today_range_text = "{$minAmount} - {$maxAmount}";
-                    } else {
-                        $row->today_range_text = "{$minAmount}以上";
-                    }
-                }
-
-                // 格式化奖励金额显示
-                $minReward = number_format($row->min_reward);
-                $maxReward = number_format($row->max_reward);
-                $row->reward_range_text = "{$minReward} - {$maxReward}";
-            }
 
             $result = ['total' => $list->total(), 'rows' => $list->items()];
             return json($result);
@@ -111,12 +88,23 @@ class Amountconfig extends Backend
                     if (empty($params['name'])) {
                         $this->error('配置名称不能为空');
                     }
+                    if (!isset($params['min_reward']) || !isset($params['max_reward'])) {
+                        $this->error('奖励金额不能为空');
+                    }
                     if ($params['min_reward'] > $params['max_reward']) {
                         $this->error('奖励金额下限不能大于上限');
                     }
-                    if (isset($params['min_today_amount']) && isset($params['max_today_amount'])) {
-                        if ($params['max_today_amount'] > 0 && $params['min_today_amount'] > $params['max_today_amount']) {
-                            $this->error('今日领取金额下限不能大于上限');
+
+                    // 新用户红包不需要今日金额区间
+                    if ($params['config_type'] === 'new_user') {
+                        $params['min_today_amount'] = 0;
+                        $params['max_today_amount'] = 0;
+                    } else {
+                        // 验证今日金额区间
+                        if (isset($params['min_today_amount']) && isset($params['max_today_amount'])) {
+                            if ($params['max_today_amount'] > 0 && $params['min_today_amount'] > $params['max_today_amount']) {
+                                $this->error('今日领取金额下限不能大于上限');
+                            }
                         }
                     }
 
@@ -163,15 +151,23 @@ class Amountconfig extends Backend
                 $result = false;
                 Db::startTrans();
                 try {
-                    // 验证
+                    // 验证奖励金额区间
                     if (isset($params['min_reward']) && isset($params['max_reward'])) {
                         if ($params['min_reward'] > $params['max_reward']) {
                             $this->error('奖励金额下限不能大于上限');
                         }
                     }
-                    if (isset($params['min_today_amount']) && isset($params['max_today_amount'])) {
-                        if ($params['max_today_amount'] > 0 && $params['min_today_amount'] > $params['max_today_amount']) {
-                            $this->error('今日领取金额下限不能大于上限');
+
+                    // 新用户红包不需要今日金额区间
+                    if (isset($params['config_type']) && $params['config_type'] === 'new_user') {
+                        $params['min_today_amount'] = 0;
+                        $params['max_today_amount'] = 0;
+                    } else {
+                        // 验证今日金额区间
+                        if (isset($params['min_today_amount']) && isset($params['max_today_amount'])) {
+                            if ($params['max_today_amount'] > 0 && $params['min_today_amount'] > $params['max_today_amount']) {
+                                $this->error('今日领取金额下限不能大于上限');
+                            }
                         }
                     }
 

@@ -13,8 +13,8 @@
                         <div class="dropdown btn-group {:$auth->check('redpacket/amountconfig/multi')?'':'hide'}">
                             <a class="btn btn-primary btn-more dropdown-toggle btn-disabled disabled" data-toggle="dropdown"><i class="fa fa-cog"></i> {:__('More')}</a>
                             <ul class="dropdown-menu text-left" role="menu">
-                                <li><a class="btn btn-link btn-multi btn-disabled disabled" href="javascript:;" data-params="status=normal"><i class="fa fa-eye"></i> {:__('Set to normal')}</a></li>
-                                <li><a class="btn btn-link btn-multi btn-disabled disabled" href="javascript:;" data-params="status=hidden"><i class="fa fa-eye-slash"></i> {:__('Set to hidden')}</a></li>
+                                <li><a class="btn btn-link btn-multi btn-disabled disabled" href="javascript:;" data-params="status=normal"><i class="fa fa-eye"></i> 设为正常</a></li>
+                                <li><a class="btn btn-link btn-multi btn-disabled disabled" href="javascript:;" data-params="status=hidden"><i class="fa fa-eye-slash"></i> 设为禁用</a></li>
                             </ul>
                         </div>
 
@@ -24,11 +24,11 @@
                                 <span class="caret"></span>
                             </button>
                             <ul class="dropdown-menu" role="menu">
-                                <li><a href="javascript:;" onclick="$.fn.bootstrapTable.defaults.refresh('', {query: {filter: {config_type: ''}}}">全部类型</a></li>
+                                <li><a href="javascript:;" data-field="config_type" data-value="">全部类型</a></li>
                                 <li class="divider"></li>
-                                <li><a href="javascript:;" onclick="$.fn.bootstrapTable.defaults.refresh('', {query: {filter: {config_type: 'new_user'}}}">新用户红包</a></li>
-                                <li><a href="javascript:;" onclick="$.fn.bootstrapTable.defaults.refresh('', {query: {filter: {config_type: 'base_amount'}}}">基础额度</a></li>
-                                <li><a href="javascript:;" onclick="$.fn.bootstrapTable.defaults.refresh('', {query: {filter: {config_type: 'accumulate_amount'}}}">累加额度</a></li>
+                                <li><a href="javascript:;" data-field="config_type" data-value="new_user">新用户红包</a></li>
+                                <li><a href="javascript:;" data-field="config_type" data-value="base_amount">基础额度</a></li>
+                                <li><a href="javascript:;" data-field="config_type" data-value="accumulate_amount">累加额度</a></li>
                             </ul>
                         </div>
                     </div>
@@ -39,7 +39,6 @@
                     </table>
                 </div>
             </div>
-
         </div>
     </div>
 </div>
