@@ -4,46 +4,12 @@
         <div class="col-xs-12 col-sm-8">
             <select id="c-config_type" class="form-control selectpicker" name="row[config_type]" required>
                 <option value="new_user">新用户红包</option>
-                <option value="base_amount">基础额度</option>
-                <option value="accumulate_amount">累加额度</option>
+                <option value="tier">阶梯配置</option>
             </select>
             <span class="help-block">
                 <strong>新用户红包</strong>：新用户首次点击红包获得的金额区间<br>
-                <strong>基础额度</strong>：根据今日领取金额确定的基础红包金额<br>
-                <strong>累加额度</strong>：每次点击红包累加的金额区间
+                <strong>阶梯配置</strong>：根据今日已领取金额分档的配置
             </span>
-        </div>
-    </div>
-
-    <div class="form-group today-amount-group">
-        <label class="control-label col-xs-12 col-sm-2">今日领取金额区间:</label>
-        <div class="col-xs-12 col-sm-8">
-            <div class="row">
-                <div class="col-xs-5">
-                    <input id="c-min_today_amount" class="form-control" name="row[min_today_amount]" type="number" min="0" value="0" placeholder="下限">
-                </div>
-                <div class="col-xs-2 text-center" style="padding-top: 7px;">-</div>
-                <div class="col-xs-5">
-                    <input id="c-max_today_amount" class="form-control" name="row[max_today_amount]" type="number" min="0" value="0" placeholder="上限(0表示无限)">
-                </div>
-            </div>
-            <span class="help-block">设置今日领取金额的范围，系统会根据用户今日已领取金额匹配对应的区间</span>
-        </div>
-    </div>
-
-    <div class="form-group">
-        <label class="control-label col-xs-12 col-sm-2">奖励金额区间(金币):</label>
-        <div class="col-xs-12 col-sm-8">
-            <div class="row">
-                <div class="col-xs-5">
-                    <input id="c-min_reward" class="form-control" name="row[min_reward]" type="number" min="0" value="0" placeholder="下限" required>
-                </div>
-                <div class="col-xs-2 text-center" style="padding-top: 7px;">-</div>
-                <div class="col-xs-5">
-                    <input id="c-max_reward" class="form-control" name="row[max_reward]" type="number" min="0" value="0" placeholder="上限" required>
-                </div>
-            </div>
-            <span class="help-block">用户获得的金币金额将在此区间内随机生成</span>
         </div>
     </div>
 
@@ -51,6 +17,65 @@
         <label class="control-label col-xs-12 col-sm-2">配置名称:</label>
         <div class="col-xs-12 col-sm-8">
             <input id="c-name" class="form-control" name="row[name]" type="text" placeholder="如：入门级、中级、高级" required>
+        </div>
+    </div>
+
+    <!-- 今日领取金额区间（仅阶梯配置显示） -->
+    <div class="form-group tier-only-field">
+        <label class="control-label col-xs-12 col-sm-2">今日领取金额区间:</label>
+        <div class="col-xs-12 col-sm-8">
+            <div class="row">
+                <div class="col-xs-5">
+                    <input id="c-min_today_amount" class="form-control" name="row[min_today_amount]" type="number" min="0" value="0" placeholder="下限">
+                    <span class="help-block">金币</span>
+                </div>
+                <div class="col-xs-2 text-center" style="padding-top: 7px;">-</div>
+                <div class="col-xs-5">
+                    <input id="c-max_today_amount" class="form-control" name="row[max_today_amount]" type="number" min="0" value="0" placeholder="上限(0表示无限)">
+                    <span class="help-block">金币</span>
+                </div>
+            </div>
+            <span class="help-block">设置今日领取金额的范围，系统会根据用户今日已领取金额匹配对应的区间</span>
+        </div>
+    </div>
+
+    <div class="form-group">
+        <label class="control-label col-xs-12 col-sm-2">基础奖励金额:</label>
+        <div class="col-xs-12 col-sm-8">
+            <div class="row">
+                <div class="col-xs-5">
+                    <input id="c-base_min_reward" class="form-control" name="row[base_min_reward]" type="number" min="0" value="0" placeholder="下限" required>
+                    <span class="help-block">金币</span>
+                </div>
+                <div class="col-xs-2 text-center" style="padding-top: 7px;">-</div>
+                <div class="col-xs-5">
+                    <input id="c-base_max_reward" class="form-control" name="row[base_max_reward]" type="number" min="0" value="0" placeholder="上限" required>
+                    <span class="help-block">金币</span>
+                </div>
+            </div>
+            <span class="help-block">
+                <strong>新用户红包</strong>：首次点击获得的金额区间<br>
+                <strong>阶梯配置</strong>：首次点击（或基础）获得的金额区间
+            </span>
+        </div>
+    </div>
+
+    <!-- 累加奖励金额（仅阶梯配置显示） -->
+    <div class="form-group tier-only-field">
+        <label class="control-label col-xs-12 col-sm-2">累加奖励金额:</label>
+        <div class="col-xs-12 col-sm-8">
+            <div class="row">
+                <div class="col-xs-5">
+                    <input id="c-accumulate_min_reward" class="form-control" name="row[accumulate_min_reward]" type="number" min="0" value="0" placeholder="下限">
+                    <span class="help-block">金币</span>
+                </div>
+                <div class="col-xs-2 text-center" style="padding-top: 7px;">-</div>
+                <div class="col-xs-5">
+                    <input id="c-accumulate_max_reward" class="form-control" name="row[accumulate_max_reward]" type="number" min="0" value="0" placeholder="上限">
+                    <span class="help-block">金币</span>
+                </div>
+            </div>
+            <span class="help-block">每次点击红包累加的金额区间（不包括首次点击）</span>
         </div>
     </div>
 
@@ -90,24 +115,27 @@
 
 <script>
 $(function() {
-    // 根据配置类型显示/隐藏今日金额区间
-    function toggleTodayAmountGroup() {
+    // 根据配置类型显示/隐藏字段
+    function toggleFields() {
         var configType = $('#c-config_type').val();
         if (configType === 'new_user') {
-            $('.today-amount-group').hide();
+            $('.tier-only-field').hide();
+            // 清空阶梯配置字段
             $('#c-min_today_amount').val(0);
             $('#c-max_today_amount').val(0);
+            $('#c-accumulate_min_reward').val(0);
+            $('#c-accumulate_max_reward').val(0);
         } else {
-            $('.today-amount-group').show();
+            $('.tier-only-field').show();
         }
     }
 
     // 初始化
-    toggleTodayAmountGroup();
+    toggleFields();
 
     // 监听类型变化
     $('#c-config_type').on('change', function() {
-        toggleTodayAmountGroup();
+        toggleFields();
     });
 });
 </script>

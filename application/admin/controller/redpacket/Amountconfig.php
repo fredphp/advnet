@@ -88,24 +88,33 @@ class Amountconfig extends Backend
                     if (empty($params['name'])) {
                         $this->error('配置名称不能为空');
                     }
-                    if (!isset($params['min_reward']) || !isset($params['max_reward'])) {
-                        $this->error('奖励金额不能为空');
+
+                    // 验证基础奖励金额
+                    if (!isset($params['base_min_reward']) || !isset($params['base_max_reward'])) {
+                        $this->error('基础奖励金额不能为空');
                     }
-                    if ($params['min_reward'] > $params['max_reward']) {
-                        $this->error('奖励金额下限不能大于上限');
+                    if ($params['base_min_reward'] > $params['base_max_reward']) {
+                        $this->error('基础奖励金额下限不能大于上限');
                     }
 
-                    // 新用户红包不需要今日金额区间
-                    if ($params['config_type'] === 'new_user') {
-                        $params['min_today_amount'] = 0;
-                        $params['max_today_amount'] = 0;
-                    } else {
+                    // 阶梯配置需要验证今日金额区间和累加奖励
+                    if ($params['config_type'] === 'tier') {
                         // 验证今日金额区间
                         if (isset($params['min_today_amount']) && isset($params['max_today_amount'])) {
                             if ($params['max_today_amount'] > 0 && $params['min_today_amount'] > $params['max_today_amount']) {
                                 $this->error('今日领取金额下限不能大于上限');
                             }
                         }
+                        // 验证累加奖励金额
+                        if (isset($params['accumulate_min_reward']) && isset($params['accumulate_max_reward'])) {
+                            if ($params['accumulate_min_reward'] > $params['accumulate_max_reward']) {
+                                $this->error('累加奖励金额下限不能大于上限');
+                            }
+                        }
+                    } else {
+                        // 新用户红包不需要今日金额区间
+                        $params['min_today_amount'] = 0;
+                        $params['max_today_amount'] = 0;
                     }
 
                     $result = $this->model->allowField(true)->save($params);
@@ -151,24 +160,32 @@ class Amountconfig extends Backend
                 $result = false;
                 Db::startTrans();
                 try {
-                    // 验证奖励金额区间
-                    if (isset($params['min_reward']) && isset($params['max_reward'])) {
-                        if ($params['min_reward'] > $params['max_reward']) {
-                            $this->error('奖励金额下限不能大于上限');
+                    // 验证基础奖励金额区间
+                    if (isset($params['base_min_reward']) && isset($params['base_max_reward'])) {
+                        if ($params['base_min_reward'] > $params['base_max_reward']) {
+                            $this->error('基础奖励金额下限不能大于上限');
                         }
                     }
 
-                    // 新用户红包不需要今日金额区间
-                    if (isset($params['config_type']) && $params['config_type'] === 'new_user') {
-                        $params['min_today_amount'] = 0;
-                        $params['max_today_amount'] = 0;
-                    } else {
+                    // 阶梯配置验证
+                    $configType = isset($params['config_type']) ? $params['config_type'] : $row->config_type;
+                    if ($configType === 'tier') {
                         // 验证今日金额区间
                         if (isset($params['min_today_amount']) && isset($params['max_today_amount'])) {
                             if ($params['max_today_amount'] > 0 && $params['min_today_amount'] > $params['max_today_amount']) {
                                 $this->error('今日领取金额下限不能大于上限');
                             }
                         }
+                        // 验证累加奖励金额
+                        if (isset($params['accumulate_min_reward']) && isset($params['accumulate_max_reward'])) {
+                            if ($params['accumulate_min_reward'] > $params['accumulate_max_reward']) {
+                                $this->error('累加奖励金额下限不能大于上限');
+                            }
+                        }
+                    } else {
+                        // 新用户红包不需要今日金额区间
+                        $params['min_today_amount'] = 0;
+                        $params['max_today_amount'] = 0;
                     }
 
                     $result = $row->allowField(true)->save($params);

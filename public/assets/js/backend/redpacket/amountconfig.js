@@ -28,13 +28,13 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
                         {field: 'id', title: 'ID', sortable: true},
                         {field: 'config_type', title: '配置类型', searchList: {
                             "new_user": "新用户红包",
-                            "base_amount": "基础额度",
-                            "accumulate_amount": "累加额度"
+                            "tier": "阶梯配置"
                         }, formatter: Table.api.formatter.status},
                         {field: 'name', title: '配置名称', operate: 'LIKE'},
                         {field: 'today_range_text', title: '今日领取区间', operate: false},
-                        {field: 'reward_range_text', title: '奖励区间(金币)', operate: false},
-                        {field: 'weigh', title: '权重', sortable: true},
+                        {field: 'base_reward_range_text', title: '基础奖励区间', operate: false},
+                        {field: 'accumulate_reward_range_text', title: '累加奖励区间', operate: false},
+                        {field: 'weigh', title: '排序权重', sortable: true},
                         {field: 'status', title: '状态', searchList: {"normal": "正常", "hidden": "禁用"}, formatter: Table.api.formatter.status},
                         {field: 'createtime', title: '创建时间', formatter: Table.api.formatter.datetime, operate: 'RANGE', addclass: 'datetimerange', sortable: true},
                         {field: 'operate', title: '操作', table: table, events: Table.api.events.operate, formatter: Table.api.formatter.operate}
