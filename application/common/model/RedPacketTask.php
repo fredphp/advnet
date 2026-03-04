@@ -143,6 +143,14 @@ class RedPacketTask extends Model
                     $data['resource']['video_duration'] = $resource->video_duration;
                     break;
             }
+        } else {
+            // 普通聊天任务没有关联资源时，使用任务描述作为聊天内容
+            $taskType = $this->getData('type');
+            if ($taskType === 'chat') {
+                $data['chat_content'] = $this->description ?: '';
+                // 设置默认聊天时长
+                $data['chat_duration'] = 30;
+            }
         }
 
         return $data;
