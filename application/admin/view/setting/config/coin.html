@@ -1,0 +1,50 @@
+<form id="coin-form" class="form-horizontal" role="form" data-toggle="validator" method="POST" action="">
+    <div class="form-group">
+        <label class="control-label col-xs-12 col-sm-2">金币汇率:</label>
+        <div class="col-xs-12 col-sm-8">
+            <input class="form-control" name="row[coin_rate]" type="number" value="{$configs.coin_rate}" data-rule="required">
+            <span class="help-block">多少金币等于1元人民币</span>
+        </div>
+    </div>
+    <div class="form-group">
+        <label class="control-label col-xs-12 col-sm-2">视频观看奖励:</label>
+        <div class="col-xs-12 col-sm-8">
+            <input class="form-control" name="row[video_coin_reward]" type="number" value="{$configs.video_coin_reward}" data-rule="required">
+            <span class="help-block">每次有效观看奖励的金币数量</span>
+        </div>
+    </div>
+    <div class="form-group">
+        <label class="control-label col-xs-12 col-sm-2">有效观看时长:</label>
+        <div class="col-xs-12 col-sm-8">
+            <input class="form-control" name="row[video_watch_duration]" type="number" value="{$configs.video_watch_duration}" data-rule="required">
+            <span class="help-block">观看多少秒才算有效观看</span>
+        </div>
+    </div>
+    <div class="form-group">
+        <label class="control-label col-xs-12 col-sm-2">每日视频上限:</label>
+        <div class="col-xs-12 col-sm-8">
+            <input class="form-control" name="row[daily_video_limit]" type="number" value="{$configs.daily_video_limit}" data-rule="required">
+            <span class="help-block">用户每日可观看视频次数上限</span>
+        </div>
+    </div>
+    <div class="form-group">
+        <label class="control-label col-xs-12 col-sm-2">每日金币上限:</label>
+        <div class="col-xs-12 col-sm-8">
+            <input class="form-control" name="row[daily_coin_limit]" type="number" value="{$configs.daily_coin_limit}" data-rule="required">
+            <span class="help-block">用户每日可获取金币上限</span>
+        </div>
+    </div>
+    <div class="form-group">
+        <label class="control-label col-xs-12 col-sm-2">新用户奖励:</label>
+        <div class="col-xs-12 col-sm-8">
+            <input class="form-control" name="row[new_user_coin]" type="number" value="{$configs.new_user_coin}" data-rule="required">
+            <span class="help-block">新用户注册奖励金币数量</span>
+        </div>
+    </div>
+    <div class="form-group layer-footer">
+        <label class="control-label col-xs-12 col-sm-2"></label>
+        <div class="col-xs-12 col-sm-8">
+            <button type="submit" class="btn btn-primary btn-embossed disabled">{:__('OK')}</button>
+        </div>
+    </div>
+</form>

@@ -1,0 +1,205 @@
+<form id="edit-form" class="form-horizontal" role="form" data-toggle="validator" method="POST" action="">
+    <input type="hidden" name="row[id]" value="{$row.id}">
+    <!-- 保存原始视频URL -->
+    <input type="hidden" id="original_video_url" value="{$row.video_url}">
+
+    <!-- 数据统计编辑卡片 -->
+    <div class="panel panel-info" style="margin-bottom: 15px;">
+        <div class="panel-heading">
+            <h3 class="panel-title"><i class="fa fa-bar-chart"></i> 视频数据统计 <small style="color:#fff;">（可编辑）</small></h3>
+        </div>
+        <div class="panel-body">
+            <div class="row">
+                <div class="col-xs-6 col-sm-3">
+                    <div class="form-group" style="margin-bottom: 10px;">
+                        <label class="control-label" style="color: #337ab7;"><i class="fa fa-play-circle"></i> 播放量</label>
+                        <input type="number" class="form-control" name="row[view_count]" value="{$row.view_count|default=0}" min="0">
+                    </div>
+                </div>
+                <div class="col-xs-6 col-sm-3">
+                    <div class="form-group" style="margin-bottom: 10px;">
+                        <label class="control-label" style="color: #d9534f;"><i class="fa fa-thumbs-up"></i> 点赞数</label>
+                        <input type="number" class="form-control" name="row[like_count]" value="{$row.like_count|default=0}" min="0">
+                    </div>
+                </div>
+                <div class="col-xs-6 col-sm-3">
+                    <div class="form-group" style="margin-bottom: 10px;">
+                        <label class="control-label" style="color: #f0ad4e;"><i class="fa fa-star"></i> 收藏数</label>
+                        <input type="number" class="form-control" name="row[collect_count]" value="{$row.collect_count|default=0}" min="0">
+                    </div>
+                </div>
+                <div class="col-xs-6 col-sm-3">
+                    <div class="form-group" style="margin-bottom: 10px;">
+                        <label class="control-label" style="color: #5bc0de;"><i class="fa fa-comments"></i> 评论数</label>
+                        <input type="number" class="form-control" name="row[comment_count]" value="{$row.comment_count|default=0}" min="0">
+                    </div>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-xs-6 col-sm-3">
+                    <div class="form-group" style="margin-bottom: 10px;">
+                        <label class="control-label" style="color: #5cb85c;"><i class="fa fa-share-alt"></i> 转发数</label>
+                        <input type="number" class="form-control" name="row[share_count]" value="{$row.share_count|default=0}" min="0">
+                    </div>
+                </div>
+                <div class="col-xs-6 col-sm-3">
+                    <div class="form-group" style="margin-bottom: 10px;">
+                        <label class="control-label" style="color: #9b59b6;"><i class="fa fa-gift"></i> 奖励人数</label>
+                        <input type="number" class="form-control" name="row[reward_count]" value="{$row.reward_count|default=0}" min="0">
+                    </div>
+                </div>
+                <div class="col-xs-6 col-sm-3">
+                    <div class="form-group" style="margin-bottom: 10px;">
+                        <label class="control-label" style="color: #f39c12;"><i class="fa fa-money"></i> 已发金币</label>
+                        <input type="number" class="form-control" name="row[reward_coin_total]" value="{$row.reward_coin_total|default='0.00'}" min="0" step="0.01">
+                    </div>
+                </div>
+                <div class="col-xs-6 col-sm-3">
+                    <div class="form-group" style="margin-bottom: 10px;">
+                        <label class="control-label" style="color: #666;"><i class="fa fa-clock-o"></i> 视频时长</label>
+                        <div class="input-group">
+                            <input type="number" class="form-control" name="row[duration]" value="{$row.duration|default=0}" min="0">
+                            <span class="input-group-addon">秒</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="form-group">
+        <label class="control-label col-xs-12 col-sm-2">{:__('Title')}:</label>
+        <div class="col-xs-12 col-sm-8">
+            <input id="c-title" data-rule="required" class="form-control" name="row[title]" type="text" value="{$row.title}">
+        </div>
+    </div>
+    <div class="form-group">
+        <label class="control-label col-xs-12 col-sm-2">封面图片:</label>
+        <div class="col-xs-12 col-sm-8">
+            <div class="input-group">
+                <input id="c-cover_url" class="form-control" size="50" name="row[cover_url]" type="text" value="{$row.cover_url}" placeholder="封面图片URL">
+                <div class="input-group-addon no-border no-padding">
+                    <span><button type="button" id="faupload-cover_url" class="btn btn-danger faupload" data-input-id="c-cover_url" data-mimetype="image/*" data-preview-id="p-cover_url"><i class="fa fa-upload"></i> {:__('Upload')}</button></span>
+                    <span><button type="button" id="fachoose-cover_url" class="btn btn-primary fachoose" data-input-id="c-cover_url" data-mimetype="image/*"><i class="fa fa-list"></i> {:__('Choose')}</button></span>
+                </div>
+            </div>
+            <ul class="row list-inline faupload-preview" id="p-cover_url"></ul>
+        </div>
+    </div>
+    <div class="form-group">
+        <label class="control-label col-xs-12 col-sm-2">视频文件:</label>
+        <div class="col-xs-12 col-sm-8">
+            <ul class="nav nav-tabs" role="tablist">
+                <li role="presentation" class="active">
+                    <a href="#tab-current" aria-controls="tab-current" role="tab" data-toggle="tab">当前视频</a>
+                </li>
+                <li role="presentation">
+                    <a href="#tab-upload" aria-controls="tab-upload" role="tab" data-toggle="tab">上传新视频</a>
+                </li>
+                <li role="presentation">
+                    <a href="#tab-url" aria-controls="tab-url" role="tab" data-toggle="tab">视频链接</a>
+                </li>
+            </ul>
+            <div class="tab-content" style="margin-top: 10px;">
+                <div role="tabpanel" class="tab-pane active" id="tab-current">
+                    <div class="input-group">
+                        <input id="c-video_url_current" class="form-control" type="text" value="{$row.video_url}" readonly style="background-color: #f9f9f9;">
+                    </div>
+                    <span class="help-block">当前视频地址，如需更换请切换到"上传新视频"或"视频链接"标签</span>
+                </div>
+                <div role="tabpanel" class="tab-pane" id="tab-upload">
+                    <div class="input-group">
+                        <input id="c-video_url_upload" class="form-control" name="row[video_url_new]" type="text" value="" placeholder="点击上传按钮上传视频" readonly>
+                        <div class="input-group-addon no-border no-padding">
+                            <span><button type="button" id="faupload-video" class="btn btn-danger faupload-video" data-input-id="c-video_url_upload" data-mimetype="video/mp4,video/quicktime,video/x-msvideo,video/webm" data-maxsize="500mb"><i class="fa fa-upload"></i> 上传视频</button></span>
+                        </div>
+                    </div>
+                    <span class="help-block">支持 MP4, MOV, AVI, WebM 格式，最大 500MB</span>
+                </div>
+                <div role="tabpanel" class="tab-pane" id="tab-url">
+                    <input id="c-video_url_link" class="form-control" name="row[video_url_link]" type="text" value="" placeholder="请输入视频完整URL地址，如：https://example.com/video.mp4">
+                    <span class="help-block">输入新的视频地址将覆盖原视频</span>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="form-group">
+        <label class="control-label col-xs-12 col-sm-2">视频描述:</label>
+        <div class="col-xs-12 col-sm-8">
+            <textarea id="c-description" class="form-control" name="row[description]" rows="3">{$row.description}</textarea>
+        </div>
+    </div>
+    <div class="form-group">
+        <label class="control-label col-xs-12 col-sm-2">分类:</label>
+        <div class="col-xs-12 col-sm-8">
+            <select id="c-category_id" class="form-control selectpicker" name="row[category_id]" data-live-search="true">
+                <option value="">请选择分类</option>
+            </select>
+        </div>
+    </div>
+    <div class="form-group">
+        <label class="control-label col-xs-12 col-sm-2">奖励设置:</label>
+        <div class="col-xs-12 col-sm-8">
+            <div class="row">
+                <div class="col-xs-6">
+                    <div class="input-group">
+                        <span class="input-group-addon">奖励金币</span>
+                        <input id="c-reward_coin" class="form-control" name="row[reward_coin]" type="number" value="{$row.reward_coin}" step="0.01" min="0">
+                    </div>
+                </div>
+                <div class="col-xs-6">
+                    <div class="input-group">
+                        <span class="input-group-addon">观看秒数</span>
+                        <input id="c-reward_duration" class="form-control" name="row[reward_duration]" type="number" value="{$row.reward_duration|default=30}" min="0">
+                        <span class="input-group-addon">秒</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="form-group">
+        <label class="control-label col-xs-12 col-sm-2">发布者:</label>
+        <div class="col-xs-12 col-sm-8">
+            <select id="c-user_id" class="form-control selectpicker" name="row[user_id]" data-live-search="true">
+                <option value="">平台发布</option>
+                {foreach name="authorList" item="vo" key="k"}
+                <option value="{$k}" {if $row.user_id == $k}selected{/if}>{$vo}</option>
+                {/foreach}
+            </select>
+            <span class="help-block">不选择发布者则为"平台发布"</span>
+        </div>
+    </div>
+    <div class="form-group">
+        <label class="control-label col-xs-12 col-sm-2">标签:</label>
+        <div class="col-xs-12 col-sm-8">
+            <input id="c-tags" class="form-control" name="row[tags]" type="text" value="{$row.tags}" placeholder="多个标签用逗号分隔">
+        </div>
+    </div>
+    <div class="form-group">
+        <label class="control-label col-xs-12 col-sm-2">{:__('Status')}:</label>
+        <div class="col-xs-12 col-sm-8">
+            <select id="c-status" class="form-control" name="row[status]">
+                <option value="4" {if $row.status==4}selected{/if}>草稿</option>
+                <option value="0" {if $row.status==0}selected{/if}>待审核</option>
+                <option value="1" {if $row.status==1}selected{/if}>已发布</option>
+                <option value="2" {if $row.status==2}selected{/if}>已下架</option>
+            </select>
+        </div>
+    </div>
+    <div class="form-group">
+        <label class="control-label col-xs-12 col-sm-2">推荐设置:</label>
+        <div class="col-xs-12 col-sm-8">
+            <div class="checkbox">
+                <label><input type="checkbox" name="row[is_recommend]" value="1" {if $row.is_recommend==1}checked{/if}> 设为推荐</label>
+                <label><input type="checkbox" name="row[is_hot]" value="1" {if $row.is_hot==1}checked{/if}> 设为热门</label>
+                <label><input type="checkbox" name="row[is_original]" value="1" {if $row.is_original==1}checked{/if}> 原创内容</label>
+            </div>
+        </div>
+    </div>
+    <div class="form-group layer-footer">
+        <label class="control-label col-xs-12 col-sm-2"></label>
+        <div class="col-xs-12 col-sm-8">
+            <button type="submit" class="btn btn-primary btn-embossed disabled">{:__('OK')}</button>
+        </div>
+    </div>
+</form>

@@ -1,0 +1,141 @@
+<form id="edit-form" class="form-horizontal" role="form" data-toggle="validator" method="POST" action="">
+    <div class="form-group">
+        <label class="control-label col-xs-12 col-sm-2">规则名称:</label>
+        <div class="col-xs-12 col-sm-8">
+            <input id="c-name" class="form-control" name="row[name]" type="text" value="{$row.name}" data-rule="required">
+        </div>
+    </div>
+    <div class="form-group">
+        <label class="control-label col-xs-12 col-sm-2">规则代码:</label>
+        <div class="col-xs-12 col-sm-8">
+            <input id="c-code" class="form-control" name="row[code]" type="text" value="{$row.code}" placeholder="唯一标识（可选）">
+        </div>
+    </div>
+    <div class="form-group">
+        <label class="control-label col-xs-12 col-sm-2">规则描述:</label>
+        <div class="col-xs-12 col-sm-8">
+            <textarea id="c-description" class="form-control" name="row[description]" rows="2" placeholder="规则描述">{$row.description}</textarea>
+        </div>
+    </div>
+    <div class="form-group">
+        <label class="control-label col-xs-12 col-sm-2">适用范围:</label>
+        <div class="col-xs-12 col-sm-8">
+            <select id="c-scope_type" class="form-control" name="row[scope_type]" data-rule="required">
+                <option value="global" {if $row.scope_type=='global'}selected{/if}>全局</option>
+                <option value="category" {if $row.scope_type=='category'}selected{/if}>分类</option>
+                <option value="video" {if $row.scope_type=='video'}selected{/if}>单视频</option>
+                <option value="collection" {if $row.scope_type=='collection'}selected{/if}>合集</option>
+            </select>
+        </div>
+    </div>
+    <div class="form-group">
+        <label class="control-label col-xs-12 col-sm-2">奖励类型:</label>
+        <div class="col-xs-12 col-sm-8">
+            <select id="c-reward_type" class="form-control" name="row[reward_type]" data-rule="required">
+                <option value="fixed" {if $row.reward_type=='fixed'}selected{/if}>固定奖励</option>
+                <option value="random" {if $row.reward_type=='random'}selected{/if}>随机奖励</option>
+                <option value="progressive" {if $row.reward_type=='progressive'}selected{/if}>递进奖励</option>
+            </select>
+        </div>
+    </div>
+    <div class="form-group reward-fixed" {if $row.reward_type!='fixed'}style="display:none;"{/if}>
+        <label class="control-label col-xs-12 col-sm-2">固定金币:</label>
+        <div class="col-xs-12 col-sm-8">
+            <input id="c-reward_coin" class="form-control" name="row[reward_coin]" type="number" value="{$row.reward_coin|default=0}" placeholder="固定奖励金币数" step="0.01">
+        </div>
+    </div>
+    <div class="form-group reward-random" {if $row.reward_type!='random'}style="display:none;"{/if}>
+        <label class="control-label col-xs-12 col-sm-2">金币范围:</label>
+        <div class="col-xs-12 col-sm-4">
+            <input id="c-reward_min" class="form-control" name="row[reward_min]" type="number" value="{$row.reward_min|default=0}" placeholder="最小金币" step="0.01">
+        </div>
+        <div class="col-xs-12 col-sm-4">
+            <input id="c-reward_max" class="form-control" name="row[reward_max]" type="number" value="{$row.reward_max|default=0}" placeholder="最大金币" step="0.01">
+        </div>
+    </div>
+    <div class="form-group">
+        <label class="control-label col-xs-12 col-sm-2">条件类型:</label>
+        <div class="col-xs-12 col-sm-8">
+            <select id="c-condition_type" class="form-control" name="row[condition_type]">
+                <option value="complete" {if $row.condition_type=='complete'}selected{/if}>看完领取</option>
+                <option value="duration" {if $row.condition_type=='duration'}selected{/if}>时长领取</option>
+                <option value="count" {if $row.condition_type=='count'}selected{/if}>集数领取</option>
+            </select>
+        </div>
+    </div>
+    <div class="form-group">
+        <label class="control-label col-xs-12 col-sm-2">观看进度(%):</label>
+        <div class="col-xs-12 col-sm-8">
+            <input id="c-watch_progress" class="form-control" name="row[watch_progress]" type="number" value="{$row.watch_progress|default=95}" placeholder="达到此进度视为看完" min="0" max="100">
+        </div>
+    </div>
+    <div class="form-group">
+        <label class="control-label col-xs-12 col-sm-2">观看时长要求(秒):</label>
+        <div class="col-xs-12 col-sm-8">
+            <input id="c-watch_duration" class="form-control" name="row[watch_duration]" type="number" value="{$row.watch_duration|default=0}" placeholder="需要观看的时长，0表示不限制">
+        </div>
+    </div>
+    <div class="form-group">
+        <label class="control-label col-xs-12 col-sm-2">每日限制:</label>
+        <div class="col-xs-12 col-sm-8">
+            <input id="c-daily_limit" class="form-control" name="row[daily_limit]" type="number" value="{$row.daily_limit|default=0}" placeholder="每日可领取次数，0表示不限制">
+        </div>
+    </div>
+    <div class="form-group">
+        <label class="control-label col-xs-12 col-sm-2">用户等级限制:</label>
+        <div class="col-xs-12 col-sm-4">
+            <input id="c-user_level_min" class="form-control" name="row[user_level_min]" type="number" value="{$row.user_level_min|default=1}" placeholder="最低等级" min="1">
+        </div>
+        <div class="col-xs-12 col-sm-4">
+            <input id="c-user_level_max" class="form-control" name="row[user_level_max]" type="number" value="{$row.user_level_max|default=255}" placeholder="最高等级(255=不限)" min="1" max="255">
+        </div>
+    </div>
+    <div class="form-group">
+        <label class="control-label col-xs-12 col-sm-2">有效期:</label>
+        <div class="col-xs-12 col-sm-4">
+            <input id="c-start_time" class="form-control datetimepicker" name="row[start_time]" type="text" value="{$row.start_time}" placeholder="开始时间" data-date-format="YYYY-MM-DD HH:mm:ss">
+        </div>
+        <div class="col-xs-12 col-sm-4">
+            <input id="c-end_time" class="form-control datetimepicker" name="row[end_time]" type="text" value="{$row.end_time}" placeholder="结束时间" data-date-format="YYYY-MM-DD HH:mm:ss">
+        </div>
+    </div>
+    <div class="form-group">
+        <label class="control-label col-xs-12 col-sm-2">优先级:</label>
+        <div class="col-xs-12 col-sm-8">
+            <input id="c-priority" class="form-control" name="row[priority]" type="number" value="{$row.priority|default=0}" placeholder="优先级越大越高">
+            <span class="help-block">优先级越大越优先匹配</span>
+        </div>
+    </div>
+    <div class="form-group">
+        <label class="control-label col-xs-12 col-sm-2">{:__('Status')}:</label>
+        <div class="col-xs-12 col-sm-8">
+            <select id="c-status" class="form-control" name="row[status]">
+                <option value="1" {if $row.status==1}selected{/if}>启用</option>
+                <option value="0" {if $row.status==0}selected{/if}>禁用</option>
+            </select>
+        </div>
+    </div>
+    <div class="form-group layer-footer">
+        <label class="control-label col-xs-12 col-sm-2"></label>
+        <div class="col-xs-12 col-sm-8">
+            <button type="submit" class="btn btn-primary btn-embossed disabled">{:__('OK')}</button>
+        </div>
+    </div>
+</form>
+<script>
+$(function() {
+    $('#c-reward_type').on('change', function() {
+        var val = $(this).val();
+        if (val === 'fixed') {
+            $('.reward-fixed').show();
+            $('.reward-random').hide();
+        } else if (val === 'random') {
+            $('.reward-fixed').hide();
+            $('.reward-random').show();
+        } else {
+            $('.reward-fixed').show();
+            $('.reward-random').hide();
+        }
+    });
+});
+</script>

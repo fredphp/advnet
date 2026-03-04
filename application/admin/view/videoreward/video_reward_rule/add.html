@@ -1,0 +1,84 @@
+<form id="add-form" class="form-horizontal" role="form" data-toggle="validator" method="POST" action="">
+    <div class="form-group">
+        <label class="control-label col-xs-12 col-sm-2">规则名称:</label>
+        <div class="col-xs-12 col-sm-8">
+            <input id="c-name" data-rule="required" class="form-control" name="row[name]" type="text" value="" placeholder="请输入规则名称">
+        </div>
+    </div>
+    <div class="form-group">
+        <label class="control-label col-xs-12 col-sm-2">条件类型:</label>
+        <div class="col-xs-12 col-sm-8">
+            <select id="c-condition_type" class="form-control" name="row[condition_type]">
+                {foreach name="conditionTypeList" item="vo" key="k"}
+                <option value="{$k}">{$vo}</option>
+                {/foreach}
+            </select>
+        </div>
+    </div>
+    <div class="form-group">
+        <label class="control-label col-xs-12 col-sm-2">奖励类型:</label>
+        <div class="col-xs-12 col-sm-8">
+            <select id="c-reward_type" class="form-control" name="row[reward_type]">
+                {foreach name="rewardTypeList" item="vo" key="k"}
+                <option value="{$k}">{$vo}</option>
+                {/foreach}
+            </select>
+        </div>
+    </div>
+    <div class="form-group">
+        <label class="control-label col-xs-12 col-sm-2">奖励金币:</label>
+        <div class="col-xs-12 col-sm-8">
+            <input id="c-reward_coin" class="form-control" name="row[reward_coin]" type="number" value="0">
+        </div>
+    </div>
+    <div class="form-group">
+        <label class="control-label col-xs-12 col-sm-2">最小奖励:</label>
+        <div class="col-xs-12 col-sm-8">
+            <input id="c-reward_min" class="form-control" name="row[reward_min]" type="number" value="0" placeholder="随机奖励时使用">
+        </div>
+    </div>
+    <div class="form-group">
+        <label class="control-label col-xs-12 col-sm-2">最大奖励:</label>
+        <div class="col-xs-12 col-sm-8">
+            <input id="c-reward_max" class="form-control" name="row[reward_max]" type="number" value="0" placeholder="随机奖励时使用">
+        </div>
+    </div>
+    <div class="form-group">
+        <label class="control-label col-xs-12 col-sm-2">适用范围:</label>
+        <div class="col-xs-12 col-sm-8">
+            <select id="c-scope_type" class="form-control" name="row[scope_type]">
+                {foreach name="scopeTypeList" item="vo" key="k"}
+                <option value="{$k}">{$vo}</option>
+                {/foreach}
+            </select>
+        </div>
+    </div>
+    <div class="form-group">
+        <label class="control-label col-xs-12 col-sm-2">优先级:</label>
+        <div class="col-xs-12 col-sm-8">
+            <input id="c-priority" class="form-control" name="row[priority]" type="number" value="0">
+        </div>
+    </div>
+    <div class="form-group">
+        <label class="control-label col-xs-12 col-sm-2">每日限制:</label>
+        <div class="col-xs-12 col-sm-8">
+            <input id="c-daily_limit" class="form-control" name="row[daily_limit]" type="number" value="0" placeholder="0表示不限制">
+        </div>
+    </div>
+    <div class="form-group">
+        <label class="control-label col-xs-12 col-sm-2">状态:</label>
+        <div class="col-xs-12 col-sm-8">
+            <select id="c-status" class="form-control" name="row[status]">
+                {foreach name="statusList" item="vo" key="k"}
+                <option value="{$k}" {if $k==1}selected{/if}>{$vo}</option>
+                {/foreach}
+            </select>
+        </div>
+    </div>
+    <div class="form-group layer-footer">
+        <label class="control-label col-xs-12 col-sm-2"></label>
+        <div class="col-xs-12 col-sm-8">
+            <button type="submit" class="btn btn-primary btn-embossed disabled">{:__('OK')}</button>
+        </div>
+    </div>
+</form>

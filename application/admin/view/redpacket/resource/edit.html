@@ -1,0 +1,151 @@
+<form id="edit-form" class="form-horizontal" role="form" data-toggle="validator" method="POST" action="">
+    <div class="form-group">
+        <label class="control-label col-xs-12 col-sm-2">资源名称:</label>
+        <div class="col-xs-12 col-sm-8">
+            <input id="c-name" class="form-control" name="row[name]" type="text" value="{$row.name}" required>
+        </div>
+    </div>
+    <div class="form-group">
+        <label class="control-label col-xs-12 col-sm-2">资源描述:</label>
+        <div class="col-xs-12 col-sm-8">
+            <textarea id="c-description" class="form-control" name="row[description]" rows="2">{$row.description}</textarea>
+        </div>
+    </div>
+    <div class="form-group">
+        <label class="control-label col-xs-12 col-sm-2">资源图标:</label>
+        <div class="col-xs-12 col-sm-8">
+            <div class="input-group">
+                <input id="c-logo" class="form-control" name="row[logo]" type="text" value="{$row.logo}">
+                <div class="input-group-addon no-border no-padding">
+                    <span><button type="button" id="faupload-logo" class="btn btn-danger faupload" data-input-id="c-logo" data-mimetype="image/*" data-multiple="false" data-preview-id="p-logo"><i class="fa fa-upload"></i> {:__('Upload')}</button></span>
+                    <span><button type="button" id="fachoose-logo" class="btn btn-primary fachoose" data-input-id="c-logo" data-mimetype="image/*" data-multiple="false"><i class="fa fa-list"></i> {:__('Choose')}</button></span>
+                </div>
+                <span class="msg-box n-right" for="c-logo"></span>
+            </div>
+            <ul class="row list-inline faupload-preview" id="p-logo"></ul>
+        </div>
+    </div>
+    <div class="form-group">
+        <label class="control-label col-xs-12 col-sm-2">资源类型:</label>
+        <div class="col-xs-12 col-sm-8">
+            <select id="c-type" class="form-control selectpicker" name="row[type]" data-init-type="{$row.type}">
+                {foreach name="typeList" item="vo" key="k"}
+                <option value="{$k}" {if $k==$row.type}selected{/if}>{$vo}</option>
+                {/foreach}
+            </select>
+        </div>
+    </div>
+
+    <!-- 下载App配置 -->
+    <div class="form-group type-config type-download">
+        <label class="control-label col-xs-12 col-sm-2">下载链接:</label>
+        <div class="col-xs-12 col-sm-8">
+            <input id="c-download_url" class="form-control" name="row[download_url]" type="text" value="{$row.download_url}">
+        </div>
+    </div>
+    <div class="form-group type-config type-download">
+        <label class="control-label col-xs-12 col-sm-2">下载类型:</label>
+        <div class="col-xs-12 col-sm-8">
+            <select id="c-download_type" class="form-control selectpicker" name="row[download_type]">
+                <option value="android" {if $row.download_type=='android'}selected{/if}>Android</option>
+                <option value="ios" {if $row.download_type=='ios'}selected{/if}>iOS</option>
+            </select>
+        </div>
+    </div>
+    <div class="form-group type-config type-download">
+        <label class="control-label col-xs-12 col-sm-2">包名:</label>
+        <div class="col-xs-12 col-sm-8">
+            <input id="c-package_name" class="form-control" name="row[package_name]" type="text" value="{$row.package_name}">
+        </div>
+    </div>
+
+    <!-- 小程序游戏配置 -->
+    <div class="form-group type-config type-miniapp" style="display:none;">
+        <label class="control-label col-xs-12 col-sm-2">小程序AppID:</label>
+        <div class="col-xs-12 col-sm-8">
+            <input id="c-miniapp_id" class="form-control" name="row[miniapp_id]" type="text" value="{$row.miniapp_id}">
+        </div>
+    </div>
+    <div class="form-group type-config type-miniapp" style="display:none;">
+        <label class="control-label col-xs-12 col-sm-2">小程序页面路径:</label>
+        <div class="col-xs-12 col-sm-8">
+            <input id="c-miniapp_path" class="form-control" name="row[miniapp_path]" type="text" value="{$row.miniapp_path}">
+        </div>
+    </div>
+    <div class="form-group type-config type-miniapp" style="display:none;">
+        <label class="control-label col-xs-12 col-sm-2">小程序类型:</label>
+        <div class="col-xs-12 col-sm-8">
+            <select id="c-miniapp_type" class="form-control selectpicker" name="row[miniapp_type]">
+                <option value="release" {if $row.miniapp_type=='release'}selected{/if}>正式版</option>
+                <option value="trial" {if $row.miniapp_type=='trial'}selected{/if}>体验版</option>
+                <option value="develop" {if $row.miniapp_type=='develop'}selected{/if}>开发版</option>
+            </select>
+        </div>
+    </div>
+    <div class="form-group type-config type-miniapp" style="display:none;">
+        <label class="control-label col-xs-12 col-sm-2">要求时长(秒):</label>
+        <div class="col-xs-12 col-sm-8">
+            <input id="c-miniapp_duration" class="form-control" name="row[miniapp_duration]" type="number" min="0" value="{$row.miniapp_duration|default='60'}" placeholder="需要玩多少秒才能领红包">
+            <span class="help-block">用户需要玩游戏达到此时长才能领取红包</span>
+        </div>
+    </div>
+
+    <!-- 广告时长配置 -->
+    <div class="form-group type-config type-adv" style="display:none;">
+        <label class="control-label col-xs-12 col-sm-2">广告ID:</label>
+        <div class="col-xs-12 col-sm-8">
+            <input id="c-adv_id" class="form-control" name="row[adv_id]" type="text" value="{$row.adv_id}">
+        </div>
+    </div>
+    <div class="form-group type-config type-adv" style="display:none;">
+        <label class="control-label col-xs-12 col-sm-2">广告平台:</label>
+        <div class="col-xs-12 col-sm-8">
+            <select id="c-adv_platform" class="form-control selectpicker" name="row[adv_platform]">
+                <option value="gromore" {if $row.adv_platform=='gromore'}selected{/if}>GroMore</option>
+                <option value="pangle" {if $row.adv_platform=='pangle'}selected{/if}>穿山甲</option>
+                <option value="gdt" {if $row.adv_platform=='gdt'}selected{/if}>广点通</option>
+                <option value="ks" {if $row.adv_platform=='ks'}selected{/if}>快手</option>
+            </select>
+        </div>
+    </div>
+    <div class="form-group type-config type-adv" style="display:none;">
+        <label class="control-label col-xs-12 col-sm-2">要求时长(秒):</label>
+        <div class="col-xs-12 col-sm-8">
+            <input id="c-adv_duration" class="form-control" name="row[adv_duration]" type="number" min="0" value="{$row.adv_duration|default='30'}" placeholder="需要看多少秒广告才能领红包">
+            <span class="help-block">用户需要观看广告达到此时长才能领取红包</span>
+        </div>
+    </div>
+
+    <!-- 观看视频配置 -->
+    <div class="form-group type-config type-video" style="display:none;">
+        <label class="control-label col-xs-12 col-sm-2">视频链接:</label>
+        <div class="col-xs-12 col-sm-8">
+            <input id="c-video_url" class="form-control" name="row[video_url]" type="text" value="{$row.video_url}">
+        </div>
+    </div>
+    <div class="form-group type-config type-video" style="display:none;">
+        <label class="control-label col-xs-12 col-sm-2">要求时长(秒):</label>
+        <div class="col-xs-12 col-sm-8">
+            <input id="c-video_duration" class="form-control" name="row[video_duration]" type="number" min="0" value="{$row.video_duration|default='30'}" placeholder="需要看多少秒视频才能领红包">
+            <span class="help-block">用户需要观看视频达到此时长才能领取红包</span>
+        </div>
+    </div>
+
+    <div class="form-group">
+        <label class="control-label col-xs-12 col-sm-2">{:__('Status')}:</label>
+        <div class="col-xs-12 col-sm-8">
+            <select id="c-status" class="form-control selectpicker" name="row[status]">
+                {foreach name="statusList" item="vo" key="k"}
+                <option value="{$k}" {if $k==$row.status}selected{/if}>{$vo}</option>
+                {/foreach}
+            </select>
+        </div>
+    </div>
+    <div class="form-group layer-footer">
+        <label class="control-label col-xs-12 col-sm-2"></label>
+        <div class="col-xs-12 col-sm-8">
+            <button type="submit" class="btn btn-success btn-embossed disabled">{:__('OK')}</button>
+            <button type="reset" class="btn btn-default btn-embossed">{:__('Reset')}</button>
+        </div>
+    </div>
+</form>
