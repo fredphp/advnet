@@ -2,20 +2,20 @@
     <div class="form-group">
         <label class="control-label col-xs-12 col-sm-2">资源名称:</label>
         <div class="col-xs-12 col-sm-8">
-            <input id="c-name" class="form-control" name="row[name]" type="text" value="{$row.name}" required>
+            <input id="c-name" class="form-control" name="row[name]" type="text" value="{$row.name|default=''}" required>
         </div>
     </div>
     <div class="form-group">
         <label class="control-label col-xs-12 col-sm-2">资源描述:</label>
         <div class="col-xs-12 col-sm-8">
-            <textarea id="c-description" class="form-control" name="row[description]" rows="2">{$row.description}</textarea>
+            <textarea id="c-description" class="form-control" name="row[description]" rows="2">{$row.description|default=''}</textarea>
         </div>
     </div>
     <div class="form-group">
         <label class="control-label col-xs-12 col-sm-2">资源图标:</label>
         <div class="col-xs-12 col-sm-8">
             <div class="input-group">
-                <input id="c-logo" class="form-control" name="row[logo]" type="text" value="{$row.logo}">
+                <input id="c-logo" class="form-control" name="row[logo]" type="text" value="{$row.logo|default=''}">
                 <div class="input-group-addon no-border no-padding">
                     <span><button type="button" id="faupload-logo" class="btn btn-danger faupload" data-input-id="c-logo" data-mimetype="image/*" data-multiple="false" data-preview-id="p-logo"><i class="fa fa-upload"></i> {:__('Upload')}</button></span>
                     <span><button type="button" id="fachoose-logo" class="btn btn-primary fachoose" data-input-id="c-logo" data-mimetype="image/*" data-multiple="false"><i class="fa fa-list"></i> {:__('Choose')}</button></span>
@@ -28,9 +28,9 @@
     <div class="form-group">
         <label class="control-label col-xs-12 col-sm-2">资源类型:</label>
         <div class="col-xs-12 col-sm-8">
-            <select id="c-type" class="form-control selectpicker" name="row[type]" data-init-type="{$row.type}">
+            <select id="c-type" class="form-control selectpicker" name="row[type]" data-init-type="{$row.type|default='download'}">
                 {foreach name="typeList" item="vo" key="k"}
-                <option value="{$k}" {if $k==$row.type}selected{/if}>{$vo}</option>
+                <option value="{$k}" {if $k==($row.type|default='')}selected{/if}>{$vo}</option>
                 {/foreach}
             </select>
         </div>
@@ -47,7 +47,7 @@
     <div class="form-group type-config type-chat" style="display:none;">
         <label class="control-label col-xs-12 col-sm-2">聊天内容要求:</label>
         <div class="col-xs-12 col-sm-8">
-            <textarea id="c-chat_requirement" class="form-control" name="row[chat_requirement]" rows="2" placeholder="如：需要发送至少3条有效消息">{$row.chat_requirement}</textarea>
+            <textarea id="c-chat_requirement" class="form-control" name="row[chat_requirement]" rows="2" placeholder="如：需要发送至少3条有效消息">{$row.chat_requirement|default=''}</textarea>
             <span class="help-block">对聊天内容的具体要求说明</span>
         </div>
     </div>
@@ -56,22 +56,22 @@
     <div class="form-group type-config type-download">
         <label class="control-label col-xs-12 col-sm-2">下载链接:</label>
         <div class="col-xs-12 col-sm-8">
-            <input id="c-download_url" class="form-control" name="row[download_url]" type="text" value="{$row.download_url}">
+            <input id="c-download_url" class="form-control" name="row[download_url]" type="text" value="{$row.download_url|default=''}">
         </div>
     </div>
     <div class="form-group type-config type-download">
         <label class="control-label col-xs-12 col-sm-2">下载类型:</label>
         <div class="col-xs-12 col-sm-8">
             <select id="c-download_type" class="form-control selectpicker" name="row[download_type]">
-                <option value="android" {if $row.download_type=='android'}selected{/if}>Android</option>
-                <option value="ios" {if $row.download_type=='ios'}selected{/if}>iOS</option>
+                <option value="android" {if ($row.download_type|default)=='android'}selected{/if}>Android</option>
+                <option value="ios" {if ($row.download_type|default)=='ios'}selected{/if}>iOS</option>
             </select>
         </div>
     </div>
     <div class="form-group type-config type-download">
         <label class="control-label col-xs-12 col-sm-2">包名:</label>
         <div class="col-xs-12 col-sm-8">
-            <input id="c-package_name" class="form-control" name="row[package_name]" type="text" value="{$row.package_name}">
+            <input id="c-package_name" class="form-control" name="row[package_name]" type="text" value="{$row.package_name|default=''}">
         </div>
     </div>
 
@@ -79,22 +79,22 @@
     <div class="form-group type-config type-miniapp" style="display:none;">
         <label class="control-label col-xs-12 col-sm-2">小程序AppID:</label>
         <div class="col-xs-12 col-sm-8">
-            <input id="c-miniapp_id" class="form-control" name="row[miniapp_id]" type="text" value="{$row.miniapp_id}">
+            <input id="c-miniapp_id" class="form-control" name="row[miniapp_id]" type="text" value="{$row.miniapp_id|default=''}">
         </div>
     </div>
     <div class="form-group type-config type-miniapp" style="display:none;">
         <label class="control-label col-xs-12 col-sm-2">小程序页面路径:</label>
         <div class="col-xs-12 col-sm-8">
-            <input id="c-miniapp_path" class="form-control" name="row[miniapp_path]" type="text" value="{$row.miniapp_path}">
+            <input id="c-miniapp_path" class="form-control" name="row[miniapp_path]" type="text" value="{$row.miniapp_path|default=''}">
         </div>
     </div>
     <div class="form-group type-config type-miniapp" style="display:none;">
         <label class="control-label col-xs-12 col-sm-2">小程序类型:</label>
         <div class="col-xs-12 col-sm-8">
             <select id="c-miniapp_type" class="form-control selectpicker" name="row[miniapp_type]">
-                <option value="release" {if $row.miniapp_type=='release'}selected{/if}>正式版</option>
-                <option value="trial" {if $row.miniapp_type=='trial'}selected{/if}>体验版</option>
-                <option value="develop" {if $row.miniapp_type=='develop'}selected{/if}>开发版</option>
+                <option value="release" {if ($row.miniapp_type|default='release')=='release'}selected{/if}>正式版</option>
+                <option value="trial" {if ($row.miniapp_type|default)=='trial'}selected{/if}>体验版</option>
+                <option value="develop" {if ($row.miniapp_type|default)=='develop'}selected{/if}>开发版</option>
             </select>
         </div>
     </div>
@@ -110,17 +110,17 @@
     <div class="form-group type-config type-adv" style="display:none;">
         <label class="control-label col-xs-12 col-sm-2">广告ID:</label>
         <div class="col-xs-12 col-sm-8">
-            <input id="c-adv_id" class="form-control" name="row[adv_id]" type="text" value="{$row.adv_id}">
+            <input id="c-adv_id" class="form-control" name="row[adv_id]" type="text" value="{$row.adv_id|default=''}">
         </div>
     </div>
     <div class="form-group type-config type-adv" style="display:none;">
         <label class="control-label col-xs-12 col-sm-2">广告平台:</label>
         <div class="col-xs-12 col-sm-8">
             <select id="c-adv_platform" class="form-control selectpicker" name="row[adv_platform]">
-                <option value="gromore" {if $row.adv_platform=='gromore'}selected{/if}>GroMore</option>
-                <option value="pangle" {if $row.adv_platform=='pangle'}selected{/if}>穿山甲</option>
-                <option value="gdt" {if $row.adv_platform=='gdt'}selected{/if}>广点通</option>
-                <option value="ks" {if $row.adv_platform=='ks'}selected{/if}>快手</option>
+                <option value="gromore" {if ($row.adv_platform|default)=='gromore'}selected{/if}>GroMore</option>
+                <option value="pangle" {if ($row.adv_platform|default)=='pangle'}selected{/if}>穿山甲</option>
+                <option value="gdt" {if ($row.adv_platform|default)=='gdt'}selected{/if}>广点通</option>
+                <option value="ks" {if ($row.adv_platform|default)=='ks'}selected{/if}>快手</option>
             </select>
         </div>
     </div>
@@ -136,7 +136,7 @@
     <div class="form-group type-config type-video" style="display:none;">
         <label class="control-label col-xs-12 col-sm-2">视频链接:</label>
         <div class="col-xs-12 col-sm-8">
-            <input id="c-video_url" class="form-control" name="row[video_url]" type="text" value="{$row.video_url}">
+            <input id="c-video_url" class="form-control" name="row[video_url]" type="text" value="{$row.video_url|default=''}">
         </div>
     </div>
     <div class="form-group type-config type-video" style="display:none;">
@@ -152,7 +152,7 @@
         <div class="col-xs-12 col-sm-8">
             <select id="c-status" class="form-control selectpicker" name="row[status]">
                 {foreach name="statusList" item="vo" key="k"}
-                <option value="{$k}" {if $k==$row.status}selected{/if}>{$vo}</option>
+                <option value="{$k}" {if $k==($row.status|default='normal')}selected{/if}>{$vo}</option>
                 {/foreach}
             </select>
         </div>
