@@ -94,13 +94,15 @@
     <div class="form-group">
         <label class="control-label col-xs-12 col-sm-2">发布者:</label>
         <div class="col-xs-12 col-sm-8">
-            <select id="c-user_id" class="form-control selectpicker" name="row[user_id]" data-live-search="true">
-                <option value="">平台发布</option>
-                {foreach name="authorList" item="vo" key="k"}
-                <option value="{$k}">{$vo}</option>
-                {/foreach}
-            </select>
-            <span class="help-block">不选择发布者则为"平台发布"，可输入关键字搜索</span>
+            <input id="c-user_id" class="form-control selectpage" name="row[user_id]" 
+                   type="text" value="" 
+                   data-source="video/author/selectpage" 
+                   data-field="name" 
+                   data-primary-key="id"
+                   data-pagination="true"
+                   data-page-size="10"
+                   placeholder="请选择发布者（可搜索，留空为平台发布）">
+            <span class="help-block">留空则显示为"平台发布"，支持搜索发布者名称</span>
         </div>
     </div>
     <div class="form-group">

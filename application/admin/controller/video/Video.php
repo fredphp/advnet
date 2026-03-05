@@ -17,6 +17,14 @@ class Video extends Backend
     {
         parent::_initialize();
         $this->model = new \app\common\model\Video();
+        
+        // 认证状态列表
+        $verifyStatusList = [
+            0 => '未认证',
+            1 => '已认证',
+            2 => '认证中'
+        ];
+        $this->view->assign('verifyStatusList', $verifyStatusList);
     }
 
     /**
@@ -85,10 +93,7 @@ class Video extends Backend
             }
         }
         
-        // 获取发布者列表
-        $authorList = \app\common\model\Author::where('status', 'normal')->column('id,name');
-        $this->view->assign('authorList', $authorList);
-        
+        // 不再需要获取发布者列表，使用selectpage
         return $this->view->fetch();
     }
 
@@ -156,19 +161,12 @@ class Video extends Backend
             }
         }
 
-        // 获取发布者列表
-        $authorList = \app\common\model\Author::where('status', 'normal')->column('id,name');
-        $this->view->assign('authorList', $authorList);
-        
-        // 获取当前发布者名称
-        $authorName = '平台发布';
+        // 获取当前发布者信息（用于显示）
+        $authorInfo = null;
         if (!empty($row['user_id'])) {
-            $author = \app\common\model\Author::get($row['user_id']);
-            if ($author) {
-                $authorName = $author->name;
-            }
+            $authorInfo = \app\common\model\Author::get($row['user_id']);
         }
-        $this->view->assign('authorName', $authorName);
+        $this->view->assign('authorInfo', $authorInfo);
         
         $this->view->assign('row', $row);
         return $this->view->fetch();
