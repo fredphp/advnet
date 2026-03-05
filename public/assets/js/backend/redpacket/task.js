@@ -44,9 +44,7 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form', 'selectpage', 'templa
                         {field: 'name', title: '任务名称', operate: 'LIKE', formatter: Table.api.formatter.title},
                         {field: 'type', title: '任务类型', searchList: typeList, formatter: Table.api.formatter.normal},
                         {field: 'total_amount', title: '总金额(金币)', sortable: true},
-                        {field: 'remain_amount', title: '剩余金额', sortable: true},
                         {field: 'total_count', title: '总数量', sortable: true},
-                        {field: 'remain_count', title: '剩余数量', sortable: true},
                         {field: 'status', title: '状态', searchList: {
                             "pending": "待发送",
                             "normal": "进行中",

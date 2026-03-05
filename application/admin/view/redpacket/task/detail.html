@@ -32,20 +32,26 @@
                 <tr>
                     <td class="text-right"><strong>总金额</strong></td>
                     <td>{$row.total_amount} 金币</td>
-                    <td class="text-right"><strong>剩余金额</strong></td>
-                    <td>{$row.remain_amount} 金币</td>
+                    <td class="text-right"><strong>单个金额</strong></td>
+                    <td>{$row.reward} 金币</td>
                 </tr>
                 <tr>
                     <td class="text-right"><strong>总数量</strong></td>
                     <td>{$row.total_count} 个</td>
-                    <td class="text-right"><strong>剩余数量</strong></td>
-                    <td>{$row.remain_count} 个</td>
-                </tr>
-                <tr>
                     <td class="text-right"><strong>已领取人数</strong></td>
                     <td>{$stats.total_records} 人</td>
+                </tr>
+                <tr>
                     <td class="text-right"><strong>已发放金额</strong></td>
                     <td>{$stats.total_amount_sent} 金币</td>
+                    <td class="text-right"><strong>显示红包</strong></td>
+                    <td>
+                        {if $row.show_red_packet == 1}
+                        <span class="label label-success">是</span>
+                        {else}
+                        <span class="label label-default">否</span>
+                        {/if}
+                    </td>
                 </tr>
                 <tr>
                     <td class="text-right"><strong>任务描述</strong></td>

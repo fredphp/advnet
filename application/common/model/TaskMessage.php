@@ -91,7 +91,6 @@ class TaskMessage extends Model
             'task_name' => $task->name,
             'reward' => $task->amount_type == 'fixed' ? $task->single_amount : $task->max_amount,
             'total_count' => $task->total_count,
-            'remain_count' => $task->remain_count,
             'icon' => $task->icon ?: '/assets/img/avatar.png',
             'start_time' => $task->start_time,
             'end_time' => $task->end_time,

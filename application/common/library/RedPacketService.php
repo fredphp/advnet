@@ -37,17 +37,14 @@ class RedPacketService
             })
             ->where(function ($q) {
                 $q->whereNull('end_time')->whereOr('end_time', '>=', time());
-            })
-            ->where('remain_count', '>', 0);
+            });
 
         if ($taskType) {
             $query->where('type', $taskType);
         }
         
         $total = $query->count();
-        $list = $query->order('is_recommend', 'desc')
-            ->order('is_hot', 'desc')
-            ->order('sort', 'asc')
+        $list = $query->order('id', 'desc')
             ->page($page, $limit)
             ->select();
         
@@ -57,7 +54,8 @@ class RedPacketService
                 ->where('task_id', $task->id)
                 ->whereIn('status', [0, 1, 2, 3])
                 ->count();
-            $task->can_receive = $task->user_receive_count < $task->user_limit;
+            // 默认可领取，不检查 user_limit（字段已删除）
+            $task->can_receive = true;
             $task->progress_text = $this->getProgressText($task);
         }
         
@@ -82,7 +80,8 @@ class RedPacketService
                 ->where('task_id', $task->id)
                 ->whereIn('status', [0, 1, 2, 3])
                 ->count();
-            $task->can_receive = $task->user_receive_count < $task->user_limit;
+            // 默认可领取，不检查 user_limit（字段已删除）
+            $task->can_receive = true;
             
             // 获取用户当前参与记录
             $task->current_participation = TaskParticipation::where('user_id', $userId)
@@ -171,8 +170,7 @@ class RedPacketService
                 'order_no' => $participation->order_no,
                 'task_url' => $task->task_url,
                 'task_params' => json_decode($task->task_params, true),
-                'required_duration' => $task->required_duration,
-                'expire_time' => time() + ($task->expire_hours * 3600),
+                'expire_time' => time() + 86400, // 默认24小时过期
             ];
             
         } catch (\Exception $e) {
@@ -222,9 +220,9 @@ class RedPacketService
                 return $result;
             }
             
-            // 检查是否过期
+            // 检查是否过期（默认24小时）
             $task = RedPacketTask::find($participation->task_id);
-            if ($participation->isExpired($task->expire_hours)) {
+            if ($participation->isExpired(24)) {
                 $participation->status = TaskParticipation::STATUS_EXPIRED;
                 $participation->save();
                 $result['message'] = '任务已过期';
@@ -412,10 +410,8 @@ class RedPacketService
                 // 审核拒绝
                 $participation->auditReject($remark, $adminId, $adminName);
                 
-                // 更新任务统计
-                $task->audit_pending_count = max(0, $task->audit_pending_count - 1);
-                $task->audit_reject_count = $task->audit_reject_count + 1;
-                $task->save();
+                // 注意：audit_pending_count, audit_reject_count 字段已删除
+                // 如需统计请在其他地方实现
                 
                 // 更新用户统计
                 $stat = UserTaskStat::getToday($participation->user_id);
@@ -466,15 +462,19 @@ class RedPacketService
     {
         switch ($task->type) {
             case 'download_app':
-                return "下载安装后运行{$task->required_duration}秒";
+            case 'download':
+                return "下载安装后运行";
             case 'mini_program':
-                return "跳转小程序浏览{$task->required_duration}秒";
+            case 'miniapp':
+                return "跳转小程序浏览";
             case 'play_game':
-                return "玩游戏{$task->required_duration}秒";
+                return "玩游戏";
             case 'watch_video':
-                return "观看视频{$task->required_duration}秒";
+            case 'video':
+                return "观看视频";
             case 'share_link':
-                return "分享{$task->required_count}次";
+            case 'adv':
+                return "完成任务";
             default:
                 return '';
         }
@@ -487,35 +487,8 @@ class RedPacketService
     {
         $result = ['pass' => true, 'message' => ''];
         
-        // 验证时长要求
-        if ($task->required_duration > 0) {
-            $actualDuration = $data['duration'] ?? ($participation->duration);
-            if ($actualDuration < $task->required_duration) {
-                $result['pass'] = false;
-                $result['message'] = '任务时长不足';
-                return $result;
-            }
-        }
-        
-        // 验证进度要求
-        if ($task->required_progress > 0) {
-            $actualProgress = $data['progress'] ?? 0;
-            if ($actualProgress < $task->required_progress) {
-                $result['pass'] = false;
-                $result['message'] = '任务进度不足';
-                return $result;
-            }
-        }
-        
-        // 验证截图
-        if ($task->need_screenshot) {
-            $screenshots = $data['screenshots'] ?? [];
-            if (empty($screenshots)) {
-                $result['pass'] = false;
-                $result['message'] = '请上传任务完成截图';
-                return $result;
-            }
-        }
+        // 注意：required_duration, required_progress, need_screenshot 字段已删除
+        // 如需验证，请在子类或调用方自行实现
         
         return $result;
     }
