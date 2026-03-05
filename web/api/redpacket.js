@@ -4,6 +4,50 @@
 import request from '@/utils/request'
 
 /**
+ * 点击红包 - 生成红包金额并累加到Redis
+ * @param {Object} params 参数
+ * @param {Number} params.min_amount 最小金额(金币)
+ * @param {Number} params.max_amount 最大金额(金币)
+ * @param {Number} params.task_id 任务ID(可选)
+ */
+export function clickRedPacket(params = {}) {
+  return request({
+    url: '/api/redpacket/click',
+    method: 'POST',
+    data: {
+      min_amount: params.min_amount || 1,
+      max_amount: params.max_amount || 10,
+      task_id: params.task_id || 0
+    }
+  })
+}
+
+/**
+ * 领取红包金币 - 看完广告后领取
+ * @param {Object} params 参数
+ * @param {Number} params.task_id 任务ID(可选)
+ */
+export function claimRedPacket(params = {}) {
+  return request({
+    url: '/api/redpacket/claim',
+    method: 'POST',
+    data: {
+      task_id: params.task_id || 0
+    }
+  })
+}
+
+/**
+ * 获取当前累计金额
+ */
+export function getRedPacketAmount() {
+  return request({
+    url: '/api/redpacket/amount',
+    method: 'GET'
+  })
+}
+
+/**
  * 获取任务列表
  * @param {Object} params 查询参数
  */
@@ -141,6 +185,9 @@ export const TaskStatusMap = {
 }
 
 export default {
+  clickRedPacket,
+  claimRedPacket,
+  getRedPacketAmount,
   getTaskList,
   getTaskDetail,
   getCategories,
