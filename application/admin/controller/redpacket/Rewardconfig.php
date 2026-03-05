@@ -3,28 +3,28 @@
 namespace app\admin\controller\redpacket;
 
 use app\common\controller\Backend;
-use app\common\model\RedPacketTimeConfig as RedPacketTimeConfigModel;
+use app\common\model\RedPacketRewardConfig as RedPacketRewardConfigModel;
 use think\Db;
 use think\Exception;
 
 /**
- * 红包时间段配置管理
- * 用于配置不同时间段的红包奖励金额
+ * 红包奖励配置管理
+ * 统一配置：时间段 + 今日金额限制 + 奖励金额
  */
-class Timeconfig extends Backend
+class Rewardconfig extends Backend
 {
     /**
-     * RedPacketTimeConfig模型对象
+     * RedPacketRewardConfig模型对象
      */
     protected $model = null;
 
     public function _initialize()
     {
         parent::_initialize();
-        $this->model = new RedPacketTimeConfigModel;
+        $this->model = new RedPacketRewardConfigModel;
 
         // 状态列表
-        $statusList = RedPacketTimeConfigModel::$statusList;
+        $statusList = RedPacketRewardConfigModel::$statusList;
         $this->view->assign('statusList', $statusList);
 
         // 小时选项（0-24）
@@ -51,39 +51,24 @@ class Timeconfig extends Backend
 
             list($where, $sort, $order, $offset, $limit) = $this->buildparams();
 
-            // 默认按开始时间排序
-            if ($sort == 'sort' || $sort == 'weigh') {
-                $sort = 'start_hour';
-                $order = 'asc';
+            // 默认按权重排序
+            if ($sort == 'sort') {
+                $sort = 'weigh';
+                $order = 'desc';
             }
 
             $list = $this->model
                 ->where($where)
                 ->order($sort, $order)
-                ->order('weigh', 'desc')
-                ->select();
+                ->paginate($limit);
 
-            // 处理数据
-            foreach ($list as $row) {
-                // 组合时间段显示文本
-                $row->time_range_text = $row->time_range_text;
-                
-                // 组合老用户基础奖励显示文本
-                $row->base_reward_display = number_format($row->base_min_reward) . ' - ' . number_format($row->base_max_reward);
-                
-                // 组合老用户累加奖励显示文本
-                $row->accumulate_reward_display = number_format($row->accumulate_min_reward) . ' - ' . number_format($row->accumulate_max_reward);
-                
-                // 组合新用户基础奖励显示文本
-                $row->new_user_base_display = number_format($row->new_user_base_min) . ' - ' . number_format($row->new_user_base_max);
-                
-                // 组合新用户累加奖励显示文本
-                $row->new_user_accumulate_display = number_format($row->new_user_accumulate_min) . ' - ' . number_format($row->new_user_accumulate_max);
-            }
-
-            $result = ['total' => count($list), 'rows' => $list];
+            $result = ['total' => $list->total(), 'rows' => $list->items()];
             return json($result);
         }
+
+        // 获取最高金额限制配置
+        $maxRewardLimit = RedPacketRewardConfigModel::getMaxRewardLimit();
+        $this->view->assign('maxRewardLimit', $maxRewardLimit);
 
         return $this->view->fetch();
     }
@@ -105,7 +90,7 @@ class Timeconfig extends Backend
                 $result = false;
                 Db::startTrans();
                 try {
-                    // 验证
+                    // 验证配置名称
                     if (empty($params['name'])) {
                         $this->error('配置名称不能为空');
                     }
@@ -124,37 +109,54 @@ class Timeconfig extends Backend
                         $this->error('开始时间必须小于结束时间');
                     }
 
-                    // 检查时间段是否重叠
-                    if (RedPacketTimeConfigModel::hasOverlap($startHour, $endHour)) {
-                        $this->error('该时间段与已有配置重叠，请调整时间段');
+                    // 验证今日金额限制
+                    $minTodayAmount = intval($params['min_today_amount'] ?? 0);
+                    $maxTodayAmount = intval($params['max_today_amount'] ?? 0);
+                    if ($maxTodayAmount > 0 && $minTodayAmount > $maxTodayAmount) {
+                        $this->error('今日领取金额下限不能大于上限');
                     }
 
-                    // 验证老用户基础奖励金额
+                    // 获取最高金额限制
+                    $maxLimit = RedPacketRewardConfigModel::getMaxRewardLimit();
+
+                    // 验证老用户基础奖励
                     if (!isset($params['base_min_reward']) || !isset($params['base_max_reward'])) {
-                        $this->error('老用户基础奖励金额不能为空');
+                        $this->error('老用户基础奖励不能为空');
                     }
                     if ($params['base_min_reward'] > $params['base_max_reward']) {
-                        $this->error('老用户基础奖励金额下限不能大于上限');
+                        $this->error('老用户基础奖励下限不能大于上限');
+                    }
+                    if ($params['base_max_reward'] > $maxLimit) {
+                        $this->error('老用户基础奖励上限不能超过' . number_format($maxLimit));
                     }
 
-                    // 验证老用户累加奖励金额
+                    // 验证老用户累加奖励
                     if (isset($params['accumulate_min_reward']) && isset($params['accumulate_max_reward'])) {
                         if ($params['accumulate_min_reward'] > $params['accumulate_max_reward']) {
-                            $this->error('老用户累加奖励金额下限不能大于上限');
+                            $this->error('老用户累加奖励下限不能大于上限');
+                        }
+                        if ($params['accumulate_max_reward'] > $maxLimit) {
+                            $this->error('老用户累加奖励上限不能超过' . number_format($maxLimit));
                         }
                     }
 
-                    // 验证新用户基础奖励金额
+                    // 验证新用户基础奖励
                     if (isset($params['new_user_base_min']) && isset($params['new_user_base_max'])) {
                         if ($params['new_user_base_min'] > $params['new_user_base_max']) {
-                            $this->error('新用户基础奖励金额下限不能大于上限');
+                            $this->error('新用户基础奖励下限不能大于上限');
+                        }
+                        if ($params['new_user_base_max'] > $maxLimit) {
+                            $this->error('新用户基础奖励上限不能超过' . number_format($maxLimit));
                         }
                     }
-                    
-                    // 验证新用户累加奖励金额
+
+                    // 验证新用户累加奖励
                     if (isset($params['new_user_accumulate_min']) && isset($params['new_user_accumulate_max'])) {
                         if ($params['new_user_accumulate_min'] > $params['new_user_accumulate_max']) {
-                            $this->error('新用户累加奖励金额下限不能大于上限');
+                            $this->error('新用户累加奖励下限不能大于上限');
+                        }
+                        if ($params['new_user_accumulate_max'] > $maxLimit) {
+                            $this->error('新用户累加奖励上限不能超过' . number_format($maxLimit));
                         }
                     }
 
@@ -173,6 +175,10 @@ class Timeconfig extends Backend
             }
             $this->error(__('Parameter %s can not be empty', ''));
         }
+
+        // 获取最高金额限制配置
+        $maxRewardLimit = RedPacketRewardConfigModel::getMaxRewardLimit();
+        $this->view->assign('maxRewardLimit', $maxRewardLimit);
 
         return $this->view->fetch();
     }
@@ -215,38 +221,43 @@ class Timeconfig extends Backend
                         if ($startHour >= $endHour) {
                             $this->error('开始时间必须小于结束时间');
                         }
-
-                        // 检查时间段是否重叠
-                        if (RedPacketTimeConfigModel::hasOverlap($startHour, $endHour, $ids)) {
-                            $this->error('该时间段与已有配置重叠，请调整时间段');
-                        }
                     }
 
-                    // 验证老用户基础奖励金额
+                    // 验证今日金额限制
+                    $minTodayAmount = intval($params['min_today_amount'] ?? $row->min_today_amount);
+                    $maxTodayAmount = intval($params['max_today_amount'] ?? $row->max_today_amount);
+                    if ($maxTodayAmount > 0 && $minTodayAmount > $maxTodayAmount) {
+                        $this->error('今日领取金额下限不能大于上限');
+                    }
+
+                    // 获取最高金额限制
+                    $maxLimit = RedPacketRewardConfigModel::getMaxRewardLimit();
+
+                    // 验证各项奖励金额
                     if (isset($params['base_min_reward']) && isset($params['base_max_reward'])) {
                         if ($params['base_min_reward'] > $params['base_max_reward']) {
-                            $this->error('老用户基础奖励金额下限不能大于上限');
+                            $this->error('老用户基础奖励下限不能大于上限');
+                        }
+                        if ($params['base_max_reward'] > $maxLimit) {
+                            $this->error('老用户基础奖励上限不能超过' . number_format($maxLimit));
                         }
                     }
 
-                    // 验证老用户累加奖励金额
                     if (isset($params['accumulate_min_reward']) && isset($params['accumulate_max_reward'])) {
                         if ($params['accumulate_min_reward'] > $params['accumulate_max_reward']) {
-                            $this->error('老用户累加奖励金额下限不能大于上限');
+                            $this->error('老用户累加奖励下限不能大于上限');
                         }
                     }
 
-                    // 验证新用户基础奖励金额
                     if (isset($params['new_user_base_min']) && isset($params['new_user_base_max'])) {
                         if ($params['new_user_base_min'] > $params['new_user_base_max']) {
-                            $this->error('新用户基础奖励金额下限不能大于上限');
+                            $this->error('新用户基础奖励下限不能大于上限');
                         }
                     }
-                    
-                    // 验证新用户累加奖励金额
+
                     if (isset($params['new_user_accumulate_min']) && isset($params['new_user_accumulate_max'])) {
                         if ($params['new_user_accumulate_min'] > $params['new_user_accumulate_max']) {
-                            $this->error('新用户累加奖励金额下限不能大于上限');
+                            $this->error('新用户累加奖励下限不能大于上限');
                         }
                     }
 
@@ -264,6 +275,10 @@ class Timeconfig extends Backend
             }
             $this->error(__('Parameter %s can not be empty', ''));
         }
+
+        // 获取最高金额限制配置
+        $maxRewardLimit = RedPacketRewardConfigModel::getMaxRewardLimit();
+        $this->view->assign('maxRewardLimit', $maxRewardLimit);
 
         $this->view->assign('row', $row);
         return $this->view->fetch();
@@ -310,17 +325,15 @@ class Timeconfig extends Backend
     }
 
     /**
-     * 获取当前时段配置（API接口）
+     * 获取当前配置（API接口）
      */
     public function current()
     {
-        $hour = intval(date('H'));
-        $config = RedPacketTimeConfigModel::getConfigByHour($hour);
+        $todayAmount = $this->request->get('today_amount', 0);
+        $isNewUser = $this->request->get('is_new_user', 0);
 
-        if (!$config) {
-            $this->error('未找到当前时段的配置');
-        }
+        $config = RedPacketRewardConfigModel::getFullConfig($todayAmount, null, $isNewUser);
 
-        $this->success('获取成功', null, $config->toArray());
+        $this->success('获取成功', null, $config);
     }
 }

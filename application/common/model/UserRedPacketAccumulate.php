@@ -105,17 +105,19 @@ class UserRedPacketAccumulate extends Model
                     return $result;
                 }
 
-                // 生成红包金额 - 使用时间段配置
+                // 获取当前小时
                 $currentHour = intval(date('H'));
-                if ($isNewUser) {
-                    // 新用户使用新用户红包金额
-                    $range = RedPacketTimeConfig::getNewUserBaseRewardRange($currentHour);
-                } else {
-                    // 老用户根据当前时间段获取基础额度
-                    $range = RedPacketTimeConfig::getBaseRewardRange($currentHour);
-                }
+                
+                // 使用统一配置模型获取基础奖励区间
+                // 第一步：先判断今日金额限制，第二步：判断时间段限制
+                $range = RedPacketRewardConfig::getBaseRewardRange($todayAmount, $currentHour, $isNewUser);
 
-                $baseAmount = RedPacketTimeConfig::randomAmount($range);
+                // 随机生成基础金额
+                $baseAmount = RedPacketRewardConfig::randomAmount($range);
+                
+                // 确保不超过最高限制
+                $maxLimit = RedPacketRewardConfig::getMaxRewardLimit();
+                $baseAmount = min($baseAmount, $maxLimit);
 
                 // 创建抢红包记录
                 $record = new self();
@@ -141,6 +143,7 @@ class UserRedPacketAccumulate extends Model
                     'click_count' => 1,
                     'is_collected' => 0,
                     'is_owner' => true,
+                    'max_limit' => $maxLimit,
                 ];
 
             } catch (\Exception $e) {
@@ -209,16 +212,39 @@ class UserRedPacketAccumulate extends Model
                     return $result;
                 }
 
-                // 计算累加金额 - 使用时间段配置
+                // 获取最高金额限制
+                $maxLimit = RedPacketRewardConfig::getMaxRewardLimit();
+                
+                // 检查是否已达到最高限制
+                if ($record->total_amount >= $maxLimit) {
+                    Db::rollback();
+                    self::releaseLock($lockKey);
+                    $result['success'] = true;
+                    $result['message'] = '红包已达到最高金额，请领取';
+                    $result['data'] = [
+                        'added_amount' => 0,
+                        'base_amount' => $record->base_amount,
+                        'accumulate_amount' => $record->accumulate_amount,
+                        'total_amount' => $record->total_amount,
+                        'click_count' => $record->click_count,
+                        'is_collected' => 0,
+                        'is_owner' => true,
+                        'max_limit' => $maxLimit,
+                        'reached_limit' => true,
+                    ];
+                    return $result;
+                }
+
+                // 计算累加金额 - 使用统一配置
                 $currentHour = intval(date('H'));
                 $isNewUser = $record->is_new_user == 1;
                 
-                if ($isNewUser) {
-                    $range = RedPacketTimeConfig::getNewUserAccumulateRewardRange($currentHour);
-                } else {
-                    $range = RedPacketTimeConfig::getAccumulateRewardRange($currentHour);
-                }
-                $accumulateAmount = RedPacketTimeConfig::randomAmount($range);
+                $range = RedPacketRewardConfig::getAccumulateRewardRange($todayAmount, $currentHour, $isNewUser);
+                $accumulateAmount = RedPacketRewardConfig::randomAmount($range);
+
+                // 计算实际可累加金额（不超过最高限制）
+                $maxAddable = $maxLimit - $record->total_amount;
+                $accumulateAmount = min($accumulateAmount, $maxAddable);
 
                 $record->accumulate_amount += $accumulateAmount;
                 $record->total_amount = $record->base_amount + $record->accumulate_amount;
@@ -238,6 +264,8 @@ class UserRedPacketAccumulate extends Model
                     'click_count' => $record->click_count,
                     'is_collected' => 0,
                     'is_owner' => true,
+                    'max_limit' => $maxLimit,
+                    'reached_limit' => $record->total_amount >= $maxLimit,
                 ];
 
             } catch (\Exception $e) {

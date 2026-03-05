@@ -1,0 +1,165 @@
+<form id="edit-form" class="form-horizontal" role="form" data-toggle="validator" method="POST" action="">
+    <div class="form-group">
+        <label class="control-label col-xs-12 col-sm-2">{:__('配置名称')}:</label>
+        <div class="col-xs-12 col-sm-8">
+            <input id="c-name" class="form-control" name="row[name]" type="text" value="{$row.name}" placeholder="如：早间黄金时段、新用户专享" required>
+        </div>
+    </div>
+
+    <div class="form-group">
+        <label class="control-label col-xs-12 col-sm-2">{:__('时间段配置')}:</label>
+        <div class="col-xs-12 col-sm-8">
+            <div class="row">
+                <div class="col-xs-5">
+                    <select id="c-start_hour" class="form-control selectpicker" name="row[start_hour]">
+                        {foreach name="hourOptions" item="label" key="value"}
+                        <option value="{$value}" {if $value == $row.start_hour}selected{/if}>{$label}</option>
+                        {/foreach}
+                    </select>
+                    <span class="help-block">{:__('开始时间')}</span>
+                </div>
+                <div class="col-xs-2 text-center" style="padding-top: 7px;">-</div>
+                <div class="col-xs-5">
+                    <select id="c-end_hour" class="form-control selectpicker" name="row[end_hour]">
+                        {foreach name="hourOptions" item="label" key="value"}
+                        <option value="{$value}" {if $value == $row.end_hour}selected{/if}>{$label}</option>
+                        {/foreach}
+                    </select>
+                    <span class="help-block">{:__('结束时间')}</span>
+                </div>
+            </div>
+            <span class="help-block">{:__('全天配置请选择00:00-24:00')}</span>
+        </div>
+    </div>
+
+    <div class="form-group">
+        <label class="control-label col-xs-12 col-sm-2">{:__('今日金额限制')}:</label>
+        <div class="col-xs-12 col-sm-8">
+            <div class="row">
+                <div class="col-xs-5">
+                    <input id="c-min_today_amount" class="form-control" name="row[min_today_amount]" type="number" min="0" value="{$row.min_today_amount}" placeholder="{:__('下限')}">
+                    <span class="help-block">{:__('金币')}</span>
+                </div>
+                <div class="col-xs-2 text-center" style="padding-top: 7px;">-</div>
+                <div class="col-xs-5">
+                    <input id="c-max_today_amount" class="form-control" name="row[max_today_amount]" type="number" min="0" value="{$row.max_today_amount}" placeholder="{:__('上限(0表示不限)')}">
+                    <span class="help-block">{:__('金币')}</span>
+                </div>
+            </div>
+            <span class="help-block">{:__('用户今日已领取金额在此范围时生效，0表示不限制')}</span>
+        </div>
+    </div>
+
+    <div class="panel panel-default" style="margin:15px -15px 0;">
+        <div class="panel-heading">
+            <h4 class="panel-title"><i class="fa fa-user"></i> {:__('老用户奖励配置')}</h4>
+        </div>
+        <div class="panel-body">
+            <div class="form-group">
+                <label class="control-label col-xs-12 col-sm-2">{:__('基础奖励')}:</label>
+                <div class="col-xs-12 col-sm-8">
+                    <div class="row">
+                        <div class="col-xs-5">
+                            <input id="c-base_min_reward" class="form-control" name="row[base_min_reward]" type="number" min="0" value="{$row.base_min_reward}" placeholder="{:__('下限')}" required>
+                            <span class="help-block">{:__('金币')}</span>
+                        </div>
+                        <div class="col-xs-2 text-center" style="padding-top: 7px;">-</div>
+                        <div class="col-xs-5">
+                            <input id="c-base_max_reward" class="form-control" name="row[base_max_reward]" type="number" min="0" value="{$row.base_max_reward}" placeholder="{:__('上限')}" required>
+                            <span class="help-block">{:__('金币')}</span>
+                        </div>
+                    </div>
+                    <span class="help-block">{:__('老用户首次点击红包获得的金额区间')}</span>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="control-label col-xs-12 col-sm-2">{:__('累加奖励')}:</label>
+                <div class="col-xs-12 col-sm-8">
+                    <div class="row">
+                        <div class="col-xs-5">
+                            <input id="c-accumulate_min_reward" class="form-control" name="row[accumulate_min_reward]" type="number" min="0" value="{$row.accumulate_min_reward}" placeholder="{:__('下限')}">
+                            <span class="help-block">{:__('金币')}</span>
+                        </div>
+                        <div class="col-xs-2 text-center" style="padding-top: 7px;">-</div>
+                        <div class="col-xs-5">
+                            <input id="c-accumulate_max_reward" class="form-control" name="row[accumulate_max_reward]" type="number" min="0" value="{$row.accumulate_max_reward}" placeholder="{:__('上限')}">
+                            <span class="help-block">{:__('金币')}</span>
+                        </div>
+                    </div>
+                    <span class="help-block">{:__('老用户后续点击红包累加的金额区间')}</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="panel panel-default" style="margin:15px -15px 0;">
+        <div class="panel-heading">
+            <h4 class="panel-title"><i class="fa fa-user-plus"></i> {:__('新用户奖励配置')}</h4>
+        </div>
+        <div class="panel-body">
+            <div class="form-group">
+                <label class="control-label col-xs-12 col-sm-2">{:__('基础奖励')}:</label>
+                <div class="col-xs-12 col-sm-8">
+                    <div class="row">
+                        <div class="col-xs-5">
+                            <input id="c-new_user_base_min" class="form-control" name="row[new_user_base_min]" type="number" min="0" value="{$row.new_user_base_min}" placeholder="{:__('下限')}">
+                            <span class="help-block">{:__('金币')}</span>
+                        </div>
+                        <div class="col-xs-2 text-center" style="padding-top: 7px;">-</div>
+                        <div class="col-xs-5">
+                            <input id="c-new_user_base_max" class="form-control" name="row[new_user_base_max]" type="number" min="0" value="{$row.new_user_base_max}" placeholder="{:__('上限')}">
+                            <span class="help-block">{:__('金币')}</span>
+                        </div>
+                    </div>
+                    <span class="help-block">{:__('新用户首次点击红包获得的金额区间')}</span>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="control-label col-xs-12 col-sm-2">{:__('累加奖励')}:</label>
+                <div class="col-xs-12 col-sm-8">
+                    <div class="row">
+                        <div class="col-xs-5">
+                            <input id="c-new_user_accumulate_min" class="form-control" name="row[new_user_accumulate_min]" type="number" min="0" value="{$row.new_user_accumulate_min}" placeholder="{:__('下限')}">
+                            <span class="help-block">{:__('金币')}</span>
+                        </div>
+                        <div class="col-xs-2 text-center" style="padding-top: 7px;">-</div>
+                        <div class="col-xs-5">
+                            <input id="c-new_user_accumulate_max" class="form-control" name="row[new_user_accumulate_max]" type="number" min="0" value="{$row.new_user_accumulate_max}" placeholder="{:__('上限')}">
+                            <span class="help-block">{:__('金币')}</span>
+                        </div>
+                    </div>
+                    <span class="help-block">{:__('新用户后续点击红包累加的金额区间')}</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="form-group" style="margin-top:15px;">
+        <label class="control-label col-xs-12 col-sm-2">{:__('排序权重')}:</label>
+        <div class="col-xs-12 col-sm-8">
+            <input id="c-weigh" class="form-control" name="row[weigh]" type="number" value="{$row.weigh}" placeholder="{:__('数值越大优先级越高')}">
+            <span class="help-block">{:__('当多个配置都匹配时，权重高的优先')}</span>
+        </div>
+    </div>
+
+    <div class="form-group">
+        <label class="control-label col-xs-12 col-sm-2">{:__('状态')}:</label>
+        <div class="col-xs-12 col-sm-8">
+            <select id="c-status" class="form-control selectpicker" name="row[status]">
+                {foreach name="statusList" item="label" key="value"}
+                <option value="{$value}" {if $value == $row.status}selected{/if}>{$label}</option>
+                {/foreach}
+            </select>
+        </div>
+    </div>
+
+    <div class="form-group layer-footer">
+        <label class="control-label col-xs-12 col-sm-2"></label>
+        <div class="col-xs-12 col-sm-8">
+            <button type="submit" class="btn btn-success btn-embossed disabled">{:__('OK')}</button>
+            <button type="reset" class="btn btn-default btn-embossed">{:__('Reset')}</button>
+        </div>
+    </div>
+</form>
