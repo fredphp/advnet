@@ -4,10 +4,18 @@
 import request from '@/utils/request'
 
 /**
- * 点击红包 - 生成红包金额并累加到Redis
+ * 点击红包 - 根据配置生成/累加红包金额
+ * 返回数据包含：
+ * - amount: 本次点击获得的金额
+ * - base_amount: 基础金额
+ * - accumulate_amount: 累加金额
+ * - total_amount: 总金额
+ * - click_count: 点击次数
+ * - is_new_base: 是否重新生成基础金额
+ * - max_limit: 封顶额度
+ * - reached_limit: 是否达到封顶
+ * 
  * @param {Object} params 参数
- * @param {Number} params.min_amount 最小金额(金币)
- * @param {Number} params.max_amount 最大金额(金币)
  * @param {Number} params.task_id 任务ID(可选)
  */
 export function clickRedPacket(params = {}) {
@@ -15,8 +23,6 @@ export function clickRedPacket(params = {}) {
     url: '/api/redpacket/click',
     method: 'POST',
     data: {
-      min_amount: params.min_amount || 1,
-      max_amount: params.max_amount || 10,
       task_id: params.task_id || 0
     }
   })
