@@ -105,16 +105,17 @@ class UserRedPacketAccumulate extends Model
                     return $result;
                 }
 
-                // 生成红包金额
+                // 生成红包金额 - 使用时间段配置
+                $currentHour = intval(date('H'));
                 if ($isNewUser) {
                     // 新用户使用新用户红包金额
-                    $range = RedPacketAmountConfig::getNewUserAmountRange();
+                    $range = RedPacketTimeConfig::getNewUserBaseRewardRange($currentHour);
                 } else {
-                    // 老用户根据今日领取金额获取基础额度
-                    $range = RedPacketAmountConfig::getBaseAmountRange($todayAmount);
+                    // 老用户根据当前时间段获取基础额度
+                    $range = RedPacketTimeConfig::getBaseRewardRange($currentHour);
                 }
 
-                $baseAmount = RedPacketAmountConfig::randomAmount($range);
+                $baseAmount = RedPacketTimeConfig::randomAmount($range);
 
                 // 创建抢红包记录
                 $record = new self();
@@ -208,9 +209,16 @@ class UserRedPacketAccumulate extends Model
                     return $result;
                 }
 
-                // 计算累加金额
-                $range = RedPacketAmountConfig::getAccumulateAmountRange($todayAmount);
-                $accumulateAmount = RedPacketAmountConfig::randomAmount($range);
+                // 计算累加金额 - 使用时间段配置
+                $currentHour = intval(date('H'));
+                $isNewUser = $record->is_new_user == 1;
+                
+                if ($isNewUser) {
+                    $range = RedPacketTimeConfig::getNewUserAccumulateRewardRange($currentHour);
+                } else {
+                    $range = RedPacketTimeConfig::getAccumulateRewardRange($currentHour);
+                }
+                $accumulateAmount = RedPacketTimeConfig::randomAmount($range);
 
                 $record->accumulate_amount += $accumulateAmount;
                 $record->total_amount = $record->base_amount + $record->accumulate_amount;
