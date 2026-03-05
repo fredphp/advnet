@@ -3,7 +3,7 @@
 namespace app\common\model;
 
 use think\Model;
-use think\facade\Cache;
+use think\Cache;
 use think\Db;
 
 /**
@@ -45,14 +45,66 @@ class RedPacketRewardConfig extends Model
     // ==================== 缓存管理方法 ====================
     
     /**
+     * 获取Redis连接
+     * @return \Redis|null
+     */
+    protected static function getRedis()
+    {
+        static $redis = null;
+        
+        if ($redis !== null) {
+            return $redis;
+        }
+        
+        try {
+            // 尝试通过Cache门面获取
+            if (class_exists('\think\facade\Cache')) {
+                $redis = \think\facade\Cache::store('redis')->handler();
+                return $redis;
+            }
+            
+            // 备用方案：直接连接Redis
+            $config = config('cache');
+            if (isset($config['stores']['redis'])) {
+                $redisConfig = $config['stores']['redis'];
+                $redis = new \Redis();
+                $redis->connect(
+                    $redisConfig['host'] ?? '127.0.0.1',
+                    $redisConfig['port'] ?? 6379,
+                    $redisConfig['timeout'] ?? 3
+                );
+                if (!empty($redisConfig['password'])) {
+                    $redis->auth($redisConfig['password']);
+                }
+                if (!empty($redisConfig['select'])) {
+                    $redis->select($redisConfig['select']);
+                }
+                return $redis;
+            }
+            
+            // 最后尝试：直接连接本地Redis
+            $redis = new \Redis();
+            $redis->connect('127.0.0.1', 6379, 3);
+            return $redis;
+            
+        } catch (\Exception $e) {
+            // 记录错误日志
+            \think\facade\Log::error('获取Redis连接失败: ' . $e->getMessage());
+            return null;
+        }
+    }
+    
+    /**
      * 清除配置缓存
      */
     public static function clearCache()
     {
         try {
-            $redis = Cache::store('redis')->handler();
-            $redis->del(self::CACHE_KEY_CONFIG);
-            $redis->del(self::CACHE_KEY_MAX_LIMIT);
+            $redis = self::getRedis();
+            if ($redis) {
+                $redis->del(self::CACHE_KEY_CONFIG);
+                $redis->del(self::CACHE_KEY_MAX_LIMIT);
+            }
         } catch (\Exception $e) {
             // 缓存清除失败不影响主流程
         }
@@ -83,21 +135,29 @@ class RedPacketRewardConfig extends Model
     public static function getMaxRewardLimit()
     {
         try {
-            $redis = Cache::store('redis')->handler();
-            $cached = $redis->get(self::CACHE_KEY_MAX_LIMIT);
+            $redis = self::getRedis();
             
-            if ($cached !== false && $cached !== null) {
-                return intval($cached);
+            if ($redis) {
+                $cached = $redis->get(self::CACHE_KEY_MAX_LIMIT);
+                
+                if ($cached !== false && $cached !== null) {
+                    return intval($cached);
+                }
+                
+                // 缓存不存在，从数据库读取并缓存
+                $config = Db::name('config')->where('name', 'red_packet_max_reward')->find();
+                $maxLimit = $config ? intval($config['value']) : 50000;
+                
+                // 缓存1小时
+                $redis->set(self::CACHE_KEY_MAX_LIMIT, $maxLimit, 3600);
+                
+                return $maxLimit;
             }
             
-            // 缓存不存在，从数据库读取并缓存
+            // Redis不可用时直接从数据库读取
             $config = Db::name('config')->where('name', 'red_packet_max_reward')->find();
-            $maxLimit = $config ? intval($config['value']) : 50000;
+            return $config ? intval($config['value']) : 50000;
             
-            // 缓存1小时
-            $redis->set(self::CACHE_KEY_MAX_LIMIT, $maxLimit, 3600);
-            
-            return $maxLimit;
         } catch (\Exception $e) {
             return 50000; // 默认值
         }
@@ -110,29 +170,43 @@ class RedPacketRewardConfig extends Model
     public static function getAllConfigs()
     {
         try {
-            $redis = Cache::store('redis')->handler();
-            $cached = $redis->get(self::CACHE_KEY_CONFIG);
+            $redis = self::getRedis();
             
-            if ($cached !== false && $cached !== null) {
-                return json_decode($cached, true);
+            if ($redis) {
+                $cached = $redis->get(self::CACHE_KEY_CONFIG);
+                
+                if ($cached !== false && $cached !== null) {
+                    return json_decode($cached, true);
+                }
+                
+                // 缓存不存在，从数据库读取
+                $configs = self::where('status', 1)
+                    ->order('min_amount asc, start_time asc')
+                    ->select()
+                    ->toArray();
+                
+                // 缓存1小时
+                $redis->set(self::CACHE_KEY_CONFIG, json_encode($configs), 3600);
+                
+                return $configs;
             }
             
-            // 缓存不存在，从数据库读取
-            $configs = self::where('status', 1)
-                ->order('min_amount asc, start_time asc')
-                ->select()
-                ->toArray();
-            
-            // 缓存1小时
-            $redis->set(self::CACHE_KEY_CONFIG, json_encode($configs), 3600);
-            
-            return $configs;
-        } catch (\Exception $e) {
-            // 如果缓存失败，直接从数据库读取
+            // Redis不可用时直接从数据库读取
             return self::where('status', 1)
                 ->order('min_amount asc, start_time asc')
                 ->select()
                 ->toArray();
+                
+        } catch (\Exception $e) {
+            // 如果缓存失败，直接从数据库读取
+            try {
+                return self::where('status', 1)
+                    ->order('min_amount asc, start_time asc')
+                    ->select()
+                    ->toArray();
+            } catch (\Exception $e2) {
+                return [];
+            }
         }
     }
     
