@@ -57,40 +57,18 @@ class RedPacketRewardConfig extends Model
         }
         
         try {
-            // 尝试通过Cache门面获取
-            if (class_exists('\think\facade\Cache')) {
-                $redis = \think\facade\Cache::store('redis')->handler();
-                return $redis;
-            }
-            
-            // 备用方案：直接连接Redis
-            $config = config('cache');
-            if (isset($config['stores']['redis'])) {
-                $redisConfig = $config['stores']['redis'];
-                $redis = new \Redis();
-                $redis->connect(
-                    $redisConfig['host'] ?? '127.0.0.1',
-                    $redisConfig['port'] ?? 6379,
-                    $redisConfig['timeout'] ?? 3
-                );
-                if (!empty($redisConfig['password'])) {
-                    $redis->auth($redisConfig['password']);
-                }
-                if (!empty($redisConfig['select'])) {
-                    $redis->select($redisConfig['select']);
-                }
-                return $redis;
-            }
-            
-            // 最后尝试：直接连接本地Redis
-            $redis = new \Redis();
-            $redis->connect('127.0.0.1', 6379, 3);
+            // ThinkPHP 5.0 方式获取 Redis
+            $redis = Cache::store('redis')->handler();
             return $redis;
-            
         } catch (\Exception $e) {
-            // 记录错误日志
-            \think\facade\Log::error('获取Redis连接失败: ' . $e->getMessage());
-            return null;
+            // 备用方案：直接连接本地Redis
+            try {
+                $redis = new \Redis();
+                $redis->connect('127.0.0.1', 6379, 3);
+                return $redis;
+            } catch (\Exception $e2) {
+                return null;
+            }
         }
     }
     
