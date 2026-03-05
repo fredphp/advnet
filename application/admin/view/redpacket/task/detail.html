@@ -102,7 +102,11 @@
                 <tr>
                     <th>ID</th>
                     <th>用户</th>
-                    <th>金额</th>
+                    <th>基础金额</th>
+                    <th>累加金额</th>
+                    <th>总金额</th>
+                    <th>点击次数</th>
+                    <th>状态</th>
                     <th>领取时间</th>
                 </tr>
             </thead>
@@ -111,7 +115,17 @@
                 <tr>
                     <td>{$record.id}</td>
                     <td>{$record.user.nickname|default=$record.user_id}</td>
-                    <td>{$record.amount} 金币</td>
+                    <td>{$record.base_amount}</td>
+                    <td>{$record.accumulate_amount}</td>
+                    <td><strong>{$record.total_amount}</strong> 金币</td>
+                    <td>{$record.click_count}</td>
+                    <td>
+                        {if $record.is_collected == 1}
+                        <span class="label label-success">已领取</span>
+                        {else}
+                        <span class="label label-default">待领取</span>
+                        {/if}
+                    </td>
                     <td>{$record.createtime|date='Y-m-d H:i:s',###}</td>
                 </tr>
                 {/foreach}
