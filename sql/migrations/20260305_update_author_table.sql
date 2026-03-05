@@ -7,64 +7,28 @@
 SET NAMES utf8mb4;
 
 -- ----------------------------
--- 1. 更新发布者表结构，添加更多信息字段
+-- 1. 添加发布者表新字段
+-- 注意：如果字段已存在会报错，但迁移工具会自动忽略Duplicate错误
 -- ----------------------------
 
--- 检查并添加新字段
-ALTER TABLE `advn_author` ADD COLUMN IF NOT EXISTS `nickname` varchar(50) DEFAULT '' COMMENT '昵称' AFTER `name`;
-ALTER TABLE `advn_author` ADD COLUMN IF NOT EXISTS `phone` varchar(20) DEFAULT '' COMMENT '联系电话' AFTER `avatar`;
-ALTER TABLE `advn_author` ADD COLUMN IF NOT EXISTS `email` varchar(100) DEFAULT '' COMMENT '邮箱' AFTER `phone`;
-ALTER TABLE `advn_author` ADD COLUMN IF NOT EXISTS `wechat` varchar(50) DEFAULT '' COMMENT '微信号' AFTER `email`;
-ALTER TABLE `advn_author` ADD COLUMN IF NOT EXISTS `ip` varchar(50) DEFAULT '' COMMENT 'IP地址' AFTER `wechat`;
-ALTER TABLE `advn_author` ADD COLUMN IF NOT EXISTS `region` varchar(100) DEFAULT '' COMMENT '地区' AFTER `ip`;
-ALTER TABLE `advn_author` ADD COLUMN IF NOT EXISTS `country` varchar(50) DEFAULT '' COMMENT '国家' AFTER `region`;
-ALTER TABLE `advn_author` ADD COLUMN IF NOT EXISTS `province` varchar(50) DEFAULT '' COMMENT '省份' AFTER `country`;
-ALTER TABLE `advn_author` ADD COLUMN IF NOT EXISTS `city` varchar(50) DEFAULT '' COMMENT '城市' AFTER `province`;
-ALTER TABLE `advn_author` ADD COLUMN IF NOT EXISTS `video_count` int unsigned DEFAULT 0 COMMENT '视频数量' AFTER `description`;
-ALTER TABLE `advn_author` ADD COLUMN IF NOT EXISTS `total_views` int unsigned DEFAULT 0 COMMENT '总播放量' AFTER `video_count`;
-ALTER TABLE `advn_author` ADD COLUMN IF NOT EXISTS `total_likes` int unsigned DEFAULT 0 COMMENT '总点赞数' AFTER `total_views`;
-ALTER TABLE `advn_author` ADD COLUMN IF NOT EXISTS `total_coins` int unsigned DEFAULT 0 COMMENT '总获得金币' AFTER `total_likes`;
-ALTER TABLE `advn_author` ADD COLUMN IF NOT EXISTS `verify_status` tinyint DEFAULT 0 COMMENT '认证状态:0=未认证,1=已认证,2=认证中' AFTER `total_coins`;
-ALTER TABLE `advn_author` ADD COLUMN IF NOT EXISTS `verify_type` varchar(30) DEFAULT '' COMMENT '认证类型' AFTER `verify_status`;
-ALTER TABLE `advn_author` ADD COLUMN IF NOT EXISTS `verify_info` varchar(255) DEFAULT '' COMMENT '认证信息' AFTER `verify_type`;
-ALTER TABLE `advn_author` ADD COLUMN IF NOT EXISTS `remark` varchar(500) DEFAULT '' COMMENT '备注' AFTER `verify_info`;
-ALTER TABLE `advn_author` ADD COLUMN IF NOT EXISTS `weigh` int DEFAULT 0 COMMENT '排序权重' AFTER `remark`;
-
--- 如果上面的 IF NOT EXISTS 语法不支持，使用以下方式
--- 先删除再重建表（注意：会丢失数据）
-
--- DROP TABLE IF EXISTS `advn_author`;
--- CREATE TABLE `advn_author` (
---   `id` int unsigned NOT NULL AUTO_INCREMENT COMMENT 'ID',
---   `name` varchar(50) NOT NULL DEFAULT '' COMMENT '作者名称',
---   `nickname` varchar(50) DEFAULT '' COMMENT '昵称',
---   `avatar` varchar(255) DEFAULT '' COMMENT '头像',
---   `phone` varchar(20) DEFAULT '' COMMENT '联系电话',
---   `email` varchar(100) DEFAULT '' COMMENT '邮箱',
---   `wechat` varchar(50) DEFAULT '' COMMENT '微信号',
---   `ip` varchar(50) DEFAULT '' COMMENT 'IP地址',
---   `region` varchar(100) DEFAULT '' COMMENT '地区',
---   `country` varchar(50) DEFAULT '' COMMENT '国家',
---   `province` varchar(50) DEFAULT '' COMMENT '省份',
---   `city` varchar(50) DEFAULT '' COMMENT '城市',
---   `description` varchar(500) DEFAULT '' COMMENT '简介',
---   `video_count` int unsigned DEFAULT 0 COMMENT '视频数量',
---   `total_views` int unsigned DEFAULT 0 COMMENT '总播放量',
---   `total_likes` int unsigned DEFAULT 0 COMMENT '总点赞数',
---   `total_coins` int unsigned DEFAULT 0 COMMENT '总获得金币',
---   `verify_status` tinyint DEFAULT 0 COMMENT '认证状态:0=未认证,1=已认证,2=认证中',
---   `verify_type` varchar(30) DEFAULT '' COMMENT '认证类型',
---   `verify_info` varchar(255) DEFAULT '' COMMENT '认证信息',
---   `remark` varchar(500) DEFAULT '' COMMENT '备注',
---   `weigh` int DEFAULT 0 COMMENT '排序权重',
---   `createtime` bigint DEFAULT NULL COMMENT '创建时间',
---   `updatetime` bigint DEFAULT NULL COMMENT '更新时间',
---   `deletetime` bigint DEFAULT NULL COMMENT '删除时间',
---   `status` enum('normal','hidden') NOT NULL DEFAULT 'normal' COMMENT '状态',
---   PRIMARY KEY (`id`),
---   KEY `status` (`status`),
---   KEY `verify_status` (`verify_status`)
--- ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='发布者/作者表';
+ALTER TABLE `advn_author` ADD COLUMN `nickname` varchar(50) DEFAULT '' COMMENT '昵称' AFTER `name`;
+ALTER TABLE `advn_author` ADD COLUMN `phone` varchar(20) DEFAULT '' COMMENT '联系电话' AFTER `avatar`;
+ALTER TABLE `advn_author` ADD COLUMN `email` varchar(100) DEFAULT '' COMMENT '邮箱' AFTER `phone`;
+ALTER TABLE `advn_author` ADD COLUMN `wechat` varchar(50) DEFAULT '' COMMENT '微信号' AFTER `email`;
+ALTER TABLE `advn_author` ADD COLUMN `ip` varchar(50) DEFAULT '' COMMENT 'IP地址' AFTER `wechat`;
+ALTER TABLE `advn_author` ADD COLUMN `region` varchar(100) DEFAULT '' COMMENT '地区' AFTER `ip`;
+ALTER TABLE `advn_author` ADD COLUMN `country` varchar(50) DEFAULT '' COMMENT '国家' AFTER `region`;
+ALTER TABLE `advn_author` ADD COLUMN `province` varchar(50) DEFAULT '' COMMENT '省份' AFTER `country`;
+ALTER TABLE `advn_author` ADD COLUMN `city` varchar(50) DEFAULT '' COMMENT '城市' AFTER `province`;
+ALTER TABLE `advn_author` ADD COLUMN `video_count` int unsigned DEFAULT 0 COMMENT '视频数量' AFTER `description`;
+ALTER TABLE `advn_author` ADD COLUMN `total_views` int unsigned DEFAULT 0 COMMENT '总播放量' AFTER `video_count`;
+ALTER TABLE `advn_author` ADD COLUMN `total_likes` int unsigned DEFAULT 0 COMMENT '总点赞数' AFTER `total_views`;
+ALTER TABLE `advn_author` ADD COLUMN `total_coins` int unsigned DEFAULT 0 COMMENT '总获得金币' AFTER `total_likes`;
+ALTER TABLE `advn_author` ADD COLUMN `verify_status` tinyint DEFAULT 0 COMMENT '认证状态:0=未认证,1=已认证,2=认证中' AFTER `total_coins`;
+ALTER TABLE `advn_author` ADD COLUMN `verify_type` varchar(30) DEFAULT '' COMMENT '认证类型' AFTER `verify_status`;
+ALTER TABLE `advn_author` ADD COLUMN `verify_info` varchar(255) DEFAULT '' COMMENT '认证信息' AFTER `verify_type`;
+ALTER TABLE `advn_author` ADD COLUMN `remark` varchar(500) DEFAULT '' COMMENT '备注' AFTER `verify_info`;
+ALTER TABLE `advn_author` ADD COLUMN `weigh` int DEFAULT 0 COMMENT '排序权重' AFTER `remark`;
 
 -- ----------------------------
 -- 2. 更新示例数据
@@ -144,12 +108,3 @@ INSERT INTO `advn_auth_rule` (`type`, `pid`, `name`, `title`, `icon`, `url`, `co
 ('file', @author_id, 'video/author/edit', '编辑', 'fa fa-circle-o', '', '', '', 0, NULL, '', '', '', UNIX_TIMESTAMP(), UNIX_TIMESTAMP(), 0, 'normal'),
 ('file', @author_id, 'video/author/del', '删除', 'fa fa-circle-o', '', '', '', 0, NULL, '', '', '', UNIX_TIMESTAMP(), UNIX_TIMESTAMP(), 0, 'normal'),
 ('file', @author_id, 'video/author/multi', '批量更新', 'fa fa-circle-o', '', '', '', 0, NULL, '', '', '', UNIX_TIMESTAMP(), UNIX_TIMESTAMP(), 0, 'normal');
-
--- ----------------------------
--- 4. 输出结果
--- ----------------------------
-SELECT '======================================' AS '';
-SELECT '发布者表结构更新完成！' AS message;
-SELECT '======================================' AS '';
-SELECT COUNT(*) AS '发布者数量' FROM `advn_author`;
-SELECT COUNT(*) AS '菜单数量' FROM `advn_auth_rule` WHERE name LIKE 'video/author%';
