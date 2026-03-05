@@ -4,8 +4,8 @@ namespace app\common\model;
 
 use think\Model;
 use think\Db;
-use think\facade\Cache;
-use think\facade\Log;
+use think\Cache;
+use think\Log;
 
 /**
  * 红包奖励配置模型
