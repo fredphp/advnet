@@ -34,44 +34,91 @@
         <h4 class="panel-title"><i class="fa fa-info-circle"></i> {:__('配置说明')}</h4>
     </div>
     <div class="panel-body">
-        <table class="table table-bordered">
-            <thead>
-                <tr>
-                    <th width="150">{:__('字段')}</th>
-                    <th>{:__('说明')}</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr>
-                    <td><strong>{:__('时间段')}</strong></td>
-                    <td>配置生效的时间范围，采用24小时制。全天配置(00:00-24:00)会匹配任何时间</td>
-                </tr>
-                <tr>
-                    <td><strong>{:__('今日金额限制')}</strong></td>
-                    <td>用户今日已领取金额在此范围内时，该配置生效。0表示不限制</td>
-                </tr>
-                <tr>
-                    <td><strong>{:__('老用户基础奖励')}</strong></td>
-                    <td>老用户首次点击红包获得的金额区间（金币）</td>
-                </tr>
-                <tr>
-                    <td><strong>{:__('老用户累加奖励')}</strong></td>
-                    <td>老用户后续点击红包累加的金额区间（金币）</td>
-                </tr>
-                <tr>
-                    <td><strong>{:__('新用户基础奖励')}</strong></td>
-                    <td>新用户首次点击红包获得的金额区间（金币）</td>
-                </tr>
-                <tr>
-                    <td><strong>{:__('新用户累加奖励')}</strong></td>
-                    <td>新用户后续点击红包累加的金额区间（金币）</td>
-                </tr>
-            </tbody>
-        </table>
-        <div class="alert alert-warning" style="margin-top:10px;margin-bottom:0;">
-            <i class="fa fa-warning"></i> <strong>匹配规则：</strong>系统先按【今日已领取金额】筛选配置，再按【当前时间段】匹配。按权重从高到低取第一个匹配的配置。
-            <br><br>
-            <i class="fa fa-warning"></i> <strong>最高金额限制：</strong>红包最高金额为 <strong class="text-danger">{$maxRewardLimit|number_format}</strong> 金币，不论如何累加都不能超过此限制。
+        <div class="row">
+            <div class="col-md-6">
+                <h5><strong>时间段配置</strong></h5>
+                <table class="table table-bordered table-condensed">
+                    <thead>
+                        <tr>
+                            <th>时间段</th>
+                            <th>老用户基础奖励</th>
+                            <th>老用户累加奖励</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>0-12点</td>
+                            <td>4000 - 6000</td>
+                            <td>2000 - 4000</td>
+                        </tr>
+                        <tr>
+                            <td>12-18点</td>
+                            <td>3000 - 4000</td>
+                            <td>2000 - 3000</td>
+                        </tr>
+                        <tr>
+                            <td>18-24点</td>
+                            <td>2000 - 3000</td>
+                            <td>0 - 1500</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="col-md-6">
+                <h5><strong>今日金额配置</strong></h5>
+                <table class="table table-bordered table-condensed">
+                    <thead>
+                        <tr>
+                            <th>今日领取金额</th>
+                            <th>老用户基础奖励</th>
+                            <th>老用户累加奖励</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>0 - 200,000</td>
+                            <td>4000 - 6000</td>
+                            <td>2000 - 4000</td>
+                        </tr>
+                        <tr>
+                            <td>200,000 - 500,000</td>
+                            <td>3000 - 4000</td>
+                            <td>1500 - 3000</td>
+                        </tr>
+                        <tr>
+                            <td>500,000 - 1,000,000</td>
+                            <td>2000 - 4000</td>
+                            <td>1000 - 2000</td>
+                        </tr>
+                        <tr>
+                            <td>超过 1,000,000</td>
+                            <td>1000 - 2500</td>
+                            <td>0 - 1500</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+        <div class="alert alert-warning" style="margin-top:15px;margin-bottom:0;">
+            <h5><i class="fa fa-warning"></i> <strong>匹配规则：</strong></h5>
+            <ol style="margin-bottom:0;padding-left:20px;">
+                <li>系统分别获取<strong>时间段配置</strong>和<strong>今日金额配置</strong>的奖励区间</li>
+                <li>计算两个区间的<strong>交集</strong>（取两个区间的重叠部分）</li>
+                <li>如果交集有效（下限 ≤ 上限），使用交集区间</li>
+                <li>如果交集无效（无重叠），使用时间配置（更严格）</li>
+            </ol>
+            <br>
+            <strong>示例：</strong>用户今日领取 150,000 金币，当前时间 14:00（12-18点）
+            <ul style="margin-bottom:0;padding-left:20px;">
+                <li>时间配置(12-18点)：基础奖励 3000-4000</li>
+                <li>金额配置(0-20万)：基础奖励 4000-6000</li>
+                <li>交集结果：[max(3000,4000), min(4000,6000)] = <strong>4000-4000</strong>（固定4000）</li>
+            </ul>
+        </div>
+        
+        <div class="alert alert-danger" style="margin-top:10px;margin-bottom:0;">
+            <i class="fa fa-exclamation-triangle"></i> <strong>最高金额限制：</strong>红包最高金额为 <strong class="text-danger">{$maxRewardLimit|number_format}</strong> 金币，不论如何累加都不能超过此限制！
         </div>
     </div>
 </div>

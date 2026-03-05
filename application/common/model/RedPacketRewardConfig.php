@@ -8,6 +8,11 @@ use think\Db;
 /**
  * 红包奖励配置模型
  * 统一配置：时间段 + 今日金额限制 + 奖励金额
+ * 
+ * 匹配逻辑：
+ * 1. 分别获取时间段配置和今日金额配置
+ * 2. 计算两个区间的交集
+ * 3. 如果交集无效，使用时间配置（更严格）
  */
 class RedPacketRewardConfig extends Model
 {
@@ -27,7 +32,9 @@ class RedPacketRewardConfig extends Model
         'time_range_text',
         'today_amount_range_text',
         'base_reward_range_text',
-        'accumulate_reward_range_text'
+        'accumulate_reward_range_text',
+        'new_user_base_range_text',
+        'new_user_accumulate_range_text'
     ];
 
     // 状态列表
@@ -85,6 +92,22 @@ class RedPacketRewardConfig extends Model
         return $min . ' - ' . $max;
     }
 
+    public function getNewUserBaseRangeTextAttr($value, $data)
+    {
+        $min = isset($data['new_user_base_min']) ? number_format($data['new_user_base_min']) : '0';
+        $max = isset($data['new_user_base_max']) ? number_format($data['new_user_base_max']) : '0';
+        
+        return $min . ' - ' . $max;
+    }
+
+    public function getNewUserAccumulateRangeTextAttr($value, $data)
+    {
+        $min = isset($data['new_user_accumulate_min']) ? number_format($data['new_user_accumulate_min']) : '0';
+        $max = isset($data['new_user_accumulate_max']) ? number_format($data['new_user_accumulate_max']) : '0';
+        
+        return $min . ' - ' . $max;
+    }
+
     /**
      * 获取红包最高金额限制（从基础配置读取）
      * @return int
@@ -100,65 +123,123 @@ class RedPacketRewardConfig extends Model
     }
 
     /**
-     * 获取匹配的奖励配置
-     * 优先级：先匹配今日金额限制，再匹配时间段
-     * 
-     * @param int $todayAmount 今日已领取金额
-     * @param int|null $hour 当前小时（null则使用当前时间）
-     * @param bool $isNewUser 是否新用户
-     * @return array
+     * 计算两个区间的交集
+     * @param array $range1 ['min' => x, 'max' => y]
+     * @param array $range2 ['min' => x, 'max' => y]
+     * @return array|null 返回交集区间，如果没有交集返回null
      */
-    public static function getMatchedConfig($todayAmount = 0, $hour = null, $isNewUser = false)
+    public static function intersectRanges($range1, $range2)
     {
-        if ($hour === null) {
-            $hour = intval(date('H'));
+        $min = max($range1['min'], $range2['min']);
+        $max = min($range1['max'], $range2['max']);
+        
+        if ($min > $max) {
+            return null; // 没有交集
         }
+        
+        return ['min' => $min, 'max' => $max];
+    }
 
-        // 第一步：先按今日金额限制筛选
-        $query = self::where('status', 'normal')
+    /**
+     * 获取时间段配置
+     * @param int $hour 当前小时
+     * @return object|null
+     */
+    public static function getTimeConfig($hour)
+    {
+        return self::where('status', 'normal')
+            ->where('start_hour', '<=', $hour)
+            ->where('end_hour', '>', $hour)
+            ->where('min_today_amount', 0)  // 无今日金额限制
+            ->where('max_today_amount', 0)
+            ->order('weigh', 'desc')
+            ->find();
+    }
+
+    /**
+     * 获取今日金额配置
+     * @param int $todayAmount 今日已领取金额
+     * @return object|null
+     */
+    public static function getTodayAmountConfig($todayAmount)
+    {
+        return self::where('status', 'normal')
             ->where('min_today_amount', '<=', $todayAmount)
             ->where(function ($q) use ($todayAmount) {
                 $q->where('max_today_amount', '>=', $todayAmount)
                   ->whereOr('max_today_amount', 0);
-            });
-
-        // 第二步：再按时间段筛选
-        $query->where('start_hour', '<=', $hour)
-            ->where('end_hour', '>', $hour);
-
-        // 按权重排序，取第一个匹配的
-        $config = $query->order('weigh', 'desc')->find();
-
-        return $config;
+            })
+            ->where('start_hour', 0)  // 无时间限制
+            ->where('end_hour', 24)
+            ->order('weigh', 'desc')
+            ->find();
     }
 
     /**
-     * 获取基础奖励区间
+     * 获取基础奖励区间（考虑时间与金额的交集）
+     * 
+     * 匹配逻辑：
+     * 1. 获取时间段配置的奖励区间
+     * 2. 获取今日金额配置的奖励区间
+     * 3. 计算交集
+     * 4. 如果交集无效，使用时间配置（更严格）
      * 
      * @param int $todayAmount 今日已领取金额
-     * @param int|null $hour 当前小时
+     * @param int|null $hour 当前小时（null则使用当前时间）
      * @param bool $isNewUser 是否新用户
      * @return array ['min' => 下限, 'max' => 上限]
      */
     public static function getBaseRewardRange($todayAmount = 0, $hour = null, $isNewUser = false)
     {
-        $config = self::getMatchedConfig($todayAmount, $hour, $isNewUser);
-
-        if (!$config) {
-            // 返回默认值
-            return $isNewUser 
-                ? ['min' => 5000, 'max' => 10000]
-                : ['min' => 2000, 'max' => 4000];
+        if ($hour === null) {
+            $hour = intval(date('H'));
         }
 
-        return [
-            'min' => $config->base_min_reward,
-            'max' => min($config->base_max_reward, self::getMaxRewardLimit())
-        ];
+        // 获取时间段配置
+        $timeConfig = self::getTimeConfig($hour);
+        
+        // 获取今日金额配置
+        $amountConfig = self::getTodayAmountConfig($todayAmount);
+
+        // 获取最高限制
+        $maxLimit = self::getMaxRewardLimit();
+
+        // 默认值
+        $defaultTimeRange = $isNewUser ? ['min' => 5000, 'max' => 10000] : ['min' => 2000, 'max' => 4000];
+        $defaultAmountRange = $isNewUser ? ['min' => 5000, 'max' => 10000] : ['min' => 4000, 'max' => 6000];
+
+        // 提取时间配置的奖励区间
+        if ($timeConfig) {
+            $timeRange = $isNewUser 
+                ? ['min' => $timeConfig->new_user_base_min, 'max' => min($timeConfig->new_user_base_max, $maxLimit)]
+                : ['min' => $timeConfig->base_min_reward, 'max' => min($timeConfig->base_max_reward, $maxLimit)];
+        } else {
+            $timeRange = $defaultTimeRange;
+        }
+
+        // 提取今日金额配置的奖励区间
+        if ($amountConfig) {
+            $amountRange = $isNewUser 
+                ? ['min' => $amountConfig->new_user_base_min, 'max' => min($amountConfig->new_user_base_max, $maxLimit)]
+                : ['min' => $amountConfig->base_min_reward, 'max' => min($amountConfig->base_max_reward, $maxLimit)];
+        } else {
+            $amountRange = $defaultAmountRange;
+        }
+
+        // 计算交集
+        $intersection = self::intersectRanges($timeRange, $amountRange);
+
+        if ($intersection) {
+            // 有交集，使用交集
+            return $intersection;
+        } else {
+            // 没有交集，使用时间配置（更严格）
+            return $timeRange;
+        }
     }
 
     /**
-     * 获取累加奖励区间
+     * 获取累加奖励区间（考虑时间与金额的交集）
      * 
      * @param int $todayAmount 今日已领取金额
      * @param int|null $hour 当前小时
@@ -167,19 +248,69 @@ class RedPacketRewardConfig extends Model
      */
     public static function getAccumulateRewardRange($todayAmount = 0, $hour = null, $isNewUser = false)
     {
-        $config = self::getMatchedConfig($todayAmount, $hour, $isNewUser);
-
-        if (!$config) {
-            // 返回默认值
-            return $isNewUser 
-                ? ['min' => 2000, 'max' => 4000]
-                : ['min' => 500, 'max' => 1500];
+        if ($hour === null) {
+            $hour = intval(date('H'));
         }
 
-        return [
-            'min' => $config->accumulate_min_reward,
-            'max' => min($config->accumulate_max_reward, self::getMaxRewardLimit())
-        ];
+        // 获取时间段配置
+        $timeConfig = self::getTimeConfig($hour);
+        
+        // 获取今日金额配置
+        $amountConfig = self::getTodayAmountConfig($todayAmount);
+
+        // 获取最高限制
+        $maxLimit = self::getMaxRewardLimit();
+
+        // 默认值
+        $defaultTimeRange = $isNewUser ? ['min' => 2000, 'max' => 4000] : ['min' => 500, 'max' => 1500];
+        $defaultAmountRange = $isNewUser ? ['min' => 2000, 'max' => 4000] : ['min' => 2000, 'max' => 4000];
+
+        // 提取时间配置的奖励区间
+        if ($timeConfig) {
+            $timeRange = $isNewUser 
+                ? ['min' => $timeConfig->new_user_accumulate_min, 'max' => min($timeConfig->new_user_accumulate_max, $maxLimit)]
+                : ['min' => $timeConfig->accumulate_min_reward, 'max' => min($timeConfig->accumulate_max_reward, $maxLimit)];
+        } else {
+            $timeRange = $defaultTimeRange;
+        }
+
+        // 提取今日金额配置的奖励区间
+        if ($amountConfig) {
+            $amountRange = $isNewUser 
+                ? ['min' => $amountConfig->new_user_accumulate_min, 'max' => min($amountConfig->new_user_accumulate_max, $maxLimit)]
+                : ['min' => $amountConfig->accumulate_min_reward, 'max' => min($amountConfig->accumulate_max_reward, $maxLimit)];
+        } else {
+            $amountRange = $defaultAmountRange;
+        }
+
+        // 计算交集
+        $intersection = self::intersectRanges($timeRange, $amountRange);
+
+        if ($intersection) {
+            // 有交集，使用交集
+            return $intersection;
+        } else {
+            // 没有交集，使用时间配置（更严格）
+            return $timeRange;
+        }
+    }
+
+    /**
+     * 在区间内随机生成金额
+     * 
+     * @param array $range ['min' => xx, 'max' => xx]
+     * @return int
+     */
+    public static function randomAmount($range)
+    {
+        $min = $range['min'] ?? 0;
+        $max = $range['max'] ?? $min;
+
+        if ($min >= $max) {
+            return $min;
+        }
+
+        return mt_rand($min, $max);
     }
 
     /**
@@ -206,25 +337,7 @@ class RedPacketRewardConfig extends Model
     }
 
     /**
-     * 在区间内随机生成金额
-     * 
-     * @param array $range ['min' => xx, 'max' => xx]
-     * @return int
-     */
-    public static function randomAmount($range)
-    {
-        $min = $range['min'] ?? 0;
-        $max = $range['max'] ?? $min;
-
-        if ($min >= $max) {
-            return $min;
-        }
-
-        return mt_rand($min, $max);
-    }
-
-    /**
-     * 获取完整的奖励配置信息
+     * 获取完整的奖励配置信息（用于调试和展示）
      * 
      * @param int $todayAmount 今日已领取金额
      * @param int|null $hour 当前小时
@@ -233,36 +346,28 @@ class RedPacketRewardConfig extends Model
      */
     public static function getFullConfig($todayAmount = 0, $hour = null, $isNewUser = false)
     {
-        $config = self::getMatchedConfig($todayAmount, $hour, $isNewUser);
-        $maxLimit = self::getMaxRewardLimit();
-
-        if (!$config) {
-            $defaultBase = $isNewUser ? ['min' => 5000, 'max' => 10000] : ['min' => 2000, 'max' => 4000];
-            $defaultAcc = $isNewUser ? ['min' => 2000, 'max' => 4000] : ['min' => 500, 'max' => 1500];
-            
-            return [
-                'name' => '默认配置',
-                'time_range' => '全天',
-                'today_amount_range' => '不限制',
-                'base' => $defaultBase,
-                'accumulate' => $defaultAcc,
-                'max_reward_limit' => $maxLimit
-            ];
+        if ($hour === null) {
+            $hour = intval(date('H'));
         }
 
+        $timeConfig = self::getTimeConfig($hour);
+        $amountConfig = self::getTodayAmountConfig($todayAmount);
+        $maxLimit = self::getMaxRewardLimit();
+
+        $baseRange = self::getBaseRewardRange($todayAmount, $hour, $isNewUser);
+        $accumulateRange = self::getAccumulateRewardRange($todayAmount, $hour, $isNewUser);
+
         return [
-            'name' => $config->name,
-            'time_range' => $config->time_range_text,
-            'today_amount_range' => $config->today_amount_range_text,
-            'base' => [
-                'min' => $config->base_min_reward,
-                'max' => min($config->base_max_reward, $maxLimit)
-            ],
-            'accumulate' => [
-                'min' => $config->accumulate_min_reward,
-                'max' => min($config->accumulate_max_reward, $maxLimit)
-            ],
-            'max_reward_limit' => $maxLimit
+            'time_config' => $timeConfig ? $timeConfig->name : '默认',
+            'amount_config' => $amountConfig ? $amountConfig->name : '默认',
+            'time_range' => $timeConfig ? $timeConfig->time_range_text : '全天',
+            'today_amount_range' => $amountConfig ? $amountConfig->today_amount_range_text : '不限制',
+            'base' => $baseRange,
+            'accumulate' => $accumulateRange,
+            'max_reward_limit' => $maxLimit,
+            'current_hour' => $hour,
+            'today_amount' => $todayAmount,
+            'is_new_user' => $isNewUser
         ];
     }
 
@@ -277,20 +382,5 @@ class RedPacketRewardConfig extends Model
             ->order('id', 'asc')
             ->select()
             ->toArray();
-    }
-
-    /**
-     * 检查配置是否冲突
-     * @param int $startHour 开始小时
-     * @param int $endHour 结束小时
-     * @param int $minTodayAmount 今日金额下限
-     * @param int $maxTodayAmount 今日金额上限
-     * @param int|null $excludeId 排除的配置ID
-     * @return bool true=有冲突, false=无冲突
-     */
-    public static function hasConflict($startHour, $endHour, $minTodayAmount, $maxTodayAmount, $excludeId = null)
-    {
-        // 这里不做严格限制，允许配置重叠，按权重优先匹配
-        return false;
     }
 }
