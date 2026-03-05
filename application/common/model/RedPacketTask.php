@@ -19,6 +19,9 @@ class RedPacketTask extends Model
     protected $createTime = 'createtime';
     protected $updateTime = 'updatetime';
 
+    // 关闭严格字段检查（允许访问不存在的字段而不报错）
+    protected $strict = false;
+
     // 追加属性
     protected $append = [
         'status_text',
