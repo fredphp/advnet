@@ -161,6 +161,10 @@ class Rewardconfig extends Backend
                     }
 
                     $result = $this->model->allowField(true)->save($params);
+                    
+                    // 刷新配置缓存
+                    RedPacketRewardConfigModel::refreshCache();
+                    
                     Db::commit();
                 } catch (Exception $e) {
                     Db::rollback();
@@ -262,6 +266,10 @@ class Rewardconfig extends Backend
                     }
 
                     $result = $row->allowField(true)->save($params);
+                    
+                    // 刷新配置缓存
+                    RedPacketRewardConfigModel::refreshCache();
+                    
                     Db::commit();
                 } catch (Exception $e) {
                     Db::rollback();
@@ -309,6 +317,10 @@ class Rewardconfig extends Backend
                 foreach ($list as $item) {
                     $count += $item->delete();
                 }
+                
+                // 刷新配置缓存
+                RedPacketRewardConfigModel::refreshCache();
+                
                 Db::commit();
             } catch (Exception $e) {
                 Db::rollback();
@@ -322,6 +334,20 @@ class Rewardconfig extends Backend
             }
         }
         $this->error(__('Parameter %s can not be empty', 'ids'));
+    }
+
+    /**
+     * 手动刷新缓存
+     */
+    public function refreshCache()
+    {
+        $result = RedPacketRewardConfigModel::refreshCache();
+        
+        if ($result) {
+            $this->success('缓存刷新成功');
+        } else {
+            $this->error('缓存刷新失败');
+        }
     }
 
     /**
