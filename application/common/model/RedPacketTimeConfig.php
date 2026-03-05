@@ -66,7 +66,7 @@ class RedPacketTimeConfig extends Model
     /**
      * 根据当前时间获取配置
      * @param int|null $hour 指定小时(0-23), null则使用当前时间
-     * @return array|null
+     * @return RedPacketTimeConfig|null
      */
     public static function getConfigByHour($hour = null)
     {
@@ -148,8 +148,8 @@ class RedPacketTimeConfig extends Model
         }
 
         return [
-            'min' => $config->new_user_base_min,
-            'max' => $config->new_user_base_max
+            'min' => $config->new_user_base_min ?: 5000,
+            'max' => $config->new_user_base_max ?: 10000
         ];
     }
 
@@ -171,67 +171,9 @@ class RedPacketTimeConfig extends Model
         }
 
         return [
-            'min' => $config->new_user_accumulate_min,
-            'max' => $config->new_user_accumulate_max
+            'min' => $config->new_user_accumulate_min ?: 2000,
+            'max' => $config->new_user_accumulate_max ?: 4000
         ];
-    }
-
-    /**
-     * 获取完整的奖励配置（包含新老用户）
-     * @param int|null $hour 指定小时(0-23), null则使用当前时间
-     * @param bool $isNewUser 是否新用户
-     * @return array
-     */
-    public static function getFullConfig($hour = null, $isNewUser = false)
-    {
-        $config = self::getConfigByHour($hour);
-
-        if (!$config) {
-            // 返回默认配置
-            if ($isNewUser) {
-                return [
-                    'base' => ['min' => 5000, 'max' => 10000],
-                    'accumulate' => ['min' => 2000, 'max' => 4000],
-                    'name' => '默认配置',
-                    'time_range' => '全天'
-                ];
-            } else {
-                return [
-                    'base' => ['min' => 2000, 'max' => 4000],
-                    'accumulate' => ['min' => 500, 'max' => 1500],
-                    'name' => '默认配置',
-                    'time_range' => '全天'
-                ];
-            }
-        }
-
-        if ($isNewUser) {
-            return [
-                'base' => [
-                    'min' => $config->new_user_base_min,
-                    'max' => $config->new_user_base_max
-                ],
-                'accumulate' => [
-                    'min' => $config->new_user_accumulate_min,
-                    'max' => $config->new_user_accumulate_max
-                ],
-                'name' => $config->name,
-                'time_range' => $config->time_range_text
-            ];
-        } else {
-            return [
-                'base' => [
-                    'min' => $config->base_min_reward,
-                    'max' => $config->base_max_reward
-                ],
-                'accumulate' => [
-                    'min' => $config->accumulate_min_reward,
-                    'max' => $config->accumulate_max_reward
-                ],
-                'name' => $config->name,
-                'time_range' => $config->time_range_text
-            ];
-        }
     }
 
     /**

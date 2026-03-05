@@ -13,8 +13,8 @@
                         <div class="dropdown btn-group {:$auth->check('redpacket/timeconfig/multi')?'':'hide'}">
                             <a class="btn btn-primary btn-more dropdown-toggle btn-disabled disabled" data-toggle="dropdown"><i class="fa fa-cog"></i> {:__('More')}</a>
                             <ul class="dropdown-menu text-left" role="menu">
-                                <li><a class="btn btn-link btn-multi btn-disabled disabled" href="javascript:;" data-params="status=normal"><i class="fa fa-eye"></i> 设为正常</a></li>
-                                <li><a class="btn btn-link btn-multi btn-disabled disabled" href="javascript:;" data-params="status=hidden"><i class="fa fa-eye-slash"></i> 设为禁用</a></li>
+                                <li><a class="btn btn-link btn-multi btn-disabled disabled" href="javascript:;" data-params="status=normal"><i class="fa fa-eye"></i> {:__('Set to normal')}</a></li>
+                                <li><a class="btn btn-link btn-multi btn-disabled disabled" href="javascript:;" data-params="status=hidden"><i class="fa fa-eye-slash"></i> {:__('Set to hidden')}</a></li>
                             </ul>
                         </div>
                     </div>
@@ -31,16 +31,41 @@
 
 <div class="panel panel-info" style="margin-top:15px;">
     <div class="panel-heading">
-        <h4 class="panel-title"><i class="fa fa-info-circle"></i> 时间段配置说明</h4>
+        <h4 class="panel-title"><i class="fa fa-info-circle"></i> {:__('时间段配置说明')}</h4>
     </div>
     <div class="panel-body">
-        <ul class="list-unstyled">
-            <li><strong>时间段：</strong>配置一天中不同时段的奖励金额，时间采用24小时制</li>
-            <li><strong>基础奖励：</strong>老用户首次点击红包获得的金额区间</li>
-            <li><strong>累加奖励：</strong>老用户后续点击红包累加的金额区间</li>
-            <li><strong>新用户基础奖励：</strong>新用户首次点击红包获得的金额区间</li>
-            <li><strong>新用户累加奖励：</strong>新用户后续点击红包累加的金额区间</li>
-            <li><strong>注意：</strong>时间段不能重叠，系统会根据当前时间自动匹配对应的配置</li>
-        </ul>
+        <table class="table table-bordered">
+            <thead>
+                <tr>
+                    <th>字段</th>
+                    <th>说明</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>{:__('时间段')}</strong></td>
+                    <td>配置一天中不同时段的奖励金额，时间采用24小时制，时间段不能重叠</td>
+                </tr>
+                <tr>
+                    <td><strong>{:__('老用户基础奖励')}</strong></td>
+                    <td>老用户首次点击红包获得的金额区间（金币）</td>
+                </tr>
+                <tr>
+                    <td><strong>{:__('老用户累加奖励')}</strong></td>
+                    <td>老用户后续点击红包累加的金额区间（金币），可设为0</td>
+                </tr>
+                <tr>
+                    <td><strong>{:__('新用户基础奖励')}</strong></td>
+                    <td>新用户首次点击红包获得的金额区间（金币），通常高于老用户</td>
+                </tr>
+                <tr>
+                    <td><strong>{:__('新用户累加奖励')}</strong></td>
+                    <td>新用户后续点击红包累加的金额区间（金币）</td>
+                </tr>
+            </tbody>
+        </table>
+        <div class="alert alert-warning" style="margin-top:10px;margin-bottom:0;">
+            <i class="fa fa-warning"></i> <strong>注意：</strong>系统会根据用户点击红包时的当前时间自动匹配对应的奖励配置
+        </div>
     </div>
 </div>

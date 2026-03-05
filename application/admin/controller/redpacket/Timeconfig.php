@@ -61,9 +61,27 @@ class Timeconfig extends Backend
                 ->where($where)
                 ->order($sort, $order)
                 ->order('weigh', 'desc')
-                ->paginate($limit);
+                ->select();
 
-            $result = ['total' => $list->total(), 'rows' => $list->items()];
+            // 处理数据
+            foreach ($list as $row) {
+                // 组合时间段显示文本
+                $row->time_range_text = $row->time_range_text;
+                
+                // 组合老用户基础奖励显示文本
+                $row->base_reward_display = number_format($row->base_min_reward) . ' - ' . number_format($row->base_max_reward);
+                
+                // 组合老用户累加奖励显示文本
+                $row->accumulate_reward_display = number_format($row->accumulate_min_reward) . ' - ' . number_format($row->accumulate_max_reward);
+                
+                // 组合新用户基础奖励显示文本
+                $row->new_user_base_display = number_format($row->new_user_base_min) . ' - ' . number_format($row->new_user_base_max);
+                
+                // 组合新用户累加奖励显示文本
+                $row->new_user_accumulate_display = number_format($row->new_user_accumulate_min) . ' - ' . number_format($row->new_user_accumulate_max);
+            }
+
+            $result = ['total' => count($list), 'rows' => $list];
             return json($result);
         }
 
@@ -111,27 +129,29 @@ class Timeconfig extends Backend
                         $this->error('该时间段与已有配置重叠，请调整时间段');
                     }
 
-                    // 验证基础奖励金额
+                    // 验证老用户基础奖励金额
                     if (!isset($params['base_min_reward']) || !isset($params['base_max_reward'])) {
-                        $this->error('基础奖励金额不能为空');
+                        $this->error('老用户基础奖励金额不能为空');
                     }
                     if ($params['base_min_reward'] > $params['base_max_reward']) {
-                        $this->error('基础奖励金额下限不能大于上限');
+                        $this->error('老用户基础奖励金额下限不能大于上限');
                     }
 
-                    // 验证累加奖励金额
+                    // 验证老用户累加奖励金额
                     if (isset($params['accumulate_min_reward']) && isset($params['accumulate_max_reward'])) {
                         if ($params['accumulate_min_reward'] > $params['accumulate_max_reward']) {
-                            $this->error('累加奖励金额下限不能大于上限');
+                            $this->error('老用户累加奖励金额下限不能大于上限');
                         }
                     }
 
-                    // 验证新用户奖励金额
+                    // 验证新用户基础奖励金额
                     if (isset($params['new_user_base_min']) && isset($params['new_user_base_max'])) {
                         if ($params['new_user_base_min'] > $params['new_user_base_max']) {
                             $this->error('新用户基础奖励金额下限不能大于上限');
                         }
                     }
+                    
+                    // 验证新用户累加奖励金额
                     if (isset($params['new_user_accumulate_min']) && isset($params['new_user_accumulate_max'])) {
                         if ($params['new_user_accumulate_min'] > $params['new_user_accumulate_max']) {
                             $this->error('新用户累加奖励金额下限不能大于上限');
@@ -202,26 +222,28 @@ class Timeconfig extends Backend
                         }
                     }
 
-                    // 验证基础奖励金额
+                    // 验证老用户基础奖励金额
                     if (isset($params['base_min_reward']) && isset($params['base_max_reward'])) {
                         if ($params['base_min_reward'] > $params['base_max_reward']) {
-                            $this->error('基础奖励金额下限不能大于上限');
+                            $this->error('老用户基础奖励金额下限不能大于上限');
                         }
                     }
 
-                    // 验证累加奖励金额
+                    // 验证老用户累加奖励金额
                     if (isset($params['accumulate_min_reward']) && isset($params['accumulate_max_reward'])) {
                         if ($params['accumulate_min_reward'] > $params['accumulate_max_reward']) {
-                            $this->error('累加奖励金额下限不能大于上限');
+                            $this->error('老用户累加奖励金额下限不能大于上限');
                         }
                     }
 
-                    // 验证新用户奖励金额
+                    // 验证新用户基础奖励金额
                     if (isset($params['new_user_base_min']) && isset($params['new_user_base_max'])) {
                         if ($params['new_user_base_min'] > $params['new_user_base_max']) {
                             $this->error('新用户基础奖励金额下限不能大于上限');
                         }
                     }
+                    
+                    // 验证新用户累加奖励金额
                     if (isset($params['new_user_accumulate_min']) && isset($params['new_user_accumulate_max'])) {
                         if ($params['new_user_accumulate_min'] > $params['new_user_accumulate_max']) {
                             $this->error('新用户累加奖励金额下限不能大于上限');
