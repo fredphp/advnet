@@ -5,7 +5,6 @@ namespace app\common\model;
 use think\Model;
 use think\Db;
 use think\Cache;
-use think\Log;
 
 /**
  * 红包奖励配置模型
@@ -19,6 +18,7 @@ use think\Log;
  * 缓存策略：
  * - 配置数据缓存到 Redis，减少数据库查询
  * - 后台更新配置时自动刷新缓存
+ * - Redis 不可用时自动降级到数据库查询
  */
 class RedPacketRewardConfig extends Model
 {
@@ -66,6 +66,60 @@ class RedPacketRewardConfig extends Model
     // 缓存时间：7天（配置不常变化，可设置较长缓存时间）
     const CACHE_TTL = 604800;
 
+    // ==================== Redis 连接管理 ====================
+
+    /**
+     * 安全获取 Redis 连接
+     * @return \Redis|null
+     */
+    protected static function getRedis()
+    {
+        static $redis = null;
+        static $checked = false;
+        
+        // 已经检查过，直接返回结果
+        if ($checked) {
+            return $redis;
+        }
+        
+        $checked = true;
+        
+        try {
+            // 方式1：尝试通过 Cache 门面获取 Redis
+            $handler = Cache::store('redis');
+            if ($handler) {
+                $redis = $handler->handler();
+                if ($redis instanceof \Redis) {
+                    return $redis;
+                }
+            }
+        } catch (\Exception $e) {
+            // Cache::store('redis') 失败
+        }
+        
+        // 方式2：尝试直接连接本地 Redis
+        try {
+            $redis = new \Redis();
+            if ($redis->connect('127.0.0.1', 6379, 3)) {
+                return $redis;
+            }
+        } catch (\Exception $e) {
+            // 直接连接失败
+        }
+        
+        $redis = null;
+        return null;
+    }
+
+    /**
+     * 检查 Redis 是否可用
+     * @return bool
+     */
+    protected static function isRedisAvailable()
+    {
+        return self::getRedis() !== null;
+    }
+
     // ==================== 缓存管理方法 ====================
 
     /**
@@ -75,9 +129,9 @@ class RedPacketRewardConfig extends Model
      */
     public static function refreshCache()
     {
+        $redis = self::getRedis();
+        
         try {
-            $redis = Cache::store('redis')->handler();
-            
             // 1. 获取所有有效配置
             $allConfigs = self::where('status', 'normal')
                 ->order('weigh', 'desc')
@@ -85,52 +139,48 @@ class RedPacketRewardConfig extends Model
                 ->select()
                 ->toArray();
             
-            // 2. 缓存所有配置
-            $redis->set(self::CACHE_KEY_ALL_CONFIGS, json_encode($allConfigs), self::CACHE_TTL);
-            
-            // 3. 构建时间段配置索引（按小时分组）
-            $timeConfigs = [];
-            foreach ($allConfigs as $config) {
-                // 只有无今日金额限制的才是时间段配置
-                if ($config['min_today_amount'] == 0 && $config['max_today_amount'] == 0) {
-                    $startHour = intval($config['start_hour']);
-                    $endHour = intval($config['end_hour']);
-                    // 为每个小时创建索引
-                    for ($h = $startHour; $h < $endHour; $h++) {
-                        if (!isset($timeConfigs[$h]) || $config['weigh'] > ($timeConfigs[$h]['weigh'] ?? 0)) {
-                            $timeConfigs[$h] = $config;
+            if ($redis) {
+                // 2. 缓存所有配置
+                $redis->set(self::CACHE_KEY_ALL_CONFIGS, json_encode($allConfigs), self::CACHE_TTL);
+                
+                // 3. 构建时间段配置索引（按小时分组）
+                $timeConfigs = [];
+                foreach ($allConfigs as $config) {
+                    if ($config['min_today_amount'] == 0 && $config['max_today_amount'] == 0) {
+                        $startHour = intval($config['start_hour']);
+                        $endHour = intval($config['end_hour']);
+                        for ($h = $startHour; $h < $endHour; $h++) {
+                            if (!isset($timeConfigs[$h]) || $config['weigh'] > ($timeConfigs[$h]['weigh'] ?? 0)) {
+                                $timeConfigs[$h] = $config;
+                            }
                         }
                     }
                 }
-            }
-            $redis->set(self::CACHE_KEY_TIME_CONFIGS, json_encode($timeConfigs), self::CACHE_TTL);
-            
-            // 4. 构建金额配置列表
-            $amountConfigs = [];
-            foreach ($allConfigs as $config) {
-                // 只有无时间限制的才是金额配置
-                if ($config['start_hour'] == 0 && $config['end_hour'] == 24) {
-                    $amountConfigs[] = $config;
+                $redis->set(self::CACHE_KEY_TIME_CONFIGS, json_encode($timeConfigs), self::CACHE_TTL);
+                
+                // 4. 构建金额配置列表
+                $amountConfigs = [];
+                foreach ($allConfigs as $config) {
+                    if ($config['start_hour'] == 0 && $config['end_hour'] == 24) {
+                        $amountConfigs[] = $config;
+                    }
                 }
+                usort($amountConfigs, function($a, $b) {
+                    return ($b['weigh'] ?? 0) - ($a['weigh'] ?? 0);
+                });
+                $redis->set(self::CACHE_KEY_AMOUNT_CONFIGS, json_encode($amountConfigs), self::CACHE_TTL);
+                
+                // 5. 缓存最高金额限制
+                $maxLimit = Db::name('config')
+                    ->where('name', 'red_packet_max_reward')
+                    ->value('value');
+                $maxLimit = $maxLimit ? intval($maxLimit) : 10000;
+                $redis->set(self::CACHE_KEY_MAX_LIMIT, $maxLimit, self::CACHE_TTL);
             }
-            // 按权重排序
-            usort($amountConfigs, function($a, $b) {
-                return ($b['weigh'] ?? 0) - ($a['weigh'] ?? 0);
-            });
-            $redis->set(self::CACHE_KEY_AMOUNT_CONFIGS, json_encode($amountConfigs), self::CACHE_TTL);
             
-            // 5. 缓存最高金额限制
-            $maxLimit = Db::name('config')
-                ->where('name', 'red_packet_max_reward')
-                ->value('value');
-            $maxLimit = $maxLimit ? intval($maxLimit) : 10000;
-            $redis->set(self::CACHE_KEY_MAX_LIMIT, $maxLimit, self::CACHE_TTL);
-            
-            Log::info('红包奖励配置缓存已刷新');
             return true;
             
         } catch (\Exception $e) {
-            Log::error('刷新红包配置缓存失败: ' . $e->getMessage());
             return false;
         }
     }
@@ -141,17 +191,19 @@ class RedPacketRewardConfig extends Model
      */
     public static function clearCache()
     {
-        try {
-            $redis = Cache::store('redis')->handler();
-            $redis->del(self::CACHE_KEY_ALL_CONFIGS);
-            $redis->del(self::CACHE_KEY_TIME_CONFIGS);
-            $redis->del(self::CACHE_KEY_AMOUNT_CONFIGS);
-            $redis->del(self::CACHE_KEY_MAX_LIMIT);
-            return true;
-        } catch (\Exception $e) {
-            Log::error('清除红包配置缓存失败: ' . $e->getMessage());
-            return false;
+        $redis = self::getRedis();
+        
+        if ($redis) {
+            try {
+                $redis->del(self::CACHE_KEY_ALL_CONFIGS);
+                $redis->del(self::CACHE_KEY_TIME_CONFIGS);
+                $redis->del(self::CACHE_KEY_AMOUNT_CONFIGS);
+                $redis->del(self::CACHE_KEY_MAX_LIMIT);
+            } catch (\Exception $e) {
+            }
         }
+        
+        return true;
     }
 
     /**
@@ -160,28 +212,33 @@ class RedPacketRewardConfig extends Model
      */
     protected static function getAllConfigsFromCache()
     {
+        $redis = self::getRedis();
+        
         try {
-            $redis = Cache::store('redis')->handler();
-            $cached = $redis->get(self::CACHE_KEY_ALL_CONFIGS);
-            
-            if ($cached) {
-                return json_decode($cached, true);
+            if ($redis) {
+                $cached = $redis->get(self::CACHE_KEY_ALL_CONFIGS);
+                
+                if ($cached !== false && $cached !== null) {
+                    return json_decode($cached, true);
+                }
+                
+                // 缓存不存在，重新加载
+                self::refreshCache();
+                $cached = $redis->get(self::CACHE_KEY_ALL_CONFIGS);
+                
+                if ($cached !== false && $cached !== null) {
+                    return json_decode($cached, true);
+                }
             }
-            
-            // 缓存不存在，重新加载
-            self::refreshCache();
-            $cached = $redis->get(self::CACHE_KEY_ALL_CONFIGS);
-            return $cached ? json_decode($cached, true) : [];
-            
         } catch (\Exception $e) {
-            Log::error('获取红包配置缓存失败: ' . $e->getMessage());
-            // 降级：直接从数据库读取
-            return self::where('status', 'normal')
-                ->order('weigh', 'desc')
-                ->order('id', 'asc')
-                ->select()
-                ->toArray();
         }
+        
+        // 降级：直接从数据库读取
+        return self::where('status', 'normal')
+            ->order('weigh', 'desc')
+            ->order('id', 'asc')
+            ->select()
+            ->toArray();
     }
 
     // ==================== 属性访问器 ====================
@@ -259,26 +316,31 @@ class RedPacketRewardConfig extends Model
      */
     public static function getMaxRewardLimit()
     {
+        $redis = self::getRedis();
+        
         try {
-            $redis = Cache::store('redis')->handler();
-            $cached = $redis->get(self::CACHE_KEY_MAX_LIMIT);
-            
-            if ($cached !== false && $cached !== null) {
-                return intval($cached);
+            if ($redis) {
+                $cached = $redis->get(self::CACHE_KEY_MAX_LIMIT);
+                
+                if ($cached !== false && $cached !== null) {
+                    return intval($cached);
+                }
             }
             
-            // 缓存不存在，从数据库读取并缓存
+            // 缓存不存在或Redis不可用，从数据库读取
             $config = Db::name('config')
                 ->where('name', 'red_packet_max_reward')
                 ->value('value');
             
             $maxLimit = $config ? intval($config) : 10000;
-            $redis->set(self::CACHE_KEY_MAX_LIMIT, $maxLimit, self::CACHE_TTL);
+            
+            if ($redis) {
+                $redis->set(self::CACHE_KEY_MAX_LIMIT, $maxLimit, self::CACHE_TTL);
+            }
             
             return $maxLimit;
             
         } catch (\Exception $e) {
-            Log::error('获取红包最高金额限制失败: ' . $e->getMessage());
             return 10000; // 默认值
         }
     }
@@ -308,33 +370,39 @@ class RedPacketRewardConfig extends Model
      */
     public static function getTimeConfig($hour)
     {
+        $redis = self::getRedis();
+        
         try {
-            $redis = Cache::store('redis')->handler();
-            $cached = $redis->get(self::CACHE_KEY_TIME_CONFIGS);
-            
-            if (!$cached) {
+            if ($redis) {
+                $cached = $redis->get(self::CACHE_KEY_TIME_CONFIGS);
+                
+                if ($cached !== false && $cached !== null) {
+                    $timeConfigs = json_decode($cached, true);
+                    if (isset($timeConfigs[$hour])) {
+                        return $timeConfigs[$hour];
+                    }
+                }
+                
+                // 缓存不存在，重新加载
                 self::refreshCache();
                 $cached = $redis->get(self::CACHE_KEY_TIME_CONFIGS);
+                
+                if ($cached !== false && $cached !== null) {
+                    $timeConfigs = json_decode($cached, true);
+                    return $timeConfigs[$hour] ?? null;
+                }
             }
-            
-            if ($cached) {
-                $timeConfigs = json_decode($cached, true);
-                return $timeConfigs[$hour] ?? null;
-            }
-            
-            return null;
-            
         } catch (\Exception $e) {
-            Log::error('获取时间段配置失败: ' . $e->getMessage());
-            // 降级：从数据库读取
-            return self::where('status', 'normal')
-                ->where('start_hour', '<=', $hour)
-                ->where('end_hour', '>', $hour)
-                ->where('min_today_amount', 0)
-                ->where('max_today_amount', 0)
-                ->order('weigh', 'desc')
-                ->find();
         }
+        
+        // 降级：从数据库读取
+        return self::where('status', 'normal')
+            ->where('start_hour', '<=', $hour)
+            ->where('end_hour', '>', $hour)
+            ->where('min_today_amount', 0)
+            ->where('max_today_amount', 0)
+            ->order('weigh', 'desc')
+            ->find();
     }
 
     /**
@@ -344,48 +412,62 @@ class RedPacketRewardConfig extends Model
      */
     public static function getTodayAmountConfig($todayAmount)
     {
+        $redis = self::getRedis();
+        
         try {
-            $redis = Cache::store('redis')->handler();
-            $cached = $redis->get(self::CACHE_KEY_AMOUNT_CONFIGS);
-            
-            if (!$cached) {
+            if ($redis) {
+                $cached = $redis->get(self::CACHE_KEY_AMOUNT_CONFIGS);
+                
+                if ($cached !== false && $cached !== null) {
+                    $amountConfigs = json_decode($cached, true);
+                    
+                    foreach ($amountConfigs as $config) {
+                        $minAmount = intval($config['min_today_amount']);
+                        $maxAmount = intval($config['max_today_amount']);
+                        
+                        if ($minAmount <= $todayAmount) {
+                            if ($maxAmount == 0 || $maxAmount >= $todayAmount) {
+                                return $config;
+                            }
+                        }
+                    }
+                    
+                    return null;
+                }
+                
+                // 缓存不存在，重新加载
                 self::refreshCache();
                 $cached = $redis->get(self::CACHE_KEY_AMOUNT_CONFIGS);
-            }
-            
-            if ($cached) {
-                $amountConfigs = json_decode($cached, true);
                 
-                // 按权重遍历找到匹配的配置
-                foreach ($amountConfigs as $config) {
-                    $minAmount = intval($config['min_today_amount']);
-                    $maxAmount = intval($config['max_today_amount']);
+                if ($cached !== false && $cached !== null) {
+                    $amountConfigs = json_decode($cached, true);
                     
-                    // 检查今日金额是否在范围内
-                    if ($minAmount <= $todayAmount) {
-                        if ($maxAmount == 0 || $maxAmount >= $todayAmount) {
-                            return $config;
+                    foreach ($amountConfigs as $config) {
+                        $minAmount = intval($config['min_today_amount']);
+                        $maxAmount = intval($config['max_today_amount']);
+                        
+                        if ($minAmount <= $todayAmount) {
+                            if ($maxAmount == 0 || $maxAmount >= $todayAmount) {
+                                return $config;
+                            }
                         }
                     }
                 }
             }
-            
-            return null;
-            
         } catch (\Exception $e) {
-            Log::error('获取金额配置失败: ' . $e->getMessage());
-            // 降级：从数据库读取
-            return self::where('status', 'normal')
-                ->where('min_today_amount', '<=', $todayAmount)
-                ->where(function ($q) use ($todayAmount) {
-                    $q->where('max_today_amount', '>=', $todayAmount)
-                      ->whereOr('max_today_amount', 0);
-                })
-                ->where('start_hour', 0)
-                ->where('end_hour', 24)
-                ->order('weigh', 'desc')
-                ->find();
         }
+        
+        // 降级：从数据库读取
+        return self::where('status', 'normal')
+            ->where('min_today_amount', '<=', $todayAmount)
+            ->where(function ($q) use ($todayAmount) {
+                $q->where('max_today_amount', '>=', $todayAmount)
+                  ->whereOr('max_today_amount', 0);
+            })
+            ->where('start_hour', 0)
+            ->where('end_hour', 24)
+            ->order('weigh', 'desc')
+            ->find();
     }
 
     /**
@@ -566,7 +648,8 @@ class RedPacketRewardConfig extends Model
             'max_reward_limit' => $maxLimit,
             'current_hour' => $hour,
             'today_amount' => $todayAmount,
-            'is_new_user' => $isNewUser
+            'is_new_user' => $isNewUser,
+            'redis_available' => self::isRedisAvailable(),
         ];
     }
 
