@@ -14,11 +14,14 @@ datasource db {
 }
 
 model User {
-  id        String   @id @default(cuid())
-  email     String   @unique
-  name      String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id          String   @id @default(cuid())
+  email       String   @unique
+  name        String?
+  balance     Int      @default(0) // 用户余额（金币）
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  redPacketRecords RedPacketRecord[]
 }
 
 model Post {
@@ -29,4 +32,32 @@ model Post {
   authorId  String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+// 红包奖励配置表
+model RedPacketRewardConfig {
+  id              String   @id @default(cuid())
+  name            String   // 配置名称
+  minAmount       Int      // 今日金额下限（已领取金币范围）
+  maxAmount       Int      // 今日金额上限（已领取金币范围）
+  startTime       Int      // 时间段开始（小时，如 0 表示 0 点）
+  endTime         Int      // 时间段结束（小时，如 12 表示 12 点）
+  baseMin         Int      // 基础金额下限
+  baseMax         Int      // 基础金额上限
+  accumulateMin   Int      // 累加金额下限
+  accumulateMax   Int      // 累加金额上限
+  maxReward       Int      // 红包封顶金额
+  status          Int      @default(1) // 状态：1 启用，0 禁用
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+// 红包领取记录表
+model RedPacketRecord {
+  id          String   @id @default(cuid())
+  userId      String
+  amount      Int      // 领取金额
+  claimedAt   DateTime @default(now()) // 领取时间
+  
+  user User @relation(fields: [userId], references: [id])
 }
