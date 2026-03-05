@@ -6,7 +6,6 @@ use think\facade\Db;
 use think\facade\Cache;
 use think\facade\Log;
 use app\common\model\RedPacketTask;
-use app\common\model\RedPacketAmountConfig;
 use app\common\model\UserRedPacketAccumulate;
 
 /**
