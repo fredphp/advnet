@@ -366,6 +366,10 @@ class GenerateMockData extends Command
         $output->writeln("生成领取记录数据...");
 
         $prefix = config('database.prefix');
+        $totalRecords = 0;
+        
+        // 用于跟踪已生成的 user_id + task_id 组合
+        $userTaskMap = [];
 
         for ($d = $days - 1; $d >= 0; $d--) {
             $date = date('Y-m-d', strtotime("-{$d} days"));
@@ -381,10 +385,27 @@ class GenerateMockData extends Command
 
             $dayStart = strtotime($date);
             $dayEnd = strtotime($date . ' 23:59:59');
-
-            for ($i = 0; $i < $count; $i++) {
+            
+            $dayRecords = 0;
+            $attempts = 0;
+            $maxAttempts = $count * 3; // 最大尝试次数，避免无限循环
+            
+            while ($dayRecords < $count && $attempts < $maxAttempts) {
+                $attempts++;
+                
                 $user = $users[array_rand($users)];
                 $userId = $user['id'];
+                $taskId = mt_rand(1, 100);
+                
+                // 检查是否已存在该组合
+                $key = "{$userId}-{$taskId}";
+                if (isset($userTaskMap[$key])) {
+                    continue; // 跳过重复组合
+                }
+                
+                // 标记该组合已使用
+                $userTaskMap[$key] = true;
+                
                 $baseAmount = mt_rand(500, 5000);
                 $clickCount = mt_rand(1, 20);
                 $accumulateAmount = mt_rand(0, 5000);
@@ -392,7 +413,7 @@ class GenerateMockData extends Command
 
                 $data = [
                     'user_id' => $userId,
-                    'task_id' => mt_rand(1, 100),
+                    'task_id' => $taskId,
                     'is_new_user' => mt_rand(0, 1),
                     'click_count' => $clickCount,
                     'base_amount' => $baseAmount,
@@ -405,10 +426,12 @@ class GenerateMockData extends Command
                 ];
 
                 Db::name($tableName)->insert($data);
+                $dayRecords++;
+                $totalRecords++;
             }
         }
 
-        $output->writeln("生成领取记录 {$days} 天数据完成");
+        $output->writeln("生成领取记录 {$totalRecords} 条");
     }
 
     /**
