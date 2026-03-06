@@ -388,7 +388,7 @@ class GenerateMockData extends Command
             
             $dayRecords = 0;
             $attempts = 0;
-            $maxAttempts = $count * 3; // 最大尝试次数，避免无限循环
+            $maxAttempts = $count * 5; // 最大尝试次数，避免无限循环
             
             while ($dayRecords < $count && $attempts < $maxAttempts) {
                 $attempts++;
@@ -397,10 +397,20 @@ class GenerateMockData extends Command
                 $userId = $user['id'];
                 $taskId = mt_rand(1, 100);
                 
-                // 检查是否已存在该组合
+                // 检查是否已存在该组合（内存中）
                 $key = "{$userId}-{$taskId}";
                 if (isset($userTaskMap[$key])) {
                     continue; // 跳过重复组合
+                }
+                
+                // 检查数据库中是否已存在
+                $existsInDb = Db::name($tableName)
+                    ->where('user_id', $userId)
+                    ->where('task_id', $taskId)
+                    ->find();
+                if ($existsInDb) {
+                    $userTaskMap[$key] = true; // 记录已存在的组合
+                    continue;
                 }
                 
                 // 标记该组合已使用
