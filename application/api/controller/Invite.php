@@ -5,7 +5,7 @@ namespace app\api\controller;
 use app\common\controller\Api;
 use app\common\library\InviteCommissionService;
 use app\common\model\User;
-use think\facade\Db;
+use think\Db;
 
 /**
  * 邀请分佣API接口

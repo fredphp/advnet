@@ -3,7 +3,7 @@
 namespace app\admin\controller\invite;
 
 use app\common\controller\Backend;
-use think\facade\Db;
+use think\Db;
 
 /**
  * 邀请统计管理

@@ -2,8 +2,8 @@
 
 namespace app\common\library;
 
-use think\facade\Db;
-use think\facade\Log;
+use think\Db;
+use think\Log;
 use app\common\model\InviteCommissionLog;
 use app\common\model\UserInviteStat;
 use app\common\model\UserCommissionStat;

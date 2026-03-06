@@ -3,7 +3,7 @@
 namespace app\common\model;
 
 use think\Model;
-use think\facade\Cache;
+use think\Cache;
 
 /**
  * 分佣配置模型

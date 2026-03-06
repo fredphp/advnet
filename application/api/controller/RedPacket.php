@@ -4,7 +4,7 @@ namespace app\api\controller;
 
 use app\common\controller\Api;
 use app\common\library\RedPacketService;
-use think\facade\Db;
+use think\Db;
 
 /**
  * 红包任务接口

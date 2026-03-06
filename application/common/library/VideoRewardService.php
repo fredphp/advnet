@@ -2,9 +2,9 @@
 
 namespace app\common\library;
 
-use think\facade\Cache;
-use think\facade\Db;
-use think\facade\Log;
+use think\Cache;
+use think\Db;
+use think\Log;
 use app\common\model\VideoRewardRule;
 use app\common\model\VideoWatchRecord;
 use app\common\model\VideoCollection;
