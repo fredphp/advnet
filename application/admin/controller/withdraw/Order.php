@@ -609,6 +609,7 @@ class Order extends Backend
         
         // 记录金币流水
         $logTableName = 'coin_log_' . date('Ym');
+        $this->ensureCoinLogTableExists($logTableName);
         Db::name($logTableName)->insert([
             'user_id' => $order['user_id'],
             'type' => 'withdraw_success',
@@ -625,6 +626,59 @@ class Order extends Backend
         
         // 更新用户提现统计
         $this->updateUserWithdrawStat($order);
+        
+        return true;
+    }
+
+    /**
+     * 确保金币流水表存在
+     */
+    protected function ensureCoinLogTableExists($tableName)
+    {
+        $prefix = config('database.prefix');
+        $fullTableName = $prefix . $tableName;
+        
+        // 检查表是否存在
+        $exists = Db::query("SHOW TABLES LIKE '{$fullTableName}'");
+        if (!empty($exists)) {
+            return true;
+        }
+        
+        // 获取主表结构并创建分表
+        $mainTable = $prefix . 'coin_log';
+        
+        // 先检查主表是否存在
+        $mainExists = Db::query("SHOW TABLES LIKE '{$mainTable}'");
+        if (empty($mainExists)) {
+            // 主表不存在，创建主表
+            $createMainSql = "CREATE TABLE IF NOT EXISTS `{$mainTable}` (
+                `id` INT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+                `user_id` INT UNSIGNED NOT NULL COMMENT '用户ID',
+                `type` VARCHAR(30) NOT NULL COMMENT '流水类型',
+                `amount` DECIMAL(18,2) NOT NULL COMMENT '金币数量(正数=收入,负数=支出)',
+                `balance_before` DECIMAL(18,2) UNSIGNED DEFAULT NULL COMMENT '变动前余额',
+                `balance_after` DECIMAL(18,2) UNSIGNED DEFAULT NULL COMMENT '变动后余额',
+                `relation_type` VARCHAR(30) DEFAULT NULL COMMENT '关联类型',
+                `relation_id` INT UNSIGNED DEFAULT NULL COMMENT '关联记录ID',
+                `title` VARCHAR(100) DEFAULT NULL COMMENT '流水标题',
+                `description` VARCHAR(200) DEFAULT NULL COMMENT '详细描述',
+                `ip` VARCHAR(50) DEFAULT NULL COMMENT '操作IP',
+                `device_id` VARCHAR(100) DEFAULT NULL COMMENT '设备ID',
+                `createtime` INT UNSIGNED DEFAULT NULL COMMENT '创建时间戳',
+                `create_date` DATE DEFAULT NULL COMMENT '创建日期',
+                PRIMARY KEY (`id`),
+                KEY `idx_user_id` (`user_id`),
+                KEY `idx_type` (`type`),
+                KEY `idx_relation` (`relation_type`, `relation_id`),
+                KEY `idx_create_time` (`createtime`),
+                KEY `idx_user_date` (`user_id`, `create_date`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='金币流水表'";
+            Db::execute($createMainSql);
+        }
+        
+        // 创建分表
+        $createSql = "CREATE TABLE IF NOT EXISTS `{$fullTableName}` LIKE `{$mainTable}`";
+        Db::execute($createSql);
         
         return true;
     }
