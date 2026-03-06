@@ -1,4 +1,4 @@
-<form id="complete-form" class="form-horizontal" role="form">
+<form id="complete-form" class="form-horizontal" role="form" data-success-url="withdraw/order/index">
     <div class="panel-body">
         <!-- 订单信息 -->
         <div class="panel panel-default">
@@ -19,9 +19,9 @@
                     </tr>
                     <tr>
                         <td>手续费</td>
-                        <td>¥{$order.fee_amount}</td>
+                        <td>¥{$order.fee_amount|default='0.00'}</td>
                         <td>实际到账</td>
-                        <td><strong class="text-success">¥{$order.actual_amount}</strong></td>
+                        <td><strong class="text-success">¥{$order.actual_amount|default=$order.cash_amount}</strong></td>
                     </tr>
                 </table>
             </div>
@@ -67,7 +67,7 @@
                         <td>手机号</td>
                         <td>{$user.mobile}</td>
                         <td>审核时间</td>
-                        <td>{$order.audit_time|date='Y-m-d H:i:s',###}</td>
+                        <td>{if $order.audit_time}{$order.audit_time|date='Y-m-d H:i:s',###}{else}-{/if}</td>
                     </tr>
                 </table>
             </div>
@@ -118,7 +118,7 @@
             <ul>
                 <li>收款人：<strong>{$order.withdraw_name}</strong></li>
                 <li>收款账号：<strong>{$order.withdraw_account}</strong></li>
-                <li>打款金额：<strong class="text-danger">¥{$order.actual_amount}</strong>（已扣除手续费 ¥{$order.fee_amount}）</li>
+                <li>打款金额：<strong class="text-danger">¥{$order.actual_amount|default=$order.cash_amount}</strong>{if $order.fee_amount}（已扣除手续费 ¥{$order.fee_amount}）{/if}</li>
             </ul>
         </div>
 
@@ -139,5 +139,19 @@
 
         <!-- 隐藏字段 -->
         <input type="hidden" name="id" value="{$order.id}">
+        <input type="hidden" name="row[id]" value="{$order.id}">
+    </div>
+
+    <!-- 确认按钮 -->
+    <div class="form-group layer-footer">
+        <label class="control-label col-xs-12 col-sm-2"></label>
+        <div class="col-xs-12 col-sm-8">
+            <button type="submit" class="btn btn-warning btn-embossed">
+                <i class="fa fa-money"></i> 确认打款成功
+            </button>
+            <button type="reset" class="btn btn-default btn-embossed ml-2">
+                重置
+            </button>
+        </div>
     </div>
 </form>

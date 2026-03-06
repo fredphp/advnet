@@ -19,7 +19,7 @@ class Order extends Backend
     // 状态列表
     protected $statusList = [
         0 => '待审核',
-        1 => '审核通过',
+        1 => '待打款',
         2 => '打款中',
         3 => '提现成功',
         4 => '审核拒绝',
@@ -334,22 +334,13 @@ class Order extends Backend
                 $this->error('订单不存在');
             }
 
-            if (!in_array($order['status'], [0, 1, 2])) {
-                $this->error('该订单状态不允许打款');
+            // 只有审核通过/待打款状态(status=1)才能打款
+            if ($order['status'] != 1) {
+                $this->error('只有待打款状态的订单才能确认打款');
             }
 
             Db::startTrans();
             try {
-                $withdrawService = new WithdrawService();
-                
-                // 如果是待审核状态，先审核通过
-                if ($order['status'] == 0) {
-                    $approveResult = $withdrawService->approveOrder($id, $this->auth->id, $this->auth->username, '审核通过并打款');
-                    if (!$approveResult['success']) {
-                        throw new Exception($approveResult['message']);
-                    }
-                }
-                
                 // 确认打款成功
                 $this->completeOrder($id, $transferNo, $this->auth->id, $remark);
 
@@ -420,6 +411,7 @@ class Order extends Backend
         $this->view->assign('user', $user);
         $this->view->assign('todayStats', $todayStats);
         $this->view->assign('totalStats', $totalStats);
+        $this->view->assign('withdrawTypeText', $this->withdrawTypes[$order['withdraw_type']] ?? $order['withdraw_type']);
         
         return $this->view->fetch();
     }
