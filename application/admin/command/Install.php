@@ -9,6 +9,7 @@ use think\console\Command;
 use think\console\Input;
 use think\console\input\Option;
 use think\console\Output;
+use think\Cache;
 use think\Db;
 use think\Exception;
 use think\Lang;

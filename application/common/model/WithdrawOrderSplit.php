@@ -3,7 +3,7 @@
 namespace app\common\model;
 
 use think\Db;
-use think\facade\Log;
+use think\Log;
 
 /**
  * 提现订单分表模型

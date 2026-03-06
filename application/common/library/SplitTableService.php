@@ -3,8 +3,8 @@
 namespace app\common\library;
 
 use think\Db;
-use think\facade\Log;
-use think\facade\Cache;
+use think\Log;
+use think\Cache;
 
 /**
  * 分表管理服务

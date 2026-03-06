@@ -3,8 +3,8 @@
 namespace app\common\model;
 
 use think\Model;
-use think\facade\Db;
-use think\facade\Cache;
+use think\Db;
+use think\Cache;
 
 /**
  * 用户佣金统计模型

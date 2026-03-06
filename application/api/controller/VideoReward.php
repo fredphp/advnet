@@ -5,7 +5,7 @@ namespace app\api\controller;
 use app\common\controller\Api;
 use app\common\library\VideoRewardService;
 use app\common\library\CoinService;
-use think\facade\Db;
+use think\Db;
 
 /**
  * 视频收益接口

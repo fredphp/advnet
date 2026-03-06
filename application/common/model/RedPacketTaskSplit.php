@@ -3,7 +3,7 @@
 namespace app\common\model;
 
 use think\Db;
-use think\facade\Log;
+use think\Log;
 
 /**
  * 红包任务分表模型

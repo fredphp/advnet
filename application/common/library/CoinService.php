@@ -3,6 +3,7 @@
 namespace app\common\library;
 
 use think\Db;
+use think\Log;
 use think\Exception;
 use think\Cache;
 use app\common\model\CoinAccount;

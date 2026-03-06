@@ -2,9 +2,9 @@
 
 namespace app\common\library;
 
-use think\facade\Db;
-use think\facade\Cache;
-use think\facade\Log;
+use think\Db;
+use think\Cache;
+use think\Log;
 use app\common\model\RedPacketTask;
 use app\common\model\UserRedPacketAccumulate;
 

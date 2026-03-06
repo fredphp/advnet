@@ -4,7 +4,7 @@ namespace app\api\controller;
 
 use app\common\controller\Api;
 use app\common\library\CoinService;
-use think\facade\Db;
+use think\Db;
 
 /**
  * 用户金币接口

@@ -3,6 +3,7 @@
 namespace app\common\model;
 
 use think\Db;
+use think\Log;
 use think\Model;
 
 /**

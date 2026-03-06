@@ -3,7 +3,7 @@
 namespace app\common\model;
 
 use think\Model;
-use think\facade\Db;
+use think\Db;
 
 /**
  * 任务参与记录模型

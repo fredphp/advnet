@@ -4,7 +4,7 @@ namespace app\common\model;
 
 use think\Model;
 use think\Db;
-use think\facade\Log;
+use think\Log;
 
 /**
  * 分表模型基类

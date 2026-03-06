@@ -7,7 +7,7 @@ use think\console\Input;
 use think\console\Output;
 use think\console\input\Option;
 use think\Db;
-use think\facade\Log;
+use think\Log;
 
 /**
  * 生成模拟数据命令

@@ -5,9 +5,9 @@ namespace app\api\controller;
 use app\common\controller\Api;
 use app\common\library\CoinService;
 use app\common\model\RedPacketRewardConfig;
-use think\facade\Db;
-use think\facade\Cache;
-use think\facade\Log;
+use think\Db;
+use think\Cache;
+use think\Log;
 
 /**
  * 红包任务接口
