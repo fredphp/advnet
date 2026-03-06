@@ -102,7 +102,8 @@ class GenerateMockData extends Command
             $users = Db::name('user')->field('id, username, nickname, mobile')->limit(50)->select();
         }
         
-        return $users->toArray();
+        // TP5.0 select() 返回数组，TP5.1+ 返回 Collection
+        return is_array($users) ? $users : $users->toArray();
     }
 
     /**
