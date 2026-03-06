@@ -3,7 +3,6 @@
 namespace app\api\controller;
 
 use app\common\controller\Api;
-use app\common\library\RedPacketClickService;
 use app\common\library\CoinService;
 use app\common\model\RedPacketRewardConfig;
 use think\facade\Db;
@@ -18,7 +17,7 @@ class RedPacket extends Api
     protected $noNeedLogin = [];
     protected $noNeedRight = ['*'];
     
-    // Redis键前缀 - 用于存储用户点击累计金额（使用Hash结构）
+    // Redis键前缀 - 用于存储用户当前红包金额
     const REDIS_CLICK_PREFIX = 'red_packet:click:';
     
     // 过期时间：24小时
@@ -29,27 +28,20 @@ class RedPacket extends Api
     public function _initialize()
     {
         parent::_initialize();
-        $this->service = new RedPacketClickService();
+        $this->service = new \app\common\library\RedPacketClickService();
     }
     
     /**
-     * 点击红包 - 根据配置生成/累加红包金额
+     * 点击红包 - 生成/累加红包金额
      * 
-     * 逻辑说明：
-     * 1. 如果Redis中没有红包金额或金额为0，生成基础金额
-     * 2. 如果有累计金额，检查基础金额是否符合当前时间段配置
-     * 3. 如果不符合当前时间段，重新生成基础金额
-     * 4. 累加金额根据当前时间段和今日已领取金额获取
-     * 5. 总金额不能超过封顶额度
+     * 简化逻辑：
+     * 1. 如果用户当前红包金额为0或不存在 → 生成基础金额 → 返回基础金额
+     * 2. 如果用户当前红包金额不为0 → 生成累加金额 → 返回 当前金额 + 累加金额
      * 
      * @api {post} /api/redpacket/click 点击红包
      * @apiParam {Number} [task_id] 任务ID(可选)
-     * @apiSuccess {Number} amount 本次点击获得的金额
-     * @apiSuccess {Number} base_amount 基础金额
-     * @apiSuccess {Number} accumulate_amount 累加金额
-     * @apiSuccess {Number} total_amount 总金额
-     * @apiSuccess {Number} click_count 点击次数
-     * @apiSuccess {Boolean} is_new_base 是否重新生成基础金额
+     * @apiSuccess {Number} amount 本次获得的金额（前端展示用）
+     * @apiSuccess {Number} total_amount 当前红包总金额
      */
     public function click()
     {
@@ -80,158 +72,64 @@ class RedPacket extends Api
             $user = Db::name('user')->field('jointime')->find($userId);
             $isNewUser = $user && (time() - $user['jointime'] < 7 * 86400);
             
-            // 从缓存获取封顶额度
+            // 获取封顶额度
             $maxLimit = RedPacketRewardConfig::getMaxRewardLimit();
             
-            // 从缓存获取当前时间段的配置
-            $currentTimeRange = RedPacketRewardConfig::getTimeConfig($currentHour);
-            
-            // 获取Redis中已有的数据
+            // 获取Redis中已有的红包数据
             $clickData = $redis->hGetAll($redisKey);
+            $currentAmount = isset($clickData['total_amount']) ? intval($clickData['total_amount']) : 0;
             
-            $baseAmount = 0;
-            $accumulateAmount = 0;
-            $totalAmount = 0;
-            $clickCount = 0;
-            $isNewBase = false;
-            $baseHour = null;
+            // 本次获得的金额
+            $addAmount = 0;
             
-            if ($clickData && isset($clickData['total_amount'])) {
-                $baseAmount = intval($clickData['base_amount'] ?? 0);
-                $accumulateAmount = intval($clickData['accumulate_amount'] ?? 0);
-                $totalAmount = intval($clickData['total_amount'] ?? 0);
-                $clickCount = intval($clickData['click_count'] ?? 0);
-                $baseHour = isset($clickData['base_hour']) ? intval($clickData['base_hour']) : null;
-            }
-            
-            // 判断是否需要生成/重新生成基础金额
-            $needNewBase = false;
-            if ($totalAmount <= 0) {
-                // 没有累计金额，需要生成基础金额
-                $needNewBase = true;
+            if ($currentAmount <= 0) {
+                // 当前红包金额为0或不存在 → 生成基础金额
+                $addAmount = RedPacketRewardConfig::generateBaseAmount($todayAmount, $currentHour, $isNewUser);
+                
+                // 存储新数据
+                $redis->hMSet($redisKey, [
+                    'base_amount' => $addAmount,
+                    'accumulate_amount' => 0,
+                    'total_amount' => $addAmount,
+                    'click_count' => 1,
+                    'task_id' => $taskId,
+                    'base_hour' => $currentHour,
+                    'is_new_user' => $isNewUser ? 1 : 0,
+                    'today_amount' => $todayAmount,
+                    'createtime' => time(),
+                    'updatetime' => time()
+                ]);
             } else {
-                // 获取基础金额生成时的时间段配置
-                $baseStartHour = isset($clickData['base_start_hour']) ? intval($clickData['base_start_hour']) : null;
-                $baseEndHour = isset($clickData['base_end_hour']) ? intval($clickData['base_end_hour']) : null;
-                
-                // 判断当前时间是否仍在基础金额的时间段内
-                $stillInSameRange = false;
-                if ($baseStartHour !== null && $baseEndHour !== null) {
-                    if ($currentHour >= $baseStartHour && $currentHour < $baseEndHour) {
-                        $stillInSameRange = true;
-                    }
-                }
-                
-                if (!$stillInSameRange && $currentTimeRange) {
-                    // 时间段变化，检查基础金额是否在新时间段范围内
-                    $currentBaseMin = $isNewUser ? intval($currentTimeRange['new_user_base_min']) : intval($currentTimeRange['base_min_reward']);
-                    $currentBaseMax = $isNewUser ? intval($currentTimeRange['new_user_base_max']) : intval($currentTimeRange['base_max_reward']);
-                    
-                    // 如果基础金额不在当前时间段范围内，需要重新生成
-                    if ($baseAmount < $currentBaseMin || $baseAmount > $currentBaseMax) {
-                        $needNewBase = true;
-                        Log::info("红包基础金额重新生成: 用户{$userId}, 旧基础金额{$baseAmount}不在新时间段[{$currentBaseMin}-{$currentBaseMax}]内");
-                    }
-                }
-            }
-            
-            if ($needNewBase) {
-                // 生成新的基础金额（从缓存获取配置范围）
-                $baseRange = RedPacketRewardConfig::getBaseRewardRange($todayAmount, $currentHour, $isNewUser);
-                
-                // 如果基础金额范围不存在（不在任何区间），不生成金额
-                if ($baseRange === null) {
-                    Log::info("红包基础金额不在区间内，不生成: 用户{$userId}, 今日金额{$todayAmount}, 当前小时{$currentHour}");
-                    $this->success('获取成功', [
-                        'amount' => 0,
-                        'base_amount' => $baseAmount,
-                        'accumulate_amount' => $accumulateAmount,
-                        'total_amount' => $totalAmount,
-                        'click_count' => $clickCount,
-                        'is_new_base' => false,
-                        'max_limit' => $maxLimit,
-                        'reached_limit' => $totalAmount >= $maxLimit,
-                        'reason' => 'base_range_not_found'
-                    ]);
-                    return;
-                }
-                
-                $baseAmount = RedPacketRewardConfig::randomAmount($baseRange);
-                $baseAmount = min($baseAmount, $maxLimit);
-                
-                $accumulateAmount = 0;
-                $totalAmount = $baseAmount;
-                $clickCount = 1;
-                $baseHour = $currentHour;
-                $isNewBase = true;
-                
-                // 记录基础金额生成时的时间段
-                $baseStartHour = $currentTimeRange ? intval($currentTimeRange['start_hour']) : 0;
-                $baseEndHour = $currentTimeRange ? intval($currentTimeRange['end_hour']) : 24;
-                
-                $addedAmount = $baseAmount;
-            } else {
-                // 累加金额（从缓存获取配置范围）
-                $accumulateRange = RedPacketRewardConfig::getAccumulateRewardRange($todayAmount, $currentHour, $isNewUser);
-                
-                // 如果累加金额范围不存在（不在任何区间），不生成金额
-                if ($accumulateRange === null) {
-                    Log::info("红包累加金额不在区间内，不生成: 用户{$userId}, 今日金额{$todayAmount}, 当前小时{$currentHour}");
-                    $this->success('获取成功', [
-                        'amount' => 0,
-                        'base_amount' => $baseAmount,
-                        'accumulate_amount' => $accumulateAmount,
-                        'total_amount' => $totalAmount,
-                        'click_count' => $clickCount + 1,
-                        'is_new_base' => false,
-                        'max_limit' => $maxLimit,
-                        'reached_limit' => $totalAmount >= $maxLimit,
-                        'reason' => 'accumulate_range_not_found'
-                    ]);
-                    return;
-                }
-                
-                $addAmount = RedPacketRewardConfig::randomAmount($accumulateRange);
+                // 当前红包金额不为0 → 生成累加金额
+                $addAmount = RedPacketRewardConfig::generateAccumulateAmount($todayAmount, $currentHour, $isNewUser);
                 
                 // 检查封顶
-                if ($totalAmount >= $maxLimit) {
+                if ($currentAmount >= $maxLimit) {
                     $addAmount = 0;
-                } elseif ($totalAmount + $addAmount > $maxLimit) {
-                    $addAmount = $maxLimit - $totalAmount;
+                } elseif ($currentAmount + $addAmount > $maxLimit) {
+                    $addAmount = $maxLimit - $currentAmount;
                 }
                 
-                $accumulateAmount += $addAmount;
-                $totalAmount = $baseAmount + $accumulateAmount;
-                $clickCount++;
-                
-                $addedAmount = $addAmount;
+                // 更新数据
+                $newTotal = $currentAmount + $addAmount;
+                $redis->hMSet($redisKey, [
+                    'accumulate_amount' => intval($clickData['accumulate_amount'] ?? 0) + $addAmount,
+                    'total_amount' => $newTotal,
+                    'click_count' => intval($clickData['click_count'] ?? 0) + 1,
+                    'updatetime' => time()
+                ]);
             }
             
-            // 存储到Redis
-            $redis->hMSet($redisKey, [
-                'base_amount' => $baseAmount,
-                'accumulate_amount' => $accumulateAmount,
-                'total_amount' => $totalAmount,
-                'click_count' => $clickCount,
-                'task_id' => $taskId,
-                'base_hour' => $baseHour,
-                'base_start_hour' => isset($baseStartHour) ? $baseStartHour : ($clickData['base_start_hour'] ?? 0),
-                'base_end_hour' => isset($baseEndHour) ? $baseEndHour : ($clickData['base_end_hour'] ?? 24),
-                'is_new_user' => $isNewUser ? 1 : 0,
-                'today_amount' => $todayAmount,
-                'updatetime' => time()
-            ]);
             $redis->expire($redisKey, self::REDIS_EXPIRE);
             
+            // 获取最新的红包数据
+            $latestData = $redis->hGetAll($redisKey);
+            
             $this->success('获取成功', [
-                'amount' => $addedAmount,
-                'base_amount' => $baseAmount,
-                'accumulate_amount' => $accumulateAmount,
-                'total_amount' => $totalAmount,
-                'click_count' => $clickCount,
-                'is_new_base' => $isNewBase,
+                'amount' => $addAmount,
+                'total_amount' => intval($latestData['total_amount'] ?? 0),
                 'max_limit' => $maxLimit,
-                'reached_limit' => $totalAmount >= $maxLimit
+                'reached_limit' => intval($latestData['total_amount'] ?? 0) >= $maxLimit
             ]);
             
         } catch (\Exception $e) {
@@ -294,9 +192,6 @@ class RedPacket extends Api
             if ($result['success']) {
                 $this->success('领取成功', [
                     'amount' => $totalAmount,
-                    'base_amount' => $baseAmount,
-                    'accumulate_amount' => $accumulateAmount,
-                    'click_count' => $clickCount,
                     'balance' => $result['balance']
                 ]);
             } else {
@@ -315,11 +210,6 @@ class RedPacket extends Api
     /**
      * 获取当前累计金额
      * @api {get} /api/redpacket/amount 获取累计金额
-     * @apiSuccess {Number} base_amount 基础金额
-     * @apiSuccess {Number} accumulate_amount 累加金额
-     * @apiSuccess {Number} total_amount 总金额
-     * @apiSuccess {Number} click_count 点击次数
-     * @apiSuccess {Number} max_limit 封顶额度
      */
     public function amount()
     {
@@ -334,25 +224,11 @@ class RedPacket extends Api
             $redis = Cache::store('redis')->handler();
             $clickData = $redis->hGetAll($redisKey);
             
-            $baseAmount = 0;
-            $accumulateAmount = 0;
-            $totalAmount = 0;
-            $clickCount = 0;
-            
-            if ($clickData && isset($clickData['total_amount'])) {
-                $baseAmount = intval($clickData['base_amount'] ?? 0);
-                $accumulateAmount = intval($clickData['accumulate_amount'] ?? 0);
-                $totalAmount = intval($clickData['total_amount'] ?? 0);
-                $clickCount = intval($clickData['click_count'] ?? 0);
-            }
-            
+            $totalAmount = isset($clickData['total_amount']) ? intval($clickData['total_amount']) : 0;
             $maxLimit = RedPacketRewardConfig::getMaxRewardLimit();
             
             $this->success('获取成功', [
-                'base_amount' => $baseAmount,
-                'accumulate_amount' => $accumulateAmount,
                 'total_amount' => $totalAmount,
-                'click_count' => $clickCount,
                 'max_limit' => $maxLimit,
                 'reached_limit' => $totalAmount >= $maxLimit
             ]);
