@@ -3,7 +3,6 @@
 namespace app\admin\controller\withdraw;
 
 use app\common\controller\Backend;
-use app\common\library\WithdrawService;
 use app\common\model\WithdrawOrderSplit;
 use think\Db;
 use think\Exception;
@@ -117,7 +116,7 @@ class Order extends Backend
         if ($this->request->isPost()) {
             $id = $this->request->post('id');
             $remark = $this->request->post('remark', '');
-            
+
             // 查找订单（可能在分表中）
             $order = $this->findOrder($id);
             if (!$order) {
@@ -130,15 +129,22 @@ class Order extends Backend
 
             Db::startTrans();
             try {
-                $withdrawService = new WithdrawService();
-                $result = $withdrawService->approveOrder($id, $this->auth->id, $this->auth->username, $remark);
+                // 获取订单所在表名
+                $tableName = $order['_table'] ?? 'withdraw_order';
 
-                if (!$result['success']) {
-                    throw new Exception($result['message']);
-                }
+                // 更新订单状态
+                Db::name($tableName)->where('id', $id)->update([
+                    'status' => 1, // 待打款
+                    'audit_type' => 1, // 人工审核
+                    'audit_admin_id' => $this->auth->id,
+                    'audit_admin_name' => $this->auth->username,
+                    'audit_time' => time(),
+                    'audit_remark' => $remark,
+                    'updatetime' => time(),
+                ]);
 
                 Db::commit();
-                $this->success('审核通过');
+                $this->success('审核通过，订单进入待打款状态');
             } catch (Exception $e) {
                 Db::rollback();
                 $this->error($e->getMessage());
@@ -261,13 +267,13 @@ class Order extends Backend
             $id = $this->request->post('id');
             $reason = $this->request->post('reason', '');
             $customReason = $this->request->post('custom_reason', '');
-            
+
             $rejectReason = $reason === 'custom' ? $customReason : $reason;
-            
+
             if (empty($rejectReason)) {
                 $this->error('请选择或填写拒绝原因');
             }
-            
+
             // 查找订单（可能在分表中）
             $order = $this->findOrder($id);
             if (!$order) {
@@ -280,12 +286,64 @@ class Order extends Backend
 
             Db::startTrans();
             try {
-                $withdrawService = new WithdrawService();
-                $result = $withdrawService->rejectOrder($id, $rejectReason, $this->auth->id, $this->auth->username);
+                // 获取订单所在表名
+                $tableName = $order['_table'] ?? 'withdraw_order';
 
-                if (!$result['success']) {
-                    throw new Exception($result['message']);
+                // 获取用户账户
+                $account = Db::name('coin_account')
+                    ->where('user_id', $order['user_id'])
+                    ->lock(true)
+                    ->find();
+
+                if (!$account) {
+                    throw new Exception('用户账户不存在');
                 }
+
+                // 检查冻结金币是否足够
+                if ($account['frozen'] < $order['coin_amount']) {
+                    // 如果冻结不足，直接加到余额（兼容历史数据）
+                    Db::name('coin_account')
+                        ->where('user_id', $order['user_id'])
+                        ->update([
+                            'balance' => $account['balance'] + $order['coin_amount'],
+                            'updatetime' => time(),
+                        ]);
+                } else {
+                    // 解冻金币（从冻结转回余额）
+                    Db::name('coin_account')
+                        ->where('user_id', $order['user_id'])
+                        ->update([
+                            'balance' => $account['balance'] + $order['coin_amount'],
+                            'frozen' => $account['frozen'] - $order['coin_amount'],
+                            'updatetime' => time(),
+                        ]);
+                }
+
+                // 记录金币流水
+                $logTableName = 'coin_log_' . date('Ym');
+                Db::name($logTableName)->insert([
+                    'user_id' => $order['user_id'],
+                    'type' => 'withdraw_refund',
+                    'amount' => $order['coin_amount'],
+                    'balance_before' => $account['balance'],
+                    'balance_after' => $account['balance'] + $order['coin_amount'],
+                    'relation_type' => 'withdraw',
+                    'relation_id' => $id,
+                    'title' => '提现拒绝退还',
+                    'description' => "提现拒绝退还，订单号: {$order['order_no']}，原因: {$rejectReason}",
+                    'createtime' => time(),
+                    'create_date' => date('Y-m-d'),
+                ]);
+
+                // 更新订单状态
+                Db::name($tableName)->where('id', $id)->update([
+                    'status' => 4, // 审核拒绝
+                    'audit_admin_id' => $this->auth->id,
+                    'audit_admin_name' => $this->auth->username,
+                    'audit_time' => time(),
+                    'reject_reason' => $rejectReason,
+                    'updatetime' => time(),
+                ]);
 
                 Db::commit();
                 $this->success('已拒绝并退还金币');
@@ -424,18 +482,20 @@ class Order extends Backend
         // 先查主表
         $order = Db::name('withdraw_order')->where('id', $id)->find();
         if ($order) {
+            $order['_table'] = 'withdraw_order';
             return $order;
         }
-        
+
         // 查所有分表
         $tables = $this->splitModel->getTableList();
         foreach ($tables as $table) {
             $order = Db::name($table)->where('id', $id)->find();
             if ($order) {
+                $order['_table'] = $table;
                 return $order;
             }
         }
-        
+
         return null;
     }
 
