@@ -10,8 +10,8 @@
                     <div class="panel-body text-center">
                         <h4 class="text-info">今日提现</h4>
                         <p class="lead mb0">{$stats.today.count|default=0} 笔</p>
-                        <small class="text-muted">金币: {:number_format($stats['today']['coin_amount']|default=0)}</small><br>
-                        <small class="text-success">金额: ¥{:number_format($stats['today']['cash_amount']|default=0, 2)}</small>
+                        <small class="text-muted">金币: {$stats.today.coin_amount|default=0|number_format=###}</small><br>
+                        <small class="text-success">金额: ¥{$stats.today.cash_amount|default=0|number_format=###,2}</small>
                     </div>
                 </div>
             </div>
@@ -21,8 +21,8 @@
                     <div class="panel-body text-center">
                         <h4 class="text-warning">昨日提现</h4>
                         <p class="lead mb0">{$stats.yesterday.count|default=0} 笔</p>
-                        <small class="text-muted">金币: {:number_format($stats['yesterday']['coin_amount']|default=0)}</small><br>
-                        <small class="text-success">金额: ¥{:number_format($stats['yesterday']['cash_amount']|default=0, 2)}</small>
+                        <small class="text-muted">金币: {$stats.yesterday.coin_amount|default=0|number_format=###}</small><br>
+                        <small class="text-success">金额: ¥{$stats.yesterday.cash_amount|default=0|number_format=###,2}</small>
                     </div>
                 </div>
             </div>
@@ -32,8 +32,8 @@
                     <div class="panel-body text-center">
                         <h4 class="text-success">本月提现</h4>
                         <p class="lead mb0">{$stats.month.count|default=0} 笔</p>
-                        <small class="text-muted">金币: {:number_format($stats['month']['coin_amount']|default=0)}</small><br>
-                        <small class="text-success">金额: ¥{:number_format($stats['month']['cash_amount']|default=0, 2)}</small>
+                        <small class="text-muted">金币: {$stats.month.coin_amount|default=0|number_format=###}</small><br>
+                        <small class="text-success">金额: ¥{$stats.month.cash_amount|default=0|number_format=###,2}</small>
                     </div>
                 </div>
             </div>
@@ -43,7 +43,7 @@
                     <div class="panel-body text-center">
                         <h4 class="text-danger">待审核</h4>
                         <p class="lead mb0">{$stats.pending.count|default=0} 笔</p>
-                        <small class="text-danger">金额: ¥{:number_format($stats['pending']['amount']|default=0, 2)}</small><br>
+                        <small class="text-danger">金额: ¥{$stats.pending.amount|default=0|number_format=###,2}</small><br>
                         <a href="javascript:;" class="btn btn-xs btn-warning btn-quick-pending" style="margin-top:5px;">快速审核</a>
                     </div>
                 </div>
@@ -56,13 +56,13 @@
                 <div class="well well-sm">
                     <div class="row">
                         <div class="col-xs-4 text-center">
-                            <strong>今日成功:</strong> {$stats.today.success_count|default=0}笔 / ¥{:number_format($stats['today']['success_amount']|default=0, 2)}
+                            <strong>今日成功:</strong> {$stats.today.success_count|default=0}笔 / ¥{$stats.today.success_amount|default=0|number_format=###,2}
                         </div>
                         <div class="col-xs-4 text-center">
-                            <strong>昨日成功:</strong> {$stats.yesterday.success_count|default=0}笔 / ¥{:number_format($stats['yesterday']['success_amount']|default=0, 2)}
+                            <strong>昨日成功:</strong> {$stats.yesterday.success_count|default=0}笔 / ¥{$stats.yesterday.success_amount|default=0|number_format=###,2}
                         </div>
                         <div class="col-xs-4 text-center">
-                            <strong>本月成功:</strong> {$stats.month.success_count|default=0}笔 / ¥{:number_format($stats['month']['success_amount']|default=0, 2)}
+                            <strong>本月成功:</strong> {$stats.month.success_count|default=0}笔 / ¥{$stats.month.success_amount|default=0|number_format=###,2}
                         </div>
                     </div>
                 </div>
