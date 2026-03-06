@@ -170,9 +170,6 @@ class RedPacket extends Api
             $accumulateAmount = intval($clickData['accumulate_amount'] ?? 0);
             $clickCount = intval($clickData['click_count'] ?? 0);
             
-            // 删除Redis中的累计金额
-            $redis->del($redisKey);
-            
             // 发放金币
             $coinService = new CoinService();
             $result = $coinService->addCoin(
@@ -190,14 +187,14 @@ class RedPacket extends Api
             );
             
             if ($result['success']) {
+                // 发放成功后删除Redis中的累计金额，开启新一轮红包点击累加
+                $redis->del($redisKey);
+                
                 $this->success('领取成功', [
                     'amount' => $totalAmount,
                     'balance' => $result['balance']
                 ]);
             } else {
-                // 如果发放失败，恢复Redis中的金额
-                $redis->hMSet($redisKey, $clickData);
-                $redis->expire($redisKey, self::REDIS_EXPIRE);
                 $this->error($result['message'] ?? '发放失败');
             }
             
