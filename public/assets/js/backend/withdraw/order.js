@@ -261,7 +261,7 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form', 'bootstrap-datetimepi
         reject: function () {
             Controller.api.bindevent();
             // 处理拒绝原因选择
-            $('#reject-reason-select').on('change', function() {
+            $(document).on('change', '#reject-reason-select', function() {
                 if ($(this).val() === 'custom') {
                     $('#custom-reason-group').show();
                 } else {

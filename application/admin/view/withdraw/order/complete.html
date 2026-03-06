@@ -1,4 +1,4 @@
-<form id="complete-form" class="form-horizontal" role="form" data-success-url="withdraw/order/index">
+<form id="complete-form" class="form-horizontal" role="form" method="post" action="{$Request.url}">
     <div class="panel-body">
         <!-- 订单信息 -->
         <div class="panel panel-default">
@@ -139,7 +139,6 @@
 
         <!-- 隐藏字段 -->
         <input type="hidden" name="id" value="{$order.id}">
-        <input type="hidden" name="row[id]" value="{$order.id}">
     </div>
 
     <!-- 确认按钮 -->
@@ -148,9 +147,6 @@
         <div class="col-xs-12 col-sm-8">
             <button type="submit" class="btn btn-warning btn-embossed">
                 <i class="fa fa-money"></i> 确认打款成功
-            </button>
-            <button type="reset" class="btn btn-default btn-embossed ml-2">
-                重置
             </button>
         </div>
     </div>
