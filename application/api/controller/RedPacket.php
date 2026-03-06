@@ -20,8 +20,14 @@ class RedPacket extends Api
     // Redis键前缀 - 用于存储用户当前红包金额
     const REDIS_CLICK_PREFIX = 'red_packet:click:';
     
-    // 过期时间：24小时
+    // Redis键前缀 - 用于标记用户离开红包页面（待清理）
+    const REDIS_LEAVE_PREFIX = 'red_packet:leave:';
+    
+    // 过期时间：1小时
     const REDIS_EXPIRE = 3600;
+    
+    // 离开后清理倒计时：5分钟（用户离开5分钟后清理红包金额）
+    const CLEANUP_DELAY = 300;
     
     protected $service = null;
 
@@ -40,7 +46,6 @@ class RedPacket extends Api
      * 
      * @api {post} /api/redpacket/click 点击红包
      * @apiParam {Number} [task_id] 任务ID(可选)
-     * @apiSuccess {Number} amount 本次获得的金额（前端展示用）
      * @apiSuccess {Number} total_amount 当前红包总金额
      */
     public function click()
@@ -55,6 +60,10 @@ class RedPacket extends Api
         try {
             $redis = Cache::store('redis')->handler();
             $redisKey = self::REDIS_CLICK_PREFIX . $userId;
+            $leaveKey = self::REDIS_LEAVE_PREFIX . $userId;
+            
+            // 用户返回红包页面，删除"待清理"标记
+            $redis->del($leaveKey);
             
             // 获取当前小时
             $currentHour = intval(date('H'));
@@ -126,10 +135,7 @@ class RedPacket extends Api
             $latestData = $redis->hGetAll($redisKey);
             
             $this->success('获取成功', [
-                // 'amount' => $addAmount,
                 'total_amount' => intval($latestData['total_amount'] ?? 0),
-                // 'max_limit' => $maxLimit,
-                // 'reached_limit' => intval($latestData['total_amount'] ?? 0) >= $maxLimit
             ]);
             
         } catch (\Exception $e) {
@@ -155,6 +161,7 @@ class RedPacket extends Api
         $taskId = $this->request->post('task_id/d', 0);
         
         $redisKey = self::REDIS_CLICK_PREFIX . $userId;
+        $leaveKey = self::REDIS_LEAVE_PREFIX . $userId;
         
         try {
             $redis = Cache::store('redis')->handler();
@@ -189,6 +196,7 @@ class RedPacket extends Api
             if ($result['success']) {
                 // 发放成功后删除Redis中的累计金额，开启新一轮红包点击累加
                 $redis->del($redisKey);
+                $redis->del($leaveKey);
                 
                 $this->success('领取成功', [
                     'amount' => $totalAmount,
@@ -200,6 +208,117 @@ class RedPacket extends Api
             
         } catch (\Exception $e) {
             Log::error('红包领取失败: ' . $e->getMessage());
+            $this->error('系统错误: ' . $e->getMessage());
+        }
+    }
+    
+    /**
+     * 用户离开红包页面 - 标记待清理
+     * 
+     * 前端调用时机：
+     * 1. 页面隐藏（visibilitychange -> hidden）
+     * 2. 页面卸载（beforeunload）
+     * 3. 跳转到其他页面
+     * 
+     * 清理逻辑：
+     * - 用户离开后开始倒计时（默认5分钟）
+     * - 倒计时内用户返回（调用click接口），取消清理
+     * - 倒计时结束，自动清理红包金额
+     * 
+     * @api {post} /api/redpacket/leave 离开红包页面
+     * @apiSuccess {Boolean} cleanup_scheduled 是否已安排清理
+     * @apiSuccess {Number} cleanup_delay 清理倒计时（秒）
+     */
+    public function leave()
+    {
+        $userId = $this->auth->id;
+        if (!$userId) {
+            $this->error('请先登录');
+        }
+        
+        try {
+            $redis = Cache::store('redis')->handler();
+            $redisKey = self::REDIS_CLICK_PREFIX . $userId;
+            $leaveKey = self::REDIS_LEAVE_PREFIX . $userId;
+            
+            // 检查是否有红包金额
+            $clickData = $redis->hGetAll($redisKey);
+            $totalAmount = isset($clickData['total_amount']) ? intval($clickData['total_amount']) : 0;
+            
+            if ($totalAmount <= 0) {
+                // 没有红包金额，无需标记清理
+                $this->success('成功', [
+                    'cleanup_scheduled' => false,
+                    'message' => 'no_amount_to_cleanup'
+                ]);
+                return;
+            }
+            
+            // 设置"待清理"标记，5分钟后过期
+            // 过期后由定时任务或下次请求时检查并清理
+            $redis->setex($leaveKey, self::CLEANUP_DELAY, time());
+            
+            $this->success('成功', [
+                'cleanup_scheduled' => true,
+                'cleanup_delay' => self::CLEANUP_DELAY,
+                'total_amount' => $totalAmount
+            ]);
+            
+        } catch (\Exception $e) {
+            Log::error('红包离开标记失败: ' . $e->getMessage());
+            $this->error('系统错误: ' . $e->getMessage());
+        }
+    }
+    
+    /**
+     * 检查并清理过期红包
+     * 
+     * 可由以下方式触发：
+     * 1. 定时任务（推荐）
+     * 2. 用户请求时被动检查
+     * 
+     * @api {get} /api/redpacket/cleanup 清理过期红包（内部接口）
+     */
+    public function cleanup()
+    {
+        // 简单的安全检查，只允许内部调用或定时任务
+        $secret = $this->request->get('secret', '');
+        if ($secret !== 'red_packet_cleanup_2024') {
+            $this->error('无权访问');
+        }
+        
+        try {
+            $redis = Cache::store('redis')->handler();
+            
+            // 扫描所有离开标记键
+            $pattern = self::REDIS_LEAVE_PREFIX . '*';
+            $iterator = null;
+            $cleanedCount = 0;
+            
+            while (($keys = $redis->scan($iterator, $pattern, 100)) !== false) {
+                foreach ($keys as $leaveKey) {
+                    // 检查标记是否还存在（未过期则存在）
+                    if ($redis->exists($leaveKey)) {
+                        // 提取用户ID
+                        $userId = str_replace(self::REDIS_LEAVE_PREFIX, '', $leaveKey);
+                        $redisKey = self::REDIS_CLICK_PREFIX . $userId;
+                        
+                        // 清理红包金额
+                        $redis->del($redisKey);
+                        $redis->del($leaveKey);
+                        
+                        $cleanedCount++;
+                        Log::info("红包金额已清理: 用户{$userId}");
+                    }
+                }
+            }
+            
+            $this->success('清理完成', [
+                'cleaned_count' => $cleanedCount
+            ]);
+            
+        } catch (\Exception $e) {
+            Log::error('红包清理失败: ' . $e->getMessage());
             $this->error('系统错误: ' . $e->getMessage());
         }
     }
@@ -222,12 +341,9 @@ class RedPacket extends Api
             $clickData = $redis->hGetAll($redisKey);
             
             $totalAmount = isset($clickData['total_amount']) ? intval($clickData['total_amount']) : 0;
-            $maxLimit = RedPacketRewardConfig::getMaxRewardLimit();
             
             $this->success('获取成功', [
                 'total_amount' => $totalAmount,
-                // 'max_limit' => $maxLimit,
-                // 'reached_limit' => $totalAmount >= $maxLimit
             ]);
             
         } catch (\Exception $e) {
