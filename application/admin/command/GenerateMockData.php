@@ -93,7 +93,6 @@ class GenerateMockData extends Command
                     'balance' => mt_rand(10000, 500000),
                     'total_earn' => mt_rand(100000, 1000000),
                     'total_withdraw' => mt_rand(0, 100000),
-                    'status' => 'normal',
                     'createtime' => time(),
                     'updatetime' => time(),
                 ]);
@@ -429,7 +428,6 @@ class GenerateMockData extends Command
                     'balance' => mt_rand(10000, 500000),
                     'total_earn' => mt_rand(100000, 1000000),
                     'total_withdraw' => mt_rand(0, 100000),
-                    'status' => 'normal',
                     'createtime' => time(),
                     'updatetime' => time(),
                 ]);
