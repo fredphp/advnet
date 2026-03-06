@@ -473,10 +473,15 @@ class RedPacketRewardConfig extends Model
     /**
      * 获取基础奖励区间（考虑时间与金额的交集）
      * 
+     * 逻辑说明：
+     * 1. 如果生成的基础金额小于累计金额区间最小值，则不在累计金额区间获取基础金额
+     * 2. 如果生成的基础金额小于时间范围区间最小值，则不在时间范围区间获取基础金额
+     * 3. 如果两个配置的交集为空，则不生成金额
+     * 
      * @param int $todayAmount 今日已领取金额
      * @param int|null $hour 当前小时（null则使用当前时间）
      * @param bool $isNewUser 是否新用户
-     * @return array ['min' => 下限, 'max' => 上限]
+     * @return array|null ['min' => 下限, 'max' => 上限]，如果不在任何区间则返回null
      */
     public static function getBaseRewardRange($todayAmount = 0, $hour = null, $isNewUser = false)
     {
@@ -493,45 +498,57 @@ class RedPacketRewardConfig extends Model
         // 获取最高限制
         $maxLimit = self::getMaxRewardLimit();
 
-        // 默认值
-        $defaultTimeRange = $isNewUser ? ['min' => 5000, 'max' => 10000] : ['min' => 2000, 'max' => 4000];
-        $defaultAmountRange = $isNewUser ? ['min' => 5000, 'max' => 10000] : ['min' => 4000, 'max' => 6000];
+        // 初始化时间范围和金额范围为null
+        $timeRange = null;
+        $amountRange = null;
 
-        // 提取时间配置的奖励区间
+        // 提取时间配置的奖励区间（只有配置存在时才设置）
         if ($timeConfig) {
             $timeRange = $isNewUser 
                 ? ['min' => intval($timeConfig['new_user_base_min']), 'max' => min(intval($timeConfig['new_user_base_max']), $maxLimit)]
                 : ['min' => intval($timeConfig['base_min_reward']), 'max' => min(intval($timeConfig['base_max_reward']), $maxLimit)];
-        } else {
-            $timeRange = $defaultTimeRange;
         }
 
-        // 提取今日金额配置的奖励区间
+        // 提取今日金额配置的奖励区间（只有配置存在时才设置）
         if ($amountConfig) {
             $amountRange = $isNewUser 
                 ? ['min' => intval($amountConfig['new_user_base_min']), 'max' => min(intval($amountConfig['new_user_base_max']), $maxLimit)]
                 : ['min' => intval($amountConfig['base_min_reward']), 'max' => min(intval($amountConfig['base_max_reward']), $maxLimit)];
-        } else {
-            $amountRange = $defaultAmountRange;
+        }
+
+        // 如果两个配置都不存在，返回null（不在任何区间获取）
+        if ($timeRange === null && $amountRange === null) {
+            return null;
+        }
+
+        // 如果只有一个配置存在，返回该配置的范围
+        if ($timeRange === null) {
+            return $amountRange;
+        }
+        if ($amountRange === null) {
+            return $timeRange;
         }
 
         // 计算交集
         $intersection = self::intersectRanges($timeRange, $amountRange);
 
-        if ($intersection) {
-            return $intersection;
-        } else {
-            return $timeRange;
-        }
+        // 如果交集为空，返回null（不在区间内，不生成金额）
+        return $intersection;
     }
 
     /**
      * 获取累加奖励区间（考虑时间与金额的交集）
      * 
+     * 逻辑说明：
+     * 1. 如果前面生成的累加金额小于下一个取值范围的最小值，则不再生成金额
+     * 2. 如果累计金额配置不存在或不在区间内，则不在累计金额区间获取
+     * 3. 如果时间范围配置不存在或不在区间内，则不在时间范围区间获取
+     * 4. 如果两个配置的交集为空，则不生成金额
+     * 
      * @param int $todayAmount 今日已领取金额
      * @param int|null $hour 当前小时
      * @param bool $isNewUser 是否新用户
-     * @return array ['min' => 下限, 'max' => 上限]
+     * @return array|null ['min' => 下限, 'max' => 上限]，如果不在任何区间则返回null
      */
     public static function getAccumulateRewardRange($todayAmount = 0, $hour = null, $isNewUser = false)
     {
@@ -548,36 +565,42 @@ class RedPacketRewardConfig extends Model
         // 获取最高限制
         $maxLimit = self::getMaxRewardLimit();
 
-        // 默认值
-        $defaultTimeRange = $isNewUser ? ['min' => 2000, 'max' => 4000] : ['min' => 500, 'max' => 1500];
-        $defaultAmountRange = $isNewUser ? ['min' => 2000, 'max' => 4000] : ['min' => 2000, 'max' => 4000];
+        // 初始化时间范围和金额范围为null
+        $timeRange = null;
+        $amountRange = null;
 
-        // 提取时间配置的奖励区间
+        // 提取时间配置的奖励区间（只有配置存在时才设置）
         if ($timeConfig) {
             $timeRange = $isNewUser 
                 ? ['min' => intval($timeConfig['new_user_accumulate_min']), 'max' => min(intval($timeConfig['new_user_accumulate_max']), $maxLimit)]
                 : ['min' => intval($timeConfig['accumulate_min_reward']), 'max' => min(intval($timeConfig['accumulate_max_reward']), $maxLimit)];
-        } else {
-            $timeRange = $defaultTimeRange;
         }
 
-        // 提取今日金额配置的奖励区间
+        // 提取今日金额配置的奖励区间（只有配置存在时才设置）
         if ($amountConfig) {
             $amountRange = $isNewUser 
                 ? ['min' => intval($amountConfig['new_user_accumulate_min']), 'max' => min(intval($amountConfig['new_user_accumulate_max']), $maxLimit)]
                 : ['min' => intval($amountConfig['accumulate_min_reward']), 'max' => min(intval($amountConfig['accumulate_max_reward']), $maxLimit)];
-        } else {
-            $amountRange = $defaultAmountRange;
+        }
+
+        // 如果两个配置都不存在，返回null（不在任何区间获取）
+        if ($timeRange === null && $amountRange === null) {
+            return null;
+        }
+
+        // 如果只有一个配置存在，返回该配置的范围
+        if ($timeRange === null) {
+            return $amountRange;
+        }
+        if ($amountRange === null) {
+            return $timeRange;
         }
 
         // 计算交集
         $intersection = self::intersectRanges($timeRange, $amountRange);
 
-        if ($intersection) {
-            return $intersection;
-        } else {
-            return $timeRange;
-        }
+        // 如果交集为空，返回null（不在区间内，不生成金额）
+        return $intersection;
     }
 
     /**

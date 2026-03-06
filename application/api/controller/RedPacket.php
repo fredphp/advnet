@@ -138,6 +138,24 @@ class RedPacket extends Api
             if ($needNewBase) {
                 // 生成新的基础金额（从缓存获取配置范围）
                 $baseRange = RedPacketRewardConfig::getBaseRewardRange($todayAmount, $currentHour, $isNewUser);
+                
+                // 如果基础金额范围不存在（不在任何区间），不生成金额
+                if ($baseRange === null) {
+                    Log::info("红包基础金额不在区间内，不生成: 用户{$userId}, 今日金额{$todayAmount}, 当前小时{$currentHour}");
+                    $this->success('获取成功', [
+                        'amount' => 0,
+                        'base_amount' => $baseAmount,
+                        'accumulate_amount' => $accumulateAmount,
+                        'total_amount' => $totalAmount,
+                        'click_count' => $clickCount,
+                        'is_new_base' => false,
+                        'max_limit' => $maxLimit,
+                        'reached_limit' => $totalAmount >= $maxLimit,
+                        'reason' => 'base_range_not_found'
+                    ]);
+                    return;
+                }
+                
                 $baseAmount = RedPacketRewardConfig::randomAmount($baseRange);
                 $baseAmount = min($baseAmount, $maxLimit);
                 
@@ -155,6 +173,24 @@ class RedPacket extends Api
             } else {
                 // 累加金额（从缓存获取配置范围）
                 $accumulateRange = RedPacketRewardConfig::getAccumulateRewardRange($todayAmount, $currentHour, $isNewUser);
+                
+                // 如果累加金额范围不存在（不在任何区间），不生成金额
+                if ($accumulateRange === null) {
+                    Log::info("红包累加金额不在区间内，不生成: 用户{$userId}, 今日金额{$todayAmount}, 当前小时{$currentHour}");
+                    $this->success('获取成功', [
+                        'amount' => 0,
+                        'base_amount' => $baseAmount,
+                        'accumulate_amount' => $accumulateAmount,
+                        'total_amount' => $totalAmount,
+                        'click_count' => $clickCount + 1,
+                        'is_new_base' => false,
+                        'max_limit' => $maxLimit,
+                        'reached_limit' => $totalAmount >= $maxLimit,
+                        'reason' => 'accumulate_range_not_found'
+                    ]);
+                    return;
+                }
+                
                 $addAmount = RedPacketRewardConfig::randomAmount($accumulateRange);
                 
                 // 检查封顶
