@@ -117,14 +117,25 @@ class Order extends Backend
             $id = $this->request->post('id');
             $remark = $this->request->post('remark', '');
 
+            if (empty($id)) {
+                $this->error('参数错误，缺少订单ID');
+            }
+
             // 查找订单（可能在分表中）
             $order = $this->findOrder($id);
             if (!$order) {
-                $this->error('订单不存在');
+                $this->error('订单不存在，ID: ' . $id);
             }
 
-            if ($order['status'] != 0) {
-                $this->error('该订单已处理');
+            // 调试：检查订单状态和来源表
+            $currentStatus = isset($order['status']) ? intval($order['status']) : -1;
+            $tableName = $order['_table'] ?? '未知表';
+            $orderId = $order['id'] ?? '未知';
+            $orderNo = $order['order_no'] ?? '未知';
+            
+            if ($currentStatus != 0) {
+                $statusText = $this->statusList[$currentStatus] ?? '未知状态';
+                $this->error("该订单已处理\n\n订单ID: {$orderId}\n订单号: {$orderNo}\n当前状态: {$statusText} (status={$currentStatus})\n数据表: {$tableName}");
             }
 
             Db::startTrans();
