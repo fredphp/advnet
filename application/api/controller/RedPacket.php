@@ -21,7 +21,7 @@ class RedPacket extends Api
     const REDIS_CLICK_PREFIX = 'red_packet:click:';
     
     // 过期时间：24小时
-    const REDIS_EXPIRE = 86400;
+    const REDIS_EXPIRE = 3600;
     
     protected $service = null;
 
@@ -126,10 +126,10 @@ class RedPacket extends Api
             $latestData = $redis->hGetAll($redisKey);
             
             $this->success('获取成功', [
-                'amount' => $addAmount,
+                // 'amount' => $addAmount,
                 'total_amount' => intval($latestData['total_amount'] ?? 0),
-                'max_limit' => $maxLimit,
-                'reached_limit' => intval($latestData['total_amount'] ?? 0) >= $maxLimit
+                // 'max_limit' => $maxLimit,
+                // 'reached_limit' => intval($latestData['total_amount'] ?? 0) >= $maxLimit
             ]);
             
         } catch (\Exception $e) {
@@ -229,8 +229,8 @@ class RedPacket extends Api
             
             $this->success('获取成功', [
                 'total_amount' => $totalAmount,
-                'max_limit' => $maxLimit,
-                'reached_limit' => $totalAmount >= $maxLimit
+                // 'max_limit' => $maxLimit,
+                // 'reached_limit' => $totalAmount >= $maxLimit
             ]);
             
         } catch (\Exception $e) {
