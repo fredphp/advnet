@@ -114,20 +114,27 @@ class Order extends Backend
     public function approve($ids = null)
     {
         if ($this->request->isPost()) {
+            // 支持通过订单号或ID查询
+            $orderNo = $this->request->post('order_no');
             $id = $this->request->post('id');
             $remark = $this->request->post('remark', '');
 
-            if (empty($id)) {
-                $this->error('参数错误，缺少订单ID');
+            if (empty($orderNo) && empty($id)) {
+                $this->error('参数错误，缺少订单号或订单ID');
             }
 
-            // 查找订单（可能在分表中）
-            $order = $this->findOrder($id);
+            // 优先使用订单号查询（避免分表ID重复问题）
+            $order = $orderNo ? $this->findOrderByNo($orderNo) : $this->findOrder($id);
+            
+            // 检查是否找到订单
+            if (isset($order['_not_found']) && $order['_not_found']) {
+                $this->error('订单不存在');
+            }
+            
             if (!$order) {
-                $this->error('订单不存在，ID: ' . $id);
+                $this->error('订单不存在');
             }
 
-            // 调试：检查订单状态和来源表
             $currentStatus = isset($order['status']) ? intval($order['status']) : -1;
             $tableName = $order['_table'] ?? '未知表';
             $orderId = $order['id'] ?? '未知';
@@ -135,7 +142,7 @@ class Order extends Backend
             
             if ($currentStatus != 0) {
                 $statusText = $this->statusList[$currentStatus] ?? '未知状态';
-                $this->error("该订单已处理\n\n订单ID: {$orderId}\n订单号: {$orderNo}\n当前状态: {$statusText} (status={$currentStatus})\n数据表: {$tableName}");
+                $this->error("该订单已处理，当前状态: {$statusText}");
             }
 
             Db::startTrans();
@@ -143,8 +150,8 @@ class Order extends Backend
                 // 获取订单所在表名
                 $tableName = $order['_table'] ?? 'withdraw_order';
 
-                // 更新订单状态
-                Db::name($tableName)->where('id', $id)->update([
+                // 更新订单状态 - 使用订单号作为条件
+                Db::name($tableName)->where('order_no', $order['order_no'])->update([
                     'status' => 1, // 待打款
                     'audit_type' => 1, // 人工审核
                     'audit_admin_id' => $this->auth->id,
@@ -163,8 +170,11 @@ class Order extends Backend
         }
         
         // GET请求 - 显示弹窗
-        $order = $this->findOrder($ids);
-        if (!$order) {
+        // 优先使用订单号查询
+        $orderNo = $this->request->get('order_no');
+        $order = $orderNo ? $this->findOrderByNo($orderNo) : $this->findOrder($ids);
+        
+        if (!$order || (isset($order['_not_found']) && $order['_not_found'])) {
             $this->error('订单不存在');
         }
         
@@ -275,6 +285,8 @@ class Order extends Backend
     public function reject($ids = null)
     {
         if ($this->request->isPost()) {
+            // 支持通过订单号或ID查询
+            $orderNo = $this->request->post('order_no');
             $id = $this->request->post('id');
             $reason = $this->request->post('reason', '');
             $customReason = $this->request->post('custom_reason', '');
@@ -285,9 +297,9 @@ class Order extends Backend
                 $this->error('请选择或填写拒绝原因');
             }
 
-            // 查找订单（可能在分表中）
-            $order = $this->findOrder($id);
-            if (!$order) {
+            // 优先使用订单号查询
+            $order = $orderNo ? $this->findOrderByNo($orderNo) : $this->findOrder($id);
+            if (!$order || (isset($order['_not_found']) && $order['_not_found'])) {
                 $this->error('订单不存在');
             }
 
@@ -339,15 +351,15 @@ class Order extends Backend
                     'balance_before' => $account['balance'],
                     'balance_after' => $account['balance'] + $order['coin_amount'],
                     'relation_type' => 'withdraw',
-                    'relation_id' => $id,
+                    'relation_id' => $order['id'],
                     'title' => '提现拒绝退还',
                     'description' => "提现拒绝退还，订单号: {$order['order_no']}，原因: {$rejectReason}",
                     'createtime' => time(),
                     'create_date' => date('Y-m-d'),
                 ]);
 
-                // 更新订单状态
-                Db::name($tableName)->where('id', $id)->update([
+                // 更新订单状态 - 使用订单号作为条件
+                Db::name($tableName)->where('order_no', $order['order_no'])->update([
                     'status' => 4, // 审核拒绝
                     'audit_admin_id' => $this->auth->id,
                     'audit_admin_name' => $this->auth->username,
@@ -365,8 +377,9 @@ class Order extends Backend
         }
         
         // GET请求 - 显示弹窗
-        $order = $this->findOrder($ids);
-        if (!$order) {
+        $orderNo = $this->request->get('order_no');
+        $order = $orderNo ? $this->findOrderByNo($orderNo) : $this->findOrder($ids);
+        if (!$order || (isset($order['_not_found']) && $order['_not_found'])) {
             $this->error('订单不存在');
         }
         
@@ -393,13 +406,15 @@ class Order extends Backend
     public function complete($ids = null)
     {
         if ($this->request->isPost()) {
+            // 支持通过订单号或ID查询
+            $orderNo = $this->request->post('order_no');
             $id = $this->request->post('id');
             $transferNo = $this->request->post('transfer_no', '');
             $remark = $this->request->post('remark', '');
             
-            // 查找订单（可能在分表中）
-            $order = $this->findOrder($id);
-            if (!$order) {
+            // 优先使用订单号查询
+            $order = $orderNo ? $this->findOrderByNo($orderNo) : $this->findOrder($id);
+            if (!$order || (isset($order['_not_found']) && $order['_not_found'])) {
                 $this->error('订单不存在');
             }
 
@@ -411,7 +426,7 @@ class Order extends Backend
             Db::startTrans();
             try {
                 // 确认打款成功
-                $this->completeOrder($id, $transferNo, $this->auth->id, $remark);
+                $this->completeOrder($order, $transferNo, $this->auth->id, $remark);
 
                 Db::commit();
                 $this->success('打款成功');
@@ -422,8 +437,9 @@ class Order extends Backend
         }
         
         // GET请求 - 显示弹窗
-        $order = $this->findOrder($ids);
-        if (!$order) {
+        $orderNo = $this->request->get('order_no');
+        $order = $orderNo ? $this->findOrderByNo($orderNo) : $this->findOrder($ids);
+        if (!$order || (isset($order['_not_found']) && $order['_not_found'])) {
             $this->error('订单不存在');
         }
         
@@ -486,12 +502,14 @@ class Order extends Backend
     }
 
     /**
-     * 查找订单（可能在分表中）
+     * 查找订单（可能在分表中）- 通过ID查询
+     * 注意：分表中不同表可能有相同ID，建议使用 findOrderByNo 方法
      */
     protected function findOrder($id)
     {
         // 先查主表
         $order = Db::name('withdraw_order')->where('id', $id)->find();
+        
         if ($order) {
             $order['_table'] = 'withdraw_order';
             return $order;
@@ -499,8 +517,39 @@ class Order extends Backend
 
         // 查所有分表
         $tables = $this->splitModel->getTableList();
+        
         foreach ($tables as $table) {
             $order = Db::name($table)->where('id', $id)->find();
+            
+            if ($order) {
+                $order['_table'] = $table;
+                return $order;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * 通过订单号查找订单（推荐方式）
+     * 订单号是全局唯一的，不会出现分表ID重复问题
+     */
+    protected function findOrderByNo($orderNo)
+    {
+        // 先查主表
+        $order = Db::name('withdraw_order')->where('order_no', $orderNo)->find();
+        
+        if ($order) {
+            $order['_table'] = 'withdraw_order';
+            return $order;
+        }
+
+        // 查所有分表
+        $tables = $this->splitModel->getTableList();
+        
+        foreach ($tables as $table) {
+            $order = Db::name($table)->where('order_no', $orderNo)->find();
+            
             if ($order) {
                 $order['_table'] = $table;
                 return $order;
@@ -513,9 +562,8 @@ class Order extends Backend
     /**
      * 完成订单打款
      */
-    protected function completeOrder($id, $transferNo, $adminId, $remark = '')
+    protected function completeOrder($order, $transferNo, $adminId, $remark = '')
     {
-        $order = $this->findOrder($id);
         if (!$order) {
             throw new Exception('订单不存在');
         }
@@ -550,9 +598,9 @@ class Order extends Backend
                 'updatetime' => time(),
             ]);
         
-        // 更新订单
+        // 更新订单 - 使用订单号作为条件
         $tableName = $order['_table'] ?? 'withdraw_order';
-        Db::name($tableName)->where('id', $id)->update($updateData);
+        Db::name($tableName)->where('order_no', $order['order_no'])->update($updateData);
         
         // 记录金币流水
         $logTableName = 'coin_log_' . date('Ym');
@@ -563,7 +611,7 @@ class Order extends Backend
             'balance_before' => $account['balance'],
             'balance_after' => $account['balance'],
             'relation_type' => 'withdraw',
-            'relation_id' => $id,
+            'relation_id' => $order['id'],
             'title' => '提现成功',
             'description' => "提现成功，订单号: {$order['order_no']}，金额: ¥{$order['cash_amount']}",
             'createtime' => time(),
@@ -623,7 +671,10 @@ class Order extends Backend
      */
     public function detail($ids = null)
     {
-        $order = $this->findOrder($ids);
+        // 支持通过订单号或ID查询
+        $orderNo = $this->request->get('order_no');
+        $order = $orderNo ? $this->findOrderByNo($orderNo) : $this->findOrder($ids);
+        
         if (!$order) {
             $this->error('订单不存在');
         }

@@ -65,12 +65,26 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form', 'bootstrap-datetimepi
                             formatter: Table.api.formatter.operate,
                             buttons: [
                                 {
+                                    name: 'detail',
+                                    text: __('Detail'),
+                                    title: __('Detail'),
+                                    classname: 'btn btn-xs btn-primary btn-dialog',
+                                    icon: 'fa fa-list',
+                                    url: function(row) {
+                                        // 使用订单号作为唯一标识
+                                        return 'withdraw/order/detail?order_no=' + encodeURIComponent(row.order_no);
+                                    }
+                                },
+                                {
                                     name: 'approve',
                                     text: '审核通过',
                                     title: '审核通过',
                                     classname: 'btn btn-xs btn-success btn-dialog',
                                     icon: 'fa fa-check',
-                                    url: 'withdraw/order/approve',
+                                    url: function(row) {
+                                        // 使用订单号作为唯一标识，避免分表ID重复问题
+                                        return 'withdraw/order/approve?order_no=' + encodeURIComponent(row.order_no);
+                                    },
                                     hidden: function(row) {
                                         // 只有待审核状态(status=0)才显示审核通过按钮
                                         return row.status != 0;
@@ -82,7 +96,10 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form', 'bootstrap-datetimepi
                                     title: '审核拒绝',
                                     classname: 'btn btn-xs btn-danger btn-dialog',
                                     icon: 'fa fa-times',
-                                    url: 'withdraw/order/reject',
+                                    url: function(row) {
+                                        // 使用订单号作为唯一标识
+                                        return 'withdraw/order/reject?order_no=' + encodeURIComponent(row.order_no);
+                                    },
                                     hidden: function(row) {
                                         // 只有待审核状态(status=0)才显示审核拒绝按钮
                                         return row.status != 0;
@@ -94,7 +111,10 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form', 'bootstrap-datetimepi
                                     title: '确认打款',
                                     classname: 'btn btn-xs btn-warning btn-dialog',
                                     icon: 'fa fa-money',
-                                    url: 'withdraw/order/complete',
+                                    url: function(row) {
+                                        // 使用订单号作为唯一标识
+                                        return 'withdraw/order/complete?order_no=' + encodeURIComponent(row.order_no);
+                                    },
                                     hidden: function(row) {
                                         // 只有审核通过/待打款状态(status=1)才显示确认打款按钮
                                         return row.status != 1;
@@ -118,72 +138,72 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form', 'bootstrap-datetimepi
 
             // 审核通过 - 弹窗方式（只能选择待审核状态的记录）
             $(document).on('click', '.btn-approve', function() {
-                var ids = Table.api.selectedids(table);
-                if (ids.length === 0) {
+                var rows = table.bootstrapTable('getSelections');
+                if (rows.length === 0) {
                     Toastr.error('请选择要审核的记录');
                     return;
                 }
-                if (ids.length > 1) {
+                if (rows.length > 1) {
                     Toastr.error('请选择单条记录进行审核');
                     return;
                 }
 
                 // 检查选中记录的状态
-                var rows = table.bootstrapTable('getSelections');
                 if (rows[0].status != 0) {
                     Toastr.error('只能审核待审核状态的订单');
                     return;
                 }
 
-                Fast.api.open('withdraw/order/approve/ids/' + ids[0], '审核通过', {
+                // 使用订单号作为唯一标识（避免分表ID重复问题）
+                Fast.api.open('withdraw/order/approve?order_no=' + encodeURIComponent(rows[0].order_no), '审核通过', {
                     area: ['800px', '90%']
                 });
             });
 
             // 审核拒绝 - 弹窗方式（只能选择待审核状态的记录）
             $(document).on('click', '.btn-reject', function() {
-                var ids = Table.api.selectedids(table);
-                if (ids.length === 0) {
+                var rows = table.bootstrapTable('getSelections');
+                if (rows.length === 0) {
                     Toastr.error('请选择要拒绝的记录');
                     return;
                 }
-                if (ids.length > 1) {
+                if (rows.length > 1) {
                     Toastr.error('请选择单条记录进行操作');
                     return;
                 }
 
                 // 检查选中记录的状态
-                var rows = table.bootstrapTable('getSelections');
                 if (rows[0].status != 0) {
                     Toastr.error('只能拒绝待审核状态的订单');
                     return;
                 }
 
-                Fast.api.open('withdraw/order/reject/ids/' + ids[0], '审核拒绝', {
+                // 使用订单号作为唯一标识
+                Fast.api.open('withdraw/order/reject?order_no=' + encodeURIComponent(rows[0].order_no), '审核拒绝', {
                     area: ['600px', '500px']
                 });
             });
 
             // 确认打款 - 弹窗方式（只能选择审核通过/待打款状态的记录）
             $(document).on('click', '.btn-complete', function() {
-                var ids = Table.api.selectedids(table);
-                if (ids.length === 0) {
+                var rows = table.bootstrapTable('getSelections');
+                if (rows.length === 0) {
                     Toastr.error('请选择要打款的记录');
                     return;
                 }
-                if (ids.length > 1) {
+                if (rows.length > 1) {
                     Toastr.error('请选择单条记录进行打款');
                     return;
                 }
 
                 // 检查选中记录的状态
-                var rows = table.bootstrapTable('getSelections');
                 if (rows[0].status != 1) {
                     Toastr.error('只能对审核通过（待打款）状态的订单进行打款');
                     return;
                 }
 
-                Fast.api.open('withdraw/order/complete/ids/' + ids[0], '确认打款', {
+                // 使用订单号作为唯一标识
+                Fast.api.open('withdraw/order/complete?order_no=' + encodeURIComponent(rows[0].order_no), '确认打款', {
                     area: ['800px', '90%']
                 });
             });
