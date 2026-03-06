@@ -178,6 +178,14 @@ abstract class SplitTableModel extends Model
         
         // 获取主表结构
         $mainTable = $prefix . $this->baseTable;
+        
+        // 先检查主表是否存在
+        $mainExists = Db::query("SHOW TABLES LIKE '{$mainTable}'");
+        if (empty($mainExists)) {
+            Log::error("分表创建失败: 主表 {$mainTable} 不存在");
+            return false;
+        }
+        
         $createSql = "CREATE TABLE IF NOT EXISTS `{$fullTableName}` LIKE `{$mainTable}`";
         
         try {
@@ -188,6 +196,29 @@ abstract class SplitTableModel extends Model
             Log::error("分表创建失败: {$fullTableName}, 错误: " . $e->getMessage());
             return false;
         }
+    }
+    
+    /**
+     * 自动创建当月和下月分表
+     * 在应用启动时调用
+     * @return bool
+     */
+    public static function autoCreateTables()
+    {
+        $instance = new static();
+        
+        if (!$instance->enableSplit) {
+            return true;
+        }
+        
+        // 创建当月和下月分表
+        for ($i = 0; $i < 2; $i++) {
+            $timestamp = strtotime("+{$i} months");
+            $tableName = $instance->getTableName($timestamp);
+            $instance->ensureTableExists($tableName);
+        }
+        
+        return true;
     }
     
     /**

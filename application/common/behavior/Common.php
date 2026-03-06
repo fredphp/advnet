@@ -13,6 +13,16 @@ class Common
     {
         $allowLangList = Config::get('allow_lang_list') ?? ['zh-cn', 'en'];
         Lang::setAllowLangList($allowLangList);
+        
+        // 自动创建分表（当月和下月）
+        try {
+            if (class_exists('app\\common\\library\\SplitTableService')) {
+                \app\common\library\SplitTableService::autoCreateIfNeeded();
+            }
+        } catch (\Exception $e) {
+            // 分表创建失败不影响应用启动
+            \think\Log::error('分表自动创建失败: ' . $e->getMessage());
+        }
     }
 
     public function appDispatch(&$dispatch)
