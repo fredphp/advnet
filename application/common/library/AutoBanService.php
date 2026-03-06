@@ -3,8 +3,9 @@
 namespace app\common\library;
 
 use think\Db;
-use think Exception;
-use think Cache;
+use think\Exception;
+use think\Cache;
+use think\Log;
 use app\common\model\UserRiskScore;
 use app\common\model\BanRecord;
 use app\common\model\RiskBlacklist;

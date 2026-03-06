@@ -5,6 +5,7 @@ namespace app\common\library;
 use think\Db;
 use think\Exception;
 use think\Cache;
+use think\Log;
 use app\common\model\DeviceFingerprint;
 use app\common\model\RiskBlacklist;
 
