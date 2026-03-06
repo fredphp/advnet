@@ -732,49 +732,60 @@ class Order extends Backend
     {
         // 支持通过订单号或ID查询
         $orderNo = $this->request->get('order_no');
-        $order = $orderNo ? $this->findOrderByNo($orderNo) : $this->findOrder($ids);
+        
+        try {
+            $order = $orderNo ? $this->findOrderByNo($orderNo) : $this->findOrder($ids);
+        } catch (\Exception $e) {
+            $this->error('查询订单失败: ' . $e->getMessage());
+        }
         
         if (!$order) {
             $this->error('订单不存在');
         }
 
         // 用户信息
-        $user = Db::name('user')->where('id', $order['user_id'])->find();
-
-        // 用户提现统计
-        $userStats = Db::name('withdraw_stat')
-            ->where('user_id', $order['user_id'])
-            ->find();
-
-        // 风险信息
-        $riskInfo = Db::name('user_risk_score')
-            ->where('user_id', $order['user_id'])
-            ->find();
-
-        // 最近提现记录
-        $recentOrders = [];
-        $tables = $this->splitModel->getTableList();
-        foreach ($tables as $table) {
-            $records = Db::name($table)
-                ->where('user_id', $order['user_id'])
-                ->where('id', '<>', $ids)
-                ->order('createtime', 'desc')
-                ->limit(5 - count($recentOrders))
-                ->select();
-            foreach ($records as $record) {
-                $record['status_text'] = $this->statusList[$record['status']] ?? '未知';
-                $recentOrders[] = $record;
-            }
-            if (count($recentOrders) >= 5) break;
+        $user = Db::name('user')->where('id', $order['user_id'])->field('id,nickname,mobile,avatar')->find();
+        if (!$user) {
+            $user = ['id' => $order['user_id'], 'nickname' => '用户不存在', 'mobile' => '', 'avatar' => ''];
         }
 
-        $this->success('', [
-            'order' => $order,
-            'user' => $user,
-            'user_stats' => $userStats,
-            'risk_info' => $riskInfo,
-            'recent_orders' => $recentOrders,
-        ]);
+        // 将用户信息直接合并到订单数组中，简化视图访问
+        $order['user_nickname'] = $user['nickname'];
+        $order['user_mobile'] = $user['mobile'];
+        
+        // 将完整的用户对象也保存，供视图使用
+        $order['user'] = $user;
+        
+        // 状态文本
+        $order['status_text'] = isset($this->statusList[$order['status']]) ? $this->statusList[$order['status']] : '未知';
+        
+        // 确保所有需要的字段都有默认值
+        $order['order_no'] = isset($order['order_no']) ? $order['order_no'] : '';
+        $order['coin_amount'] = isset($order['coin_amount']) ? $order['coin_amount'] : 0;
+        $order['cash_amount'] = isset($order['cash_amount']) ? $order['cash_amount'] : 0;
+        $order['fee_amount'] = isset($order['fee_amount']) ? $order['fee_amount'] : 0;
+        $order['actual_amount'] = isset($order['actual_amount']) ? $order['actual_amount'] : $order['cash_amount'];
+        $order['withdraw_type'] = isset($order['withdraw_type']) ? $order['withdraw_type'] : '';
+        $order['withdraw_name'] = isset($order['withdraw_name']) ? $order['withdraw_name'] : '';
+        $order['withdraw_account'] = isset($order['withdraw_account']) ? $order['withdraw_account'] : '';
+        $order['bank_name'] = isset($order['bank_name']) ? $order['bank_name'] : '';
+        $order['bank_branch'] = isset($order['bank_branch']) ? $order['bank_branch'] : '';
+        $order['createtime'] = isset($order['createtime']) ? $order['createtime'] : 0;
+        $order['user_id'] = isset($order['user_id']) ? $order['user_id'] : 0;
+        $order['audit_admin_name'] = isset($order['audit_admin_name']) ? $order['audit_admin_name'] : '';
+        $order['audit_admin_id'] = isset($order['audit_admin_id']) ? $order['audit_admin_id'] : 0;
+        $order['audit_time'] = isset($order['audit_time']) ? $order['audit_time'] : 0;
+        $order['audit_remark'] = isset($order['audit_remark']) ? $order['audit_remark'] : '';
+        $order['reject_reason'] = isset($order['reject_reason']) ? $order['reject_reason'] : '';
+        $order['transfer_admin_name'] = isset($order['transfer_admin_name']) ? $order['transfer_admin_name'] : '';
+        $order['transfer_admin_id'] = isset($order['transfer_admin_id']) ? $order['transfer_admin_id'] : 0;
+        $order['transfer_time'] = isset($order['transfer_time']) ? $order['transfer_time'] : 0;
+        $order['transfer_no'] = isset($order['transfer_no']) ? $order['transfer_no'] : '';
+        $order['complete_time'] = isset($order['complete_time']) ? $order['complete_time'] : 0;
+        $order['fail_reason'] = isset($order['fail_reason']) ? $order['fail_reason'] : '';
+
+        $this->view->assign('row', $order);
+        return $this->view->fetch();
     }
 
     /**

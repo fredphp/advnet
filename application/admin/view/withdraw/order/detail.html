@@ -7,20 +7,20 @@
                 <table class="table table-bordered">
                     <tr>
                         <td width="120">订单号</td>
-                        <td>{$row.order_no}</td>
+                        <td>{$row.order_no|default=''}</td>
                         <td width="120">状态</td>
                         <td>
-                            {if $row.status == 0}
+                            {if condition="$row.status == 0"}
                             <span class="label label-warning">待审核</span>
-                            {elseif $row.status == 1}
+                            {elseif condition="$row.status == 1"}
                             <span class="label label-info">审核通过</span>
-                            {elseif $row.status == 2}
+                            {elseif condition="$row.status == 2"}
                             <span class="label label-primary">打款中</span>
-                            {elseif $row.status == 3}
+                            {elseif condition="$row.status == 3"}
                             <span class="label label-success">提现成功</span>
-                            {elseif $row.status == 4}
+                            {elseif condition="$row.status == 4"}
                             <span class="label label-danger">审核拒绝</span>
-                            {elseif $row.status == 5}
+                            {elseif condition="$row.status == 5"}
                             <span class="label label-danger">打款失败</span>
                             {else}
                             <span class="label label-default">已取消</span>
@@ -29,71 +29,71 @@
                     </tr>
                     <tr>
                         <td>提现金币</td>
-                        <td><strong class="text-primary">{$row.coin_amount|number_format=###}</strong></td>
+                        <td><strong class="text-primary">{$row.coin_amount|default=0}</strong></td>
                         <td>提现金额</td>
-                        <td><strong class="text-danger">¥{$row.cash_amount}</strong></td>
+                        <td><strong class="text-danger">¥{$row.cash_amount|default='0.00'}</strong></td>
                     </tr>
                     <tr>
                         <td>手续费</td>
-                        <td>¥{$row.fee_amount|default=0}</td>
+                        <td>¥{$row.fee_amount|default='0.00'}</td>
                         <td>实际到账</td>
-                        <td><strong class="text-success">¥{$row.actual_amount|default=$row.cash_amount}</strong></td>
+                        <td><strong class="text-success">¥{$row.actual_amount|default=$row.cash_amount|default='0.00'}</strong></td>
                     </tr>
                     <tr>
                         <td>提现方式</td>
                         <td>
-                            {if $row.withdraw_type == 'alipay'}支付宝
-                            {elseif $row.withdraw_type == 'wechat'}微信
-                            {elseif $row.withdraw_type == 'bank'}银行卡
-                            {else}{$row.withdraw_type}{/if}
+                            {if condition="$row.withdraw_type == 'alipay'"}支付宝
+                            {elseif condition="$row.withdraw_type == 'wechat'"}微信
+                            {elseif condition="$row.withdraw_type == 'bank'"}银行卡
+                            {else}{$row.withdraw_type|default=''}{/if}
                         </td>
                         <td>收款人</td>
-                        <td>{$row.withdraw_name}</td>
+                        <td>{$row.withdraw_name|default=''}</td>
                     </tr>
                     <tr>
                         <td>收款账号</td>
-                        <td colspan="3">{$row.withdraw_account}</td>
+                        <td colspan="3">{$row.withdraw_account|default=''}</td>
                     </tr>
-                    {if $row.bank_name}
+                    {if condition="isset($row['bank_name']) && $row['bank_name']"}
                     <tr>
                         <td>银行信息</td>
-                        <td colspan="3">{$row.bank_name} {$row.bank_branch}</td>
+                        <td colspan="3">{$row.bank_name|default=''} {$row.bank_branch|default=''}</td>
                     </tr>
                     {/if}
                     <tr>
                         <td>申请时间</td>
                         <td>{$row.createtime|date='Y-m-d H:i:s',###}</td>
                         <td>用户ID</td>
-                        <td>{$row.user_id}</td>
+                        <td>{$row.user_id|default=0}</td>
                     </tr>
                 </table>
             </div>
         </div>
 
         <!-- 审核信息 -->
-        {if $row.status > 0}
+        {if condition="isset($row['status']) && $row['status'] > 0"}
         <div class="panel panel-default">
             <div class="panel-heading"><strong>审核信息</strong></div>
             <div class="panel-body">
                 <table class="table table-bordered">
-                    {if $row.audit_admin_name}
+                    {if condition="isset($row['audit_admin_name']) && $row['audit_admin_name']"}
                     <tr>
                         <td width="120">审核人</td>
-                        <td>{$row.audit_admin_name} (ID: {$row.audit_admin_id})</td>
+                        <td>{$row.audit_admin_name|default=''} (ID: {$row.audit_admin_id|default=0})</td>
                         <td width="120">审核时间</td>
                         <td>{$row.audit_time|date='Y-m-d H:i:s',###}</td>
                     </tr>
                     {/if}
-                    {if $row.audit_remark}
+                    {if condition="isset($row['audit_remark']) && $row['audit_remark']"}
                     <tr>
                         <td>审核备注</td>
-                        <td colspan="3">{$row.audit_remark}</td>
+                        <td colspan="3">{$row.audit_remark|default=''}</td>
                     </tr>
                     {/if}
-                    {if $row.reject_reason}
+                    {if condition="isset($row['reject_reason']) && $row['reject_reason']"}
                     <tr>
                         <td>拒绝原因</td>
-                        <td colspan="3" class="text-danger"><strong>{$row.reject_reason}</strong></td>
+                        <td colspan="3" class="text-danger"><strong>{$row.reject_reason|default=''}</strong></td>
                     </tr>
                     {/if}
                 </table>
@@ -102,35 +102,35 @@
         {/if}
 
         <!-- 打款信息 -->
-        {if $row.status >= 3}
+        {if condition="isset($row['status']) && $row['status'] >= 3"}
         <div class="panel panel-default">
             <div class="panel-heading"><strong>打款信息</strong></div>
             <div class="panel-body">
                 <table class="table table-bordered">
-                    {if $row.transfer_admin_name}
+                    {if condition="isset($row['transfer_admin_name']) && $row['transfer_admin_name']"}
                     <tr>
                         <td width="120">打款操作人</td>
-                        <td>{$row.transfer_admin_name} (ID: {$row.transfer_admin_id})</td>
+                        <td>{$row.transfer_admin_name|default=''} (ID: {$row.transfer_admin_id|default=0})</td>
                         <td width="120">打款时间</td>
                         <td>{$row.transfer_time|date='Y-m-d H:i:s',###}</td>
                     </tr>
                     {/if}
-                    {if $row.transfer_no}
+                    {if condition="isset($row['transfer_no']) && $row['transfer_no']"}
                     <tr>
                         <td>打款流水号</td>
-                        <td colspan="3">{$row.transfer_no}</td>
+                        <td colspan="3">{$row.transfer_no|default=''}</td>
                     </tr>
                     {/if}
-                    {if $row.complete_time}
+                    {if condition="isset($row['complete_time']) && $row['complete_time']"}
                     <tr>
                         <td>完成时间</td>
                         <td colspan="3">{$row.complete_time|date='Y-m-d H:i:s',###}</td>
                     </tr>
                     {/if}
-                    {if $row.fail_reason}
+                    {if condition="isset($row['fail_reason']) && $row['fail_reason']"}
                     <tr>
                         <td>失败原因</td>
-                        <td colspan="3" class="text-danger">{$row.fail_reason}</td>
+                        <td colspan="3" class="text-danger">{$row.fail_reason|default=''}</td>
                     </tr>
                     {/if}
                 </table>
