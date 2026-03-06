@@ -3,6 +3,7 @@
 namespace app\api\middleware;
 
 use app\common\library\RiskControlService;
+use think\Cache;
 use think\Response;
 
 /**
