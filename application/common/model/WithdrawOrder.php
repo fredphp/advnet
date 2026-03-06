@@ -28,11 +28,9 @@ class WithdrawOrder extends Model
         6 => '已取消'
     ];
     
-    // 提现方式
+    // 提现方式（只支持微信）
     public static $typeList = [
-        'alipay' => '支付宝',
-        'wechat' => '微信',
-        'bank' => '银行卡'
+        'wechat' => '微信'
     ];
     
     /**

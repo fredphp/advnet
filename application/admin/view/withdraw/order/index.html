@@ -1,75 +1,6 @@
 <div class="panel panel-default panel-intro">
     {:build_heading()}
 
-    <!-- 统计面板 -->
-    <div class="panel-body" style="padding: 15px; background: #f9f9f9; margin-bottom: 15px;">
-        <div class="row">
-            <!-- 今日提现 -->
-            <div class="col-xs-6 col-sm-3">
-                <div class="panel panel-default">
-                    <div class="panel-body text-center">
-                        <h4 class="text-info">今日提现</h4>
-                        <p class="lead mb0">{$stats.today.count|default=0} 笔</p>
-                        <small class="text-muted">金币: {$stats.today.coin_amount|default=0|number_format=###}</small><br>
-                        <small class="text-success">金额: ¥{$stats.today.cash_amount|default=0|number_format=###,2}</small>
-                    </div>
-                </div>
-            </div>
-            <!-- 昨日提现 -->
-            <div class="col-xs-6 col-sm-3">
-                <div class="panel panel-default">
-                    <div class="panel-body text-center">
-                        <h4 class="text-warning">昨日提现</h4>
-                        <p class="lead mb0">{$stats.yesterday.count|default=0} 笔</p>
-                        <small class="text-muted">金币: {$stats.yesterday.coin_amount|default=0|number_format=###}</small><br>
-                        <small class="text-success">金额: ¥{$stats.yesterday.cash_amount|default=0|number_format=###,2}</small>
-                    </div>
-                </div>
-            </div>
-            <!-- 本月提现 -->
-            <div class="col-xs-6 col-sm-3">
-                <div class="panel panel-default">
-                    <div class="panel-body text-center">
-                        <h4 class="text-success">本月提现</h4>
-                        <p class="lead mb0">{$stats.month.count|default=0} 笔</p>
-                        <small class="text-muted">金币: {$stats.month.coin_amount|default=0|number_format=###}</small><br>
-                        <small class="text-success">金额: ¥{$stats.month.cash_amount|default=0|number_format=###,2}</small>
-                    </div>
-                </div>
-            </div>
-            <!-- 待审核 -->
-            <div class="col-xs-6 col-sm-3">
-                <div class="panel panel-default">
-                    <div class="panel-body text-center">
-                        <h4 class="text-danger">待审核</h4>
-                        <p class="lead mb0">{$stats.pending.count|default=0} 笔</p>
-                        <small class="text-danger">金额: ¥{$stats.pending.amount|default=0|number_format=###,2}</small><br>
-                        <a href="javascript:;" class="btn btn-xs btn-warning btn-quick-pending" style="margin-top:5px;">快速审核</a>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- 第二行统计 -->
-        <div class="row" style="margin-top: 10px;">
-            <div class="col-xs-12">
-                <div class="well well-sm">
-                    <div class="row">
-                        <div class="col-xs-4 text-center">
-                            <strong>今日成功:</strong> {$stats.today.success_count|default=0}笔 / ¥{$stats.today.success_amount|default=0|number_format=###,2}
-                        </div>
-                        <div class="col-xs-4 text-center">
-                            <strong>昨日成功:</strong> {$stats.yesterday.success_count|default=0}笔 / ¥{$stats.yesterday.success_amount|default=0|number_format=###,2}
-                        </div>
-                        <div class="col-xs-4 text-center">
-                            <strong>本月成功:</strong> {$stats.month.success_count|default=0}笔 / ¥{$stats.month.success_amount|default=0|number_format=###,2}
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
     <div class="panel-body">
         <div id="myTabContent" class="tab-content">
             <div class="tab-pane fade active in" id="one">
@@ -80,11 +11,6 @@
                         <a href="javascript:;" class="btn btn-danger btn-reject btn-disabled disabled {:$auth->check('withdraw/order/reject')?'':'hide'}" title="审核拒绝"><i class="fa fa-times"></i> 审核拒绝</a>
                         <a href="javascript:;" class="btn btn-warning btn-complete btn-disabled disabled {:$auth->check('withdraw/order/complete')?'':'hide'}" title="确认打款"><i class="fa fa-money"></i> 确认打款</a>
                         <a href="javascript:;" class="btn btn-info btn-export {:$auth->check('withdraw/order/export')?'':'hide'}" title="导出"><i class="fa fa-download"></i> 导出</a>
-                        <div class="pull-right" style="margin-left: 10px;">
-                            <input type="text" class="form-control input-sm" id="start_date" name="start_date" placeholder="开始日期" style="width: 120px; display: inline-block;">
-                            <input type="text" class="form-control input-sm" id="end_date" name="end_date" placeholder="结束日期" style="width: 120px; display: inline-block;">
-                            <button class="btn btn-default btn-sm btn-filter-date">筛选</button>
-                        </div>
                     </div>
                     <table id="table" class="table table-striped table-bordered table-hover table-nowrap"
                            data-operate-detail="{:$auth->check('withdraw/order/detail')}"
@@ -95,3 +21,119 @@
         </div>
     </div>
 </div>
+
+<script>
+define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefined, Backend, Table, Form) {
+    var Controller = {
+        index: function () {
+            // 初始化表格参数配置
+            Table.api.init({
+                extend: {
+                    index_url: 'withdraw/order/index' + location.search,
+                    detail_url: 'withdraw/order/detail',
+                    multi_url: 'withdraw/order/multi',
+                    export_url: 'withdraw/order/export',
+                    table: 'withdraw_order',
+                }
+            });
+
+            var table = $("#table");
+
+            // 初始化表格
+            table.bootstrapTable({
+                url: $.fn.bootstrapTable.defaults.extend.index_url,
+                pk: 'id',
+                sortName: 'id',
+                sortOrder: 'desc',
+                columns: [
+                    [
+                        {checkbox: true},
+                        {field: 'id', title: __('ID'), sortable: true},
+                        {field: 'order_no', title: '订单号', operate: 'LIKE'},
+                        {field: 'user_id', title: '用户ID'},
+                        {field: 'coin_amount', title: '提现金币', sortable: true},
+                        {field: 'cash_amount', title: '提现金额(元)', sortable: true},
+                        {field: 'withdraw_type', title: '提现方式', formatter: function(value, row, index) { return '<span class="label label-success">微信</span>'; }},
+                        {field: 'withdraw_account', title: '收款账号'},
+                        {field: 'withdraw_name', title: '收款人'},
+                        {field: 'status', title: '状态', searchList: {"0":"待审核","1":"审核通过","2":"打款中","3":"提现成功","4":"审核拒绝","5":"打款失败","6":"已取消"}, formatter: Table.api.formatter.status},
+                        {field: 'createtime', title: '申请时间', operate:'RANGE', addclass:'datetimerange', autocomplete:false, formatter: Table.api.formatter.datetime},
+                        {field: 'operate', title: __('Operate'), table: table, events: Table.api.events.operate, formatter: Table.api.formatter.operate}
+                    ]
+                ]
+            });
+
+            // 审核通过
+            $(document).on('click', '.btn-approve', function() {
+                var ids = Table.api.selectedids(table);
+                if (ids.length === 0) {
+                    Toastr.error('请选择要审核的记录');
+                    return;
+                }
+                Layer.confirm('确认审核通过选中的记录？', {icon: 3, title: '提示'}, function(index) {
+                    Fast.api.ajax({
+                        url: 'withdraw/order/approve',
+                        data: {ids: ids.join(',')},
+                    }, function(data, ret) {
+                        Toastr.success(ret.msg);
+                        table.bootstrapTable('refresh');
+                        Layer.close(index);
+                    });
+                });
+            });
+
+            // 审核拒绝
+            $(document).on('click', '.btn-reject', function() {
+                var ids = Table.api.selectedids(table);
+                if (ids.length === 0) {
+                    Toastr.error('请选择要拒绝的记录');
+                    return;
+                }
+                Layer.prompt({title: '请输入拒绝原因', formType: 0}, function(value, index) {
+                    Fast.api.ajax({
+                        url: 'withdraw/order/reject',
+                        data: {ids: ids.join(','), reason: value},
+                    }, function(data, ret) {
+                        Toastr.success(ret.msg);
+                        table.bootstrapTable('refresh');
+                        Layer.close(index);
+                    });
+                });
+            });
+
+            // 确认打款
+            $(document).on('click', '.btn-complete', function() {
+                var ids = Table.api.selectedids(table);
+                if (ids.length === 0) {
+                    Toastr.error('请选择要打款的记录');
+                    return;
+                }
+                Layer.confirm('确认已打款？', {icon: 3, title: '提示'}, function(index) {
+                    Fast.api.ajax({
+                        url: 'withdraw/order/complete',
+                        data: {ids: ids.join(',')},
+                    }, function(data, ret) {
+                        Toastr.success(ret.msg);
+                        table.bootstrapTable('refresh');
+                        Layer.close(index);
+                    });
+                });
+            });
+
+            // 导出
+            $(document).on('click', '.btn-export', function() {
+                window.location.href = 'withdraw/order/export' + location.search;
+            });
+
+            // 为表格绑定事件
+            Table.api.bindevent(table);
+        },
+        api: {
+            bindevent: function () {
+                Form.api.bindevent($("form[role=form]"));
+            }
+        }
+    };
+    return Controller;
+});
+</script>
