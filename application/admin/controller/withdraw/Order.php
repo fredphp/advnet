@@ -568,17 +568,22 @@ class Order extends Backend
             throw new Exception('订单不存在');
         }
         
-        // 更新订单状态
+        // 更新订单状态 - 只更新表中存在的字段
         $updateData = [
             'status' => 3, // 提现成功
             'transfer_no' => $transferNo,
             'transfer_time' => time(),
             'complete_time' => time(),
-            'transfer_admin_id' => $adminId,
-            'transfer_admin_name' => $this->auth->username,
-            'transfer_remark' => $remark,
             'updatetime' => time(),
         ];
+        
+        // 将打款管理员信息和备注存入 transfer_result JSON
+        $transferResult = json_decode($order['transfer_result'] ?? '', true) ?: [];
+        $transferResult['transfer_admin_id'] = $adminId;
+        $transferResult['transfer_admin_name'] = $this->auth->username;
+        $transferResult['transfer_remark'] = $remark;
+        $transferResult['transfer_time'] = date('Y-m-d H:i:s');
+        $updateData['transfer_result'] = json_encode($transferResult, JSON_UNESCAPED_UNICODE);
         
         // 扣减冻结金币
         $account = Db::name('coin_account')
