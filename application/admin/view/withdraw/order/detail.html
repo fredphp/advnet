@@ -1,66 +1,156 @@
 <form id="detail-form" class="form-horizontal" role="form">
-    <div class="form-group">
-        <label class="control-label col-xs-12 col-sm-2">订单号:</label>
-        <div class="col-xs-12 col-sm-8">
-            <p class="form-control-static">{$row.order_no}</p>
+    <div class="panel-body">
+        <!-- 订单基本信息 -->
+        <div class="panel panel-default">
+            <div class="panel-heading"><strong>订单信息</strong></div>
+            <div class="panel-body">
+                <table class="table table-bordered">
+                    <tr>
+                        <td width="120">订单号</td>
+                        <td>{$row.order_no}</td>
+                        <td width="120">状态</td>
+                        <td>
+                            {if $row.status == 0}
+                            <span class="label label-warning">待审核</span>
+                            {elseif $row.status == 1}
+                            <span class="label label-info">审核通过</span>
+                            {elseif $row.status == 2}
+                            <span class="label label-primary">打款中</span>
+                            {elseif $row.status == 3}
+                            <span class="label label-success">提现成功</span>
+                            {elseif $row.status == 4}
+                            <span class="label label-danger">审核拒绝</span>
+                            {elseif $row.status == 5}
+                            <span class="label label-danger">打款失败</span>
+                            {else}
+                            <span class="label label-default">已取消</span>
+                            {/if}
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>提现金币</td>
+                        <td><strong class="text-primary">{$row.coin_amount|number_format=###}</strong></td>
+                        <td>提现金额</td>
+                        <td><strong class="text-danger">¥{$row.cash_amount}</strong></td>
+                    </tr>
+                    <tr>
+                        <td>手续费</td>
+                        <td>¥{$row.fee_amount|default=0}</td>
+                        <td>实际到账</td>
+                        <td><strong class="text-success">¥{$row.actual_amount|default=$row.cash_amount}</strong></td>
+                    </tr>
+                    <tr>
+                        <td>提现方式</td>
+                        <td>
+                            {if $row.withdraw_type == 'alipay'}支付宝
+                            {elseif $row.withdraw_type == 'wechat'}微信
+                            {elseif $row.withdraw_type == 'bank'}银行卡
+                            {else}{$row.withdraw_type}{/if}
+                        </td>
+                        <td>收款人</td>
+                        <td>{$row.withdraw_name}</td>
+                    </tr>
+                    <tr>
+                        <td>收款账号</td>
+                        <td colspan="3">{$row.withdraw_account}</td>
+                    </tr>
+                    {if $row.bank_name}
+                    <tr>
+                        <td>银行信息</td>
+                        <td colspan="3">{$row.bank_name} {$row.bank_branch}</td>
+                    </tr>
+                    {/if}
+                    <tr>
+                        <td>申请时间</td>
+                        <td>{$row.createtime|date='Y-m-d H:i:s',###}</td>
+                        <td>用户ID</td>
+                        <td>{$row.user_id}</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+
+        <!-- 审核信息 -->
+        {if $row.status > 0}
+        <div class="panel panel-default">
+            <div class="panel-heading"><strong>审核信息</strong></div>
+            <div class="panel-body">
+                <table class="table table-bordered">
+                    {if $row.audit_admin_name}
+                    <tr>
+                        <td width="120">审核人</td>
+                        <td>{$row.audit_admin_name} (ID: {$row.audit_admin_id})</td>
+                        <td width="120">审核时间</td>
+                        <td>{$row.audit_time|date='Y-m-d H:i:s',###}</td>
+                    </tr>
+                    {/if}
+                    {if $row.audit_remark}
+                    <tr>
+                        <td>审核备注</td>
+                        <td colspan="3">{$row.audit_remark}</td>
+                    </tr>
+                    {/if}
+                    {if $row.reject_reason}
+                    <tr>
+                        <td>拒绝原因</td>
+                        <td colspan="3" class="text-danger"><strong>{$row.reject_reason}</strong></td>
+                    </tr>
+                    {/if}
+                </table>
+            </div>
+        </div>
+        {/if}
+
+        <!-- 打款信息 -->
+        {if $row.status >= 3}
+        <div class="panel panel-default">
+            <div class="panel-heading"><strong>打款信息</strong></div>
+            <div class="panel-body">
+                <table class="table table-bordered">
+                    {if $row.transfer_admin_name}
+                    <tr>
+                        <td width="120">打款操作人</td>
+                        <td>{$row.transfer_admin_name} (ID: {$row.transfer_admin_id})</td>
+                        <td width="120">打款时间</td>
+                        <td>{$row.transfer_time|date='Y-m-d H:i:s',###}</td>
+                    </tr>
+                    {/if}
+                    {if $row.transfer_no}
+                    <tr>
+                        <td>打款流水号</td>
+                        <td colspan="3">{$row.transfer_no}</td>
+                    </tr>
+                    {/if}
+                    {if $row.complete_time}
+                    <tr>
+                        <td>完成时间</td>
+                        <td colspan="3">{$row.complete_time|date='Y-m-d H:i:s',###}</td>
+                    </tr>
+                    {/if}
+                    {if $row.fail_reason}
+                    <tr>
+                        <td>失败原因</td>
+                        <td colspan="3" class="text-danger">{$row.fail_reason}</td>
+                    </tr>
+                    {/if}
+                </table>
+            </div>
+        </div>
+        {/if}
+
+        <!-- 用户信息 -->
+        <div class="panel panel-default">
+            <div class="panel-heading"><strong>用户信息</strong></div>
+            <div class="panel-body">
+                <table class="table table-bordered">
+                    <tr>
+                        <td width="120">用户昵称</td>
+                        <td>{$row.user.nickname|default='-'}</td>
+                        <td width="120">手机号</td>
+                        <td>{$row.user.mobile|default='-'}</td>
+                    </tr>
+                </table>
+            </div>
         </div>
     </div>
-    <div class="form-group">
-        <label class="control-label col-xs-12 col-sm-2">用户:</label>
-        <div class="col-xs-12 col-sm-8">
-            <p class="form-control-static">{$row.username|default='-'} (ID: {$row.user_id})</p>
-        </div>
-    </div>
-    <div class="form-group">
-        <label class="control-label col-xs-12 col-sm-2">提现金额:</label>
-        <div class="col-xs-12 col-sm-8">
-            <p class="form-control-static">{$row.amount} 元</p>
-        </div>
-    </div>
-    <div class="form-group">
-        <label class="control-label col-xs-12 col-sm-2">提现金币:</label>
-        <div class="col-xs-12 col-sm-8">
-            <p class="form-control-static">{$row.coin_amount}</p>
-        </div>
-    </div>
-    <div class="form-group">
-        <label class="control-label col-xs-12 col-sm-2">提现方式:</label>
-        <div class="col-xs-12 col-sm-8">
-            <p class="form-control-static">{$row.withdraw_type|default='-'}</p>
-        </div>
-    </div>
-    <div class="form-group">
-        <label class="control-label col-xs-12 col-sm-2">收款账号:</label>
-        <div class="col-xs-12 col-sm-8">
-            <p class="form-control-static">{$row.account_info|default='-'}</p>
-        </div>
-    </div>
-    <div class="form-group">
-        <label class="control-label col-xs-12 col-sm-2">状态:</label>
-        <div class="col-xs-12 col-sm-8">
-            <p class="form-control-static">{$row.status}</p>
-        </div>
-    </div>
-    <div class="form-group">
-        <label class="control-label col-xs-12 col-sm-2">申请时间:</label>
-        <div class="col-xs-12 col-sm-8">
-            <p class="form-control-static">{$row.createtime|date='Y-m-d H:i:s',###}</p>
-        </div>
-    </div>
-    {if $row.audit_time}
-    <div class="form-group">
-        <label class="control-label col-xs-12 col-sm-2">审核时间:</label>
-        <div class="col-xs-12 col-sm-8">
-            <p class="form-control-static">{$row.audit_time|date='Y-m-d H:i:s',###}</p>
-        </div>
-    </div>
-    {/if}
-    {if $row.reject_reason}
-    <div class="form-group">
-        <label class="control-label col-xs-12 col-sm-2">拒绝原因:</label>
-        <div class="col-xs-12 col-sm-8">
-            <p class="form-control-static text-danger">{$row.reject_reason}</p>
-        </div>
-    </div>
-    {/if}
 </form>
