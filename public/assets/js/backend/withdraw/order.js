@@ -1,22 +1,27 @@
-define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefined, Backend, Table, Form) {
+define(['jquery', 'bootstrap', 'backend', 'table', 'form', 'bootstrap-datetimepicker'], function ($, undefined, Backend, Table, Form) {
 
     var Controller = {
         index: function () {
-            // 初始化表格配置
+            // 日期选择器
+            $('#start_date, #end_date').datetimepicker({
+                format: 'YYYY-MM-DD',
+                locale: 'zh-cn'
+            });
+
+            // 初始化表格参数配置
             Table.api.init({
                 extend: {
-                    index_url: 'withdraw/order/index',
+                    index_url: 'withdraw/order/index' + location.search,
                     detail_url: 'withdraw/order/detail',
-                    del_url: 'withdraw/order/del',
                     multi_url: 'withdraw/order/multi',
-                    table: '',
+                    export_url: 'withdraw/order/export',
+                    table: 'withdraw_order',
                 }
             });
 
-            // 初始化表格
             var table = $("#table");
 
-            // 表格配置
+            // 初始化表格
             table.bootstrapTable({
                 url: $.fn.bootstrapTable.defaults.extend.index_url,
                 pk: 'id',
@@ -25,35 +30,136 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
                 columns: [
                     [
                         {checkbox: true},
-                        {field: 'id', title: 'ID', sortable: true},
+                        {field: 'id', title: __('ID'), sortable: true},
                         {field: 'order_no', title: '订单号', operate: 'LIKE'},
-                        {field: 'user_id', title: '用户ID', sortable: true},
-                        {field: 'username', title: '用户名', operate: 'LIKE'},
-                        {field: 'nickname', title: '昵称', operate: 'LIKE'},
-                        {field: 'mobile', title: '手机号', operate: 'LIKE'},
-                        {field: 'coin_amount', title: '金币数量', sortable: true},
-                        {field: 'amount', title: '提现金额(元)', sortable: true, operate: 'BETWEEN'},
-                        {field: 'withdraw_type', title: '提现方式', searchList: {
-                            "alipay": "支付宝",
-                            "wechat": "微信",
-                            "bank": "银行卡"
-                        }},
-                        {field: 'account_no', title: '收款账号', operate: 'LIKE'},
-                        {field: 'status', title: '状态', searchList: {
-                            "0": "待审核",
-                            "1": "审核通过",
-                            "2": "打款中",
-                            "3": "提现成功",
-                            "4": "审核拒绝",
-                            "5": "打款失败",
-                            "6": "已取消"
-                        }, formatter: Table.api.formatter.status},
-                        {field: 'admin_name', title: '审核人'},
-                        {field: 'createtime', title: '申请时间', operate: 'RANGE', addclass: 'datetimerange', formatter: Table.api.formatter.datetime, sortable: true},
-                        {field: 'updatetime', title: '更新时间', operate: 'RANGE', addclass: 'datetimerange', formatter: Table.api.formatter.datetime, sortable: true, visible: false},
-                        {field: 'operate', title: '操作', table: table, events: Table.api.events.operate, formatter: Table.api.formatter.operate}
+                        {field: 'user_id', title: '用户ID'},
+                        {field: 'user.nickname', title: '用户昵称'},
+                        {field: 'coin_amount', title: '提现金币', sortable: true},
+                        {field: 'cash_amount', title: '提现金额(元)', sortable: true},
+                        {field: 'withdraw_type', title: '提现方式', searchList: {"alipay":"支付宝","wechat":"微信","bank":"银行卡"}, formatter: Table.api.formatter.status},
+                        {field: 'withdraw_account', title: '收款账号'},
+                        {field: 'withdraw_name', title: '收款人'},
+                        {field: 'status', title: '状态', searchList: {"0":"待审核","1":"审核通过","2":"打款中","3":"提现成功","4":"审核拒绝","5":"打款失败","6":"已取消"}, formatter: Table.api.formatter.status},
+                        {field: 'createtime', title: '申请时间', operate:'RANGE', addclass:'datetimerange', autocomplete:false, formatter: Table.api.formatter.datetime},
+                        {
+                            field: 'operate',
+                            title: __('Operate'),
+                            table: table,
+                            events: Table.api.events.operate,
+                            formatter: Table.api.formatter.operate,
+                            buttons: [
+                                {
+                                    name: 'approve',
+                                    text: '审核通过',
+                                    title: '审核通过',
+                                    classname: 'btn btn-xs btn-success btn-dialog',
+                                    icon: 'fa fa-check',
+                                    url: 'withdraw/order/approve',
+                                    hidden: function(row) {
+                                        return row.status != 0;
+                                    }
+                                },
+                                {
+                                    name: 'reject',
+                                    text: '审核拒绝',
+                                    title: '审核拒绝',
+                                    classname: 'btn btn-xs btn-danger btn-dialog',
+                                    icon: 'fa fa-times',
+                                    url: 'withdraw/order/reject',
+                                    hidden: function(row) {
+                                        return row.status != 0;
+                                    }
+                                },
+                                {
+                                    name: 'complete',
+                                    text: '确认打款',
+                                    title: '确认打款',
+                                    classname: 'btn btn-xs btn-warning btn-dialog',
+                                    icon: 'fa fa-money',
+                                    url: 'withdraw/order/complete',
+                                    hidden: function(row) {
+                                        return !$.inArray(row.status, [0, 1, 2]);
+                                    }
+                                }
+                            ]
+                        }
                     ]
                 ]
+            });
+
+            // 日期筛选
+            $(document).on('click', '.btn-filter-date', function() {
+                var startDate = $('#start_date').val();
+                var endDate = $('#end_date').val();
+                var url = 'withdraw/order/index';
+                if (startDate) url += '?start_date=' + startDate;
+                if (endDate) url += (startDate ? '&' : '?') + 'end_date=' + endDate;
+                table.bootstrapTable('refresh', {url: $.fn.bootstrapTable.defaults.extend.index_url.split('?')[0] + '?' + (startDate ? 'start_date=' + startDate + '&' : '') + (endDate ? 'end_date=' + endDate : '')});
+            });
+
+            // 审核通过 - 弹窗方式
+            $(document).on('click', '.btn-approve', function() {
+                var ids = Table.api.selectedids(table);
+                if (ids.length === 0) {
+                    Toastr.error('请选择要审核的记录');
+                    return;
+                }
+                if (ids.length > 1) {
+                    Toastr.error('请选择单条记录进行审核');
+                    return;
+                }
+                Fast.api.open('withdraw/order/approve/ids/' + ids[0], '审核通过', {
+                    area: ['800px', '90%']
+                });
+            });
+
+            // 审核拒绝 - 弹窗方式
+            $(document).on('click', '.btn-reject', function() {
+                var ids = Table.api.selectedids(table);
+                if (ids.length === 0) {
+                    Toastr.error('请选择要拒绝的记录');
+                    return;
+                }
+                if (ids.length > 1) {
+                    Toastr.error('请选择单条记录进行操作');
+                    return;
+                }
+                Fast.api.open('withdraw/order/reject/ids/' + ids[0], '审核拒绝', {
+                    area: ['600px', '500px']
+                });
+            });
+
+            // 确认打款 - 弹窗方式
+            $(document).on('click', '.btn-complete', function() {
+                var ids = Table.api.selectedids(table);
+                if (ids.length === 0) {
+                    Toastr.error('请选择要打款的记录');
+                    return;
+                }
+                if (ids.length > 1) {
+                    Toastr.error('请选择单条记录进行打款');
+                    return;
+                }
+                Fast.api.open('withdraw/order/complete/ids/' + ids[0], '确认打款', {
+                    area: ['800px', '90%']
+                });
+            });
+
+            // 导出
+            $(document).on('click', '.btn-export', function() {
+                var startDate = $('#start_date').val();
+                var endDate = $('#end_date').val();
+                var url = 'withdraw/order/export';
+                if (startDate) url += '?start_date=' + startDate;
+                if (endDate) url += (startDate ? '&' : '?') + 'end_date=' + endDate;
+                window.location.href = url;
+            });
+
+            // 快速审核
+            $(document).on('click', '.btn-quick-pending', function() {
+                Fast.api.open('withdraw/order/pending', '待审核列表', {
+                    area: ['90%', '90%']
+                });
             });
 
             // 为表格绑定事件
@@ -105,6 +211,23 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
             $('#start_date, #end_date').on('change', function () {
                 Controller.api.loadStatistics();
             });
+        },
+        approve: function () {
+            Controller.api.bindevent();
+        },
+        reject: function () {
+            Controller.api.bindevent();
+            // 处理拒绝原因选择
+            $('#reject-reason-select').on('change', function() {
+                if ($(this).val() === 'custom') {
+                    $('#custom-reason-group').show();
+                } else {
+                    $('#custom-reason-group').hide();
+                }
+            });
+        },
+        complete: function () {
+            Controller.api.bindevent();
         },
         add: function () {
             Controller.api.bindevent();

@@ -86,15 +86,3 @@
         <input type="hidden" name="id" value="{$order.id}">
     </div>
 </form>
-
-<script>
-$(function() {
-    $('#reject-reason-select').on('change', function() {
-        if ($(this).val() === 'custom') {
-            $('#custom-reason-group').show();
-        } else {
-            $('#custom-reason-group').hide();
-        }
-    });
-});
-</script>
