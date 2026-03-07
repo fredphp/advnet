@@ -6,11 +6,14 @@ use app\common\controller\Backend;
 use think\Db;
 
 /**
- * 风控记录管理
+ * 提现风控记录管理
  */
 class Risklog extends Backend
 {
     protected $model = null;
+
+    // 表名
+    protected $tableName = 'withdraw_risk_log';
 
     // 风险类型映射
     protected $riskTypeMap = [
@@ -53,7 +56,7 @@ class Risklog extends Backend
 
             $prefix = \think\Config::get('database.prefix');
 
-            $list = Db::name('risk_log')
+            $list = Db::name($this->tableName)
                 ->alias('rl')
                 ->join($prefix . 'user u', 'u.id = rl.user_id', 'LEFT')
                 ->field('rl.*, u.username, u.nickname')
@@ -62,7 +65,7 @@ class Risklog extends Backend
                 ->limit($offset, $limit)
                 ->select();
 
-            $total = Db::name('risk_log')
+            $total = Db::name($this->tableName)
                 ->alias('rl')
                 ->join($prefix . 'user u', 'u.id = rl.user_id', 'LEFT')
                 ->where($where)
@@ -87,7 +90,7 @@ class Risklog extends Backend
     {
         $prefix = \think\Config::get('database.prefix');
 
-        $row = Db::name('risk_log')
+        $row = Db::name($this->tableName)
             ->alias('rl')
             ->join($prefix . 'user u', 'u.id = rl.user_id', 'LEFT')
             ->field('rl.*, u.username, u.nickname, u.mobile, u.avatar')
@@ -104,7 +107,7 @@ class Risklog extends Backend
             ->find();
 
         // 获取用户最近的风控记录
-        $recentLogs = Db::name('risk_log')
+        $recentLogs = Db::name($this->tableName)
             ->alias('rl')
             ->join($prefix . 'user u', 'u.id = rl.user_id', 'LEFT')
             ->field('rl.id, rl.user_id, rl.order_no, rl.rule_name, rl.risk_type, rl.risk_level, rl.score_add, rl.handle_action, rl.createtime, u.username')
@@ -149,12 +152,12 @@ class Risklog extends Backend
             $this->error(__('参数错误'));
         }
 
-        $row = Db::name('risk_log')->where('id', $ids)->find();
+        $row = Db::name($this->tableName)->where('id', $ids)->find();
         if (!$row) {
             $this->error('记录不存在');
         }
 
-        $result = Db::name('risk_log')->where('id', $ids)->update([
+        $result = Db::name($this->tableName)->where('id', $ids)->update([
             'handle_action' => 'pass',
             'handle_time' => time(),
             'handle_admin_id' => $this->auth->id
@@ -177,12 +180,12 @@ class Risklog extends Backend
             $this->error(__('参数错误'));
         }
 
-        $row = Db::name('risk_log')->where('id', $ids)->find();
+        $row = Db::name($this->tableName)->where('id', $ids)->find();
         if (!$row) {
             $this->error('记录不存在');
         }
 
-        $result = Db::name('risk_log')->where('id', $ids)->update([
+        $result = Db::name($this->tableName)->where('id', $ids)->update([
             'handle_action' => 'review',
             'handle_time' => time(),
             'handle_admin_id' => $this->auth->id
@@ -205,12 +208,12 @@ class Risklog extends Backend
             $this->error(__('参数错误'));
         }
 
-        $row = Db::name('risk_log')->where('id', $ids)->find();
+        $row = Db::name($this->tableName)->where('id', $ids)->find();
         if (!$row) {
             $this->error('记录不存在');
         }
 
-        $result = Db::name('risk_log')->where('id', $ids)->update([
+        $result = Db::name($this->tableName)->where('id', $ids)->update([
             'handle_action' => 'reject',
             'handle_time' => time(),
             'handle_admin_id' => $this->auth->id
@@ -233,7 +236,7 @@ class Risklog extends Backend
             $this->error(__('参数错误'));
         }
 
-        $row = Db::name('risk_log')->where('id', $ids)->find();
+        $row = Db::name($this->tableName)->where('id', $ids)->find();
         if (!$row) {
             $this->error('记录不存在');
         }
@@ -241,7 +244,7 @@ class Risklog extends Backend
         Db::startTrans();
         try {
             // 更新风控记录状态
-            Db::name('risk_log')->where('id', $ids)->update([
+            Db::name($this->tableName)->where('id', $ids)->update([
                 'handle_action' => 'freeze',
                 'handle_time' => time(),
                 'handle_admin_id' => $this->auth->id
@@ -291,9 +294,9 @@ class Risklog extends Backend
         $count = 0;
         foreach ($ids as $id) {
             if ($action == 'del') {
-                $result = Db::name('risk_log')->where('id', $id)->delete();
+                $result = Db::name($this->tableName)->where('id', $id)->delete();
             } else {
-                $result = Db::name('risk_log')->where('id', $id)->update([
+                $result = Db::name($this->tableName)->where('id', $id)->update([
                     'handle_action' => $action,
                     'handle_time' => time(),
                     'handle_admin_id' => $this->auth->id
@@ -326,7 +329,7 @@ class Risklog extends Backend
         }
         $ids = is_array($ids) ? $ids : explode(',', $ids);
 
-        $count = Db::name('risk_log')->whereIn('id', $ids)->delete();
+        $count = Db::name($this->tableName)->whereIn('id', $ids)->delete();
         $this->success("成功删除{$count}条记录");
     }
 }
