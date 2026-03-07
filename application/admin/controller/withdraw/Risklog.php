@@ -3,7 +3,7 @@
 namespace app\admin\controller\withdraw;
 
 use app\common\controller\Backend;
-use app\common\model\RiskLog;
+use app\common\model\RiskLog as RiskLogModel;
 use app\common\model\UserRiskScore;
 use think\Db;
 
@@ -42,7 +42,7 @@ class Risklog extends Backend
     public function _initialize()
     {
         parent::_initialize();
-        $this->model = new RiskLog();
+        $this->model = new RiskLogModel();
     }
 
     /**
