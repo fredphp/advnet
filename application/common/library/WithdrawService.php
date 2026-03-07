@@ -124,30 +124,39 @@ class WithdrawService
                 throw new \Exception($freezeResult['message']);
             }
             
-            // 创建提现订单
+            // 创建提现订单（写入分表）
             $orderNo = WithdrawOrder::generateOrderNo();
-            $order = new WithdrawOrder();
-            $order->order_no = $orderNo;
-            $order->user_id = $userId;
-            $order->coin_amount = $coinAmount;
-            $order->exchange_rate = self::COIN_RATE;
-            $order->cash_amount = $cashAmount;
-            $order->fee_amount = $feeAmount;
-            $order->actual_amount = $actualAmount;
-            $order->withdraw_type = $options['withdraw_type'] ?? 'wechat';
-            $order->withdraw_account = $options['withdraw_account'] ?? '';
-            $order->withdraw_name = $options['withdraw_name'] ?? '';
-            $order->bank_name = $options['bank_name'] ?? null;
-            $order->bank_branch = $options['bank_branch'] ?? null;
-            $order->status = self::STATUS_PENDING;
-            $order->audit_type = $auditType;
-            $order->risk_score = $riskResult['score'];
-            $order->risk_tags = json_encode($riskResult['tags']);
-            $order->ip = $options['ip'] ?? null;
-            $order->device_id = $options['device_id'] ?? null;
-            $order->user_agent = $options['user_agent'] ?? null;
-            $order->createtime = time();
-            $order->save();
+            $now = time();
+            
+            // 获取或创建当月分表
+            $tableName = WithdrawOrder::getOrCreateTable($now);
+            
+            $orderData = [
+                'order_no' => $orderNo,
+                'user_id' => $userId,
+                'coin_amount' => $coinAmount,
+                'exchange_rate' => self::COIN_RATE,
+                'cash_amount' => $cashAmount,
+                'fee_amount' => $feeAmount,
+                'actual_amount' => $actualAmount,
+                'withdraw_type' => $options['withdraw_type'] ?? 'wechat',
+                'withdraw_account' => $options['withdraw_account'] ?? '',
+                'withdraw_name' => $options['withdraw_name'] ?? '',
+                'bank_name' => $options['bank_name'] ?? null,
+                'bank_branch' => $options['bank_branch'] ?? null,
+                'status' => self::STATUS_PENDING,
+                'audit_type' => $auditType,
+                'risk_score' => $riskResult['score'],
+                'risk_tags' => json_encode($riskResult['tags']),
+                'ip' => $options['ip'] ?? null,
+                'device_id' => $options['device_id'] ?? null,
+                'user_agent' => $options['user_agent'] ?? null,
+                'createtime' => $now,
+                'updatetime' => $now,
+            ];
+            
+            $orderId = Db::name($tableName)->insertGetId($orderData);
+            $orderData['id'] = $orderId;
             
             // 记录金币流水（冻结）
             $this->addCoinLog($userId, [
@@ -156,19 +165,19 @@ class WithdrawService
                 'balance_before' => $account['balance'],
                 'balance_after' => $account['balance'] - $coinAmount,
                 'relation_type' => 'withdraw',
-                'relation_id' => $order->id,
+                'relation_id' => $orderId,
                 'description' => "提现申请冻结，订单号: {$orderNo}",
             ]);
             
             // 自动审核
+            $orderStatus = self::STATUS_PENDING;
             if ($auditType == 0) {
-                $auditResult = $this->autoAudit($order->id);
+                $auditResult = $this->autoAuditFromTable($orderId, $tableName);
                 if ($auditResult['success']) {
-                    $order->status = $auditResult['status'];
-                    $order->audit_time = time();
-                    $order->audit_remark = '自动审核通过';
+                    $orderStatus = $auditResult['status'];
                 }
             }
+            $orderData['status'] = $orderStatus;
             
             Db::commit();
             
@@ -180,7 +189,7 @@ class WithdrawService
                 'cash_amount' => $cashAmount,
                 'fee_amount' => $feeAmount,
                 'actual_amount' => $actualAmount,
-                'status' => $order->status,
+                'status' => $orderStatus,
                 'audit_type' => $auditType == 0 ? '自动审核' : '人工审核',
             ];
             
@@ -314,13 +323,13 @@ class WithdrawService
     }
     
     /**
-     * 自动审核
+     * 自动审核（从分表读取）
      */
-    protected function autoAudit($orderId)
+    protected function autoAuditFromTable($orderId, $tableName)
     {
         $result = ['success' => false, 'status' => self::STATUS_PENDING];
         
-        $order = WithdrawOrder::find($orderId);
+        $order = Db::name($tableName)->where('id', $orderId)->find();
         if (!$order) {
             return $result;
         }
@@ -328,7 +337,55 @@ class WithdrawService
         $config = $this->getConfig();
         
         // 检查风控评分
-        if ($order->risk_score >= $config['risk_reject_threshold']) {
+        if ($order['risk_score'] >= $config['risk_reject_threshold']) {
+            // 风控评分过高，自动拒绝
+            $this->rejectOrderFromTable($orderId, $tableName, '系统风控拦截', 0, 'system');
+            $result['status'] = self::STATUS_REJECTED;
+            $result['success'] = true;
+            return $result;
+        }
+        
+        // 检查用户状态
+        $user = User::find($order['user_id']);
+        if (!$user || $user->status != 'normal') {
+            $this->rejectOrderFromTable($orderId, $tableName, '用户状态异常', 0, 'system');
+            $result['status'] = self::STATUS_REJECTED;
+            $result['success'] = true;
+            return $result;
+        }
+        
+        // 自动审核通过
+        Db::name($tableName)->where('id', $orderId)->update([
+            'status' => self::STATUS_APPROVED,
+            'audit_type' => 0,
+            'audit_time' => time(),
+            'audit_remark' => '自动审核通过',
+            'updatetime' => time(),
+        ]);
+        
+        $result['status'] = self::STATUS_APPROVED;
+        $result['success'] = true;
+        
+        return $result;
+    }
+    
+    /**
+     * 自动审核（旧方法，兼容）
+     */
+    protected function autoAudit($orderId)
+    {
+        $result = ['success' => false, 'status' => self::STATUS_PENDING];
+        
+        // 尝试从分表查找订单
+        $order = $this->findOrderById($orderId);
+        if (!$order) {
+            return $result;
+        }
+        
+        $config = $this->getConfig();
+        
+        // 检查风控评分
+        if ($order['risk_score'] >= $config['risk_reject_threshold']) {
             // 风控评分过高，自动拒绝
             $this->rejectOrder($orderId, '系统风控拦截', 0, 'system');
             $result['status'] = self::STATUS_REJECTED;
@@ -337,7 +394,7 @@ class WithdrawService
         }
         
         // 检查用户状态
-        $user = User::find($order->user_id);
+        $user = User::find($order['user_id']);
         if (!$user || $user->status != 'normal') {
             $this->rejectOrder($orderId, '用户状态异常', 0, 'system');
             $result['status'] = self::STATUS_REJECTED;
@@ -346,16 +403,80 @@ class WithdrawService
         }
         
         // 自动审核通过
-        $order->status = self::STATUS_APPROVED;
-        $order->audit_type = 0;
-        $order->audit_time = time();
-        $order->audit_remark = '自动审核通过';
-        $order->save();
+        $this->updateOrderById($orderId, [
+            'status' => self::STATUS_APPROVED,
+            'audit_type' => 0,
+            'audit_time' => time(),
+            'audit_remark' => '自动审核通过',
+            'updatetime' => time(),
+        ]);
         
         $result['status'] = self::STATUS_APPROVED;
         $result['success'] = true;
         
         return $result;
+    }
+    
+    /**
+     * 从分表查找订单
+     */
+    protected function findOrderById($orderId)
+    {
+        $tables = WithdrawOrder::getTablesByRange(strtotime('-6 months'), time());
+        
+        foreach ($tables as $table) {
+            if (WithdrawOrder::tableExists($table)) {
+                $order = Db::name($table)->where('id', $orderId)->find();
+                if ($order) {
+                    $order['_table'] = $table;
+                    return $order;
+                }
+            }
+        }
+        
+        return null;
+    }
+    
+    /**
+     * 更新分表中的订单
+     */
+    protected function updateOrderById($orderId, $data)
+    {
+        $order = $this->findOrderById($orderId);
+        if ($order && isset($order['_table'])) {
+            return Db::name($order['_table'])->where('id', $orderId)->update($data);
+        }
+        return false;
+    }
+    
+    /**
+     * 审核拒绝（从分表）
+     */
+    protected function rejectOrderFromTable($orderId, $tableName, $reason, $adminId = 0, $adminName = 'system')
+    {
+        $order = Db::name($tableName)->where('id', $orderId)->find();
+        
+        if (!$order) {
+            return ['success' => false, 'message' => '订单不存在'];
+        }
+        
+        // 解冻金币
+        $unfreezeResult = $this->unfreezeCoin($order['user_id'], $order['coin_amount']);
+        if (!$unfreezeResult['success']) {
+            return $unfreezeResult;
+        }
+        
+        // 更新状态
+        Db::name($tableName)->where('id', $orderId)->update([
+            'status' => self::STATUS_REJECTED,
+            'audit_admin_id' => $adminId,
+            'audit_admin_name' => $adminName,
+            'audit_time' => time(),
+            'reject_reason' => $reason,
+            'updatetime' => time(),
+        ]);
+        
+        return ['success' => true];
     }
     
     /**
