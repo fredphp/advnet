@@ -1,6 +1,43 @@
 define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefined, Backend, Table, Form) {
     var Controller = {
         index: function () {
+            // 风险类型映射
+            var riskTypeMap = {
+                'ip_check': 'IP检测',
+                'device_check': '设备检测',
+                'frequency_check': '频率检测',
+                'amount_check': '金额检测',
+                'account_check': '账号检测',
+                'risk_check': '风险检测',
+                'score_check': '评分检测',
+                'video_watch_speed': '视频观看速度',
+                'video_watch_repeat': '视频重复观看',
+                'video_daily_limit': '视频每日限额',
+                'video_reward_speed': '视频奖励速度',
+                'video_skip_ratio': '视频跳过比例',
+                'task_complete_speed': '任务完成速度',
+                'task_daily_limit': '任务每日限额',
+                'task_repeat_submit': '任务重复提交',
+                'task_fake_behavior': '任务虚假行为',
+                'withdraw_frequency': '提现频率',
+                'withdraw_amount_anomaly': '提现金额异常',
+                'withdraw_new_account': '新账号提现',
+                'redpacket_grab_speed': '红包抢夺速度',
+                'redpacket_daily_limit': '红包每日限额',
+                'invite_speed': '邀请速度',
+                'invite_fake_account': '邀请虚假账号',
+                'ip_multi_account': 'IP多账号',
+                'device_multi_account': '设备多账号',
+                'behavior_pattern': '行为模式',
+                // 旧类型兼容
+                'video': '视频',
+                'task': '任务',
+                'withdraw': '提现',
+                'redpacket': '红包',
+                'invite': '邀请',
+                'global': '全局'
+            };
+
             // 初始化表格配置
             Table.api.init({
                 extend: {
@@ -31,23 +68,19 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
                         {field: 'user_id', title: '用户ID', sortable: true},
                         {field: 'username', title: '用户名', operate: 'LIKE'},
                         {field: 'order_no', title: '订单号', operate: 'LIKE'},
-                        {field: 'risk_type', title: '风险类型', searchList: {
-                            "video": "视频",
-                            "task": "任务",
-                            "withdraw": "提现",
-                            "redpacket": "红包",
-                            "invite": "邀请",
-                            "global": "全局"
-                        }, formatter: function(value, row, index) {
-                            var map = {
-                                "video": '<span class="label label-info">视频</span>',
-                                "task": '<span class="label label-primary">任务</span>',
-                                "withdraw": '<span class="label label-warning">提现</span>',
-                                "redpacket": '<span class="label label-danger">红包</span>',
-                                "invite": '<span class="label label-success">邀请</span>',
-                                "global": '<span class="label label-default">全局</span>'
+                        {field: 'risk_type', title: '风险类型', searchList: riskTypeMap, formatter: function(value, row, index) {
+                            var text = riskTypeMap[value] || value;
+                            var colorMap = {
+                                'ip_check': 'label-info',
+                                'device_check': 'label-primary',
+                                'frequency_check': 'label-warning',
+                                'amount_check': 'label-danger',
+                                'account_check': 'label-danger',
+                                'risk_check': 'label-danger',
+                                'score_check': 'label-warning'
                             };
-                            return map[value] || '<span class="label label-default">' + value + '</span>';
+                            var color = colorMap[value] || 'label-default';
+                            return '<span class="label ' + color + '">' + text + '</span>';
                         }},
                         {field: 'risk_level', title: '风险等级', searchList: {
                             "1": "低风险",
@@ -61,7 +94,14 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
                             };
                             return map[value] || '<span class="label label-default">未知</span>';
                         }},
-                        {field: 'risk_score', title: '风险评分', sortable: true},
+                        {field: 'risk_score', title: '风险评分', sortable: true, formatter: function(value, row, index) {
+                            if (value >= 50) {
+                                return '<span class="text-danger">' + value + '</span>';
+                            } else if (value >= 30) {
+                                return '<span class="text-warning">' + value + '</span>';
+                            }
+                            return '<span class="text-success">' + value + '</span>';
+                        }},
                         {field: 'handle_action', title: '处理状态', searchList: {
                             "pass": "通过",
                             "review": "人工审核",

@@ -25,7 +25,15 @@
                         </tr>
                         <tr>
                             <th>风险评分</th>
-                            <td><span class="text-danger">{$row.risk_score|default=0}</span></td>
+                            <td>
+                                {if $row.risk_score >= 50}
+                                <span class="text-danger"><strong>{$row.risk_score|default=0}</strong></span>
+                                {elseif $row.risk_score >= 30}
+                                <span class="text-warning"><strong>{$row.risk_score|default=0}</strong></span>
+                                {else /}
+                                <span class="text-success">{$row.risk_score|default=0}</span>
+                                {/if}
+                            </td>
                         </tr>
                     </tbody>
                 </table>
@@ -36,15 +44,54 @@
                         <tr>
                             <th width="120">风险类型</th>
                             <td>
-                                {switch $row.risk_type}
-                                    {case video}<span class="label label-info">视频</span>{/case}
-                                    {case task}<span class="label label-primary">任务</span>{/case}
-                                    {case withdraw}<span class="label label-warning">提现</span>{/case}
-                                    {case redpacket}<span class="label label-danger">红包</span>{/case}
-                                    {case invite}<span class="label label-success">邀请</span>{/case}
-                                    {case global}<span class="label label-default">全局</span>{/case}
-                                    {default /}<span class="label label-default">{$row.risk_type}</span>
-                                {/switch}
+                                {php}
+                                $riskTypeMap = [
+                                    'ip_check' => 'IP检测',
+                                    'device_check' => '设备检测',
+                                    'frequency_check' => '频率检测',
+                                    'amount_check' => '金额检测',
+                                    'account_check' => '账号检测',
+                                    'risk_check' => '风险检测',
+                                    'score_check' => '评分检测',
+                                    'video_watch_speed' => '视频观看速度',
+                                    'video_watch_repeat' => '视频重复观看',
+                                    'video_daily_limit' => '视频每日限额',
+                                    'video_reward_speed' => '视频奖励速度',
+                                    'video_skip_ratio' => '视频跳过比例',
+                                    'task_complete_speed' => '任务完成速度',
+                                    'task_daily_limit' => '任务每日限额',
+                                    'task_repeat_submit' => '任务重复提交',
+                                    'task_fake_behavior' => '任务虚假行为',
+                                    'withdraw_frequency' => '提现频率',
+                                    'withdraw_amount_anomaly' => '提现金额异常',
+                                    'withdraw_new_account' => '新账号提现',
+                                    'redpacket_grab_speed' => '红包抢夺速度',
+                                    'redpacket_daily_limit' => '红包每日限额',
+                                    'invite_speed' => '邀请速度',
+                                    'invite_fake_account' => '邀请虚假账号',
+                                    'ip_multi_account' => 'IP多账号',
+                                    'device_multi_account' => '设备多账号',
+                                    'behavior_pattern' => '行为模式',
+                                    'video' => '视频',
+                                    'task' => '任务',
+                                    'withdraw' => '提现',
+                                    'redpacket' => '红包',
+                                    'invite' => '邀请',
+                                    'global' => '全局',
+                                ];
+                                $riskType = $row['risk_type'];
+                                $riskTypeText = $riskTypeMap[$riskType] ?? $riskType;
+                                $colorMap = [
+                                    'ip_check' => 'label-info',
+                                    'device_check' => 'label-primary',
+                                    'frequency_check' => 'label-warning',
+                                    'amount_check' => 'label-danger',
+                                    'account_check' => 'label-danger',
+                                    'risk_check' => 'label-danger',
+                                ];
+                                $color = $colorMap[$riskType] ?? 'label-default';
+                                {/php}
+                                <span class="label {$color}">{$riskTypeText}</span>
                             </td>
                         </tr>
                         <tr>
@@ -62,7 +109,7 @@
                             </td>
                         </tr>
                         <tr>
-                            <th>处理动作</th>
+                            <th>处理状态</th>
                             <td>
                                 {switch $row.handle_action}
                                     {case pass}<span class="label label-success">通过</span>{/case}
@@ -156,24 +203,57 @@
                             <th>风险类型</th>
                             <th>风险等级</th>
                             <th>风险评分</th>
-                            <th>处理动作</th>
+                            <th>处理状态</th>
                             <th>时间</th>
                         </tr>
                     </thead>
                     <tbody>
+                        {php}
+                        $riskTypeMap = [
+                            'ip_check' => 'IP检测',
+                            'device_check' => '设备检测',
+                            'frequency_check' => '频率检测',
+                            'amount_check' => '金额检测',
+                            'account_check' => '账号检测',
+                            'risk_check' => '风险检测',
+                            'score_check' => '评分检测',
+                            'video_watch_speed' => '视频观看速度',
+                            'video_watch_repeat' => '视频重复观看',
+                            'video_daily_limit' => '视频每日限额',
+                            'video_reward_speed' => '视频奖励速度',
+                            'video_skip_ratio' => '视频跳过比例',
+                            'task_complete_speed' => '任务完成速度',
+                            'task_daily_limit' => '任务每日限额',
+                            'task_repeat_submit' => '任务重复提交',
+                            'task_fake_behavior' => '任务虚假行为',
+                            'withdraw_frequency' => '提现频率',
+                            'withdraw_amount_anomaly' => '提现金额异常',
+                            'withdraw_new_account' => '新账号提现',
+                            'redpacket_grab_speed' => '红包抢夺速度',
+                            'redpacket_daily_limit' => '红包每日限额',
+                            'invite_speed' => '邀请速度',
+                            'invite_fake_account' => '邀请虚假账号',
+                            'ip_multi_account' => 'IP多账号',
+                            'device_multi_account' => '设备多账号',
+                            'behavior_pattern' => '行为模式',
+                            'video' => '视频',
+                            'task' => '任务',
+                            'withdraw' => '提现',
+                            'redpacket' => '红包',
+                            'invite' => '邀请',
+                            'global' => '全局',
+                        ];
+                        {/php}
                         {volist name="recent_logs" id="log"}
                         <tr>
                             <td>{$log.id}</td>
                             <td>{$log.order_no|default='-'}</td>
                             <td>
-                                {switch $log.risk_type}
-                                    {case video}<span class="label label-info">视频</span>{/case}
-                                    {case task}<span class="label label-primary">任务</span>{/case}
-                                    {case withdraw}<span class="label label-warning">提现</span>{/case}
-                                    {case redpacket}<span class="label label-danger">红包</span>{/case}
-                                    {case invite}<span class="label label-success">邀请</span>{/case}
-                                    {default /}<span class="label label-default">{$log.risk_type}</span>
-                                {/switch}
+                                {php}
+                                $riskType = $log['risk_type'];
+                                $riskTypeText = $riskTypeMap[$riskType] ?? $riskType;
+                                {/php}
+                                <span class="label label-info">{$riskTypeText}</span>
                             </td>
                             <td>
                                 {if $log.risk_level == 1}

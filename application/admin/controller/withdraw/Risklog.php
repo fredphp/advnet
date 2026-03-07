@@ -17,12 +17,39 @@ class Risklog extends Backend
 
     // 风险类型映射
     protected $riskTypeMap = [
+        'ip_check' => 'IP检测',
+        'device_check' => '设备检测',
+        'frequency_check' => '频率检测',
+        'amount_check' => '金额检测',
+        'account_check' => '账号检测',
+        'risk_check' => '风险检测',
+        'score_check' => '评分检测',
+        'video_watch_speed' => '视频观看速度',
+        'video_watch_repeat' => '视频重复观看',
+        'video_daily_limit' => '视频每日限额',
+        'video_reward_speed' => '视频奖励速度',
+        'video_skip_ratio' => '视频跳过比例',
+        'task_complete_speed' => '任务完成速度',
+        'task_daily_limit' => '任务每日限额',
+        'task_repeat_submit' => '任务重复提交',
+        'task_fake_behavior' => '任务虚假行为',
+        'withdraw_frequency' => '提现频率',
+        'withdraw_amount_anomaly' => '提现金额异常',
+        'withdraw_new_account' => '新账号提现',
+        'redpacket_grab_speed' => '红包抢夺速度',
+        'redpacket_daily_limit' => '红包每日限额',
+        'invite_speed' => '邀请速度',
+        'invite_fake_account' => '邀请虚假账号',
+        'ip_multi_account' => 'IP多账号',
+        'device_multi_account' => '设备多账号',
+        'behavior_pattern' => '行为模式',
+        // 旧类型兼容
         'video' => '视频',
         'task' => '任务',
         'withdraw' => '提现',
         'redpacket' => '红包',
         'invite' => '邀请',
-        'global' => '全局'
+        'global' => '全局',
     ];
 
     // 风险等级映射
