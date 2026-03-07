@@ -29,23 +29,37 @@ class Order extends Backend
     public function index()
     {
         if ($this->request->isAjax()) {
-            // 获取筛选参数
-            $startDate = $this->request->get('start_date');
-            $endDate = $this->request->get('end_date');
-            $status = $this->request->get('status');
-            $userId = $this->request->get('user_id');
-            $orderNo = $this->request->get('order_no');
-            $withdrawType = $this->request->get('withdraw_type');
-            
             // 排序参数
             $sort = $this->request->get('sort', 'id');
             $order = $this->request->get('order', 'desc');
             $offset = $this->request->get('offset', 0);
             $limit = $this->request->get('limit', 10);
             
+            // 解析 FastAdmin 标准筛选参数
+            $filter = json_decode($this->request->get('filter', '{}'), true);
+            $op = json_decode($this->request->get('op', '{}'), true);
+            
             // 构建时间范围
-            $startTime = $startDate ? strtotime($startDate) : strtotime('-3 months');
-            $endTime = $endDate ? strtotime($endDate . ' 23:59:59') : time();
+            $startTime = null;
+            $endTime = null;
+            
+            // 处理 createtime 筛选（FastAdmin 时间范围格式）
+            if (isset($filter['createtime']) && isset($op['createtime']) && $op['createtime'] == 'RANGE') {
+                $timeRange = $filter['createtime'];
+                if (strpos($timeRange, ' - ') !== false) {
+                    list($startStr, $endStr) = explode(' - ', $timeRange);
+                    $startTime = strtotime(trim($startStr));
+                    $endTime = strtotime(trim($endStr));
+                }
+            }
+            
+            // 如果没有时间筛选，默认查询最近3个月
+            if ($startTime === null) {
+                $startTime = strtotime('-3 months');
+            }
+            if ($endTime === null) {
+                $endTime = time();
+            }
             
             // 获取需要查询的分表
             $tables = WithdrawOrder::getTablesByRange($startTime, $endTime);
@@ -69,56 +83,55 @@ class Order extends Backend
             $whereParts = ['1=1'];
             $bindParams = [];
             
-            // 时间范围筛选
+            // 时间范围筛选（核心修复）
             $whereParts[] = "wo.createtime BETWEEN ? AND ?";
             $bindParams[] = $startTime;
             $bindParams[] = $endTime;
             
-            // 状态筛选
-            if ($status !== '' && $status !== null) {
-                $whereParts[] = "wo.status = ?";
-                $bindParams[] = $status;
-            }
-            
-            // 用户ID筛选
-            if ($userId) {
-                $whereParts[] = "wo.user_id = ?";
-                $bindParams[] = $userId;
-            }
-            
-            // 订单号筛选
-            if ($orderNo) {
-                $whereParts[] = "wo.order_no LIKE ?";
-                $bindParams[] = '%' . $orderNo . '%';
-            }
-            
-            // 提现方式筛选（只保留微信）
-            if ($withdrawType) {
-                $whereParts[] = "wo.withdraw_type = ?";
-                $bindParams[] = $withdrawType;
-            }
-            
-            // 其他筛选条件（通过buildparams获取）
-            list($extraWhere) = $this->buildparams();
-            foreach ($extraWhere as $key => $value) {
-                if (is_array($value)) {
-                    if ($value[0] == 'in') {
-                        $placeholders = implode(',', array_fill(0, count($value[1]), '?'));
-                        $whereParts[] = "wo.{$key} IN ({$placeholders})";
-                        $bindParams = array_merge($bindParams, $value[1]);
-                    } elseif ($value[0] == 'like') {
-                        $whereParts[] = "wo.{$key} LIKE ?";
-                        $bindParams[] = '%' . $value[1] . '%';
-                    } elseif ($value[0] == 'between' && is_array($value[1])) {
-                        $whereParts[] = "wo.{$key} BETWEEN ? AND ?";
-                        $bindParams[] = $value[1][0];
-                        $bindParams[] = $value[1][1];
-                    } else {
-                        $whereParts[] = "wo.{$key} {$value[0]} ?";
-                        $bindParams[] = $value[1];
-                    }
+            // 处理其他筛选条件
+            foreach ($filter as $field => $value) {
+                if ($field == 'createtime') {
+                    continue; // 已经处理过
+                }
+                
+                $fieldOp = $op[$field] ?? '=';
+                
+                // 处理表字段名（添加 wo. 前缀）
+                $dbField = 'wo.' . $field;
+                
+                if ($fieldOp == 'RANGE' && strpos($value, ' - ') !== false) {
+                    list($start, $end) = explode(' - ', $value);
+                    $whereParts[] = "{$dbField} BETWEEN ? AND ?";
+                    $bindParams[] = trim($start);
+                    $bindParams[] = trim($end);
+                } elseif ($fieldOp == 'LIKE') {
+                    $whereParts[] = "{$dbField} LIKE ?";
+                    $bindParams[] = '%' . $value . '%';
+                } elseif ($fieldOp == 'IN') {
+                    $values = is_array($value) ? $value : explode(',', $value);
+                    $placeholders = implode(',', array_fill(0, count($values), '?'));
+                    $whereParts[] = "{$dbField} IN ({$placeholders})";
+                    $bindParams = array_merge($bindParams, $values);
+                } elseif ($fieldOp == '=') {
+                    $whereParts[] = "{$dbField} = ?";
+                    $bindParams[] = $value;
+                } elseif ($fieldOp == '!=') {
+                    $whereParts[] = "{$dbField} != ?";
+                    $bindParams[] = $value;
+                } elseif ($fieldOp == '>') {
+                    $whereParts[] = "{$dbField} > ?";
+                    $bindParams[] = $value;
+                } elseif ($fieldOp == '<') {
+                    $whereParts[] = "{$dbField} < ?";
+                    $bindParams[] = $value;
+                } elseif ($fieldOp == '>=') {
+                    $whereParts[] = "{$dbField} >= ?";
+                    $bindParams[] = $value;
+                } elseif ($fieldOp == '<=') {
+                    $whereParts[] = "{$dbField} <= ?";
+                    $bindParams[] = $value;
                 } else {
-                    $whereParts[] = "wo.{$key} = ?";
+                    $whereParts[] = "{$dbField} = ?";
                     $bindParams[] = $value;
                 }
             }
@@ -360,13 +373,28 @@ class Order extends Backend
      */
     public function export()
     {
-        $status = $this->request->get('status');
-        $startDate = $this->request->get('start_date');
-        $endDate = $this->request->get('end_date');
+        $filter = json_decode($this->request->get('filter', '{}'), true);
+        $op = json_decode($this->request->get('op', '{}'), true);
 
         // 构建时间范围
-        $startTime = $startDate ? strtotime($startDate) : strtotime('-3 months');
-        $endTime = $endDate ? strtotime($endDate . ' 23:59:59') : time();
+        $startTime = null;
+        $endTime = null;
+        
+        if (isset($filter['createtime']) && isset($op['createtime']) && $op['createtime'] == 'RANGE') {
+            $timeRange = $filter['createtime'];
+            if (strpos($timeRange, ' - ') !== false) {
+                list($startStr, $endStr) = explode(' - ', $timeRange);
+                $startTime = strtotime(trim($startStr));
+                $endTime = strtotime(trim($endStr));
+            }
+        }
+        
+        if ($startTime === null) {
+            $startTime = strtotime('-3 months');
+        }
+        if ($endTime === null) {
+            $endTime = time();
+        }
 
         // 获取分表
         $tables = WithdrawOrder::getTablesByRange($startTime, $endTime);
@@ -388,10 +416,11 @@ class Order extends Backend
         // 构建条件
         $whereParts = ['wo.createtime BETWEEN ? AND ?'];
         $bindParams = [$startTime, $endTime];
-
-        if ($status !== '' && $status !== null) {
+        
+        // 处理状态筛选
+        if (isset($filter['status'])) {
             $whereParts[] = "wo.status = ?";
-            $bindParams[] = $status;
+            $bindParams[] = $filter['status'];
         }
 
         $whereStr = implode(' AND ', $whereParts);
@@ -548,8 +577,22 @@ class Order extends Backend
      */
     public function statistics()
     {
+        $filter = json_decode($this->request->get('filter', '{}'), true);
+        $op = json_decode($this->request->get('op', '{}'), true);
+        
+        // 解析时间范围
         $startDate = $this->request->get('start_date', date('Y-m-d', strtotime('-30 days')));
         $endDate = $this->request->get('end_date', date('Y-m-d'));
+        
+        // 优先从 filter 解析时间
+        if (isset($filter['createtime']) && isset($op['createtime']) && $op['createtime'] == 'RANGE') {
+            $timeRange = $filter['createtime'];
+            if (strpos($timeRange, ' - ') !== false) {
+                list($startStr, $endStr) = explode(' - ', $timeRange);
+                $startDate = date('Y-m-d', strtotime(trim($startStr)));
+                $endDate = date('Y-m-d', strtotime(trim($endStr)));
+            }
+        }
 
         $startTimestamp = strtotime($startDate);
         $endTimestamp = strtotime($endDate . ' 23:59:59');
