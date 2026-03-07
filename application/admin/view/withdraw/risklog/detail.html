@@ -80,12 +80,6 @@
                             <th>处理备注</th>
                             <td>{$row.handle_remark|default='-'}</td>
                         </tr>
-                        {if condition="$row.handle_action == 'reject' || $row.handle_action == 'freeze'"}
-                        <tr>
-                            <th>处理时间</th>
-                            <td>{$row.createtime|date='Y-m-d H:i:s',###}</td>
-                        </tr>
-                        {/if}
                     </tbody>
                 </table>
             </div>
@@ -209,152 +203,13 @@
         </div>
         {/if}
 
-        {if condition="$can_handle"}
-        <!-- 操作按钮区域 -->
-        <div class="panel panel-default" style="margin-top: 15px;">
-            <div class="panel-heading">
-                <h4 class="panel-title"><i class="fa fa-edit"></i> 操作处理</h4>
-            </div>
-            <div class="panel-body">
-                <form id="handle-form" class="form-horizontal" role="form">
-                    <input type="hidden" name="ids" value="{$row.id}">
-                    
-                    <div class="form-group">
-                        <label class="control-label col-xs-12 col-sm-2">选择操作:</label>
-                        <div class="col-xs-12 col-sm-8">
-                            <div class="radio">
-                                <label><input type="radio" name="action" value="pass" checked> 
-                                    <strong class="text-success">通过</strong> - 标记为正常，允许继续操作
-                                </label>
-                            </div>
-                            <div class="radio">
-                                <label><input type="radio" name="action" value="review"> 
-                                    <strong class="text-warning">人工审核</strong> - 需要进一步人工确认
-                                </label>
-                            </div>
-                            <div class="radio">
-                                <label><input type="radio" name="action" value="reject"> 
-                                    <strong class="text-danger">拒绝</strong> - 拒绝该风控记录
-                                </label>
-                            </div>
-                            <div class="radio">
-                                <label><input type="radio" name="action" value="freeze"> 
-                                    <strong class="text-muted">冻结用户</strong> - 冻结该用户账号（严重）
-                                </label>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- 通过说明 -->
-                    <div class="form-group action-desc action-pass-desc">
-                        <label class="control-label col-xs-12 col-sm-2">操作效果:</label>
-                        <div class="col-xs-12 col-sm-8">
-                            <div class="alert alert-success">
-                                <i class="fa fa-info-circle"></i> 
-                                <ul style="margin:0 0 0 20px;padding:0;">
-                                    <li>该风控记录将被标记为"已通过"</li>
-                                    <li>用户的提现请求将正常继续处理</li>
-                                    <li>用户账号状态不受影响</li>
-                                </ul>
-                            </div>
-                            <div class="alert alert-info">
-                                <i class="fa fa-list-ol"></i> <strong>后续操作：</strong>系统将自动继续处理用户的提现请求
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- 人工审核说明 -->
-                    <div class="form-group action-desc action-review-desc" style="display:none;">
-                        <label class="control-label col-xs-12 col-sm-2">操作效果:</label>
-                        <div class="col-xs-12 col-sm-8">
-                            <div class="alert alert-warning">
-                                <i class="fa fa-info-circle"></i> 
-                                <ul style="margin:0 0 0 20px;padding:0;">
-                                    <li>该风控记录将被标记为"人工审核中"</li>
-                                    <li>提现请求将被暂停，等待人工进一步确认</li>
-                                    <li>用户账号状态不受影响</li>
-                                </ul>
-                            </div>
-                            <div class="alert alert-info">
-                                <i class="fa fa-list-ol"></i> <strong>后续操作：</strong>
-                                <ul style="margin:0 0 0 20px;padding:0;">
-                                    <li>需要高级管理员进行最终审核</li>
-                                    <li>可选择通过、拒绝或冻结用户</li>
-                                </ul>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- 拒绝原因 -->
-                    <div class="form-group reject-reason-wrap" style="display:none;">
-                        <label class="control-label col-xs-12 col-sm-2"><span class="text-danger">*</span> 拒绝原因:</label>
-                        <div class="col-xs-12 col-sm-8">
-                            <div class="alert alert-danger">
-                                <i class="fa fa-exclamation-triangle"></i> 
-                                <ul style="margin:0 0 0 20px;padding:0;">
-                                    <li>该风控记录将被标记为"已拒绝"</li>
-                                    <li>用户的提现请求将被取消</li>
-                                    <li>用户账号状态不受影响</li>
-                                </ul>
-                            </div>
-                            <select name="reject_reason" class="form-control" style="margin-bottom:10px;">
-                                <option value="">请选择拒绝原因</option>
-                                <option value="异常提现行为">异常提现行为</option>
-                                <option value="疑似刷单">疑似刷单</option>
-                                <option value="风险用户">风险用户</option>
-                                <option value="频繁操作">频繁操作</option>
-                                <option value="资料异常">资料异常</option>
-                                <option value="其他">其他</option>
-                            </select>
-                            <textarea name="reject_remark" class="form-control" rows="2" placeholder="详细说明（选填）"></textarea>
-                        </div>
-                    </div>
-
-                    <!-- 冻结原因 -->
-                    <div class="form-group freeze-reason-wrap" style="display:none;">
-                        <label class="control-label col-xs-12 col-sm-2"><span class="text-danger">*</span> 冻结原因:</label>
-                        <div class="col-xs-12 col-sm-8">
-                            <div class="alert alert-danger">
-                                <i class="fa fa-exclamation-triangle"></i> <strong>警告：此操作较为严重！</strong>
-                                <ul style="margin:5px 0 0 20px;padding:0;">
-                                    <li><span class="text-danger"><strong>该用户账号将被冻结，无法登录和操作</strong></span></li>
-                                    <li>用户的所有提现请求将被暂停</li>
-                                    <li>用户的金币将被冻结</li>
-                                </ul>
-                            </div>
-                            <select name="freeze_reason" class="form-control" style="margin-bottom:10px;">
-                                <option value="">请选择冻结原因</option>
-                                <option value="涉嫌欺诈">涉嫌欺诈</option>
-                                <option value="频繁违规操作">频繁违规操作</option>
-                                <option value="高风险用户">高风险用户</option>
-                                <option value="异常账号">异常账号</option>
-                                <option value="多账号作弊">多账号作弊</option>
-                                <option value="其他">其他</option>
-                            </select>
-                            <textarea name="freeze_remark" class="form-control" rows="2" placeholder="详细说明（选填）"></textarea>
-                        </div>
-                    </div>
-
-                    <div class="form-group">
-                        <div class="col-xs-12 col-sm-8 col-sm-offset-2">
-                            <button type="button" class="btn btn-primary btn-lg btn-block btn-handle-submit">
-                                <i class="fa fa-check"></i> 确认提交
-                            </button>
-                        </div>
-                    </div>
-                </form>
-            </div>
-        </div>
-        {/if}
-
+        <!-- 处理状态提示 -->
         {if condition="$row.handle_action == 'pass'"}
         <div class="alert alert-success" style="margin-top: 15px;">
             <h4><i class="fa fa-check-circle"></i> 该记录已通过审核</h4>
             <p>该风控记录已被标记为通过，用户的提现请求已正常处理。</p>
         </div>
-        {/if}
-
-        {if condition="$row.handle_action == 'reject'"}
+        {elseif condition="$row.handle_action == 'reject'" /}
         <div class="alert alert-warning" style="margin-top: 15px;">
             <h4><i class="fa fa-ban"></i> 该记录已被拒绝</h4>
             {if condition="$row.handle_remark"}
@@ -362,9 +217,7 @@
             {/if}
             <p>用户的提现请求已被取消，用户可重新发起提现申请。</p>
         </div>
-        {/if}
-
-        {if condition="$row.handle_action == 'freeze'"}
+        {elseif condition="$row.handle_action == 'freeze'" /}
         <div class="alert alert-danger" style="margin-top: 15px;">
             <h4><i class="fa fa-snowflake-o"></i> 该用户已被冻结</h4>
             {if condition="$row.handle_remark"}
@@ -372,91 +225,16 @@
             {/if}
             <p>该用户已被冻结，无法登录APP。如需解冻，请在"用户管理"中操作。</p>
         </div>
+        {elseif condition="$row.handle_action == 'review'" /}
+        <div class="alert alert-info" style="margin-top: 15px;">
+            <h4><i class="fa fa-user"></i> 该记录正在人工审核中</h4>
+            <p>该风控记录已被标记为人工审核中，请等待高级管理员进行最终审核。</p>
+        </div>
+        {else /}
+        <div class="alert alert-default" style="margin-top: 15px; background: #f5f5f5; border-color: #ddd;">
+            <h4><i class="fa fa-clock-o"></i> 该记录待处理</h4>
+            <p>该风控记录尚未处理，请在列表页面进行操作。</p>
+        </div>
         {/if}
     </div>
 </div>
-
-<script type="text/javascript">
-(function($) {
-    // 监听操作类型变化
-    $('input[name="action"]').on('change', function() {
-        var action = $(this).val();
-        $('.reject-reason-wrap').hide();
-        $('.freeze-reason-wrap').hide();
-        $('.action-desc').hide();
-        
-        if (action === 'reject') {
-            $('.reject-reason-wrap').show();
-        } else if (action === 'freeze') {
-            $('.freeze-reason-wrap').show();
-        } else if (action === 'pass') {
-            $('.action-pass-desc').show();
-        } else if (action === 'review') {
-            $('.action-review-desc').show();
-        }
-    });
-
-    // 提交处理
-    $('.btn-handle-submit').on('click', function() {
-        var action = $('input[name="action"]:checked').val();
-        var ids = $('input[name="ids"]').val();
-        var remark = '';
-
-        // 验证
-        if (action === 'reject') {
-            remark = $('select[name="reject_reason"]').val();
-            var customRemark = $('textarea[name="reject_remark"]').val();
-            if (!remark) {
-                Toastr.error('请选择拒绝原因');
-                return;
-            }
-            if (customRemark) {
-                remark += '：' + customRemark;
-            }
-        } else if (action === 'freeze') {
-            remark = $('select[name="freeze_reason"]').val();
-            var customRemark = $('textarea[name="freeze_remark"]').val();
-            if (!remark) {
-                Toastr.error('请选择冻结原因');
-                return;
-            }
-            if (customRemark) {
-                remark += '：' + customRemark;
-            }
-        }
-
-        // 确认提示
-        var actionText = {
-            'pass': '通过',
-            'review': '人工审核',
-            'reject': '拒绝',
-            'freeze': '冻结'
-        };
-
-        var confirmMsg = '确认执行【' + actionText[action] + '】操作？';
-        if (action === 'freeze') {
-            confirmMsg = '确认冻结该用户？冻结后用户将无法登录！';
-        }
-
-        Layer.confirm(confirmMsg, {
-            title: '操作确认',
-            btn: ['<i class="fa fa-check"></i> 确认', '取消']
-        }, function(index) {
-            Fast.api.ajax({
-                url: 'withdraw/risklog/' + action,
-                data: {ids: ids, remark: remark}
-            }, function(data, ret) {
-                Layer.close(index);
-                Toastr.success(ret.msg);
-                // 刷新父页面表格
-                if (parent && parent.$) {
-                    parent.$('.btn-refresh').trigger('click');
-                }
-                // 关闭当前弹窗
-                var layerIndex = parent.layer.getFrameIndex(window.name);
-                parent.layer.close(layerIndex);
-            });
-        });
-    });
-})(jQuery);
-</script>
