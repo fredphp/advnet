@@ -58,142 +58,6 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
 
             var table = $("#table");
 
-            // 初始化表格
-            table.bootstrapTable({
-                url: $.fn.bootstrapTable.defaults.extend.index_url,
-                pk: 'id',
-                sortName: 'id',
-                sortOrder: 'desc',
-                columns: [
-                    [
-                        {checkbox: true},
-                        {field: 'id', title: 'ID', sortable: true},
-                        {field: 'user_id', title: '用户ID', sortable: true},
-                        {field: 'username', title: '用户名', operate: 'LIKE'},
-                        {field: 'order_no', title: '订单号', operate: 'LIKE'},
-                        {field: 'risk_type', title: '风险类型', searchList: riskTypeMap, formatter: function(value, row, index) {
-                            var text = riskTypeMap[value] || value;
-                            var colorMap = {
-                                'ip_check': 'label-info',
-                                'device_check': 'label-primary',
-                                'frequency_check': 'label-warning',
-                                'amount_check': 'label-danger',
-                                'account_check': 'label-danger',
-                                'risk_check': 'label-danger'
-                            };
-                            var color = colorMap[value] || 'label-default';
-                            return '<span class="label ' + color + '">' + text + '</span>';
-                        }},
-                        {field: 'risk_level', title: '风险等级', searchList: {
-                            "1": "低风险",
-                            "2": "中风险",
-                            "3": "高风险"
-                        }, formatter: function(value, row, index) {
-                            var map = {
-                                0: '<span class="label label-default">普通</span>',
-                                1: '<span class="label label-success">低风险</span>',
-                                2: '<span class="label label-warning">中风险</span>',
-                                3: '<span class="label label-danger">高风险</span>'
-                            };
-                            return map[value] || '<span class="label label-default">未知</span>';
-                        }},
-                        {field: 'risk_score', title: '风险评分', sortable: true, formatter: function(value, row, index) {
-                            if (value >= 50) {
-                                return '<span class="text-danger"><strong>' + value + '</strong></span>';
-                            } else if (value >= 30) {
-                                return '<span class="text-warning"><strong>' + value + '</strong></span>';
-                            }
-                            return '<span class="text-success">' + value + '</span>';
-                        }},
-                        {field: 'handle_action', title: '处理状态', searchList: {
-                            "pass": "通过",
-                            "review": "人工审核",
-                            "reject": "拒绝",
-                            "freeze": "冻结"
-                        }, formatter: function(value, row, index) {
-                            var map = {
-                                "pass": '<span class="label label-success">已通过</span>',
-                                "review": '<span class="label label-info">审核中</span>',
-                                "reject": '<span class="label label-warning">已拒绝</span>',
-                                "freeze": '<span class="label label-danger">已冻结</span>'
-                            };
-                            return map[value] || '<span class="label label-default">待处理</span>';
-                        }},
-                        {field: 'createtime', title: '创建时间', formatter: Table.api.formatter.datetime, operate: 'RANGE', addclass: 'datetimerange', sortable: true},
-                        {
-                            field: 'operate',
-                            title: '操作',
-                            table: table,
-                            events: Table.api.events.operate,
-                            formatter: Table.api.formatter.operate,
-                            buttons: [
-                                {
-                                    name: 'detail',
-                                    text: '详情',
-                                    title: '风控记录详情',
-                                    classname: 'btn btn-xs btn-info btn-dialog',
-                                    icon: 'fa fa-list',
-                                    url: 'withdraw/risklog/detail',
-                                    extend: 'data-area=\'["90%","90%"]\''
-                                },
-                                {
-                                    name: 'pass',
-                                    text: '通过',
-                                    title: '通过审核',
-                                    classname: 'btn btn-xs btn-success',
-                                    icon: 'fa fa-check',
-                                    hidden: function(row) {
-                                        return row.handle_action === 'pass' || row.handle_action === 'reject' || row.handle_action === 'freeze';
-                                    },
-                                    click: function(e, row) {
-                                        showConfirmDialog(row, 'pass');
-                                    }
-                                },
-                                {
-                                    name: 'review',
-                                    text: '审核',
-                                    title: '人工审核',
-                                    classname: 'btn btn-xs btn-warning',
-                                    icon: 'fa fa-user',
-                                    hidden: function(row) {
-                                        return row.handle_action === 'pass' || row.handle_action === 'reject' || row.handle_action === 'freeze';
-                                    },
-                                    click: function(e, row) {
-                                        showConfirmDialog(row, 'review');
-                                    }
-                                },
-                                {
-                                    name: 'reject',
-                                    text: '拒绝',
-                                    title: '拒绝处理',
-                                    classname: 'btn btn-xs btn-danger',
-                                    icon: 'fa fa-ban',
-                                    hidden: function(row) {
-                                        return row.handle_action === 'pass' || row.handle_action === 'reject' || row.handle_action === 'freeze';
-                                    },
-                                    click: function(e, row) {
-                                        showConfirmDialog(row, 'reject');
-                                    }
-                                },
-                                {
-                                    name: 'freeze',
-                                    text: '冻结',
-                                    title: '冻结用户',
-                                    classname: 'btn btn-xs btn-default',
-                                    icon: 'fa fa-snowflake-o',
-                                    hidden: function(row) {
-                                        return row.handle_action === 'pass' || row.handle_action === 'reject' || row.handle_action === 'freeze';
-                                    },
-                                    click: function(e, row) {
-                                        showConfirmDialog(row, 'freeze');
-                                    }
-                                }
-                            ]
-                        }
-                    ]
-                ]
-            });
-
             // 显示确认弹窗
             function showConfirmDialog(row, action) {
                 var riskTypeText = riskTypeMap[row.risk_type] || row.risk_type;
@@ -337,6 +201,175 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
                     }
                 });
             }
+
+            // 初始化表格
+            table.bootstrapTable({
+                url: $.fn.bootstrapTable.defaults.extend.index_url,
+                pk: 'id',
+                sortName: 'id',
+                sortOrder: 'desc',
+                columns: [
+                    [
+                        {checkbox: true},
+                        {field: 'id', title: 'ID', sortable: true},
+                        {field: 'user_id', title: '用户ID', sortable: true},
+                        {field: 'username', title: '用户名', operate: 'LIKE'},
+                        {field: 'order_no', title: '订单号', operate: 'LIKE'},
+                        {field: 'risk_type', title: '风险类型', searchList: riskTypeMap, formatter: function(value, row, index) {
+                            var text = riskTypeMap[value] || value;
+                            var colorMap = {
+                                'ip_check': 'label-info',
+                                'device_check': 'label-primary',
+                                'frequency_check': 'label-warning',
+                                'amount_check': 'label-danger',
+                                'account_check': 'label-danger',
+                                'risk_check': 'label-danger'
+                            };
+                            var color = colorMap[value] || 'label-default';
+                            return '<span class="label ' + color + '">' + text + '</span>';
+                        }},
+                        {field: 'risk_level', title: '风险等级', searchList: {
+                            "1": "低风险",
+                            "2": "中风险",
+                            "3": "高风险"
+                        }, formatter: function(value, row, index) {
+                            var map = {
+                                0: '<span class="label label-default">普通</span>',
+                                1: '<span class="label label-success">低风险</span>',
+                                2: '<span class="label label-warning">中风险</span>',
+                                3: '<span class="label label-danger">高风险</span>'
+                            };
+                            return map[value] || '<span class="label label-default">未知</span>';
+                        }},
+                        {field: 'risk_score', title: '风险评分', sortable: true, formatter: function(value, row, index) {
+                            if (value >= 50) {
+                                return '<span class="text-danger"><strong>' + value + '</strong></span>';
+                            } else if (value >= 30) {
+                                return '<span class="text-warning"><strong>' + value + '</strong></span>';
+                            }
+                            return '<span class="text-success">' + value + '</span>';
+                        }},
+                        {field: 'handle_action', title: '处理状态', searchList: {
+                            "pass": "通过",
+                            "review": "人工审核",
+                            "reject": "拒绝",
+                            "freeze": "冻结"
+                        }, formatter: function(value, row, index) {
+                            var map = {
+                                "pass": '<span class="label label-success">已通过</span>',
+                                "review": '<span class="label label-info">审核中</span>',
+                                "reject": '<span class="label label-warning">已拒绝</span>',
+                                "freeze": '<span class="label label-danger">已冻结</span>'
+                            };
+                            return map[value] || '<span class="label label-default">待处理</span>';
+                        }},
+                        {field: 'createtime', title: '创建时间', formatter: Table.api.formatter.datetime, operate: 'RANGE', addclass: 'datetimerange', sortable: true},
+                        {
+                            field: 'operate',
+                            title: '操作',
+                            table: table,
+                            events: Table.api.events.operate,
+                            formatter: Table.api.formatter.operate,
+                            buttons: [
+                                {
+                                    name: 'detail',
+                                    text: '详情',
+                                    title: '风控记录详情',
+                                    classname: 'btn btn-xs btn-info btn-dialog',
+                                    icon: 'fa fa-list',
+                                    url: 'withdraw/risklog/detail',
+                                    extend: 'data-area=\'["90%","90%"]\''
+                                },
+                                {
+                                    name: 'pass',
+                                    text: '通过',
+                                    title: '通过审核',
+                                    classname: 'btn btn-xs btn-success btn-risklog-pass',
+                                    icon: 'fa fa-check',
+                                    hidden: function(row) {
+                                        return row.handle_action === 'pass' || row.handle_action === 'reject' || row.handle_action === 'freeze';
+                                    }
+                                },
+                                {
+                                    name: 'review',
+                                    text: '审核',
+                                    title: '人工审核',
+                                    classname: 'btn btn-xs btn-warning btn-risklog-review',
+                                    icon: 'fa fa-user',
+                                    hidden: function(row) {
+                                        return row.handle_action === 'pass' || row.handle_action === 'reject' || row.handle_action === 'freeze';
+                                    }
+                                },
+                                {
+                                    name: 'reject',
+                                    text: '拒绝',
+                                    title: '拒绝处理',
+                                    classname: 'btn btn-xs btn-danger btn-risklog-reject',
+                                    icon: 'fa fa-ban',
+                                    hidden: function(row) {
+                                        return row.handle_action === 'pass' || row.handle_action === 'reject' || row.handle_action === 'freeze';
+                                    }
+                                },
+                                {
+                                    name: 'freeze',
+                                    text: '冻结',
+                                    title: '冻结用户',
+                                    classname: 'btn btn-xs btn-default btn-risklog-freeze',
+                                    icon: 'fa fa-snowflake-o',
+                                    hidden: function(row) {
+                                        return row.handle_action === 'pass' || row.handle_action === 'reject' || row.handle_action === 'freeze';
+                                    }
+                                }
+                            ]
+                        }
+                    ]
+                ]
+            });
+
+            // 使用事件委托绑定按钮点击事件
+            // 通过按钮
+            table.on('click', '.btn-risklog-pass', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                var index = $(this).data('row-index');
+                var row = table.bootstrapTable('getData')[index];
+                if (row) {
+                    showConfirmDialog(row, 'pass');
+                }
+            });
+
+            // 审核按钮
+            table.on('click', '.btn-risklog-review', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                var index = $(this).data('row-index');
+                var row = table.bootstrapTable('getData')[index];
+                if (row) {
+                    showConfirmDialog(row, 'review');
+                }
+            });
+
+            // 拒绝按钮
+            table.on('click', '.btn-risklog-reject', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                var index = $(this).data('row-index');
+                var row = table.bootstrapTable('getData')[index];
+                if (row) {
+                    showConfirmDialog(row, 'reject');
+                }
+            });
+
+            // 冻结按钮
+            table.on('click', '.btn-risklog-freeze', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                var index = $(this).data('row-index');
+                var row = table.bootstrapTable('getData')[index];
+                if (row) {
+                    showConfirmDialog(row, 'freeze');
+                }
+            });
 
             // 为表格绑定事件
             Table.api.bindevent(table);
