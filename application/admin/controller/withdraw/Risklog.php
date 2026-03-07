@@ -3,8 +3,6 @@
 namespace app\admin\controller\withdraw;
 
 use app\common\controller\Backend;
-use app\common\model\RiskLog as RiskLogModel;
-use app\common\model\UserRiskScore;
 use think\Db;
 
 /**
@@ -42,7 +40,6 @@ class Risklog extends Backend
     public function _initialize()
     {
         parent::_initialize();
-        $this->model = new RiskLogModel();
     }
 
     /**
@@ -142,18 +139,27 @@ class Risklog extends Backend
      */
     public function pass($ids = null)
     {
+        $ids = $ids ? $ids : $this->request->param('ids');
+        if (empty($ids)) {
+            $this->error(__('参数错误'));
+        }
+
         $row = Db::name('risk_log')->where('id', $ids)->find();
         if (!$row) {
             $this->error('记录不存在');
         }
 
-        Db::name('risk_log')->where('id', $ids)->update([
+        $result = Db::name('risk_log')->where('id', $ids)->update([
             'handle_action' => 'pass',
             'handle_time' => time(),
             'handle_admin_id' => $this->auth->id
         ]);
 
-        $this->success('操作成功');
+        if ($result !== false) {
+            $this->success('操作成功');
+        } else {
+            $this->error('操作失败');
+        }
     }
 
     /**
@@ -161,18 +167,27 @@ class Risklog extends Backend
      */
     public function review($ids = null)
     {
+        $ids = $ids ? $ids : $this->request->param('ids');
+        if (empty($ids)) {
+            $this->error(__('参数错误'));
+        }
+
         $row = Db::name('risk_log')->where('id', $ids)->find();
         if (!$row) {
             $this->error('记录不存在');
         }
 
-        Db::name('risk_log')->where('id', $ids)->update([
+        $result = Db::name('risk_log')->where('id', $ids)->update([
             'handle_action' => 'review',
             'handle_time' => time(),
             'handle_admin_id' => $this->auth->id
         ]);
 
-        $this->success('操作成功');
+        if ($result !== false) {
+            $this->success('操作成功');
+        } else {
+            $this->error('操作失败');
+        }
     }
 
     /**
@@ -180,25 +195,39 @@ class Risklog extends Backend
      */
     public function reject($ids = null)
     {
+        $ids = $ids ? $ids : $this->request->param('ids');
+        if (empty($ids)) {
+            $this->error(__('参数错误'));
+        }
+
         $row = Db::name('risk_log')->where('id', $ids)->find();
         if (!$row) {
             $this->error('记录不存在');
         }
 
-        Db::name('risk_log')->where('id', $ids)->update([
+        $result = Db::name('risk_log')->where('id', $ids)->update([
             'handle_action' => 'reject',
             'handle_time' => time(),
             'handle_admin_id' => $this->auth->id
         ]);
 
-        $this->success('操作成功');
+        if ($result !== false) {
+            $this->success('操作成功');
+        } else {
+            $this->error('操作失败');
+        }
     }
 
     /**
-     * 冻结
+     * 冻结用户
      */
     public function freeze($ids = null)
     {
+        $ids = $ids ? $ids : $this->request->param('ids');
+        if (empty($ids)) {
+            $this->error(__('参数错误'));
+        }
+
         $row = Db::name('risk_log')->where('id', $ids)->find();
         if (!$row) {
             $this->error('记录不存在');
@@ -213,16 +242,28 @@ class Risklog extends Backend
                 'handle_admin_id' => $this->auth->id
             ]);
 
-            // 冻结用户
-            Db::name('user_risk_score')
-                ->where('user_id', $row['user_id'])
-                ->update(['status' => 'frozen']);
+            // 冻结用户风险评分
+            $riskScore = Db::name('user_risk_score')->where('user_id', $row['user_id'])->find();
+            if ($riskScore) {
+                Db::name('user_risk_score')
+                    ->where('user_id', $row['user_id'])
+                    ->update(['status' => 'frozen', 'updatetime' => time()]);
+            } else {
+                Db::name('user_risk_score')->insert([
+                    'user_id' => $row['user_id'],
+                    'total_score' => 0,
+                    'risk_level' => 'high',
+                    'status' => 'frozen',
+                    'createtime' => time(),
+                    'updatetime' => time()
+                ]);
+            }
 
             Db::commit();
-            $this->success('操作成功');
+            $this->success('操作成功，用户已冻结');
         } catch (\Exception $e) {
             Db::rollback();
-            $this->error($e->getMessage());
+            $this->error('操作失败：' . $e->getMessage());
         }
     }
 
@@ -235,7 +276,7 @@ class Risklog extends Backend
         if (empty($ids)) {
             $this->error(__('参数错误'));
         }
-        $ids = explode(',', $ids);
+        $ids = is_array($ids) ? $ids : explode(',', $ids);
 
         $action = $this->request->post('action');
         if (!in_array($action, ['pass', 'review', 'reject', 'freeze', 'del'])) {
@@ -245,18 +286,28 @@ class Risklog extends Backend
         $count = 0;
         foreach ($ids as $id) {
             if ($action == 'del') {
-                Db::name('risk_log')->where('id', $id)->delete();
+                $result = Db::name('risk_log')->where('id', $id)->delete();
             } else {
-                Db::name('risk_log')->where('id', $id)->update([
+                $result = Db::name('risk_log')->where('id', $id)->update([
                     'handle_action' => $action,
                     'handle_time' => time(),
                     'handle_admin_id' => $this->auth->id
                 ]);
             }
-            $count++;
+            if ($result !== false) {
+                $count++;
+            }
         }
 
-        $this->success("成功操作{$count}条记录");
+        $actionText = [
+            'pass' => '通过',
+            'review' => '人工审核',
+            'reject' => '拒绝',
+            'freeze' => '冻结',
+            'del' => '删除'
+        ];
+
+        $this->success("成功{$actionText[$action]}{$count}条记录");
     }
 
     /**
@@ -268,7 +319,7 @@ class Risklog extends Backend
         if (empty($ids)) {
             $this->error(__('参数错误'));
         }
-        $ids = explode(',', $ids);
+        $ids = is_array($ids) ? $ids : explode(',', $ids);
 
         $count = Db::name('risk_log')->whereIn('id', $ids)->delete();
         $this->success("成功删除{$count}条记录");
