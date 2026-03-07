@@ -238,10 +238,11 @@ class Order extends Backend
                 // 使用订单号作为条件更新
                 Db::name($tableName)->where('order_no', $row['order_no'])->update([
                     'status' => WithdrawOrder::STATUS_APPROVED,
-                    'admin_id' => $this->auth->id,
-                    'admin_name' => $this->auth->username,
-                    'approve_time' => time(),
-                    'admin_remark' => $remark,
+                    'audit_type' => 1, // 人工审核
+                    'audit_admin_id' => $this->auth->id,
+                    'audit_admin_name' => $this->auth->username,
+                    'audit_time' => time(),
+                    'audit_remark' => $remark,
                     'updatetime' => time(),
                 ]);
 
@@ -393,9 +394,10 @@ class Order extends Backend
                 // 更新订单状态
                 Db::name($tableName)->where('order_no', $row['order_no'])->update([
                     'status' => WithdrawOrder::STATUS_REJECTED,
-                    'admin_id' => $this->auth->id,
-                    'admin_name' => $this->auth->username,
-                    'approve_time' => time(),
+                    'audit_type' => 1, // 人工审核
+                    'audit_admin_id' => $this->auth->id,
+                    'audit_admin_name' => $this->auth->username,
+                    'audit_time' => time(),
                     'reject_reason' => $rejectReason,
                     'updatetime' => time(),
                 ]);
@@ -464,9 +466,10 @@ class Order extends Backend
                 if ($row['status'] == WithdrawOrder::STATUS_PENDING) {
                     Db::name($tableName)->where('order_no', $row['order_no'])->update([
                         'status' => WithdrawOrder::STATUS_APPROVED,
-                        'admin_id' => $this->auth->id,
-                        'admin_name' => $this->auth->username,
-                        'approve_time' => time(),
+                        'audit_type' => 1, // 人工审核
+                        'audit_admin_id' => $this->auth->id,
+                        'audit_admin_name' => $this->auth->username,
+                        'audit_time' => time(),
                         'updatetime' => time(),
                     ]);
                 }
@@ -476,7 +479,7 @@ class Order extends Backend
                     'status' => WithdrawOrder::STATUS_SUCCESS,
                     'transfer_no' => $transferNo,
                     'complete_time' => time(),
-                    'admin_remark' => $remark,
+                    'audit_remark' => $remark,
                     'updatetime' => time(),
                 ]);
 
@@ -567,9 +570,10 @@ class Order extends Backend
                 $tableName = $row['_table'] ?? 'withdraw_order';
                 Db::name($tableName)->where('order_no', $row['order_no'])->update([
                     'status' => WithdrawOrder::STATUS_APPROVED,
-                    'admin_id' => $this->auth->id,
-                    'admin_name' => $this->auth->username,
-                    'approve_time' => time(),
+                    'audit_type' => 1, // 人工审核
+                    'audit_admin_id' => $this->auth->id,
+                    'audit_admin_name' => $this->auth->username,
+                    'audit_time' => time(),
                     'updatetime' => time()
                 ]);
                 $count++;
@@ -604,9 +608,10 @@ class Order extends Backend
                     if ($row['status'] == WithdrawOrder::STATUS_PENDING) {
                         Db::name($tableName)->where('order_no', $row['order_no'])->update([
                             'status' => WithdrawOrder::STATUS_APPROVED,
-                            'admin_id' => $this->auth->id,
-                            'admin_name' => $this->auth->username,
-                            'approve_time' => time(),
+                            'audit_type' => 1, // 人工审核
+                            'audit_admin_id' => $this->auth->id,
+                            'audit_admin_name' => $this->auth->username,
+                            'audit_time' => time(),
                             'updatetime' => time(),
                         ]);
                     }

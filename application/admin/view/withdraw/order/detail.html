@@ -71,18 +71,18 @@
             <div class="panel-heading"><strong>审核信息</strong></div>
             <div class="panel-body">
                 <table class="table table-bordered">
-                    {if condition="isset($order['admin_name']) && $order['admin_name']"}
+                    {if condition="isset($order['audit_admin_name']) && $order['audit_admin_name']"}
                     <tr>
                         <td width="120">审核人</td>
-                        <td>{$order.admin_name|default=''} (ID: {$order.admin_id|default=0})</td>
+                        <td>{$order.audit_admin_name|default=''} (ID: {$order.audit_admin_id|default=0})</td>
                         <td width="120">审核时间</td>
-                        <td>{$order.approve_time|date='Y-m-d H:i:s',###}</td>
+                        <td>{$order.audit_time|date='Y-m-d H:i:s',###}</td>
                     </tr>
                     {/if}
-                    {if condition="isset($order['admin_remark']) && $order['admin_remark']"}
+                    {if condition="isset($order['audit_remark']) && $order['audit_remark']"}
                     <tr>
                         <td>审核备注</td>
-                        <td colspan="3">{$order.admin_remark|default=''}</td>
+                        <td colspan="3">{$order.audit_remark|default=''}</td>
                     </tr>
                     {/if}
                     {if condition="isset($order['reject_reason']) && $order['reject_reason']"}
