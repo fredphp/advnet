@@ -53,12 +53,12 @@ class Order extends Backend
                 }
             }
             
-            // 如果没有时间筛选，默认查询最近3个月
+            // 如果没有时间筛选，默认查询当月数据
             if ($startTime === null) {
-                $startTime = strtotime('-3 months');
+                $startTime = strtotime(date('Y-m-01')); // 当月第一天
             }
             if ($endTime === null) {
-                $endTime = time();
+                $endTime = strtotime(date('Y-m-t 23:59:59')); // 当月最后一天
             }
             
             // 获取需要查询的分表
@@ -83,7 +83,7 @@ class Order extends Backend
             $whereParts = ['1=1'];
             $bindParams = [];
             
-            // 时间范围筛选（核心修复）
+            // 时间范围筛选
             $whereParts[] = "wo.createtime BETWEEN ? AND ?";
             $bindParams[] = $startTime;
             $bindParams[] = $endTime;
@@ -95,8 +95,6 @@ class Order extends Backend
                 }
                 
                 $fieldOp = $op[$field] ?? '=';
-                
-                // 处理表字段名（添加 wo. 前缀）
                 $dbField = 'wo.' . $field;
                 
                 if ($fieldOp == 'RANGE' && strpos($value, ' - ') !== false) {
@@ -152,11 +150,14 @@ class Order extends Backend
                         LIMIT {$offset}, {$limit}";
             $list = Db::query($listSql, $bindParams);
             
-            // 格式化数据
+            // 格式化数据（确保包含 FastAdmin 需要的字段）
             foreach ($list as &$row) {
                 $row['status_text'] = WithdrawOrder::$statusList[$row['status']] ?? '';
                 $row['withdraw_type_text'] = WithdrawOrder::$typeList[$row['withdraw_type']] ?? '';
                 $row['createtime_text'] = date('Y-m-d H:i:s', $row['createtime']);
+                // 确保 ID 是整数
+                $row['id'] = intval($row['id']);
+                $row['user_id'] = intval($row['user_id']);
             }
             
             return json(['total' => $total, 'rows' => $list]);
@@ -166,7 +167,6 @@ class Order extends Backend
 
     /**
      * 提现详情
-     * 支持跨分表查询
      */
     public function detail($ids = null)
     {
@@ -178,7 +178,7 @@ class Order extends Backend
         // 用户信息
         $user = Db::name('user')->where('id', $row['user_id'])->find();
 
-        // 用户提现统计（跨分表统计）
+        // 用户提现统计
         $userStats = $this->getUserWithdrawStats($row['user_id']);
 
         // 风险信息
@@ -216,7 +216,6 @@ class Order extends Backend
 
         Db::startTrans();
         try {
-            // 更新订单状态
             $this->updateOrderStatus($ids, [
                 'status' => WithdrawOrder::STATUS_APPROVED,
                 'admin_id' => $this->auth->id,
@@ -314,7 +313,6 @@ class Order extends Backend
 
         $ids = is_array($ids) ? $ids : explode(',', $ids);
         
-        // 跨分表更新
         $count = 0;
         foreach ($ids as $id) {
             $row = $this->getOrderById($id);
@@ -376,7 +374,6 @@ class Order extends Backend
         $filter = json_decode($this->request->get('filter', '{}'), true);
         $op = json_decode($this->request->get('op', '{}'), true);
 
-        // 构建时间范围
         $startTime = null;
         $endTime = null;
         
@@ -390,13 +387,12 @@ class Order extends Backend
         }
         
         if ($startTime === null) {
-            $startTime = strtotime('-3 months');
+            $startTime = strtotime(date('Y-m-01'));
         }
         if ($endTime === null) {
-            $endTime = time();
+            $endTime = strtotime(date('Y-m-t 23:59:59'));
         }
 
-        // 获取分表
         $tables = WithdrawOrder::getTablesByRange($startTime, $endTime);
         $prefix = \think\Config::get('database.prefix');
 
@@ -413,11 +409,9 @@ class Order extends Backend
 
         $unionSql = '(' . implode(' UNION ALL ', $unionQueries) . ') AS wo';
 
-        // 构建条件
         $whereParts = ['wo.createtime BETWEEN ? AND ?'];
         $bindParams = [$startTime, $endTime];
         
-        // 处理状态筛选
         if (isset($filter['status'])) {
             $whereParts[] = "wo.status = ?";
             $bindParams[] = $filter['status'];
@@ -425,7 +419,6 @@ class Order extends Backend
 
         $whereStr = implode(' AND ', $whereParts);
 
-        // 查询数据
         $sql = "SELECT wo.*, u.username, u.nickname, u.mobile 
                 FROM {$unionSql} 
                 LEFT JOIN {$prefix}user u ON u.id = wo.user_id 
@@ -433,7 +426,6 @@ class Order extends Backend
                 ORDER BY wo.createtime DESC";
         $list = Db::query($sql, $bindParams);
 
-        // 导出CSV
         $filename = 'withdraw_orders_' . date('YmdHis') . '.csv';
         header('Content-Type: text/csv');
         header('Content-Disposition: attachment; filename="' . $filename . '"');
@@ -465,12 +457,9 @@ class Order extends Backend
 
     /**
      * 根据ID获取订单（跨分表查询）
-     * @param int $id
-     * @return array|null
      */
     protected function getOrderById($id)
     {
-        // 尝试从最近几个月的分表中查找
         $tables = WithdrawOrder::getTablesByRange(strtotime('-6 months'), time());
         $prefix = \think\Config::get('database.prefix');
         
@@ -488,9 +477,6 @@ class Order extends Backend
 
     /**
      * 更新订单状态（跨分表）
-     * @param int $id
-     * @param array $data
-     * @return bool
      */
     protected function updateOrderStatus($id, $data)
     {
@@ -510,8 +496,6 @@ class Order extends Backend
 
     /**
      * 获取用户提现统计（跨分表）
-     * @param int $userId
-     * @return array
      */
     protected function getUserWithdrawStats($userId)
     {
@@ -542,9 +526,6 @@ class Order extends Backend
 
     /**
      * 获取用户最近提现记录（跨分表）
-     * @param int $userId
-     * @param int $excludeId
-     * @return array
      */
     protected function getRecentOrders($userId, $excludeId)
     {
@@ -580,11 +561,9 @@ class Order extends Backend
         $filter = json_decode($this->request->get('filter', '{}'), true);
         $op = json_decode($this->request->get('op', '{}'), true);
         
-        // 解析时间范围
-        $startDate = $this->request->get('start_date', date('Y-m-d', strtotime('-30 days')));
+        $startDate = $this->request->get('start_date', date('Y-m-01'));
         $endDate = $this->request->get('end_date', date('Y-m-d'));
         
-        // 优先从 filter 解析时间
         if (isset($filter['createtime']) && isset($op['createtime']) && $op['createtime'] == 'RANGE') {
             $timeRange = $filter['createtime'];
             if (strpos($timeRange, ' - ') !== false) {
@@ -597,7 +576,6 @@ class Order extends Backend
         $startTimestamp = strtotime($startDate);
         $endTimestamp = strtotime($endDate . ' 23:59:59');
 
-        // 获取分表
         $tables = WithdrawOrder::getTablesByRange($startTimestamp, $endTimestamp);
         $prefix = \think\Config::get('database.prefix');
 
@@ -632,7 +610,6 @@ class Order extends Backend
 
         $unionSql = '(' . implode(' UNION ALL ', $unionQueries) . ') AS wo';
 
-        // 总体统计
         $totalSql = "SELECT COUNT(*) as total_count, 
                             SUM(cash_amount) as total_amount,
                             SUM(CASE WHEN status = " . WithdrawOrder::STATUS_SUCCESS . " THEN cash_amount ELSE 0 END) as completed_amount,
@@ -642,14 +619,12 @@ class Order extends Backend
         $totalStats = Db::query($totalSql, [$startTimestamp, $endTimestamp]);
         $totalStats = $totalStats[0] ?? [];
 
-        // 状态分布
         $statusSql = "SELECT status, COUNT(*) as count, SUM(cash_amount) as amount 
                       FROM {$unionSql} 
                       WHERE createtime BETWEEN ? AND ? 
                       GROUP BY status";
         $statusDistribution = Db::query($statusSql, [$startTimestamp, $endTimestamp]);
 
-        // 每日趋势
         $dailySql = "SELECT FROM_UNIXTIME(createtime, '%Y-%m-%d') as date,
                             COUNT(*) as count, 
                             SUM(cash_amount) as amount,
@@ -660,7 +635,6 @@ class Order extends Backend
                      ORDER BY date ASC";
         $dailyStats = Db::query($dailySql, [$startTimestamp, $endTimestamp]);
 
-        // 用户提现排行
         $topUsersSql = "SELECT u.id, u.username, u.nickname, 
                                COUNT(*) as withdraw_count, 
                                SUM(wo.cash_amount) as total_amount
@@ -692,7 +666,7 @@ class Order extends Backend
     }
 
     /**
-     * 待审核列表（快捷入口）
+     * 待审核列表
      */
     public function pending()
     {
@@ -700,7 +674,6 @@ class Order extends Backend
             $offset = $this->request->get('offset', 0);
             $limit = $this->request->get('limit', 10);
 
-            // 跨分表查询待审核订单
             $tables = WithdrawOrder::getTablesByRange(strtotime('-1 month'), time());
             $prefix = \think\Config::get('database.prefix');
 
@@ -717,12 +690,10 @@ class Order extends Backend
 
             $unionSql = '(' . implode(' UNION ALL ', $unionQueries) . ') AS wo';
 
-            // 查询总数
             $countSql = "SELECT COUNT(*) as total FROM {$unionSql} WHERE status = ?";
             $totalResult = Db::query($countSql, [WithdrawOrder::STATUS_PENDING]);
             $total = $totalResult[0]['total'] ?? 0;
 
-            // 查询列表
             $listSql = "SELECT wo.*, u.username, u.nickname, u.mobile 
                         FROM {$unionSql} 
                         LEFT JOIN {$prefix}user u ON u.id = wo.user_id 
