@@ -44,8 +44,20 @@ class Config extends Backend
             }
         }
 
+        // 获取默认配置
+        $defaults = SystemConfigService::getDefaults();
+        $defaultWithdraw = isset($defaults['withdraw']) ? $defaults['withdraw'] : [];
+        
         // 获取提现配置
         $config = SystemConfigService::getWithdrawConfig();
+        
+        // 确保是数组
+        if (!is_array($config)) {
+            $config = [];
+        }
+        
+        // 合并默认值，确保所有字段都有值
+        $config = array_merge($defaultWithdraw, $config);
         
         $this->view->assign('config', $config);
         return $this->view->fetch();
