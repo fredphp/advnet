@@ -15,8 +15,8 @@
                                         <label class="control-label col-xs-12 col-sm-2">开启提现:</label>
                                         <div class="col-xs-12 col-sm-8">
                                             <select name="row[withdraw_enabled]" class="form-control">
-                                                <option value="1" {:$config['withdraw_enabled'] == 1 ? 'selected' : ''}>开启</option>
-                                                <option value="0" {:$config['withdraw_enabled'] == 0 ? 'selected' : ''}>关闭</option>
+                                                <option value="1" {if condition="isset($config['withdraw_enabled']) && $config['withdraw_enabled'] == 1"}selected{/if}>开启</option>
+                                                <option value="0" {if condition="isset($config['withdraw_enabled']) && $config['withdraw_enabled'] == 0"}selected{/if}>关闭</option>
                                             </select>
                                         </div>
                                     </div>
