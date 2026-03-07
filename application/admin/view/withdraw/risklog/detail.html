@@ -144,7 +144,7 @@
         {if condition="$recent_logs"}
         <div class="panel panel-danger" style="margin-top: 15px;">
             <div class="panel-heading">
-                <h4 class="panel-title"><i class="fa fa-history"></i> 该用户最近风控记录（共 {count($recent_logs)} 条）</h4>
+                <h4 class="panel-title"><i class="fa fa-history"></i> 该用户最近风控记录（共 {$recent_logs|count} 条）</h4>
             </div>
             <div class="panel-body">
                 <table class="table table-bordered table-hover">
