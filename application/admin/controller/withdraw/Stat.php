@@ -95,7 +95,7 @@ class Stat extends Backend
                 }
             }
 
-            $this->success('', $stats);
+            $this->success('', null, $stats);
         }
 
         return $this->view->fetch();
