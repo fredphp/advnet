@@ -912,100 +912,132 @@ class Order extends Backend
      */
     public function statistics()
     {
-        $filter = json_decode($this->request->get('filter', '{}'), true);
-        $op = json_decode($this->request->get('op', '{}'), true);
-        
         $startDate = $this->request->get('start_date', date('Y-m-01'));
         $endDate = $this->request->get('end_date', date('Y-m-d'));
         
-        if (isset($filter['createtime']) && isset($op['createtime']) && $op['createtime'] == 'RANGE') {
-            $timeRange = $filter['createtime'];
-            if (strpos($timeRange, ' - ') !== false) {
-                list($startStr, $endStr) = explode(' - ', $timeRange);
-                $startDate = date('Y-m-d', strtotime(trim($startStr)));
-                $endDate = date('Y-m-d', strtotime(trim($endStr)));
-            }
-        }
-
         $startTimestamp = strtotime($startDate);
         $endTimestamp = strtotime($endDate . ' 23:59:59');
 
-        $tables = WithdrawOrder::getTablesByRange($startTimestamp, $endTimestamp);
         $prefix = \think\Config::get('database.prefix');
+        
+        // 初始化统计数据
+        $totalStats = [
+            'total_count' => 0,
+            'total_amount' => 0,
+            'completed_amount' => 0,
+            'rejected_amount' => 0
+        ];
+        
+        $statusDistribution = [];
+        $amountDistribution = [];
+        $topUsers = [];
 
-        $unionQueries = [];
-        foreach ($tables as $table) {
-            if (WithdrawOrder::tableExists($table)) {
-                $unionQueries[] = "SELECT * FROM {$prefix}{$table}";
-            }
-        }
-
-        if (empty($unionQueries)) {
-            $emptyStats = [
-                'total_count' => 0,
-                'total_amount' => 0,
-                'completed_amount' => 0,
-                'rejected_amount' => 0
-            ];
+        try {
+            // 检查表是否存在
+            $tableName = $prefix . 'withdraw_order';
+            $tableExists = Db::query("SHOW TABLES LIKE '{$tableName}'");
             
-            if ($this->request->isAjax()) {
-                $this->success('', [
-                    'total_stats' => $emptyStats,
-                    'status_distribution' => [],
-                    'daily_stats' => [],
-                    'top_users' => [],
-                ]);
+            if (!empty($tableExists)) {
+                // 总体统计
+                $totalResult = Db::name('withdraw_order')
+                    ->where('createtime', '>=', $startTimestamp)
+                    ->where('createtime', '<=', $endTimestamp)
+                    ->field('COUNT(*) as total_count, COALESCE(SUM(cash_amount), 0) as total_amount')
+                    ->find();
+                $totalStats['total_count'] = intval($totalResult['total_count']);
+                $totalStats['total_amount'] = floatval($totalResult['total_amount']);
+
+                // 已完成金额
+                $completedAmount = Db::name('withdraw_order')
+                    ->where('status', WithdrawOrder::STATUS_SUCCESS)
+                    ->where('createtime', '>=', $startTimestamp)
+                    ->where('createtime', '<=', $endTimestamp)
+                    ->sum('cash_amount');
+                $totalStats['completed_amount'] = floatval($completedAmount ?: 0);
+
+                // 已拒绝金额
+                $rejectedAmount = Db::name('withdraw_order')
+                    ->where('status', WithdrawOrder::STATUS_REJECTED)
+                    ->where('createtime', '>=', $startTimestamp)
+                    ->where('createtime', '<=', $endTimestamp)
+                    ->sum('cash_amount');
+                $totalStats['rejected_amount'] = floatval($rejectedAmount ?: 0);
+
+                // 状态分布
+                $statusList = [
+                    WithdrawOrder::STATUS_PENDING => '待审核',
+                    WithdrawOrder::STATUS_APPROVED => '已审核',
+                    WithdrawOrder::STATUS_SUCCESS => '已完成',
+                    WithdrawOrder::STATUS_REJECTED => '已拒绝'
+                ];
+                
+                foreach ($statusList as $status => $statusText) {
+                    $count = Db::name('withdraw_order')
+                        ->where('status', $status)
+                        ->where('createtime', '>=', $startTimestamp)
+                        ->where('createtime', '<=', $endTimestamp)
+                        ->count();
+                    $amount = Db::name('withdraw_order')
+                        ->where('status', $status)
+                        ->where('createtime', '>=', $startTimestamp)
+                        ->where('createtime', '<=', $endTimestamp)
+                        ->sum('cash_amount');
+                    
+                    if ($count > 0) {
+                        $statusDistribution[] = [
+                            'status' => $statusText,
+                            'count' => $count,
+                            'amount' => floatval($amount ?: 0)
+                        ];
+                    }
+                }
+
+                // 金额分布
+                $ranges = [
+                    ['min' => 0, 'max' => 10, 'label' => '0-10元'],
+                    ['min' => 10, 'max' => 50, 'label' => '10-50元'],
+                    ['min' => 50, 'max' => 100, 'label' => '50-100元'],
+                    ['min' => 100, 'max' => 500, 'label' => '100-500元'],
+                    ['min' => 500, 'max' => 1000, 'label' => '500-1000元'],
+                    ['min' => 1000, 'max' => 9999999, 'label' => '1000元以上'],
+                ];
+                
+                foreach ($ranges as $range) {
+                    $count = Db::name('withdraw_order')
+                        ->where('cash_amount', '>=', $range['min'])
+                        ->where('cash_amount', '<', $range['max'])
+                        ->where('createtime', '>=', $startTimestamp)
+                        ->where('createtime', '<=', $endTimestamp)
+                        ->count();
+                    
+                    $amountDistribution[] = [
+                        'range' => $range['label'],
+                        'count' => $count
+                    ];
+                }
+
+                // 用户提现排行 TOP20
+                $topUsers = Db::name('withdraw_order')
+                    ->alias('wo')
+                    ->join('__USER__ u', 'u.id = wo.user_id', 'LEFT')
+                    ->where('wo.status', WithdrawOrder::STATUS_SUCCESS)
+                    ->where('wo.createtime', '>=', $startTimestamp)
+                    ->where('wo.createtime', '<=', $endTimestamp)
+                    ->field('u.id, u.username, u.nickname, COUNT(*) as withdraw_count, SUM(wo.cash_amount) as total_amount')
+                    ->group('wo.user_id')
+                    ->order('total_amount desc')
+                    ->limit(20)
+                    ->select();
             }
-            
-            $this->view->assign('start_date', $startDate);
-            $this->view->assign('end_date', $endDate);
-            return $this->view->fetch();
+        } catch (\Exception $e) {
+            \think\Log::error('Withdraw Statistics Error: ' . $e->getMessage());
         }
-
-        $unionSql = '(' . implode(' UNION ALL ', $unionQueries) . ') AS wo';
-
-        $totalSql = "SELECT COUNT(*) as total_count, 
-                            SUM(cash_amount) as total_amount,
-                            SUM(CASE WHEN status = " . WithdrawOrder::STATUS_SUCCESS . " THEN cash_amount ELSE 0 END) as completed_amount,
-                            SUM(CASE WHEN status = " . WithdrawOrder::STATUS_REJECTED . " THEN cash_amount ELSE 0 END) as rejected_amount
-                     FROM {$unionSql} 
-                     WHERE createtime BETWEEN ? AND ?";
-        $totalStats = Db::query($totalSql, [$startTimestamp, $endTimestamp]);
-        $totalStats = $totalStats[0] ?? [];
-
-        $statusSql = "SELECT status, COUNT(*) as count, SUM(cash_amount) as amount 
-                      FROM {$unionSql} 
-                      WHERE createtime BETWEEN ? AND ? 
-                      GROUP BY status";
-        $statusDistribution = Db::query($statusSql, [$startTimestamp, $endTimestamp]);
-
-        $dailySql = "SELECT FROM_UNIXTIME(createtime, '%Y-%m-%d') as date,
-                            COUNT(*) as count, 
-                            SUM(cash_amount) as amount,
-                            SUM(CASE WHEN status = " . WithdrawOrder::STATUS_SUCCESS . " THEN cash_amount ELSE 0 END) as completed
-                     FROM {$unionSql} 
-                     WHERE createtime BETWEEN ? AND ? 
-                     GROUP BY date 
-                     ORDER BY date ASC";
-        $dailyStats = Db::query($dailySql, [$startTimestamp, $endTimestamp]);
-
-        $topUsersSql = "SELECT u.id, u.username, u.nickname, 
-                               COUNT(*) as withdraw_count, 
-                               SUM(wo.cash_amount) as total_amount
-                        FROM {$unionSql} 
-                        LEFT JOIN {$prefix}user u ON u.id = wo.user_id
-                        WHERE wo.createtime BETWEEN ? AND ? 
-                        AND wo.status = " . WithdrawOrder::STATUS_SUCCESS . "
-                        GROUP BY wo.user_id 
-                        ORDER BY total_amount DESC 
-                        LIMIT 20";
-        $topUsers = Db::query($topUsersSql, [$startTimestamp, $endTimestamp]);
 
         if ($this->request->isAjax()) {
-            $this->success('', [
+            $this->success('', null, [
                 'total_stats' => $totalStats,
                 'status_distribution' => $statusDistribution,
-                'daily_stats' => $dailyStats,
+                'amount_distribution' => $amountDistribution,
                 'top_users' => $topUsers,
             ]);
         }
@@ -1014,7 +1046,7 @@ class Order extends Backend
         $this->view->assign('end_date', $endDate);
         $this->view->assign('total_stats', $totalStats);
         $this->view->assign('status_distribution', $statusDistribution);
-        $this->view->assign('daily_stats', $dailyStats);
+        $this->view->assign('amount_distribution', $amountDistribution);
         $this->view->assign('top_users', $topUsers);
         return $this->view->fetch();
     }

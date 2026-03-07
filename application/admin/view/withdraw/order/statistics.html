@@ -65,6 +65,9 @@
                                     <td>{$item.amount}</td>
                                 </tr>
                                 {/volist}
+                                {empty name="status_distribution"}
+                                <tr><td colspan="3" class="text-center text-muted">暂无数据</td></tr>
+                                {/empty}
                             </tbody>
                         </table>
                     </div>
@@ -83,6 +86,9 @@
                                     <td>{$item.count}</td>
                                 </tr>
                                 {/volist}
+                                {empty name="amount_distribution"}
+                                <tr><td colspan="2" class="text-center text-muted">暂无数据</td></tr>
+                                {/empty}
                             </tbody>
                         </table>
                     </div>
@@ -107,6 +113,9 @@
                                     <td>{$item.total_amount}</td>
                                 </tr>
                                 {/volist}
+                                {empty name="top_users"}
+                                <tr><td colspan="5" class="text-center text-muted">暂无数据</td></tr>
+                                {/empty}
                             </tbody>
                         </table>
                     </div>
