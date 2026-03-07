@@ -14,6 +14,9 @@
                     </div>
                     <table id="table" class="table table-striped table-bordered table-hover table-nowrap"
                            data-operate-detail="{:$auth->check('withdraw/order/detail')}"
+                           data-operate-approve="{:$auth->check('withdraw/order/approve')}"
+                           data-operate-reject="{:$auth->check('withdraw/order/reject')}"
+                           data-operate-complete="{:$auth->check('withdraw/order/complete')}"
                            width="100%">
                     </table>
                 </div>

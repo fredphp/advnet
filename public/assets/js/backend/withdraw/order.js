@@ -7,6 +7,9 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
                 extend: {
                     index_url: 'withdraw/order/index' + location.search,
                     detail_url: 'withdraw/order/detail',
+                    approve_url: 'withdraw/order/approve',
+                    reject_url: 'withdraw/order/reject',
+                    complete_url: 'withdraw/order/complete',
                     multi_url: 'withdraw/order/multi',
                     export_url: 'withdraw/order/export',
                     table: 'withdraw_order',
@@ -36,7 +39,78 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
                         }},
                         {field: 'status', title: '状态', searchList: {"0":"待审核","1":"审核通过","2":"打款中","3":"提现成功","4":"审核拒绝","5":"打款失败","6":"已取消"}, formatter: Table.api.formatter.status},
                         {field: 'createtime', title: '申请时间', operate:'RANGE', addclass:'datetimerange', autocomplete:false, formatter: Table.api.formatter.datetime},
-                        {field: 'operate', title: __('Operate'), table: table, events: Table.api.events.operate, formatter: Table.api.formatter.operate}
+                        {
+                            field: 'operate', 
+                            title: __('Operate'), 
+                            table: table, 
+                            events: Table.api.events.operate, 
+                            formatter: Table.api.formatter.operate,
+                            buttons: [
+                                {
+                                    name: 'detail',
+                                    text: '详情',
+                                    title: '订单详情',
+                                    classname: 'btn btn-xs btn-success btn-dialog',
+                                    icon: 'fa fa-list',
+                                    url: 'withdraw/order/detail',
+                                    extend: 'data-area=\'["800px","600px"]\''
+                                },
+                                {
+                                    name: 'approve',
+                                    text: '审核通过',
+                                    title: '审核通过',
+                                    classname: 'btn btn-xs btn-success btn-ajax',
+                                    icon: 'fa fa-check',
+                                    url: 'withdraw/order/approve',
+                                    confirm: '确认审核通过？',
+                                    success: function(data, ret) {
+                                        table.bootstrapTable('refresh');
+                                    },
+                                    error: function(data, ret) {
+                                        Layer.alert(ret.msg);
+                                    },
+                                    visible: function(row) {
+                                        return row.status == 0; // 只有待审核状态才显示
+                                    }
+                                },
+                                {
+                                    name: 'reject',
+                                    text: '审核拒绝',
+                                    title: '审核拒绝',
+                                    classname: 'btn btn-xs btn-danger btn-ajax',
+                                    icon: 'fa fa-times',
+                                    url: 'withdraw/order/reject',
+                                    confirm: '确认拒绝？请确保已填写拒绝原因',
+                                    success: function(data, ret) {
+                                        table.bootstrapTable('refresh');
+                                    },
+                                    error: function(data, ret) {
+                                        Layer.alert(ret.msg);
+                                    },
+                                    visible: function(row) {
+                                        return row.status == 0; // 只有待审核状态才显示
+                                    }
+                                },
+                                {
+                                    name: 'complete',
+                                    text: '通过打款',
+                                    title: '确认打款',
+                                    classname: 'btn btn-xs btn-warning btn-ajax',
+                                    icon: 'fa fa-money',
+                                    url: 'withdraw/order/complete',
+                                    confirm: '确认打款？将通过微信支付转账到用户零钱',
+                                    success: function(data, ret) {
+                                        table.bootstrapTable('refresh');
+                                    },
+                                    error: function(data, ret) {
+                                        Layer.alert(ret.msg);
+                                    },
+                                    visible: function(row) {
+                                        return row.status == 0 || row.status == 1; // 待审核或审核通过状态
+                                    }
+                                }
+                            ]
+                        }
                     ]
                 ]
             });
@@ -136,7 +210,59 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
                         }},
                         {field: 'withdraw_account', title: '收款账号'},
                         {field: 'createtime', title: '申请时间', formatter: Table.api.formatter.datetime},
-                        {field: 'operate', title: '操作', table: table, events: Table.api.events.operate, formatter: Table.api.formatter.operate}
+                        {
+                            field: 'operate', 
+                            title: '操作', 
+                            table: table, 
+                            events: Table.api.events.operate, 
+                            formatter: Table.api.formatter.operate,
+                            buttons: [
+                                {
+                                    name: 'detail',
+                                    text: '详情',
+                                    title: '订单详情',
+                                    classname: 'btn btn-xs btn-success btn-dialog',
+                                    icon: 'fa fa-list',
+                                    url: 'withdraw/order/detail'
+                                },
+                                {
+                                    name: 'approve',
+                                    text: '审核通过',
+                                    title: '审核通过',
+                                    classname: 'btn btn-xs btn-success btn-ajax',
+                                    icon: 'fa fa-check',
+                                    url: 'withdraw/order/approve',
+                                    confirm: '确认审核通过？',
+                                    success: function(data, ret) {
+                                        table.bootstrapTable('refresh');
+                                    }
+                                },
+                                {
+                                    name: 'reject',
+                                    text: '审核拒绝',
+                                    title: '审核拒绝',
+                                    classname: 'btn btn-xs btn-danger btn-ajax',
+                                    icon: 'fa fa-times',
+                                    url: 'withdraw/order/reject',
+                                    confirm: '确认拒绝？',
+                                    success: function(data, ret) {
+                                        table.bootstrapTable('refresh');
+                                    }
+                                },
+                                {
+                                    name: 'complete',
+                                    text: '通过打款',
+                                    title: '确认打款',
+                                    classname: 'btn btn-xs btn-warning btn-ajax',
+                                    icon: 'fa fa-money',
+                                    url: 'withdraw/order/complete',
+                                    confirm: '确认打款？',
+                                    success: function(data, ret) {
+                                        table.bootstrapTable('refresh');
+                                    }
+                                }
+                            ]
+                        }
                     ]
                 ]
             });
