@@ -88,10 +88,10 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
                                     },
                                     extend: 'data-area=\'["600px","500px"]\''
                                 },
-                                // 通过打款按钮 - 仅待审核状态显示
+                                // 确认打款按钮 - 仅审核通过状态显示
                                 {
                                     name: 'complete',
-                                    text: '通过打款',
+                                    text: '确认打款',
                                     title: '确认打款',
                                     classname: 'btn btn-xs btn-warning btn-dialog',
                                     icon: 'fa fa-money',
@@ -99,21 +99,9 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
                                         return 'withdraw/order/complete?order_no=' + encodeURIComponent(row.order_no);
                                     },
                                     hidden: function(row) {
-                                        return row.status != 0;
+                                        return row.status != 1;
                                     },
                                     extend: 'data-area=\'["800px","90%"]\''
-                                },
-                                // 已完成标签 - 审核通过状态显示（无点击效果）
-                                {
-                                    name: 'completed_tag',
-                                    text: '已完成',
-                                    title: '已完成',
-                                    classname: 'btn btn-xs btn-default disabled',
-                                    icon: 'fa fa-check-circle',
-                                    url: 'javascript:;',
-                                    hidden: function(row) {
-                                        return row.status != 1;
-                                    }
                                 },
                                 // 已拒绝标签 - 已拒绝状态显示（无点击效果）
                                 {
