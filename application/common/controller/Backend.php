@@ -622,40 +622,27 @@ class Backend extends Controller
      */
     protected function success($msg = '', $data = null, $url = null, $wait = 3, array $header = [])
     {
-        // 如果是AJAX请求，返回JSON格式数据
-        if (IS_AJAX || $this->request->isAjax()) {
-            $result = [
-                'code' => 1,
-                'msg'  => $msg,
-                'time' => $this->request->server('REQUEST_TIME'),
-                'data' => $data,
-                'url'  => $url,
-            ];
-            $response = json($result);
-            throw new \think\exception\HttpResponseException($response);
+        // 处理参数兼容性：支持 success($msg, $url) 和 success($msg, $data, $url) 两种调用方式
+        if (is_array($data)) {
+            // $data 是数组，说明是 success($msg, $data, $url) 调用方式
+            // 保持 $data 作为数据，$url 作为跳转地址
+        } elseif (is_string($data) && $url === null) {
+            // $data 是字符串且 $url 为空，说明是 success($msg, $url) 调用方式
+            $url = $data;
+            $data = null;
         }
-
-        // 非AJAX请求，调用父类的跳转方法
-        // 如果 $data 是数组且 $url 为空，说明调用方式是 success($msg, $data)
-        // 需要调整参数顺序
-        if (is_array($data) && $url === null) {
-            // 保持兼容：$data 作为数据参数，不作为 URL
-            $url = '';
-        }
-
-        $url = $url ?: $this->request->header('referer') ?: '';
+        
         $result = [
             'code' => 1,
             'msg'  => $msg,
+            'time' => $this->request->server('REQUEST_TIME'),
             'data' => $data,
             'url'  => $url,
             'wait' => $wait,
         ];
 
-        $type = $this->getResponseType();
-        // 把跳转模板的渲染下沉，这样在 response_send 行为中通过 data_getter 获取数据时不生效
-        $response = \think\Response::create($result, $type, 200, $header)->header($header);
-
+        // 后台管理总是返回 JSON 格式（FastAdmin 后台都是 AJAX 请求）
+        $response = json($result, 200, $header);
         throw new \think\exception\HttpResponseException($response);
     }
 
@@ -669,32 +656,27 @@ class Backend extends Controller
      */
     protected function error($msg = '', $data = null, $url = null, $wait = 3, array $header = [])
     {
-        // 如果是AJAX请求，返回JSON格式数据
-        if (IS_AJAX || $this->request->isAjax()) {
-            $result = [
-                'code' => 0,
-                'msg'  => $msg,
-                'time' => $this->request->server('REQUEST_TIME'),
-                'data' => $data,
-                'url'  => $url,
-            ];
-            $response = json($result);
-            throw new \think\exception\HttpResponseException($response);
+        // 处理参数兼容性：支持 error($msg, $url) 和 error($msg, $data, $url) 两种调用方式
+        if (is_array($data)) {
+            // $data 是数组，说明是 error($msg, $data, $url) 调用方式
+            // 保持 $data 作为数据，$url 作为跳转地址
+        } elseif (is_string($data) && $url === null) {
+            // $data 是字符串且 $url 为空，说明是 error($msg, $url) 调用方式
+            $url = $data;
+            $data = null;
         }
-
-        // 非AJAX请求，调用父类的跳转方法
-        $url = $url ?: $this->request->header('referer') ?: '';
+        
         $result = [
             'code' => 0,
             'msg'  => $msg,
+            'time' => $this->request->server('REQUEST_TIME'),
             'data' => $data,
             'url'  => $url,
             'wait' => $wait,
         ];
 
-        $type = $this->getResponseType();
-        $response = \think\Response::create($result, $type, 200, $header)->header($header);
-
+        // 后台管理总是返回 JSON 格式（FastAdmin 后台都是 AJAX 请求）
+        $response = json($result, 200, $header);
         throw new \think\exception\HttpResponseException($response);
     }
 
@@ -705,6 +687,7 @@ class Backend extends Controller
      */
     protected function getResponseType()
     {
-        return IS_AJAX ? 'json' : 'html';
+        // 后台管理总是返回 json（FastAdmin 后台都是 AJAX 请求）
+        return 'json';
     }
 }
