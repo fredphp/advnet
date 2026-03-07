@@ -1,139 +1,240 @@
-<form id="detail-form" class="form-horizontal" role="form">
+<div class="panel panel-default">
+    <div class="panel-heading">
+        <h3 class="panel-title">风控记录详情</h3>
+    </div>
     <div class="panel-body">
-        <!-- 基本信息 -->
-        <div class="panel panel-default">
-            <div class="panel-heading"><strong>风控记录详情</strong></div>
-            <div class="panel-body">
-                <table class="table table-bordered">
-                    <tr>
-                        <td width="120">记录ID</td>
-                        <td>{$row.id}</td>
-                        <td width="120">用户ID</td>
-                        <td>{$row.user_id|default='-'}</td>
-                    </tr>
-                    <tr>
-                        <td>用户名</td>
-                        <td>{$user.username|default='-'}</td>
-                        <td>用户昵称</td>
-                        <td>{$user.nickname|default='-'}</td>
-                    </tr>
-                    <tr>
-                        <td>订单号</td>
-                        <td>{$row.order_no|default='-'}</td>
-                        <td>风险评分</td>
-                        <td><strong class="text-danger">{$row.risk_score|default=0}</strong></td>
-                    </tr>
-                    <tr>
-                        <td>风险类型</td>
-                        <td>
-                            {if condition="isset($riskTypeList[$row['risk_type']])"}
-                            <span class="label label-info">{$riskTypeList[$row['risk_type']]}</span>
-                            {else}
-                            <span class="label label-default">{$row.risk_type|default='-'}</span>
-                            {/if}
-                        </td>
-                        <td>风险等级</td>
-                        <td>
-                            {if condition="$row['risk_level'] == 3"}
-                            <span class="label label-danger">高风险</span>
-                            {elseif condition="$row['risk_level'] == 2"}
-                            <span class="label label-warning">中风险</span>
-                            {elseif condition="$row['risk_level'] == 1"}
-                            <span class="label label-info">低风险</span>
-                            {else}
-                            <span class="label label-default">普通</span>
-                            {/if}
-                        </td>
-                    </tr>
-                    <tr>
-                        <td>处理状态</td>
-                        <td>
-                            {if condition="$row['handle_action'] == 'pass'"}
-                            <span class="label label-success">已通过</span>
-                            {elseif condition="$row['handle_action'] == 'review'"}
-                            <span class="label label-warning">人工审核</span>
-                            {elseif condition="$row['handle_action'] == 'reject'"}
-                            <span class="label label-danger">已拒绝</span>
-                            {elseif condition="$row['handle_action'] == 'freeze'"}
-                            <span class="label label-info">已冻结</span>
-                            {else}
-                            <span class="label label-default">待处理</span>
-                            {/if}
-                        </td>
-                        <td>IP地址</td>
-                        <td>{$row.ip|default='-'}</td>
-                    </tr>
-                    <tr>
-                        <td>创建时间</td>
-                        <td>{$row.createtime|date='Y-m-d H:i:s',###}</td>
-                        <td>处理时间</td>
-                        <td>{$row.updatetime|date='Y-m-d H:i:s',###}</td>
-                    </tr>
+        <div class="row">
+            <div class="col-md-6">
+                <table class="table table-bordered table-striped">
+                    <tbody>
+                        <tr>
+                            <th width="120">记录ID</th>
+                            <td>{$row.id}</td>
+                        </tr>
+                        <tr>
+                            <th>用户ID</th>
+                            <td>{$row.user_id}</td>
+                        </tr>
+                        <tr>
+                            <th>用户名</th>
+                            <td>{$row.username|default='-'}</td>
+                        </tr>
+                        <tr>
+                            <th>订单号</th>
+                            <td>{$row.order_no|default='-'}</td>
+                        </tr>
+                        <tr>
+                            <th>规则代码</th>
+                            <td>{$row.rule_code|default='-'}</td>
+                        </tr>
+                        <tr>
+                            <th>规则名称</th>
+                            <td>{$row.rule_name|default='-'}</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="col-md-6">
+                <table class="table table-bordered table-striped">
+                    <tbody>
+                        <tr>
+                            <th width="120">风险类型</th>
+                            <td>
+                                {switch $row.risk_type}
+                                    {case video}<span class="label label-info">视频</span>{/case}
+                                    {case task}<span class="label label-primary">任务</span>{/case}
+                                    {case withdraw}<span class="label label-warning">提现</span>{/case}
+                                    {case redpacket}<span class="label label-danger">红包</span>{/case}
+                                    {case invite}<span class="label label-success">邀请</span>{/case}
+                                    {case global}<span class="label label-default">全局</span>{/case}
+                                    {default /}<span class="label label-default">{$row.risk_type}</span>
+                                {/switch}
+                            </td>
+                        </tr>
+                        <tr>
+                            <th>风险等级</th>
+                            <td>
+                                {if $row.risk_level == 1}
+                                <span class="label label-success">低风险</span>
+                                {elseif $row.risk_level == 2}
+                                <span class="label label-warning">中风险</span>
+                                {elseif $row.risk_level == 3}
+                                <span class="label label-danger">高风险</span>
+                                {else /}
+                                <span class="label label-default">未知</span>
+                                {/if}
+                            </td>
+                        </tr>
+                        <tr>
+                            <th>触发值</th>
+                            <td>{$row.trigger_value|default='-'}</td>
+                        </tr>
+                        <tr>
+                            <th>阈值</th>
+                            <td>{$row.threshold|default='-'}</td>
+                        </tr>
+                        <tr>
+                            <th>增加分数</th>
+                            <td><span class="text-danger">+{$row.score_add|default=0}</span></td>
+                        </tr>
+                        <tr>
+                            <th>处理动作</th>
+                            <td>
+                                {switch $row.handle_action}
+                                    {case pass}<span class="label label-success">通过</span>{/case}
+                                    {case review}<span class="label label-info">人工审核</span>{/case}
+                                    {case reject}<span class="label label-warning">拒绝</span>{/case}
+                                    {case freeze}<span class="label label-danger">冻结</span>{/case}
+                                    {default /}<span class="label label-default">{$row.handle_action}</span>
+                                {/switch}
+                            </td>
+                        </tr>
+                    </tbody>
                 </table>
             </div>
         </div>
 
-        <!-- 风险详情 -->
-        {if condition="isset($row['risk_detail']) && $row['risk_detail']"}
-        <div class="panel panel-default">
-            <div class="panel-heading"><strong>风险详情</strong></div>
-            <div class="panel-body">
-                <pre class="well" style="max-height: 200px; overflow-y: auto; white-space: pre-wrap; word-wrap: break-word;">{$row.risk_detail|default='无'}</pre>
+        <div class="row" style="margin-top: 15px;">
+            <div class="col-md-12">
+                <table class="table table-bordered table-striped">
+                    <tbody>
+                        <tr>
+                            <th width="120">IP地址</th>
+                            <td width="200">{$row.ip|default='-'}</td>
+                            <th width="120">设备指纹</th>
+                            <td>{$row.device_id|default='-'}</td>
+                        </tr>
+                        <tr>
+                            <th>触发时间</th>
+                            <td>{$row.createtime|date='Y-m-d H:i:s',###}</td>
+                            <th>处理时间</th>
+                            <td>
+                                {if isset($row.handle_time) && $row.handle_time}
+                                {$row.handle_time|date='Y-m-d H:i:s',###}
+                                {else /}
+                                -
+                                {/if}
+                            </td>
+                        </tr>
+                        {if isset($row.remark) && $row.remark}
+                        <tr>
+                            <th>备注</th>
+                            <td colspan="3">{$row.remark}</td>
+                        </tr>
+                        {/if}
+                    </tbody>
+                </table>
             </div>
         </div>
-        {/if}
 
-        <!-- 处理备注 -->
-        {if condition="isset($row['handle_remark']) && $row['handle_remark']"}
-        <div class="panel panel-default">
-            <div class="panel-heading"><strong>处理备注</strong></div>
-            <div class="panel-body">
-                <pre class="well" style="white-space: pre-wrap; word-wrap: break-word;">{$row.handle_remark|default='无'}</pre>
+        {if $risk_score}
+        <div class="panel panel-info" style="margin-top: 15px;">
+            <div class="panel-heading">
+                <h4 class="panel-title">用户风险评分</h4>
             </div>
-        </div>
-        {/if}
-
-        <!-- 用户信息 -->
-        {if condition="$user"}
-        <div class="panel panel-default">
-            <div class="panel-heading"><strong>用户信息</strong></div>
             <div class="panel-body">
                 <table class="table table-bordered">
-                    <tr>
-                        <td width="120">用户ID</td>
-                        <td>{$user.id|default='-'}</td>
-                        <td width="120">用户名</td>
-                        <td>{$user.username|default='-'}</td>
-                    </tr>
-                    <tr>
-                        <td>昵称</td>
-                        <td>{$user.nickname|default='-'}</td>
-                        <td>手机号</td>
-                        <td>{$user.mobile|default='-'}</td>
-                    </tr>
-                    <tr>
-                        <td>注册时间</td>
-                        <td>{$user.createtime|date='Y-m-d H:i:s',###}</td>
-                        <td>用户状态</td>
-                        <td>
-                            {if condition="$user['status'] == 'normal'"}
-                            <span class="label label-success">正常</span>
-                            {elseif condition="$user['status'] == 'freeze'"}
-                            <span class="label label-warning">冻结</span>
-                            {else}
-                            <span class="label label-danger">禁用</span>
-                            {/if}
-                        </td>
-                    </tr>
+                    <tbody>
+                        <tr>
+                            <th width="120">总风险分</th>
+                            <td width="150">{$risk_score.total_score|default=0}</td>
+                            <th width="120">风险状态</th>
+                            <td>
+                                {switch $risk_score.status}
+                                    {case normal}<span class="label label-success">正常</span>{/case}
+                                    {case frozen}<span class="label label-warning">冻结</span>{/case}
+                                    {case banned}<span class="label label-danger">封禁</span>{/case}
+                                    {default /}<span class="label label-default">{$risk_score.status}</span>
+                                {/switch}
+                            </td>
+                        </tr>
+                        <tr>
+                            <th>视频评分</th>
+                            <td>{$risk_score.video_score|default=0}</td>
+                            <th>任务评分</th>
+                            <td>{$risk_score.task_score|default=0}</td>
+                        </tr>
+                        <tr>
+                            <th>提现评分</th>
+                            <td>{$risk_score.withdraw_score|default=0}</td>
+                            <th>红包评分</th>
+                            <td>{$risk_score.redpacket_score|default=0}</td>
+                        </tr>
+                        <tr>
+                            <th>邀请评分</th>
+                            <td>{$risk_score.invite_score|default=0}</td>
+                            <th>违规次数</th>
+                            <td>{$risk_score.violation_count|default=0}</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {/if}
+
+        {if $recent_logs}
+        <div class="panel panel-warning" style="margin-top: 15px;">
+            <div class="panel-heading">
+                <h4 class="panel-title">该用户最近风控记录</h4>
+            </div>
+            <div class="panel-body">
+                <table class="table table-bordered table-hover">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>订单号</th>
+                            <th>规则名称</th>
+                            <th>风险类型</th>
+                            <th>风险等级</th>
+                            <th>分数</th>
+                            <th>处理动作</th>
+                            <th>时间</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {volist name="recent_logs" id="log"}
+                        <tr>
+                            <td>{$log.id}</td>
+                            <td>{$log.order_no|default='-'}</td>
+                            <td>{$log.rule_name|default='-'}</td>
+                            <td>
+                                {switch $log.risk_type}
+                                    {case video}<span class="label label-info">视频</span>{/case}
+                                    {case task}<span class="label label-primary">任务</span>{/case}
+                                    {case withdraw}<span class="label label-warning">提现</span>{/case}
+                                    {case redpacket}<span class="label label-danger">红包</span>{/case}
+                                    {case invite}<span class="label label-success">邀请</span>{/case}
+                                    {default /}<span class="label label-default">{$log.risk_type}</span>
+                                {/switch}
+                            </td>
+                            <td>
+                                {if $log.risk_level == 1}
+                                <span class="label label-success">低</span>
+                                {elseif $log.risk_level == 2}
+                                <span class="label label-warning">中</span>
+                                {elseif $log.risk_level == 3}
+                                <span class="label label-danger">高</span>
+                                {else /}
+                                <span class="label label-default">-</span>
+                                {/if}
+                            </td>
+                            <td>+{$log.score_add|default=0}</td>
+                            <td>
+                                {switch $log.handle_action}
+                                    {case pass}<span class="label label-success">通过</span>{/case}
+                                    {case review}<span class="label label-info">审核</span>{/case}
+                                    {case reject}<span class="label label-warning">拒绝</span>{/case}
+                                    {case freeze}<span class="label label-danger">冻结</span>{/case}
+                                    {default /}<span class="label label-default">{$log.handle_action}</span>
+                                {/switch}
+                            </td>
+                            <td>{$log.createtime|date='Y-m-d H:i:s',###}</td>
+                        </tr>
+                        {/volist}
+                    </tbody>
                 </table>
             </div>
         </div>
         {/if}
     </div>
-    <div class="form-group layer-footer">
-        <label class="control-label col-xs-12 col-sm-2"></label>
-        <div class="col-xs-12 col-sm-8">
-            <button type="button" class="btn btn-default" onclick="Layer.closeAll()">{:__('关闭')}</button>
-        </div>
-    </div>
-</form>
+</div>
