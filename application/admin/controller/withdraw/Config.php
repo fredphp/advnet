@@ -37,7 +37,7 @@ class Config extends Backend
     }
 
     /**
-     * 配置列表
+     * 配置页面
      */
     public function index()
     {
@@ -50,11 +50,11 @@ class Config extends Backend
 
             Db::startTrans();
             try {
-                foreach ($data as $key => $value) {
+                foreach ($data as $code => $value) {
                     if (!is_scalar($value)) {
                         continue;
                     }
-                    $this->setConfig('withdraw_' . $key, $value);
+                    $this->setConfig($code, (string)$value);
                 }
                 
                 Db::commit();
@@ -80,14 +80,11 @@ class Config extends Backend
         $config = $this->defaultConfig;
         
         try {
-            $list = Db::name('config')
-                ->where('name', 'like', 'withdraw_%')
-                ->select();
+            $list = Db::name('withdraw_config')->select();
             
             foreach ($list as $item) {
-                $key = str_replace('withdraw_', '', $item['name']);
-                if (isset($config[$key])) {
-                    $config[$key] = $item['value'];
+                if (isset($config[$item['code']])) {
+                    $config[$item['code']] = $item['value'];
                 }
             }
         } catch (\Exception $e) {
@@ -100,34 +97,35 @@ class Config extends Backend
     /**
      * 设置配置
      */
-    protected function setConfig($name, $value)
+    protected function setConfig($code, $value)
     {
-        $exists = Db::name('config')
-            ->where('name', $name)
+        if (!isset($this->defaultConfig[$code])) {
+            return;
+        }
+        
+        $exists = Db::name('withdraw_config')
+            ->where('code', $code)
             ->find();
         
         $time = time();
         
         if ($exists) {
-            Db::name('config')
-                ->where('name', $name)
+            Db::name('withdraw_config')
+                ->where('code', $code)
                 ->update([
                     'value' => $value,
                     'updatetime' => $time,
                 ]);
         } else {
-            Db::name('config')->insert([
-                'name' => $name,
-                'group' => 'withdraw',
-                'title' => $this->getConfigTitle($name),
-                'tip' => '',
-                'type' => 'string',
+            Db::name('withdraw_config')->insert([
+                'name' => $this->getConfigName($code),
+                'code' => $code,
                 'value' => $value,
-                'content' => '',
-                'rule' => '',
-                'extend' => '',
-                'setting' => '',
-                'status' => 1,
+                'type' => 'string',
+                'title' => $this->getConfigName($code),
+                'remark' => '',
+                'group' => 'withdraw',
+                'sort' => 0,
                 'createtime' => $time,
                 'updatetime' => $time,
             ]);
@@ -135,27 +133,27 @@ class Config extends Backend
     }
 
     /**
-     * 获取配置标题
+     * 获取配置名称
      */
-    protected function getConfigTitle($name)
+    protected function getConfigName($code)
     {
-        $titles = [
-            'withdraw_enabled' => '开启提现',
-            'withdraw_amounts' => '可选提现金额',
-            'withdraw_min_withdraw' => '最低提现金额',
-            'withdraw_max_withdraw' => '最高提现金额',
-            'withdraw_daily_withdraw_limit' => '每日提现次数',
-            'withdraw_daily_withdraw_amount' => '每日提现金额',
-            'withdraw_same_ip_limit' => '同IP提现次数',
-            'withdraw_same_device_limit' => '同设备提现次数',
-            'withdraw_auto_audit_amount' => '自动审核金额',
-            'withdraw_manual_audit_amount' => '人工审核金额',
-            'withdraw_new_user_withdraw_days' => '新用户提现天数',
-            'withdraw_fee_rate' => '提现手续费率',
-            'withdraw_transfer_retry_count' => '提现重试次数',
-            'withdraw_transfer_retry_interval' => '重试间隔',
+        $names = [
+            'enabled' => '开启提现',
+            'amounts' => '可选提现金额',
+            'min_withdraw' => '最低提现金额',
+            'max_withdraw' => '最高提现金额',
+            'daily_withdraw_limit' => '每日提现次数',
+            'daily_withdraw_amount' => '每日提现金额',
+            'same_ip_limit' => '同IP提现次数',
+            'same_device_limit' => '同设备提现次数',
+            'auto_audit_amount' => '自动审核金额',
+            'manual_audit_amount' => '人工审核金额',
+            'new_user_withdraw_days' => '新用户提现天数',
+            'fee_rate' => '提现手续费率',
+            'transfer_retry_count' => '提现重试次数',
+            'transfer_retry_interval' => '重试间隔',
         ];
         
-        return $titles[$name] ?? $name;
+        return $names[$code] ?? $code;
     }
 }
