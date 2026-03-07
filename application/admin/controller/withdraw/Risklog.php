@@ -25,10 +25,10 @@ class Risklog extends Backend
 
     // 处理动作映射
     protected $actionList = [
-        'warn' => '警告',
-        'block' => '拦截',
+        'pass' => '通过',
+        'review' => '人工审核',
+        'reject' => '拒绝',
         'freeze' => '冻结',
-        'ban' => '封禁',
     ];
 
     // 风险等级映射
@@ -39,13 +39,12 @@ class Risklog extends Backend
         3 => '高风险',
     ];
 
-    // 处理状态映射
-    protected $handleStatusList = [
-        'pending' => '待处理',
-        'pass' => '已通过',
+    // 原始处理动作映射
+    protected $originalActionList = [
+        'pass' => '通过',
         'review' => '人工审核',
-        'reject' => '已拒绝',
-        'freeze' => '已冻结',
+        'reject' => '拒绝',
+        'freeze' => '冻结',
     ];
 
     public function _initialize()
@@ -54,7 +53,6 @@ class Risklog extends Backend
         $this->view->assign('riskTypeList', $this->riskTypeList);
         $this->view->assign('actionList', $this->actionList);
         $this->view->assign('riskLevelList', $this->riskLevelList);
-        $this->view->assign('handleStatusList', $this->handleStatusList);
     }
 
     /**
@@ -121,24 +119,25 @@ class Risklog extends Backend
             // 格式化数据
             foreach ($list as &$row) {
                 // 获取用户信息
-                $user = Db::name('user')->where('id', $row['user_id'])->field('username,nickname')->find();
+                $userId = isset($row['user_id']) ? $row['user_id'] : 0;
+                $user = $userId ? Db::name('user')->where('id', $userId)->field('username,nickname')->find() : null;
                 $row['username'] = $user ? $user['username'] : '';
                 $row['nickname'] = $user ? $user['nickname'] : '';
                 
                 // 时间格式化
-                $row['createtime_text'] = date('Y-m-d H:i:s', $row['createtime']);
+                $row['createtime_text'] = isset($row['createtime']) ? date('Y-m-d H:i:s', $row['createtime']) : '';
                 
                 // 风险类型中文
-                $row['risk_type_text'] = $this->riskTypeList[$row['risk_type']] ?? $row['risk_type'];
+                $riskType = isset($row['risk_type']) ? $row['risk_type'] : '';
+                $row['risk_type_text'] = isset($this->riskTypeList[$riskType]) ? $this->riskTypeList[$riskType] : $riskType;
                 
-                // 处理动作中文
-                $row['action_text'] = $this->actionList[$row['action']] ?? $row['action'];
+                // 处理动作中文 (使用 handle_action 字段)
+                $handleAction = isset($row['handle_action']) ? $row['handle_action'] : '';
+                $row['handle_action_text'] = isset($this->originalActionList[$handleAction]) ? $this->originalActionList[$handleAction] : ($handleAction ?: '待处理');
                 
                 // 风险等级中文
-                $row['risk_level_text'] = $this->riskLevelList[$row['risk_level'] ?? 0] ?? '普通';
-                
-                // 处理状态中文
-                $row['handle_status_text'] = $this->handleStatusList[$row['handle_status'] ?? 'pending'] ?? '待处理';
+                $riskLevel = isset($row['risk_level']) ? $row['risk_level'] : 0;
+                $row['risk_level_text'] = isset($this->riskLevelList[$riskLevel]) ? $this->riskLevelList[$riskLevel] : '普通';
             }
 
             return json(['total' => $total, 'rows' => $list]);
@@ -188,12 +187,10 @@ class Risklog extends Backend
             
             $count = Db::name('withdraw_risk_log')
                 ->where('id', 'in', $ids)
-                ->where('handle_status', 'pending')
+                ->where('handle_action', '')
                 ->update([
-                    'handle_status' => 'pass',
-                    'handle_time' => time(),
-                    'handle_admin_id' => $this->auth->id,
-                    'handle_admin_name' => $this->auth->username,
+                    'handle_action' => 'pass',
+                    'handle_remark' => '管理员通过',
                 ]);
             
             $this->success("成功处理{$count}条记录");
@@ -217,12 +214,10 @@ class Risklog extends Backend
             
             $count = Db::name('withdraw_risk_log')
                 ->where('id', 'in', $ids)
-                ->where('handle_status', 'pending')
+                ->where('handle_action', '')
                 ->update([
-                    'handle_status' => 'review',
-                    'handle_time' => time(),
-                    'handle_admin_id' => $this->auth->id,
-                    'handle_admin_name' => $this->auth->username,
+                    'handle_action' => 'review',
+                    'handle_remark' => '标记为人工审核',
                 ]);
             
             $this->success("成功标记{$count}条记录为人工审核");
@@ -247,12 +242,9 @@ class Risklog extends Backend
             
             $count = Db::name('withdraw_risk_log')
                 ->where('id', 'in', $ids)
-                ->where('handle_status', 'pending')
+                ->where('handle_action', '')
                 ->update([
-                    'handle_status' => 'reject',
-                    'handle_time' => time(),
-                    'handle_admin_id' => $this->auth->id,
-                    'handle_admin_name' => $this->auth->username,
+                    'handle_action' => 'reject',
                     'handle_remark' => $reason,
                 ]);
             
@@ -289,10 +281,7 @@ class Risklog extends Backend
                 Db::name('withdraw_risk_log')
                     ->where('id', 'in', $ids)
                     ->update([
-                        'handle_status' => 'freeze',
-                        'handle_time' => time(),
-                        'handle_admin_id' => $this->auth->id,
-                        'handle_admin_name' => $this->auth->username,
+                        'handle_action' => 'freeze',
                         'handle_remark' => $reason,
                     ]);
                 
@@ -302,18 +291,6 @@ class Risklog extends Backend
                         'status' => 'freeze',
                         'updatetime' => time(),
                     ]);
-                    
-                    // 记录用户冻结日志
-                    foreach ($userIds as $userId) {
-                        Db::name('user_freeze_log')->insert([
-                            'user_id' => $userId,
-                            'type' => 'risk_control',
-                            'reason' => $reason ?: '风控自动冻结',
-                            'admin_id' => $this->auth->id,
-                            'admin_name' => $this->auth->username,
-                            'createtime' => time(),
-                        ]);
-                    }
                 }
                 
                 Db::commit();
