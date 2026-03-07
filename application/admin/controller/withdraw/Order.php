@@ -170,7 +170,10 @@ class Order extends Backend
      */
     public function detail($ids = null)
     {
-        $row = $this->getOrderById($ids);
+        // 支持通过订单号查询
+        $orderNo = $this->request->get('order_no');
+        $row = $orderNo ? $this->getOrderByNo($orderNo) : $this->getOrderById($ids);
+        
         if (!$row) {
             $this->error('订单不存在');
         }
@@ -187,117 +190,361 @@ class Order extends Backend
             ->find();
 
         // 最近提现记录
-        $recentOrders = $this->getRecentOrders($row['user_id'], $ids);
+        $recentOrders = $this->getRecentOrders($row['user_id'], $row['id']);
 
-        $this->success('', [
-            'order' => $row,
-            'user' => $user,
-            'user_stats' => $userStats,
-            'risk_info' => $riskInfo,
-            'recent_orders' => $recentOrders,
-        ]);
+        $this->view->assign('order', $row);
+        $this->view->assign('user', $user);
+        $this->view->assign('user_stats', $userStats);
+        $this->view->assign('risk_info', $riskInfo);
+        $this->view->assign('recent_orders', $recentOrders);
+        $this->view->assign('withdrawTypeText', WithdrawOrder::$typeList[$row['withdraw_type']] ?? $row['withdraw_type']);
+        
+        return $this->view->fetch();
     }
 
     /**
-     * 审核通过
+     * 审核通过弹窗
      */
     public function approve($ids = null)
     {
-        $row = $this->getOrderById($ids);
+        // POST 请求 - 执行审核
+        if ($this->request->isPost()) {
+            // 支持通过订单号或ID查询
+            $orderNo = $this->request->post('order_no');
+            $id = $this->request->post('id');
+            $remark = $this->request->post('remark', '');
+
+            if (empty($orderNo) && empty($id)) {
+                $this->error('参数错误，缺少订单号或订单ID');
+            }
+
+            // 优先使用订单号查询
+            $row = $orderNo ? $this->getOrderByNo($orderNo) : $this->getOrderById($id);
+            
+            if (!$row) {
+                $this->error('订单不存在');
+            }
+
+            if ($row['status'] != WithdrawOrder::STATUS_PENDING) {
+                $statusText = WithdrawOrder::$statusList[$row['status']] ?? '未知状态';
+                $this->error("该订单已处理，当前状态: {$statusText}");
+            }
+
+            Db::startTrans();
+            try {
+                // 获取订单所在表名
+                $tableName = $row['_table'] ?? 'withdraw_order';
+                
+                // 使用订单号作为条件更新
+                Db::name($tableName)->where('order_no', $row['order_no'])->update([
+                    'status' => WithdrawOrder::STATUS_APPROVED,
+                    'admin_id' => $this->auth->id,
+                    'admin_name' => $this->auth->username,
+                    'approve_time' => time(),
+                    'admin_remark' => $remark,
+                    'updatetime' => time(),
+                ]);
+
+                Db::commit();
+                $this->success('审核通过，订单进入待打款状态');
+            } catch (Exception $e) {
+                Db::rollback();
+                $this->error($e->getMessage());
+            }
+        }
+        
+        // GET 请求 - 显示弹窗
+        $orderNo = $this->request->get('order_no');
+        $row = $orderNo ? $this->getOrderByNo($orderNo) : $this->getOrderById($ids);
+        
         if (!$row) {
             $this->error('订单不存在');
         }
-
-        if ($row['status'] != WithdrawOrder::STATUS_PENDING) {
-            $this->error('该订单已处理');
+        
+        // 获取用户信息
+        $user = Db::name('user')->where('id', $row['user_id'])->find();
+        
+        // 获取用户账户信息
+        $account = Db::name('coin_account')->where('user_id', $row['user_id'])->find();
+        if (!$account) {
+            $account = ['balance' => 0, 'frozen' => 0, 'total_earn' => 0];
         }
-
-        $remark = $this->request->post('remark', '');
-
-        Db::startTrans();
-        try {
-            $this->updateOrderStatus($ids, [
-                'status' => WithdrawOrder::STATUS_APPROVED,
-                'admin_id' => $this->auth->id,
-                'admin_name' => $this->auth->username,
-                'approve_time' => time(),
-                'admin_remark' => $remark,
-                'updatetime' => time(),
-            ]);
-
-            Db::commit();
-            $this->success('审核通过');
-        } catch (Exception $e) {
-            Db::rollback();
-            $this->error($e->getMessage());
+        
+        // 今日提现统计
+        $todayStart = strtotime(date('Y-m-d'));
+        $todayEnd = strtotime(date('Y-m-d') . ' 23:59:59');
+        $todayStats = $this->getUserTodayStats($row['user_id'], $todayStart, $todayEnd);
+        
+        // 累计提现统计
+        $totalStats = $this->getUserTotalStats($row['user_id']);
+        
+        // 风险信息
+        $riskInfo = Db::name('user_risk_score')->where('user_id', $row['user_id'])->find();
+        $riskInfoTags = [];
+        if ($riskInfo && $riskInfo['risk_tags']) {
+            $riskInfoTags = json_decode($riskInfo['risk_tags'], true) ?: [];
         }
+        
+        // 订单风控标签
+        $orderRiskTags = [];
+        if (!empty($row['risk_tags'])) {
+            $orderRiskTags = json_decode($row['risk_tags'], true) ?: [];
+        }
+        
+        // 最近提现记录
+        $recentOrders = $this->getRecentOrders($row['user_id'], $row['id']);
+        
+        $this->view->assign('order', $row);
+        $this->view->assign('user', $user);
+        $this->view->assign('account', $account);
+        $this->view->assign('todayStats', $todayStats);
+        $this->view->assign('totalStats', $totalStats);
+        $this->view->assign('riskInfo', $riskInfo);
+        $this->view->assign('riskInfoTags', $riskInfoTags);
+        $this->view->assign('orderRiskTags', $orderRiskTags);
+        $this->view->assign('recentOrders', $recentOrders);
+        $this->view->assign('withdrawTypeText', WithdrawOrder::$typeList[$row['withdraw_type']] ?? $row['withdraw_type']);
+        
+        return $this->view->fetch();
     }
 
     /**
-     * 审核拒绝
+     * 审核拒绝弹窗
      */
     public function reject($ids = null)
     {
-        $row = $this->getOrderById($ids);
+        // POST 请求 - 执行拒绝
+        if ($this->request->isPost()) {
+            $orderNo = $this->request->post('order_no');
+            $id = $this->request->post('id');
+            $reason = $this->request->post('reason', '');
+            $customReason = $this->request->post('custom_reason', '');
+
+            $rejectReason = $reason === 'custom' ? $customReason : $reason;
+
+            if (empty($rejectReason)) {
+                $this->error('请选择或填写拒绝原因');
+            }
+
+            // 优先使用订单号查询
+            $row = $orderNo ? $this->getOrderByNo($orderNo) : $this->getOrderById($id);
+            if (!$row) {
+                $this->error('订单不存在');
+            }
+
+            if ($row['status'] != WithdrawOrder::STATUS_PENDING) {
+                $this->error('该订单已处理');
+            }
+
+            Db::startTrans();
+            try {
+                // 获取订单所在表名
+                $tableName = $row['_table'] ?? 'withdraw_order';
+
+                // 获取用户账户
+                $account = Db::name('coin_account')
+                    ->where('user_id', $row['user_id'])
+                    ->lock(true)
+                    ->find();
+
+                if (!$account) {
+                    throw new Exception('用户账户不存在');
+                }
+
+                // 检查冻结金币是否足够
+                if ($account['frozen'] < $row['coin_amount']) {
+                    // 如果冻结不足，直接加到余额（兼容历史数据）
+                    Db::name('coin_account')
+                        ->where('user_id', $row['user_id'])
+                        ->update([
+                            'balance' => $account['balance'] + $row['coin_amount'],
+                            'updatetime' => time(),
+                        ]);
+                } else {
+                    // 解冻金币（从冻结转回余额）
+                    Db::name('coin_account')
+                        ->where('user_id', $row['user_id'])
+                        ->update([
+                            'balance' => $account['balance'] + $row['coin_amount'],
+                            'frozen' => $account['frozen'] - $row['coin_amount'],
+                            'updatetime' => time(),
+                        ]);
+                }
+
+                // 记录金币流水
+                $logTableName = 'coin_log_' . date('Ym');
+                // 检查流水表是否存在
+                $this->createCoinLogTableIfNotExists($logTableName);
+                
+                Db::name($logTableName)->insert([
+                    'user_id' => $row['user_id'],
+                    'type' => 'withdraw_refund',
+                    'amount' => $row['coin_amount'],
+                    'balance_before' => $account['balance'],
+                    'balance_after' => $account['balance'] + $row['coin_amount'],
+                    'relation_type' => 'withdraw',
+                    'relation_id' => $row['id'],
+                    'title' => '提现拒绝退还',
+                    'description' => "提现拒绝退还，订单号: {$row['order_no']}，原因: {$rejectReason}",
+                    'createtime' => time(),
+                    'create_date' => date('Y-m-d'),
+                ]);
+
+                // 更新订单状态
+                Db::name($tableName)->where('order_no', $row['order_no'])->update([
+                    'status' => WithdrawOrder::STATUS_REJECTED,
+                    'admin_id' => $this->auth->id,
+                    'admin_name' => $this->auth->username,
+                    'approve_time' => time(),
+                    'reject_reason' => $rejectReason,
+                    'updatetime' => time(),
+                ]);
+
+                Db::commit();
+                $this->success('已拒绝并退还金币');
+            } catch (Exception $e) {
+                Db::rollback();
+                $this->error($e->getMessage());
+            }
+        }
+        
+        // GET 请求 - 显示弹窗
+        $orderNo = $this->request->get('order_no');
+        $row = $orderNo ? $this->getOrderByNo($orderNo) : $this->getOrderById($ids);
         if (!$row) {
             $this->error('订单不存在');
         }
-
-        if ($row['status'] != WithdrawOrder::STATUS_PENDING) {
-            $this->error('该订单已处理');
+        
+        // 获取用户信息
+        $user = Db::name('user')->where('id', $row['user_id'])->find();
+        
+        // 获取用户账户信息
+        $account = Db::name('coin_account')->where('user_id', $row['user_id'])->find();
+        if (!$account) {
+            $account = ['balance' => 0];
         }
-
-        $reason = $this->request->post('reason', '');
-
-        if (!$reason) {
-            $this->error('请填写拒绝原因');
-        }
-
-        Db::startTrans();
-        try {
-            $withdrawService = new WithdrawService();
-            $result = $withdrawService->reject($ids, $reason, $this->auth->id);
-
-            if (!$result['success']) {
-                throw new Exception($result['message']);
-            }
-
-            Db::commit();
-            $this->success('已拒绝并退还金币');
-        } catch (Exception $e) {
-            Db::rollback();
-            $this->error($e->getMessage());
-        }
+        
+        $this->view->assign('order', $row);
+        $this->view->assign('user', $user);
+        $this->view->assign('account', $account);
+        $this->view->assign('withdrawTypeText', WithdrawOrder::$typeList[$row['withdraw_type']] ?? $row['withdraw_type']);
+        
+        return $this->view->fetch();
     }
 
     /**
-     * 确认打款
+     * 确认打款弹窗
      */
     public function complete($ids = null)
     {
-        $row = $this->getOrderById($ids);
+        // POST 请求 - 执行打款
+        if ($this->request->isPost()) {
+            $orderNo = $this->request->post('order_no');
+            $id = $this->request->post('id');
+            $transferNo = $this->request->post('transfer_no', '');
+            $remark = $this->request->post('remark', '');
+
+            // 优先使用订单号查询
+            $row = $orderNo ? $this->getOrderByNo($orderNo) : $this->getOrderById($id);
+            if (!$row) {
+                $this->error('订单不存在');
+            }
+
+            if (!in_array($row['status'], [WithdrawOrder::STATUS_PENDING, WithdrawOrder::STATUS_APPROVED])) {
+                $statusText = WithdrawOrder::$statusList[$row['status']] ?? '未知状态';
+                $this->error("该订单状态不允许打款，当前状态: {$statusText}");
+            }
+
+            Db::startTrans();
+            try {
+                // 获取订单所在表名
+                $tableName = $row['_table'] ?? 'withdraw_order';
+                
+                // 如果是待审核状态，先自动审核通过
+                if ($row['status'] == WithdrawOrder::STATUS_PENDING) {
+                    Db::name($tableName)->where('order_no', $row['order_no'])->update([
+                        'status' => WithdrawOrder::STATUS_APPROVED,
+                        'admin_id' => $this->auth->id,
+                        'admin_name' => $this->auth->username,
+                        'approve_time' => time(),
+                        'updatetime' => time(),
+                    ]);
+                }
+                
+                // 更新为打款成功状态
+                Db::name($tableName)->where('order_no', $row['order_no'])->update([
+                    'status' => WithdrawOrder::STATUS_SUCCESS,
+                    'transfer_no' => $transferNo,
+                    'complete_time' => time(),
+                    'admin_remark' => $remark,
+                    'updatetime' => time(),
+                ]);
+
+                Db::commit();
+                $this->success('打款成功');
+            } catch (Exception $e) {
+                Db::rollback();
+                $this->error($e->getMessage());
+            }
+        }
+        
+        // GET 请求 - 显示弹窗
+        $orderNo = $this->request->get('order_no');
+        $row = $orderNo ? $this->getOrderByNo($orderNo) : $this->getOrderById($ids);
         if (!$row) {
             $this->error('订单不存在');
         }
+        
+        // 获取用户信息
+        $user = Db::name('user')->where('id', $row['user_id'])->find();
+        
+        // 今日提现统计
+        $todayStart = strtotime(date('Y-m-d'));
+        $todayEnd = strtotime(date('Y-m-d') . ' 23:59:59');
+        $todayStats = $this->getUserTodayStats($row['user_id'], $todayStart, $todayEnd);
+        
+        // 累计提现统计
+        $totalStats = $this->getUserTotalStats($row['user_id']);
+        
+        $this->view->assign('order', $row);
+        $this->view->assign('user', $user);
+        $this->view->assign('todayStats', $todayStats);
+        $this->view->assign('totalStats', $totalStats);
+        $this->view->assign('withdrawTypeText', WithdrawOrder::$typeList[$row['withdraw_type']] ?? $row['withdraw_type']);
+        
+        return $this->view->fetch();
+    }
 
-        if (!in_array($row['status'], [WithdrawOrder::STATUS_PENDING, WithdrawOrder::STATUS_APPROVED])) {
-            $this->error('该订单状态不允许打款');
-        }
-
-        Db::startTrans();
-        try {
-            $withdrawService = new WithdrawService();
-            $result = $withdrawService->transfer($ids);
-
-            if (!$result['success']) {
-                throw new Exception($result['message']);
-            }
-
-            Db::commit();
-            $this->success('打款成功');
-        } catch (Exception $e) {
-            Db::rollback();
-            $this->error($e->getMessage());
+    /**
+     * 创建金币流水表（如果不存在）
+     */
+    protected function createCoinLogTableIfNotExists($tableName)
+    {
+        $prefix = \think\Config::get('database.prefix');
+        $fullTableName = $prefix . $tableName;
+        
+        $exists = Db::query("SHOW TABLES LIKE '{$fullTableName}'");
+        if (empty($exists)) {
+            $sql = "CREATE TABLE `{$fullTableName}` (
+                `id` int(11) NOT NULL AUTO_INCREMENT,
+                `user_id` int(11) NOT NULL DEFAULT '0',
+                `type` varchar(50) NOT NULL DEFAULT '' COMMENT '类型',
+                `amount` int(11) NOT NULL DEFAULT '0' COMMENT '金额',
+                `balance_before` int(11) NOT NULL DEFAULT '0' COMMENT '变动前余额',
+                `balance_after` int(11) NOT NULL DEFAULT '0' COMMENT '变动后余额',
+                `relation_type` varchar(50) DEFAULT NULL COMMENT '关联类型',
+                `relation_id` int(11) DEFAULT NULL COMMENT '关联ID',
+                `title` varchar(255) DEFAULT NULL COMMENT '标题',
+                `description` varchar(500) DEFAULT NULL COMMENT '描述',
+                `createtime` int(11) DEFAULT NULL COMMENT '创建时间',
+                `create_date` date DEFAULT NULL COMMENT '创建日期',
+                PRIMARY KEY (`id`),
+                KEY `idx_user_id` (`user_id`),
+                KEY `idx_type` (`type`),
+                KEY `idx_createtime` (`createtime`),
+                KEY `idx_create_date` (`create_date`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='金币流水表'";
+            Db::execute($sql);
         }
     }
 
@@ -317,7 +564,8 @@ class Order extends Backend
         foreach ($ids as $id) {
             $row = $this->getOrderById($id);
             if ($row && $row['status'] == WithdrawOrder::STATUS_PENDING) {
-                $this->updateOrderStatus($id, [
+                $tableName = $row['_table'] ?? 'withdraw_order';
+                Db::name($tableName)->where('order_no', $row['order_no'])->update([
                     'status' => WithdrawOrder::STATUS_APPROVED,
                     'admin_id' => $this->auth->id,
                     'admin_name' => $this->auth->username,
@@ -348,18 +596,33 @@ class Order extends Backend
 
         foreach ($ids as $id) {
             $row = $this->getOrderById($id);
-            if ($row && $row['status'] == WithdrawOrder::STATUS_APPROVED) {
+            if ($row && in_array($row['status'], [WithdrawOrder::STATUS_PENDING, WithdrawOrder::STATUS_APPROVED])) {
                 try {
-                    $withdrawService = new WithdrawService();
-                    $result = $withdrawService->transfer($id);
-                    if ($result['success']) {
-                        $success++;
-                    } else {
-                        $failed++;
+                    $tableName = $row['_table'] ?? 'withdraw_order';
+                    
+                    // 如果是待审核状态，先审核通过
+                    if ($row['status'] == WithdrawOrder::STATUS_PENDING) {
+                        Db::name($tableName)->where('order_no', $row['order_no'])->update([
+                            'status' => WithdrawOrder::STATUS_APPROVED,
+                            'admin_id' => $this->auth->id,
+                            'admin_name' => $this->auth->username,
+                            'approve_time' => time(),
+                            'updatetime' => time(),
+                        ]);
                     }
+                    
+                    // 更新为打款成功
+                    Db::name($tableName)->where('order_no', $row['order_no'])->update([
+                        'status' => WithdrawOrder::STATUS_SUCCESS,
+                        'complete_time' => time(),
+                        'updatetime' => time(),
+                    ]);
+                    $success++;
                 } catch (Exception $e) {
                     $failed++;
                 }
+            } else {
+                $failed++;
             }
         }
 
@@ -467,6 +730,28 @@ class Order extends Backend
             if (WithdrawOrder::tableExists($table)) {
                 $row = Db::name($table)->where('id', $id)->find();
                 if ($row) {
+                    $row['_table'] = $table;
+                    return $row;
+                }
+            }
+        }
+        
+        return null;
+    }
+
+    /**
+     * 根据订单号获取订单（跨分表查询）
+     */
+    protected function getOrderByNo($orderNo)
+    {
+        $tables = WithdrawOrder::getTablesByRange(strtotime('-6 months'), time());
+        $prefix = \think\Config::get('database.prefix');
+        
+        foreach ($tables as $table) {
+            if (WithdrawOrder::tableExists($table)) {
+                $row = Db::name($table)->where('order_no', $orderNo)->find();
+                if ($row) {
+                    $row['_table'] = $table;
                     return $row;
                 }
             }
@@ -495,33 +780,91 @@ class Order extends Backend
     }
 
     /**
-     * 获取用户提现统计（跨分表）
+     * 获取用户今日提现统计
      */
-    protected function getUserWithdrawStats($userId)
+    protected function getUserTodayStats($userId, $startTime, $endTime)
+    {
+        $tables = WithdrawOrder::getTablesByRange($startTime, $endTime);
+        $prefix = \think\Config::get('database.prefix');
+        
+        $stats = [
+            'count' => 0,
+            'coin_amount' => 0,
+            'cash_amount' => 0,
+            'success_count' => 0,
+            'success_amount' => 0
+        ];
+        
+        foreach ($tables as $table) {
+            if (WithdrawOrder::tableExists($table)) {
+                $stats['count'] += Db::name($table)
+                    ->where('user_id', $userId)
+                    ->where('createtime', '>=', $startTime)
+                    ->where('createtime', '<=', $endTime)
+                    ->count();
+                $stats['coin_amount'] += Db::name($table)
+                    ->where('user_id', $userId)
+                    ->where('createtime', '>=', $startTime)
+                    ->where('createtime', '<=', $endTime)
+                    ->sum('coin_amount');
+                $stats['cash_amount'] += Db::name($table)
+                    ->where('user_id', $userId)
+                    ->where('createtime', '>=', $startTime)
+                    ->where('createtime', '<=', $endTime)
+                    ->sum('cash_amount');
+                $stats['success_count'] += Db::name($table)
+                    ->where('user_id', $userId)
+                    ->where('status', WithdrawOrder::STATUS_SUCCESS)
+                    ->where('createtime', '>=', $startTime)
+                    ->where('createtime', '<=', $endTime)
+                    ->count();
+                $stats['success_amount'] += Db::name($table)
+                    ->where('user_id', $userId)
+                    ->where('status', WithdrawOrder::STATUS_SUCCESS)
+                    ->where('createtime', '>=', $startTime)
+                    ->where('createtime', '<=', $endTime)
+                    ->sum('cash_amount');
+            }
+        }
+        
+        return $stats;
+    }
+
+    /**
+     * 获取用户累计提现统计
+     */
+    protected function getUserTotalStats($userId)
     {
         $tables = WithdrawOrder::getTablesByRange(strtotime('-12 months'), time());
         $prefix = \think\Config::get('database.prefix');
         
-        $unionQueries = [];
+        $stats = [
+            'total_count' => 0,
+            'total_coin' => 0,
+            'total_amount' => 0,
+            'success_count' => 0,
+            'success_amount' => 0
+        ];
+        
         foreach ($tables as $table) {
             if (WithdrawOrder::tableExists($table)) {
-                $unionQueries[] = "SELECT * FROM {$prefix}{$table}";
+                $stats['total_count'] += Db::name($table)->where('user_id', $userId)->count();
+                $stats['total_coin'] += Db::name($table)->where('user_id', $userId)->sum('coin_amount');
+                $stats['total_amount'] += Db::name($table)->where('user_id', $userId)->sum('cash_amount');
+                $stats['success_count'] += Db::name($table)->where('user_id', $userId)->where('status', WithdrawOrder::STATUS_SUCCESS)->count();
+                $stats['success_amount'] += Db::name($table)->where('user_id', $userId)->where('status', WithdrawOrder::STATUS_SUCCESS)->sum('cash_amount');
             }
         }
         
-        if (empty($unionQueries)) {
-            return ['total_count' => 0, 'total_amount' => 0];
-        }
-        
-        $unionSql = '(' . implode(' UNION ALL ', $unionQueries) . ') AS wo';
-        
-        $sql = "SELECT COUNT(*) as total_count, 
-                       SUM(CASE WHEN status = " . WithdrawOrder::STATUS_SUCCESS . " THEN cash_amount ELSE 0 END) as total_amount
-                FROM {$unionSql} 
-                WHERE user_id = ?";
-        
-        $result = Db::query($sql, [$userId]);
-        return $result[0] ?? ['total_count' => 0, 'total_amount' => 0];
+        return $stats;
+    }
+
+    /**
+     * 获取用户提现统计（跨分表）
+     */
+    protected function getUserWithdrawStats($userId)
+    {
+        return $this->getUserTotalStats($userId);
     }
 
     /**
@@ -550,7 +893,13 @@ class Order extends Backend
                 ORDER BY createtime DESC 
                 LIMIT 5";
         
-        return Db::query($sql, [$userId, $excludeId]);
+        $list = Db::query($sql, [$userId, $excludeId]);
+        
+        foreach ($list as &$row) {
+            $row['status_text'] = WithdrawOrder::$statusList[$row['status']] ?? '未知';
+        }
+        
+        return $list;
     }
 
     /**

@@ -52,62 +52,52 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
                                     title: '订单详情',
                                     classname: 'btn btn-xs btn-success btn-dialog',
                                     icon: 'fa fa-list',
-                                    url: 'withdraw/order/detail',
+                                    url: function(row) {
+                                        return 'withdraw/order/detail?order_no=' + encodeURIComponent(row.order_no);
+                                    },
                                     extend: 'data-area=\'["800px","600px"]\''
                                 },
                                 {
                                     name: 'approve',
                                     text: '审核通过',
                                     title: '审核通过',
-                                    classname: 'btn btn-xs btn-success btn-ajax',
+                                    classname: 'btn btn-xs btn-success btn-dialog',
                                     icon: 'fa fa-check',
-                                    url: 'withdraw/order/approve',
-                                    confirm: '确认审核通过？',
-                                    success: function(data, ret) {
-                                        table.bootstrapTable('refresh');
+                                    url: function(row) {
+                                        return 'withdraw/order/approve?order_no=' + encodeURIComponent(row.order_no);
                                     },
-                                    error: function(data, ret) {
-                                        Layer.alert(ret.msg);
+                                    hidden: function(row) {
+                                        return row.status != 0;
                                     },
-                                    visible: function(row) {
-                                        return row.status == 0; // 只有待审核状态才显示
-                                    }
+                                    extend: 'data-area=\'["800px","90%"]\''
                                 },
                                 {
                                     name: 'reject',
                                     text: '审核拒绝',
                                     title: '审核拒绝',
-                                    classname: 'btn btn-xs btn-danger btn-ajax',
+                                    classname: 'btn btn-xs btn-danger btn-dialog',
                                     icon: 'fa fa-times',
-                                    url: 'withdraw/order/reject',
-                                    confirm: '确认拒绝？请确保已填写拒绝原因',
-                                    success: function(data, ret) {
-                                        table.bootstrapTable('refresh');
+                                    url: function(row) {
+                                        return 'withdraw/order/reject?order_no=' + encodeURIComponent(row.order_no);
                                     },
-                                    error: function(data, ret) {
-                                        Layer.alert(ret.msg);
+                                    hidden: function(row) {
+                                        return row.status != 0;
                                     },
-                                    visible: function(row) {
-                                        return row.status == 0; // 只有待审核状态才显示
-                                    }
+                                    extend: 'data-area=\'["600px","500px"]\''
                                 },
                                 {
                                     name: 'complete',
                                     text: '通过打款',
                                     title: '确认打款',
-                                    classname: 'btn btn-xs btn-warning btn-ajax',
+                                    classname: 'btn btn-xs btn-warning btn-dialog',
                                     icon: 'fa fa-money',
-                                    url: 'withdraw/order/complete',
-                                    confirm: '确认打款？将通过微信支付转账到用户零钱',
-                                    success: function(data, ret) {
-                                        table.bootstrapTable('refresh');
+                                    url: function(row) {
+                                        return 'withdraw/order/complete?order_no=' + encodeURIComponent(row.order_no);
                                     },
-                                    error: function(data, ret) {
-                                        Layer.alert(ret.msg);
+                                    hidden: function(row) {
+                                        return row.status != 0 && row.status != 1;
                                     },
-                                    visible: function(row) {
-                                        return row.status == 0 || row.status == 1; // 待审核或审核通过状态
-                                    }
+                                    extend: 'data-area=\'["800px","90%"]\''
                                 }
                             ]
                         }
@@ -115,60 +105,69 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
                 ]
             });
 
-            // 审核通过
+            // 审核通过 - 弹窗方式
             $(document).on('click', '.btn-approve', function() {
-                var ids = Table.api.selectedids(table);
-                if (ids.length === 0) {
+                var rows = table.bootstrapTable('getSelections');
+                if (rows.length === 0) {
                     Toastr.error('请选择要审核的记录');
                     return;
                 }
-                Layer.confirm('确认审核通过选中的记录？', {icon: 3, title: '提示'}, function(index) {
-                    Fast.api.ajax({
-                        url: 'withdraw/order/approve',
-                        data: {ids: ids.join(',')},
-                    }, function(data, ret) {
-                        Toastr.success(ret.msg);
-                        table.bootstrapTable('refresh');
-                        Layer.close(index);
-                    });
+                if (rows.length > 1) {
+                    Toastr.error('请选择单条记录进行审核');
+                    return;
+                }
+
+                if (rows[0].status != 0) {
+                    Toastr.error('只能审核待审核状态的订单');
+                    return;
+                }
+
+                Fast.api.open('withdraw/order/approve?order_no=' + encodeURIComponent(rows[0].order_no), '审核通过', {
+                    area: ['800px', '90%']
                 });
             });
 
-            // 审核拒绝
+            // 审核拒绝 - 弹窗方式
             $(document).on('click', '.btn-reject', function() {
-                var ids = Table.api.selectedids(table);
-                if (ids.length === 0) {
+                var rows = table.bootstrapTable('getSelections');
+                if (rows.length === 0) {
                     Toastr.error('请选择要拒绝的记录');
                     return;
                 }
-                Layer.prompt({title: '请输入拒绝原因', formType: 0}, function(value, index) {
-                    Fast.api.ajax({
-                        url: 'withdraw/order/reject',
-                        data: {ids: ids.join(','), reason: value},
-                    }, function(data, ret) {
-                        Toastr.success(ret.msg);
-                        table.bootstrapTable('refresh');
-                        Layer.close(index);
-                    });
+                if (rows.length > 1) {
+                    Toastr.error('请选择单条记录进行操作');
+                    return;
+                }
+
+                if (rows[0].status != 0) {
+                    Toastr.error('只能拒绝待审核状态的订单');
+                    return;
+                }
+
+                Fast.api.open('withdraw/order/reject?order_no=' + encodeURIComponent(rows[0].order_no), '审核拒绝', {
+                    area: ['600px', '500px']
                 });
             });
 
-            // 确认打款
+            // 确认打款 - 弹窗方式
             $(document).on('click', '.btn-complete', function() {
-                var ids = Table.api.selectedids(table);
-                if (ids.length === 0) {
+                var rows = table.bootstrapTable('getSelections');
+                if (rows.length === 0) {
                     Toastr.error('请选择要打款的记录');
                     return;
                 }
-                Layer.confirm('确认打款？将通过微信支付转账到用户零钱', {icon: 3, title: '提示'}, function(index) {
-                    Fast.api.ajax({
-                        url: 'withdraw/order/complete',
-                        data: {ids: ids.join(',')},
-                    }, function(data, ret) {
-                        Toastr.success(ret.msg);
-                        table.bootstrapTable('refresh');
-                        Layer.close(index);
-                    });
+                if (rows.length > 1) {
+                    Toastr.error('请选择单条记录进行打款');
+                    return;
+                }
+
+                if (rows[0].status != 0 && rows[0].status != 1) {
+                    Toastr.error('只能对待审核或审核通过状态的订单进行打款');
+                    return;
+                }
+
+                Fast.api.open('withdraw/order/complete?order_no=' + encodeURIComponent(rows[0].order_no), '确认打款', {
+                    area: ['800px', '90%']
                 });
             });
 
@@ -223,42 +222,38 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
                                     title: '订单详情',
                                     classname: 'btn btn-xs btn-success btn-dialog',
                                     icon: 'fa fa-list',
-                                    url: 'withdraw/order/detail'
+                                    url: function(row) {
+                                        return 'withdraw/order/detail?order_no=' + encodeURIComponent(row.order_no);
+                                    }
                                 },
                                 {
                                     name: 'approve',
                                     text: '审核通过',
                                     title: '审核通过',
-                                    classname: 'btn btn-xs btn-success btn-ajax',
+                                    classname: 'btn btn-xs btn-success btn-dialog',
                                     icon: 'fa fa-check',
-                                    url: 'withdraw/order/approve',
-                                    confirm: '确认审核通过？',
-                                    success: function(data, ret) {
-                                        table.bootstrapTable('refresh');
+                                    url: function(row) {
+                                        return 'withdraw/order/approve?order_no=' + encodeURIComponent(row.order_no);
                                     }
                                 },
                                 {
                                     name: 'reject',
                                     text: '审核拒绝',
                                     title: '审核拒绝',
-                                    classname: 'btn btn-xs btn-danger btn-ajax',
+                                    classname: 'btn btn-xs btn-danger btn-dialog',
                                     icon: 'fa fa-times',
-                                    url: 'withdraw/order/reject',
-                                    confirm: '确认拒绝？',
-                                    success: function(data, ret) {
-                                        table.bootstrapTable('refresh');
+                                    url: function(row) {
+                                        return 'withdraw/order/reject?order_no=' + encodeURIComponent(row.order_no);
                                     }
                                 },
                                 {
                                     name: 'complete',
                                     text: '通过打款',
                                     title: '确认打款',
-                                    classname: 'btn btn-xs btn-warning btn-ajax',
+                                    classname: 'btn btn-xs btn-warning btn-dialog',
                                     icon: 'fa fa-money',
-                                    url: 'withdraw/order/complete',
-                                    confirm: '确认打款？',
-                                    success: function(data, ret) {
-                                        table.bootstrapTable('refresh');
+                                    url: function(row) {
+                                        return 'withdraw/order/complete?order_no=' + encodeURIComponent(row.order_no);
                                     }
                                 }
                             ]
@@ -274,6 +269,23 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
             $('#start_date, #end_date').on('change', function () {
                 Controller.api.loadStatistics();
             });
+        },
+        approve: function () {
+            Controller.api.bindevent();
+        },
+        reject: function () {
+            Controller.api.bindevent();
+            // 处理拒绝原因选择
+            $(document).on('change', '#reject-reason-select', function() {
+                if ($(this).val() === 'custom') {
+                    $('#custom-reason-group').show();
+                } else {
+                    $('#custom-reason-group').hide();
+                }
+            });
+        },
+        complete: function () {
+            Controller.api.bindevent();
         },
         add: function () {
             Controller.api.bindevent();
