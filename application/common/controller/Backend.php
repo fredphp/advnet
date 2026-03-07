@@ -622,16 +622,31 @@ class Backend extends Controller
      */
     protected function success($msg = '', $data = null, $url = null, $wait = 3, array $header = [])
     {
+        // 如果是AJAX请求，返回JSON格式数据
+        if (IS_AJAX || $this->request->isAjax()) {
+            $result = [
+                'code' => 1,
+                'msg'  => $msg,
+                'time' => $this->request->server('REQUEST_TIME'),
+                'data' => $data,
+                'url'  => $url,
+            ];
+            $response = json($result);
+            throw new \think\exception\HttpResponseException($response);
+        }
+
+        // 非AJAX请求，显示跳转页面
+        $url = $url ?: $this->request->header('referer') ?: '';
         $result = [
             'code' => 1,
             'msg'  => $msg,
-            'time' => $this->request->server('REQUEST_TIME'),
             'data' => $data,
             'url'  => $url,
             'wait' => $wait,
         ];
 
-        $response = \think\Response::create($result, 'json', 200)->header($header);
+        // 使用跳转模板
+        $response = \think\Response::create($result, 'jump', 200, $header)->header($header);
         throw new \think\exception\HttpResponseException($response);
     }
 
@@ -645,16 +660,31 @@ class Backend extends Controller
      */
     protected function error($msg = '', $data = null, $url = null, $wait = 3, array $header = [])
     {
+        // 如果是AJAX请求，返回JSON格式数据
+        if (IS_AJAX || $this->request->isAjax()) {
+            $result = [
+                'code' => 0,
+                'msg'  => $msg,
+                'time' => $this->request->server('REQUEST_TIME'),
+                'data' => $data,
+                'url'  => $url,
+            ];
+            $response = json($result);
+            throw new \think\exception\HttpResponseException($response);
+        }
+
+        // 非AJAX请求，显示跳转页面
+        $url = $url ?: $this->request->header('referer') ?: '';
         $result = [
             'code' => 0,
             'msg'  => $msg,
-            'time' => $this->request->server('REQUEST_TIME'),
             'data' => $data,
             'url'  => $url,
             'wait' => $wait,
         ];
 
-        $response = \think\Response::create($result, 'json', 200)->header($header);
+        // 使用跳转模板
+        $response = \think\Response::create($result, 'jump', 200, $header)->header($header);
         throw new \think\exception\HttpResponseException($response);
     }
 }
