@@ -67,16 +67,16 @@ class Config extends Backend
         }
 
         // 读取配置
-        $config = $this->getConfig();
+        $withdrawConfig = $this->getWithdrawConfig();
         
-        $this->view->assign('config', $config);
+        $this->view->assign('withdrawConfig', $withdrawConfig);
         return $this->view->fetch();
     }
 
     /**
-     * 获取配置
+     * 获取提现配置
      */
-    protected function getConfig()
+    protected function getWithdrawConfig()
     {
         $config = $this->defaultConfig;
         

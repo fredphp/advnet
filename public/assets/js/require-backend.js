@@ -125,7 +125,14 @@ require.config({
 
 require(['jquery', 'bootstrap'], function ($, undefined) {
     //初始配置
-    var Config = requirejs.s.contexts._.config.config;
+    var Config = requirejs.s.contexts._.config.config || {};
+    
+    // 检查配置是否存在，如果不存在则跳过初始化
+    if (!Config || !Config.moduleurl) {
+        console.warn('RequireJS config not initialized properly. Please check if the page is loaded correctly.');
+        return;
+    }
+    
     //将Config渲染到全局
     window.Config = Config;
     // 配置语言包的路径

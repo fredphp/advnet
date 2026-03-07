@@ -16,28 +16,28 @@
                                     <label class="control-label col-xs-12 col-sm-2">开启提现:</label>
                                     <div class="col-xs-12 col-sm-8">
                                         <select name="row[enabled]" class="form-control">
-                                            <option value="1" {if condition="$config['enabled'] == '1'"}selected{/if}>开启</option>
-                                            <option value="0" {if condition="$config['enabled'] == '0'"}selected{/if}>关闭</option>
+                                            <option value="1" {if condition="$withdrawConfig['enabled'] == '1'"}selected{/if}>开启</option>
+                                            <option value="0" {if condition="$withdrawConfig['enabled'] == '0'"}selected{/if}>关闭</option>
                                         </select>
                                     </div>
                                 </div>
                                 <div class="form-group">
                                     <label class="control-label col-xs-12 col-sm-2">可选提现金额:</label>
                                     <div class="col-xs-12 col-sm-8">
-                                        <input type="text" name="row[amounts]" class="form-control" value="{$config.amounts|default='10,20,50,100'}">
+                                        <input type="text" name="row[amounts]" class="form-control" value="{$withdrawConfig.amounts|default='10,20,50,100'}">
                                         <span class="help-block">用户可选的提现金额，多个金额用英文逗号分隔</span>
                                     </div>
                                 </div>
                                 <div class="form-group">
                                     <label class="control-label col-xs-12 col-sm-2">最低提现金额(元):</label>
                                     <div class="col-xs-12 col-sm-8">
-                                        <input type="number" name="row[min_withdraw]" class="form-control" value="{$config.min_withdraw|default='1'}" step="0.01">
+                                        <input type="number" name="row[min_withdraw]" class="form-control" value="{$withdrawConfig.min_withdraw|default='1'}" step="0.01">
                                     </div>
                                 </div>
                                 <div class="form-group">
                                     <label class="control-label col-xs-12 col-sm-2">最高提现金额(元):</label>
                                     <div class="col-xs-12 col-sm-8">
-                                        <input type="number" name="row[max_withdraw]" class="form-control" value="{$config.max_withdraw|default='500'}" step="0.01">
+                                        <input type="number" name="row[max_withdraw]" class="form-control" value="{$withdrawConfig.max_withdraw|default='500'}" step="0.01">
                                     </div>
                                 </div>
                             </div>
@@ -50,25 +50,25 @@
                                 <div class="form-group">
                                     <label class="control-label col-xs-12 col-sm-2">每日提现次数:</label>
                                     <div class="col-xs-12 col-sm-8">
-                                        <input type="number" name="row[daily_withdraw_limit]" class="form-control" value="{$config.daily_withdraw_limit|default='3'}">
+                                        <input type="number" name="row[daily_withdraw_limit]" class="form-control" value="{$withdrawConfig.daily_withdraw_limit|default='3'}">
                                     </div>
                                 </div>
                                 <div class="form-group">
                                     <label class="control-label col-xs-12 col-sm-2">每日提现金额(元):</label>
                                     <div class="col-xs-12 col-sm-8">
-                                        <input type="number" name="row[daily_withdraw_amount]" class="form-control" value="{$config.daily_withdraw_amount|default='500'}" step="0.01">
+                                        <input type="number" name="row[daily_withdraw_amount]" class="form-control" value="{$withdrawConfig.daily_withdraw_amount|default='500'}" step="0.01">
                                     </div>
                                 </div>
                                 <div class="form-group">
                                     <label class="control-label col-xs-12 col-sm-2">同IP提现次数:</label>
                                     <div class="col-xs-12 col-sm-8">
-                                        <input type="number" name="row[same_ip_limit]" class="form-control" value="{$config.same_ip_limit|default='5'}">
+                                        <input type="number" name="row[same_ip_limit]" class="form-control" value="{$withdrawConfig.same_ip_limit|default='5'}">
                                     </div>
                                 </div>
                                 <div class="form-group">
                                     <label class="control-label col-xs-12 col-sm-2">同设备提现次数:</label>
                                     <div class="col-xs-12 col-sm-8">
-                                        <input type="number" name="row[same_device_limit]" class="form-control" value="{$config.same_device_limit|default='3'}">
+                                        <input type="number" name="row[same_device_limit]" class="form-control" value="{$withdrawConfig.same_device_limit|default='3'}">
                                     </div>
                                 </div>
                             </div>
@@ -81,21 +81,21 @@
                                 <div class="form-group">
                                     <label class="control-label col-xs-12 col-sm-2">自动审核金额(元):</label>
                                     <div class="col-xs-12 col-sm-8">
-                                        <input type="number" name="row[auto_audit_amount]" class="form-control" value="{$config.auto_audit_amount|default='10'}" step="0.01">
+                                        <input type="number" name="row[auto_audit_amount]" class="form-control" value="{$withdrawConfig.auto_audit_amount|default='10'}" step="0.01">
                                         <span class="help-block">低于此金额自动审核通过</span>
                                     </div>
                                 </div>
                                 <div class="form-group">
                                     <label class="control-label col-xs-12 col-sm-2">人工审核金额(元):</label>
                                     <div class="col-xs-12 col-sm-8">
-                                        <input type="number" name="row[manual_audit_amount]" class="form-control" value="{$config.manual_audit_amount|default='50'}" step="0.01">
+                                        <input type="number" name="row[manual_audit_amount]" class="form-control" value="{$withdrawConfig.manual_audit_amount|default='50'}" step="0.01">
                                         <span class="help-block">高于此金额需要人工审核</span>
                                     </div>
                                 </div>
                                 <div class="form-group">
                                     <label class="control-label col-xs-12 col-sm-2">新用户提现天数:</label>
                                     <div class="col-xs-12 col-sm-8">
-                                        <input type="number" name="row[new_user_withdraw_days]" class="form-control" value="{$config.new_user_withdraw_days|default='3'}">
+                                        <input type="number" name="row[new_user_withdraw_days]" class="form-control" value="{$withdrawConfig.new_user_withdraw_days|default='3'}">
                                         <span class="help-block">注册多少天后才能提现</span>
                                     </div>
                                 </div>
@@ -109,7 +109,7 @@
                                 <div class="form-group">
                                     <label class="control-label col-xs-12 col-sm-2">提现手续费率:</label>
                                     <div class="col-xs-12 col-sm-8">
-                                        <input type="number" name="row[fee_rate]" class="form-control" value="{$config.fee_rate|default='0'}" step="0.001">
+                                        <input type="number" name="row[fee_rate]" class="form-control" value="{$withdrawConfig.fee_rate|default='0'}" step="0.001">
                                         <span class="help-block">手续费率，如0.01表示1%</span>
                                     </div>
                                 </div>
@@ -123,13 +123,13 @@
                                 <div class="form-group">
                                     <label class="control-label col-xs-12 col-sm-2">提现重试次数:</label>
                                     <div class="col-xs-12 col-sm-8">
-                                        <input type="number" name="row[transfer_retry_count]" class="form-control" value="{$config.transfer_retry_count|default='3'}">
+                                        <input type="number" name="row[transfer_retry_count]" class="form-control" value="{$withdrawConfig.transfer_retry_count|default='3'}">
                                     </div>
                                 </div>
                                 <div class="form-group">
                                     <label class="control-label col-xs-12 col-sm-2">重试间隔(秒):</label>
                                     <div class="col-xs-12 col-sm-8">
-                                        <input type="number" name="row[transfer_retry_interval]" class="form-control" value="{$config.transfer_retry_interval|default='300'}">
+                                        <input type="number" name="row[transfer_retry_interval]" class="form-control" value="{$withdrawConfig.transfer_retry_interval|default='300'}">
                                     </div>
                                 </div>
                             </div>
