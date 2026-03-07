@@ -12,6 +12,7 @@ use think\Db;
 class Config extends Backend
 {
     protected $model = null;
+    protected $noNeedRight = ['index'];
 
     public function _initialize()
     {
@@ -59,7 +60,15 @@ class Config extends Backend
         // 合并默认值，确保所有字段都有值
         $config = array_merge($defaultWithdraw, $config);
         
+        // 使用 fetch 直接传参，避免 assign 可能的问题
         $this->view->assign('config', $config);
-        return $this->view->fetch();
+        $content = $this->view->fetch();
+        
+        // 确保返回字符串
+        if (!is_string($content)) {
+            $this->error('模板渲染错误');
+        }
+        
+        return $content;
     }
 }
