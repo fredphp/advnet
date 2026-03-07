@@ -27,13 +27,13 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
                         {field: 'id', title: __('ID'), sortable: true},
                         {field: 'order_no', title: '订单号', operate: 'LIKE'},
                         {field: 'user_id', title: '用户ID'},
+                        {field: 'withdraw_name', title: '收款人'},
+                        {field: 'withdraw_account', title: '收款账号'},
                         {field: 'coin_amount', title: '提现金币', sortable: true},
                         {field: 'cash_amount', title: '提现金额(元)', sortable: true},
                         {field: 'withdraw_type', title: '提现方式', formatter: function(value, row, index) { 
                             return '<span class="label label-success">微信</span>'; 
                         }},
-                        {field: 'withdraw_account', title: '收款账号'},
-                        {field: 'withdraw_name', title: '收款人'},
                         {field: 'status', title: '状态', searchList: {"0":"待审核","1":"审核通过","2":"打款中","3":"提现成功","4":"审核拒绝","5":"打款失败","6":"已取消"}, formatter: Table.api.formatter.status},
                         {field: 'createtime', title: '申请时间', operate:'RANGE', addclass:'datetimerange', autocomplete:false, formatter: Table.api.formatter.datetime},
                         {field: 'operate', title: __('Operate'), table: table, events: Table.api.events.operate, formatter: Table.api.formatter.operate}
