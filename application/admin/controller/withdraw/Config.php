@@ -58,8 +58,8 @@ class Config extends Backend
                 }
                 
                 Db::commit();
-                // 使用 json 返回标准响应格式
-                return json(['code' => 1, 'msg' => '保存成功']);
+                // 直接返回 JSON 响应，确保格式正确
+                return json(['code' => 1, 'msg' => '保存成功', 'data' => null, 'url' => '', 'wait' => 3]);
             } catch (\Exception $e) {
                 Db::rollback();
                 $this->error($e->getMessage());
