@@ -1,30 +1,27 @@
-define(['jquery', 'bootstrap', 'backend', 'table', 'form', 'moment'], function ($, undefined, Backend, Table, Form, Moment) {
+define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefined, Backend, Table, Form) {
     var Controller = {
         index: function () {
             // 初始化日期选择器
-            $('.datetimepicker').datetimepicker({
-                format: 'YYYY-MM-DD',
-                locale: 'zh-cn',
-                useCurrent: false
-            });
+            if ($.fn.datetimepicker) {
+                $('.datetimepicker').datetimepicker({
+                    format: 'YYYY-MM-DD',
+                    locale: 'zh-cn',
+                    useCurrent: false
+                });
+            }
 
             // 加载统计数据
             Controller.api.loadStatistics();
 
             // 绑定刷新按钮
-            $('.btn-refresh').on('click', function () {
+            $(document).on('click', '.btn-refresh', function () {
                 Controller.api.loadStatistics();
             });
 
             // 绑定日期选择器事件
-            $('#start_date, #end_date').on('dp.change', function () {
+            $('#start_date, #end_date').on('change dp.change', function () {
                 Controller.api.loadStatistics();
             });
-
-            // 每5分钟自动刷新
-            setInterval(function () {
-                Controller.api.loadStatistics();
-            }, 300000);
         },
         api: {
             bindevent: function () {
@@ -33,9 +30,6 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form', 'moment'], function (
             loadStatistics: function () {
                 var startDate = $('#start_date').val();
                 var endDate = $('#end_date').val();
-
-                // 显示加载中
-                $('.panel-body h2 strong').text('...');
 
                 $.ajax({
                     url: 'withdraw/stat/index',
@@ -80,8 +74,6 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form', 'moment'], function (
                     },
                     error: function () {
                         Toastr.error('网络错误，请稍后重试');
-                        // 重置显示
-                        $('.panel-body h2 strong').text('0');
                     }
                 });
             },
