@@ -5,6 +5,7 @@ namespace app\api\controller;
 use app\common\controller\Api;
 use app\common\library\WithdrawService;
 use app\common\library\CoinService;
+use app\common\library\SystemConfigService;
 use think\Db;
 
 /**
@@ -21,22 +22,39 @@ class Withdraw extends Api
      */
     public function config()
     {
-        $config = Db::name('withdraw_config')->column('value', 'code');
+        // 使用 SystemConfigService 获取配置
+        $config = SystemConfigService::getWithdrawConfig();
         
         // 获取用户账户信息
         $userId = $this->auth->id;
         $coinService = new CoinService();
         $account = $coinService->getAccountInfo($userId);
         
+        // 获取可选提现金额
+        $withdrawAmounts = SystemConfigService::getWithdrawAmounts();
+        
+        // 计算每个金额对应的金币数量
+        $coinRate = SystemConfigService::getCoinRate();
+        $amountOptions = [];
+        foreach ($withdrawAmounts as $amount) {
+            $amountOptions[] = [
+                'cash_amount' => $amount,
+                'coin_amount' => intval($amount * $coinRate),
+            ];
+        }
+        
         $this->success('获取成功', [
-            'min_withdraw' => $config['min_withdraw'] ?? 10000,
-            'max_withdraw' => $config['max_withdraw'] ?? 1000000,
-            'exchange_rate' => $config['exchange_rate'] ?? 10000,
+            'min_withdraw' => $config['min_withdraw'] ?? 1,
+            'max_withdraw' => $config['max_withdraw'] ?? 500,
+            'exchange_rate' => $coinRate,
             'fee_rate' => $config['fee_rate'] ?? 0,
             'daily_limit' => $config['daily_withdraw_limit'] ?? 3,
-            'daily_amount' => $config['daily_withdraw_amount'] ?? 100,
+            'daily_amount' => $config['daily_withdraw_amount'] ?? 500,
             'balance' => $account['balance'] ?? 0,
             'frozen' => $account['frozen'] ?? 0,
+            'withdraw_amounts' => $withdrawAmounts,
+            'amount_options' => $amountOptions,
+            'withdraw_enabled' => $config['withdraw_enabled'] ?? 1,
         ]);
     }
     
@@ -58,7 +76,16 @@ class Withdraw extends Api
         $bankBranch = $this->request->post('bank_branch', '');
         
         if ($coinAmount <= 0) {
-            $this->error('请输入提现金额');
+            $this->error('请选择提现金额');
+        }
+        
+        // 验证提现金额是否在可选范围内
+        $coinRate = SystemConfigService::getCoinRate();
+        $cashAmount = round($coinAmount / $coinRate, 4);
+        
+        if (!SystemConfigService::isValidWithdrawAmount($cashAmount)) {
+            $withdrawAmounts = SystemConfigService::getWithdrawAmounts();
+            $this->error('请选择有效的提现金额，可选金额：' . implode('、', $withdrawAmounts) . '元');
         }
         
         if (empty($withdrawAccount)) {
