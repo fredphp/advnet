@@ -209,14 +209,14 @@
         </div>
         {/if}
 
+        {if condition="$can_handle"}
         <!-- 操作按钮区域 -->
-        {if condition="$row.handle_action == '' || $row.handle_action == 'review'"}
         <div class="panel panel-default" style="margin-top: 15px;">
             <div class="panel-heading">
                 <h4 class="panel-title"><i class="fa fa-edit"></i> 操作处理</h4>
             </div>
             <div class="panel-body">
-                <form id="handle-form" class="form-horizontal">
+                <form id="handle-form" class="form-horizontal" role="form">
                     <input type="hidden" name="ids" value="{$row.id}">
                     
                     <div class="form-group">
@@ -376,8 +376,8 @@
     </div>
 </div>
 
-<script>
-$(function() {
+<script type="text/javascript">
+(function($) {
     // 监听操作类型变化
     $('input[name="action"]').on('change', function() {
         var action = $(this).val();
@@ -458,5 +458,5 @@ $(function() {
             });
         });
     });
-});
+})(jQuery);
 </script>

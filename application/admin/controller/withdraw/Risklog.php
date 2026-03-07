@@ -164,9 +164,14 @@ class Risklog extends Backend
             ]);
         }
 
+        // 判断是否可以进行操作（待处理或人工审核中可以操作）
+        $handleAction = $row['handle_action'] ?? '';
+        $canHandle = empty($handleAction) || $handleAction === '' || $handleAction === 'review';
+
         $this->view->assign('row', $row);
         $this->view->assign('risk_score', $riskScore);
         $this->view->assign('recent_logs', $recentLogs);
+        $this->view->assign('can_handle', $canHandle);
         return $this->view->fetch();
     }
 
