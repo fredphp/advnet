@@ -42,7 +42,8 @@ class Config extends Backend
                 }
                 
                 Db::commit();
-                $this->success('保存成功');
+                // 返回当前URL让前端刷新页面
+                $this->success('保存成功', null, $this->request->url());
             } catch (\Exception $e) {
                 Db::rollback();
                 $this->error($e->getMessage());

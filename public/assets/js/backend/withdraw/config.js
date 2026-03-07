@@ -6,7 +6,12 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
         },
         api: {
             bindevent: function () {
-                Form.api.bindevent($("form[role=form]"));
+                Form.api.bindevent($("form[role=form]"), function (ret) {
+                    // 成功后刷新页面
+                    setTimeout(function () {
+                        location.reload();
+                    }, 1500);
+                });
             }
         }
     };
