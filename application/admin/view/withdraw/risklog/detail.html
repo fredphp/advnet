@@ -26,9 +26,9 @@
                         <tr>
                             <th>风险评分</th>
                             <td>
-                                {if $row.risk_score >= 50}
+                                {if condition="$row.risk_score >= 50"}
                                 <span class="text-danger"><strong>{$row.risk_score|default=0}</strong></span>
-                                {elseif $row.risk_score >= 30}
+                                {elseif condition="$row.risk_score >= 30"}
                                 <span class="text-warning"><strong>{$row.risk_score|default=0}</strong></span>
                                 {else /}
                                 <span class="text-success">{$row.risk_score|default=0}</span>
@@ -43,65 +43,16 @@
                     <tbody>
                         <tr>
                             <th width="120">风险类型</th>
-                            <td>
-                                {php}
-                                $riskTypeMap = [
-                                    'ip_check' => 'IP检测',
-                                    'device_check' => '设备检测',
-                                    'frequency_check' => '频率检测',
-                                    'amount_check' => '金额检测',
-                                    'account_check' => '账号检测',
-                                    'risk_check' => '风险检测',
-                                    'score_check' => '评分检测',
-                                    'video_watch_speed' => '视频观看速度',
-                                    'video_watch_repeat' => '视频重复观看',
-                                    'video_daily_limit' => '视频每日限额',
-                                    'video_reward_speed' => '视频奖励速度',
-                                    'video_skip_ratio' => '视频跳过比例',
-                                    'task_complete_speed' => '任务完成速度',
-                                    'task_daily_limit' => '任务每日限额',
-                                    'task_repeat_submit' => '任务重复提交',
-                                    'task_fake_behavior' => '任务虚假行为',
-                                    'withdraw_frequency' => '提现频率',
-                                    'withdraw_amount_anomaly' => '提现金额异常',
-                                    'withdraw_new_account' => '新账号提现',
-                                    'redpacket_grab_speed' => '红包抢夺速度',
-                                    'redpacket_daily_limit' => '红包每日限额',
-                                    'invite_speed' => '邀请速度',
-                                    'invite_fake_account' => '邀请虚假账号',
-                                    'ip_multi_account' => 'IP多账号',
-                                    'device_multi_account' => '设备多账号',
-                                    'behavior_pattern' => '行为模式',
-                                    'video' => '视频',
-                                    'task' => '任务',
-                                    'withdraw' => '提现',
-                                    'redpacket' => '红包',
-                                    'invite' => '邀请',
-                                    'global' => '全局',
-                                ];
-                                $riskType = $row['risk_type'];
-                                $riskTypeText = $riskTypeMap[$riskType] ?? $riskType;
-                                $colorMap = [
-                                    'ip_check' => 'label-info',
-                                    'device_check' => 'label-primary',
-                                    'frequency_check' => 'label-warning',
-                                    'amount_check' => 'label-danger',
-                                    'account_check' => 'label-danger',
-                                    'risk_check' => 'label-danger',
-                                ];
-                                $color = $colorMap[$riskType] ?? 'label-default';
-                                {/php}
-                                <span class="label {$color}">{$riskTypeText}</span>
-                            </td>
+                            <td><span class="label label-info">{$row.risk_type_text}</span></td>
                         </tr>
                         <tr>
                             <th>风险等级</th>
                             <td>
-                                {if $row.risk_level == 1}
+                                {if condition="$row.risk_level == 1"}
                                 <span class="label label-success">低风险</span>
-                                {elseif $row.risk_level == 2}
+                                {elseif condition="$row.risk_level == 2"}
                                 <span class="label label-warning">中风险</span>
-                                {elseif $row.risk_level == 3}
+                                {elseif condition="$row.risk_level == 3"}
                                 <span class="label label-danger">高风险</span>
                                 {else /}
                                 <span class="label label-default">未知</span>
@@ -111,12 +62,12 @@
                         <tr>
                             <th>处理状态</th>
                             <td>
-                                {switch $row.handle_action}
-                                    {case pass}<span class="label label-success">通过</span>{/case}
-                                    {case review}<span class="label label-info">人工审核</span>{/case}
-                                    {case reject}<span class="label label-warning">拒绝</span>{/case}
-                                    {case freeze}<span class="label label-danger">冻结</span>{/case}
-                                    {default /}<span class="label label-default">{$row.handle_action|default='待处理'}</span>
+                                {switch name="row.handle_action"}
+                                    {case value="pass"}<span class="label label-success">已通过</span>{/case}
+                                    {case value="review"}<span class="label label-info">人工审核中</span>{/case}
+                                    {case value="reject"}<span class="label label-warning">已拒绝</span>{/case}
+                                    {case value="freeze"}<span class="label label-danger">已冻结</span>{/case}
+                                    {default /}<span class="label label-default">待处理</span>
                                 {/switch}
                             </td>
                         </tr>
@@ -133,18 +84,18 @@
             </div>
         </div>
 
-        {if $row.risk_detail}
+        {if condition="$row.risk_detail"}
         <div class="panel panel-info" style="margin-top: 15px;">
             <div class="panel-heading">
                 <h4 class="panel-title">风险详情</h4>
             </div>
             <div class="panel-body">
-                <pre style="background: #f5f5f5; padding: 10px; border-radius: 4px; max-height: 300px; overflow-y: auto;">{$row.risk_detail|raw}</pre>
+                <pre style="background: #f5f5f5; padding: 10px; border-radius: 4px; max-height: 300px; overflow-y: auto;">{$row.risk_detail}</pre>
             </div>
         </div>
         {/if}
 
-        {if $risk_score}
+        {if condition="$risk_score"}
         <div class="panel panel-warning" style="margin-top: 15px;">
             <div class="panel-heading">
                 <h4 class="panel-title">用户风险评分</h4>
@@ -157,10 +108,10 @@
                             <td width="150">{$risk_score.total_score|default=0}</td>
                             <th width="120">风险状态</th>
                             <td>
-                                {switch $risk_score.status}
-                                    {case normal}<span class="label label-success">正常</span>{/case}
-                                    {case frozen}<span class="label label-warning">冻结</span>{/case}
-                                    {case banned}<span class="label label-danger">封禁</span>{/case}
+                                {switch name="risk_score.status"}
+                                    {case value="normal"}<span class="label label-success">正常</span>{/case}
+                                    {case value="frozen"}<span class="label label-warning">冻结</span>{/case}
+                                    {case value="banned"}<span class="label label-danger">封禁</span>{/case}
                                     {default /}<span class="label label-default">{$risk_score.status}</span>
                                 {/switch}
                             </td>
@@ -189,7 +140,7 @@
         </div>
         {/if}
 
-        {if $recent_logs}
+        {if condition="$recent_logs"}
         <div class="panel panel-danger" style="margin-top: 15px;">
             <div class="panel-heading">
                 <h4 class="panel-title">该用户最近风控记录</h4>
@@ -208,59 +159,17 @@
                         </tr>
                     </thead>
                     <tbody>
-                        {php}
-                        $riskTypeMap = [
-                            'ip_check' => 'IP检测',
-                            'device_check' => '设备检测',
-                            'frequency_check' => '频率检测',
-                            'amount_check' => '金额检测',
-                            'account_check' => '账号检测',
-                            'risk_check' => '风险检测',
-                            'score_check' => '评分检测',
-                            'video_watch_speed' => '视频观看速度',
-                            'video_watch_repeat' => '视频重复观看',
-                            'video_daily_limit' => '视频每日限额',
-                            'video_reward_speed' => '视频奖励速度',
-                            'video_skip_ratio' => '视频跳过比例',
-                            'task_complete_speed' => '任务完成速度',
-                            'task_daily_limit' => '任务每日限额',
-                            'task_repeat_submit' => '任务重复提交',
-                            'task_fake_behavior' => '任务虚假行为',
-                            'withdraw_frequency' => '提现频率',
-                            'withdraw_amount_anomaly' => '提现金额异常',
-                            'withdraw_new_account' => '新账号提现',
-                            'redpacket_grab_speed' => '红包抢夺速度',
-                            'redpacket_daily_limit' => '红包每日限额',
-                            'invite_speed' => '邀请速度',
-                            'invite_fake_account' => '邀请虚假账号',
-                            'ip_multi_account' => 'IP多账号',
-                            'device_multi_account' => '设备多账号',
-                            'behavior_pattern' => '行为模式',
-                            'video' => '视频',
-                            'task' => '任务',
-                            'withdraw' => '提现',
-                            'redpacket' => '红包',
-                            'invite' => '邀请',
-                            'global' => '全局',
-                        ];
-                        {/php}
                         {volist name="recent_logs" id="log"}
                         <tr>
                             <td>{$log.id}</td>
                             <td>{$log.order_no|default='-'}</td>
+                            <td><span class="label label-info">{$log.risk_type_text}</span></td>
                             <td>
-                                {php}
-                                $riskType = $log['risk_type'];
-                                $riskTypeText = $riskTypeMap[$riskType] ?? $riskType;
-                                {/php}
-                                <span class="label label-info">{$riskTypeText}</span>
-                            </td>
-                            <td>
-                                {if $log.risk_level == 1}
+                                {if condition="$log.risk_level == 1"}
                                 <span class="label label-success">低</span>
-                                {elseif $log.risk_level == 2}
+                                {elseif condition="$log.risk_level == 2"}
                                 <span class="label label-warning">中</span>
-                                {elseif $log.risk_level == 3}
+                                {elseif condition="$log.risk_level == 3"}
                                 <span class="label label-danger">高</span>
                                 {else /}
                                 <span class="label label-default">-</span>
@@ -268,12 +177,12 @@
                             </td>
                             <td>{$log.risk_score|default=0}</td>
                             <td>
-                                {switch $log.handle_action}
-                                    {case pass}<span class="label label-success">通过</span>{/case}
-                                    {case review}<span class="label label-info">审核</span>{/case}
-                                    {case reject}<span class="label label-warning">拒绝</span>{/case}
-                                    {case freeze}<span class="label label-danger">冻结</span>{/case}
-                                    {default /}<span class="label label-default">{$log.handle_action}</span>
+                                {switch name="log.handle_action"}
+                                    {case value="pass"}<span class="label label-success">通过</span>{/case}
+                                    {case value="review"}<span class="label label-info">审核</span>{/case}
+                                    {case value="reject"}<span class="label label-warning">拒绝</span>{/case}
+                                    {case value="freeze"}<span class="label label-danger">冻结</span>{/case}
+                                    {default /}<span class="label label-default">待处理</span>
                                 {/switch}
                             </td>
                             <td>{$log.createtime|date='Y-m-d H:i:s',###}</td>
@@ -284,5 +193,174 @@
             </div>
         </div>
         {/if}
+
+        <!-- 操作按钮区域 -->
+        {if condition="$row.handle_action == '' || $row.handle_action == 'review'"}
+        <div class="panel panel-default" style="margin-top: 15px;">
+            <div class="panel-heading">
+                <h4 class="panel-title">操作处理</h4>
+            </div>
+            <div class="panel-body">
+                <form id="handle-form" class="form-horizontal">
+                    <input type="hidden" name="ids" value="{$row.id}">
+                    
+                    <div class="form-group">
+                        <label class="control-label col-xs-12 col-sm-2">操作类型:</label>
+                        <div class="col-xs-12 col-sm-8">
+                            <div class="radio">
+                                <label><input type="radio" name="action" value="pass" checked> 通过 - 标记为正常，允许继续操作</label>
+                            </div>
+                            <div class="radio">
+                                <label><input type="radio" name="action" value="review"> 人工审核 - 需要进一步人工确认</label>
+                            </div>
+                            <div class="radio">
+                                <label><input type="radio" name="action" value="reject"> 拒绝 - 拒绝该风控记录</label>
+                            </div>
+                            <div class="radio">
+                                <label><input type="radio" name="action" value="freeze"> 冻结用户 - 冻结该用户账号</label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-group reject-reason-wrap" style="display:none;">
+                        <label class="control-label col-xs-12 col-sm-2"><span class="text-danger">*</span> 拒绝原因:</label>
+                        <div class="col-xs-12 col-sm-8">
+                            <select name="reject_reason" class="form-control">
+                                <option value="">请选择拒绝原因</option>
+                                <option value="异常提现行为">异常提现行为</option>
+                                <option value="疑似刷单">疑似刷单</option>
+                                <option value="风险用户">风险用户</option>
+                                <option value="频繁操作">频繁操作</option>
+                                <option value="其他">其他</option>
+                            </select>
+                            <textarea name="reject_remark" class="form-control" rows="2" placeholder="详细说明（选填）" style="margin-top: 10px;"></textarea>
+                        </div>
+                    </div>
+
+                    <div class="form-group freeze-reason-wrap" style="display:none;">
+                        <label class="control-label col-xs-12 col-sm-2"><span class="text-danger">*</span> 冻结原因:</label>
+                        <div class="col-xs-12 col-sm-8">
+                            <div class="alert alert-warning">
+                                <i class="fa fa-exclamation-triangle"></i> <strong>警告：</strong>冻结后该用户将无法登录和操作，请谨慎操作！
+                            </div>
+                            <select name="freeze_reason" class="form-control">
+                                <option value="">请选择冻结原因</option>
+                                <option value="涉嫌欺诈">涉嫌欺诈</option>
+                                <option value="频繁违规操作">频繁违规操作</option>
+                                <option value="高风险用户">高风险用户</option>
+                                <option value="异常账号">异常账号</option>
+                                <option value="其他">其他</option>
+                            </select>
+                            <textarea name="freeze_remark" class="form-control" rows="2" placeholder="详细说明（选填）" style="margin-top: 10px;"></textarea>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <div class="col-xs-12 col-sm-8 col-sm-offset-2">
+                            <button type="button" class="btn btn-primary btn-handle-submit">确认提交</button>
+                            <button type="button" class="btn btn-default" onclick="parent.Layer.closeAll()">取消</button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+        {/if}
+
+        {if condition="$row.handle_action == 'pass'"}
+        <div class="alert alert-success" style="margin-top: 15px;">
+            <i class="fa fa-check-circle"></i> 该记录已通过审核，无需再次处理。
+        </div>
+        {/if}
+
+        {if condition="$row.handle_action == 'reject'"}
+        <div class="alert alert-warning" style="margin-top: 15px;">
+            <i class="fa fa-ban"></i> 该记录已被拒绝。
+            {if condition="$row.handle_remark"}
+            <br><strong>拒绝原因：</strong>{$row.handle_remark}
+            {/if}
+        </div>
+        {/if}
+
+        {if condition="$row.handle_action == 'freeze'"}
+        <div class="alert alert-danger" style="margin-top: 15px;">
+            <i class="fa fa-snowflake-o"></i> 该用户已被冻结。
+            {if condition="$row.handle_remark"}
+            <br><strong>冻结原因：</strong>{$row.handle_remark}
+            {/if}
+        </div>
+        {/if}
     </div>
 </div>
+
+<script>
+$(function() {
+    // 监听操作类型变化
+    $('input[name="action"]').on('change', function() {
+        var action = $(this).val();
+        $('.reject-reason-wrap').hide();
+        $('.freeze-reason-wrap').hide();
+        
+        if (action === 'reject') {
+            $('.reject-reason-wrap').show();
+        } else if (action === 'freeze') {
+            $('.freeze-reason-wrap').show();
+        }
+    });
+
+    // 提交处理
+    $('.btn-handle-submit').on('click', function() {
+        var action = $('input[name="action"]:checked').val();
+        var ids = $('input[name="ids"]').val();
+        var remark = '';
+
+        // 验证
+        if (action === 'reject') {
+            remark = $('select[name="reject_reason"]').val();
+            var customRemark = $('textarea[name="reject_remark"]').val();
+            if (!remark) {
+                Toastr.error('请选择拒绝原因');
+                return;
+            }
+            if (customRemark) {
+                remark += '：' + customRemark;
+            }
+        } else if (action === 'freeze') {
+            remark = $('select[name="freeze_reason"]').val();
+            var customRemark = $('textarea[name="freeze_remark"]').val();
+            if (!remark) {
+                Toastr.error('请选择冻结原因');
+                return;
+            }
+            if (customRemark) {
+                remark += '：' + customRemark;
+            }
+        }
+
+        // 确认提示
+        var actionText = {
+            'pass': '通过',
+            'review': '人工审核',
+            'reject': '拒绝',
+            'freeze': '冻结'
+        };
+
+        var confirmMsg = '确认执行【' + actionText[action] + '】操作？';
+        if (action === 'freeze') {
+            confirmMsg = '确认冻结该用户？冻结后用户将无法登录！';
+        }
+
+        Layer.confirm(confirmMsg, function(index) {
+            Fast.api.ajax({
+                url: 'withdraw/risklog/' + action,
+                data: {ids: ids, remark: remark}
+            }, function(data, ret) {
+                Layer.close(index);
+                parent.$('.btn-refresh').trigger('click');
+                var layerIndex = parent.layer.getFrameIndex(window.name);
+                parent.layer.close(layerIndex);
+                Toastr.success(ret.msg);
+            });
+        });
+    });
+});
+</script>

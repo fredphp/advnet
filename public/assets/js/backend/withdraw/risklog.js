@@ -45,10 +45,6 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
                     detail_url: 'withdraw/risklog/detail',
                     del_url: 'withdraw/risklog/del',
                     multi_url: 'withdraw/risklog/multi',
-                    pass_url: 'withdraw/risklog/pass',
-                    review_url: 'withdraw/risklog/review',
-                    reject_url: 'withdraw/risklog/reject',
-                    freeze_url: 'withdraw/risklog/freeze',
                     table: '',
                 }
             });
@@ -76,8 +72,7 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
                                 'frequency_check': 'label-warning',
                                 'amount_check': 'label-danger',
                                 'account_check': 'label-danger',
-                                'risk_check': 'label-danger',
-                                'score_check': 'label-warning'
+                                'risk_check': 'label-danger'
                             };
                             var color = colorMap[value] || 'label-default';
                             return '<span class="label ' + color + '">' + text + '</span>';
@@ -96,9 +91,9 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
                         }},
                         {field: 'risk_score', title: '风险评分', sortable: true, formatter: function(value, row, index) {
                             if (value >= 50) {
-                                return '<span class="text-danger">' + value + '</span>';
+                                return '<span class="text-danger"><strong>' + value + '</strong></span>';
                             } else if (value >= 30) {
-                                return '<span class="text-warning">' + value + '</span>';
+                                return '<span class="text-warning"><strong>' + value + '</strong></span>';
                             }
                             return '<span class="text-success">' + value + '</span>';
                         }},
@@ -109,12 +104,12 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
                             "freeze": "冻结"
                         }, formatter: function(value, row, index) {
                             var map = {
-                                "pass": '<span class="label label-success">通过</span>',
-                                "review": '<span class="label label-info">人工审核</span>',
-                                "reject": '<span class="label label-warning">拒绝</span>',
-                                "freeze": '<span class="label label-danger">冻结</span>'
+                                "pass": '<span class="label label-success">已通过</span>',
+                                "review": '<span class="label label-info">审核中</span>',
+                                "reject": '<span class="label label-warning">已拒绝</span>',
+                                "freeze": '<span class="label label-danger">已冻结</span>'
                             };
-                            return map[value] || '<span class="label label-default">' + (value || '待处理') + '</span>';
+                            return map[value] || '<span class="label label-default">待处理</span>';
                         }},
                         {field: 'createtime', title: '创建时间', formatter: Table.api.formatter.datetime, operate: 'RANGE', addclass: 'datetimerange', sortable: true},
                         {
@@ -141,6 +136,9 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
                                     icon: 'fa fa-check',
                                     url: 'withdraw/risklog/pass',
                                     confirm: '确认标记为通过？',
+                                    hidden: function(row) {
+                                        return row.handle_action === 'pass' || row.handle_action === 'reject' || row.handle_action === 'freeze';
+                                    },
                                     success: function(data, ret) {
                                         table.bootstrapTable('refresh');
                                     }
@@ -153,6 +151,9 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
                                     icon: 'fa fa-user',
                                     url: 'withdraw/risklog/review',
                                     confirm: '确认标记为需要人工审核？',
+                                    hidden: function(row) {
+                                        return row.handle_action === 'pass' || row.handle_action === 'reject' || row.handle_action === 'freeze';
+                                    },
                                     success: function(data, ret) {
                                         table.bootstrapTable('refresh');
                                     }
@@ -160,25 +161,61 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
                                 {
                                     name: 'reject',
                                     text: '拒绝',
-                                    title: '确认拒绝',
-                                    classname: 'btn btn-xs btn-danger btn-ajax',
+                                    title: '拒绝原因',
+                                    classname: 'btn btn-xs btn-danger',
                                     icon: 'fa fa-ban',
-                                    url: 'withdraw/risklog/reject',
-                                    confirm: '确认拒绝该记录？',
-                                    success: function(data, ret) {
-                                        table.bootstrapTable('refresh');
+                                    hidden: function(row) {
+                                        return row.handle_action === 'pass' || row.handle_action === 'reject' || row.handle_action === 'freeze';
+                                    },
+                                    click: function(e, row) {
+                                        Layer.prompt({
+                                            title: '请输入拒绝原因',
+                                            formType: 2,
+                                            area: ['400px', '150px']
+                                        }, function(value, index) {
+                                            if (!value) {
+                                                Toastr.error('请输入拒绝原因');
+                                                return;
+                                            }
+                                            Fast.api.ajax({
+                                                url: 'withdraw/risklog/reject',
+                                                data: {ids: row.id, remark: value}
+                                            }, function(data, ret) {
+                                                Layer.close(index);
+                                                table.bootstrapTable('refresh');
+                                                Toastr.success(ret.msg);
+                                            });
+                                        });
                                     }
                                 },
                                 {
                                     name: 'freeze',
                                     text: '冻结',
-                                    title: '冻结用户',
-                                    classname: 'btn btn-xs btn-default btn-ajax',
+                                    title: '冻结原因',
+                                    classname: 'btn btn-xs btn-default',
                                     icon: 'fa fa-snowflake-o',
-                                    url: 'withdraw/risklog/freeze',
-                                    confirm: '确认冻结该用户？冻结后用户将无法登录！',
-                                    success: function(data, ret) {
-                                        table.bootstrapTable('refresh');
+                                    hidden: function(row) {
+                                        return row.handle_action === 'pass' || row.handle_action === 'reject' || row.handle_action === 'freeze';
+                                    },
+                                    click: function(e, row) {
+                                        Layer.prompt({
+                                            title: '请输入冻结原因（冻结后用户将无法登录）',
+                                            formType: 2,
+                                            area: ['400px', '150px']
+                                        }, function(value, index) {
+                                            if (!value) {
+                                                Toastr.error('请输入冻结原因');
+                                                return;
+                                            }
+                                            Fast.api.ajax({
+                                                url: 'withdraw/risklog/freeze',
+                                                data: {ids: row.id, remark: value}
+                                            }, function(data, ret) {
+                                                Layer.close(index);
+                                                table.bootstrapTable('refresh');
+                                                Toastr.success(ret.msg);
+                                            });
+                                        });
                                     }
                                 }
                             ]
@@ -261,22 +298,23 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
                     Toastr.warning('请选择要操作的记录');
                     return;
                 }
-                $('#reject-ids').val(ids.join(','));
-                $('#reject-modal').modal('show');
-            });
-
-            // 确认拒绝
-            $(document).on('click', '#btn-confirm-reject', function(e) {
-                e.preventDefault();
-                var ids = $('#reject-ids').val();
-
-                Fast.api.ajax({
-                    url: 'withdraw/risklog/multi',
-                    data: {ids: ids, action: 'reject'}
-                }, function(data, ret) {
-                    $('#reject-modal').modal('hide');
-                    table.bootstrapTable('refresh');
-                    Toastr.success(ret.msg);
+                Layer.prompt({
+                    title: '请输入拒绝原因',
+                    formType: 2,
+                    area: ['400px', '150px']
+                }, function(value, index) {
+                    if (!value) {
+                        Toastr.error('请输入拒绝原因');
+                        return;
+                    }
+                    Fast.api.ajax({
+                        url: 'withdraw/risklog/multi',
+                        data: {ids: ids.join(','), action: 'reject', remark: value}
+                    }, function(data, ret) {
+                        Layer.close(index);
+                        table.bootstrapTable('refresh');
+                        Toastr.success(ret.msg);
+                    });
                 });
             });
 
@@ -288,24 +326,28 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
                     Toastr.warning('请选择要操作的记录');
                     return;
                 }
-                $('#freeze-ids').val(ids.join(','));
-                $('#freeze-modal').modal('show');
-            });
-
-            // 确认冻结
-            $(document).on('click', '#btn-confirm-freeze', function(e) {
-                e.preventDefault();
-                var ids = $('#freeze-ids').val();
-
-                Fast.api.ajax({
-                    url: 'withdraw/risklog/multi',
-                    data: {ids: ids, action: 'freeze'}
-                }, function(data, ret) {
-                    $('#freeze-modal').modal('hide');
-                    table.bootstrapTable('refresh');
-                    Toastr.success(ret.msg);
+                Layer.prompt({
+                    title: '请输入冻结原因（冻结后用户将无法登录）',
+                    formType: 2,
+                    area: ['400px', '150px']
+                }, function(value, index) {
+                    if (!value) {
+                        Toastr.error('请输入冻结原因');
+                        return;
+                    }
+                    Fast.api.ajax({
+                        url: 'withdraw/risklog/multi',
+                        data: {ids: ids.join(','), action: 'freeze', remark: value}
+                    }, function(data, ret) {
+                        Layer.close(index);
+                        table.bootstrapTable('refresh');
+                        Toastr.success(ret.msg);
+                    });
                 });
             });
+        },
+        detail: function() {
+            // 详情页面的JS逻辑已在内联脚本中实现
         },
         api: {
             bindevent: function () {

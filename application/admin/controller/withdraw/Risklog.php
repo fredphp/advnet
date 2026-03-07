@@ -62,6 +62,7 @@ class Risklog extends Backend
 
     // 处理动作映射
     protected $handleActionMap = [
+        '' => '待处理',
         'pass' => '通过',
         'review' => '人工审核',
         'reject' => '拒绝',
@@ -137,7 +138,7 @@ class Risklog extends Backend
         $recentLogs = Db::name($this->tableName)
             ->alias('rl')
             ->join($prefix . 'user u', 'u.id = rl.user_id', 'LEFT')
-            ->field('rl.id, rl.user_id, rl.order_no, rl.risk_type, rl.risk_level, rl.risk_score, rl.handle_action, rl.createtime, u.username')
+            ->field('rl.id, rl.user_id, rl.order_no, rl.risk_type, rl.risk_level, rl.risk_score, rl.handle_action, rl.handle_remark, rl.createtime, u.username')
             ->where('rl.user_id', $row['user_id'])
             ->where('rl.id', '<>', $ids)
             ->order('rl.createtime', 'desc')
@@ -147,12 +148,12 @@ class Risklog extends Backend
         // 格式化数据
         $row['risk_type_text'] = $this->riskTypeMap[$row['risk_type']] ?? $row['risk_type'];
         $row['risk_level_text'] = $this->riskLevelMap[$row['risk_level']] ?? '未知';
-        $row['handle_action_text'] = $this->handleActionMap[$row['handle_action']] ?? $row['handle_action'];
+        $row['handle_action_text'] = $this->handleActionMap[$row['handle_action']] ?? '待处理';
 
         foreach ($recentLogs as &$log) {
             $log['risk_type_text'] = $this->riskTypeMap[$log['risk_type']] ?? $log['risk_type'];
             $log['risk_level_text'] = $this->riskLevelMap[$log['risk_level']] ?? '未知';
-            $log['handle_action_text'] = $this->handleActionMap[$log['handle_action']] ?? $log['handle_action'];
+            $log['handle_action_text'] = $this->handleActionMap[$log['handle_action']] ?? '待处理';
         }
 
         if ($this->request->isAjax()) {
@@ -175,6 +176,8 @@ class Risklog extends Backend
     public function pass($ids = null)
     {
         $ids = $ids ? $ids : $this->request->param('ids');
+        $remark = $this->request->param('remark', '审核通过');
+
         if (empty($ids)) {
             $this->error(__('参数错误'));
         }
@@ -184,14 +187,19 @@ class Risklog extends Backend
             $this->error('记录不存在');
         }
 
+        // 检查是否已处理
+        $handleAction = $row['handle_action'] ?? '';
+        if ($handleAction && !in_array($handleAction, ['', 'review'])) {
+            $this->error('该记录已处理，无法重复操作');
+        }
+
         $result = Db::name($this->tableName)->where('id', $ids)->update([
             'handle_action' => 'pass',
-            'handle_remark' => '管理员通过',
-            'handle_time' => time()
+            'handle_remark' => $remark
         ]);
 
         if ($result !== false) {
-            $this->success('操作成功');
+            $this->success('操作成功，已通过');
         } else {
             $this->error('操作失败');
         }
@@ -203,6 +211,8 @@ class Risklog extends Backend
     public function review($ids = null)
     {
         $ids = $ids ? $ids : $this->request->param('ids');
+        $remark = $this->request->param('remark', '需人工审核');
+
         if (empty($ids)) {
             $this->error(__('参数错误'));
         }
@@ -214,12 +224,11 @@ class Risklog extends Backend
 
         $result = Db::name($this->tableName)->where('id', $ids)->update([
             'handle_action' => 'review',
-            'handle_remark' => '需人工审核',
-            'handle_time' => time()
+            'handle_remark' => $remark
         ]);
 
         if ($result !== false) {
-            $this->success('操作成功');
+            $this->success('操作成功，已标记为人工审核');
         } else {
             $this->error('操作失败');
         }
@@ -231,8 +240,14 @@ class Risklog extends Backend
     public function reject($ids = null)
     {
         $ids = $ids ? $ids : $this->request->param('ids');
+        $remark = $this->request->param('remark', '');
+
         if (empty($ids)) {
             $this->error(__('参数错误'));
+        }
+
+        if (empty($remark)) {
+            $this->error('请填写拒绝原因');
         }
 
         $row = Db::name($this->tableName)->where('id', $ids)->find();
@@ -240,14 +255,19 @@ class Risklog extends Backend
             $this->error('记录不存在');
         }
 
+        // 检查是否已处理
+        $handleAction = $row['handle_action'] ?? '';
+        if ($handleAction && !in_array($handleAction, ['', 'review'])) {
+            $this->error('该记录已处理，无法重复操作');
+        }
+
         $result = Db::name($this->tableName)->where('id', $ids)->update([
             'handle_action' => 'reject',
-            'handle_remark' => '管理员拒绝',
-            'handle_time' => time()
+            'handle_remark' => $remark
         ]);
 
         if ($result !== false) {
-            $this->success('操作成功');
+            $this->success('操作成功，已拒绝');
         } else {
             $this->error('操作失败');
         }
@@ -259,8 +279,14 @@ class Risklog extends Backend
     public function freeze($ids = null)
     {
         $ids = $ids ? $ids : $this->request->param('ids');
+        $remark = $this->request->param('remark', '');
+
         if (empty($ids)) {
             $this->error(__('参数错误'));
+        }
+
+        if (empty($remark)) {
+            $this->error('请填写冻结原因');
         }
 
         $row = Db::name($this->tableName)->where('id', $ids)->find();
@@ -268,13 +294,18 @@ class Risklog extends Backend
             $this->error('记录不存在');
         }
 
+        // 检查是否已处理
+        $handleAction = $row['handle_action'] ?? '';
+        if ($handleAction && !in_array($handleAction, ['', 'review'])) {
+            $this->error('该记录已处理，无法重复操作');
+        }
+
         Db::startTrans();
         try {
             // 更新风控记录状态
             Db::name($this->tableName)->where('id', $ids)->update([
                 'handle_action' => 'freeze',
-                'handle_remark' => '冻结用户',
-                'handle_time' => time()
+                'handle_remark' => $remark
             ]);
 
             // 冻结用户风险评分
@@ -282,11 +313,14 @@ class Risklog extends Backend
             if ($riskScore) {
                 Db::name('user_risk_score')
                     ->where('user_id', $row['user_id'])
-                    ->update(['status' => 'frozen', 'updatetime' => time()]);
+                    ->update([
+                        'status' => 'frozen',
+                        'updatetime' => time()
+                    ]);
             } else {
                 Db::name('user_risk_score')->insert([
                     'user_id' => $row['user_id'],
-                    'total_score' => 0,
+                    'total_score' => $row['risk_score'] ?? 0,
                     'risk_level' => 'high',
                     'status' => 'frozen',
                     'createtime' => time(),
@@ -326,15 +360,30 @@ class Risklog extends Backend
             'del' => '删除'
         ];
 
+        $remark = $this->request->post('remark', '批量' . $actionText[$action]);
+
+        // 拒绝和冻结需要填写原因
+        if (in_array($action, ['reject', 'freeze']) && empty($remark)) {
+            $this->error('请填写' . $actionText[$action] . '原因');
+        }
+
         $count = 0;
         foreach ($ids as $id) {
+            $row = Db::name($this->tableName)->where('id', $id)->find();
+            if (!$row) continue;
+
+            // 跳过已处理的记录（除了审核状态）
+            $handleAction = $row['handle_action'] ?? '';
+            if ($handleAction && !in_array($handleAction, ['', 'review'])) {
+                continue;
+            }
+
             if ($action == 'del') {
                 $result = Db::name($this->tableName)->where('id', $id)->delete();
             } else {
                 $result = Db::name($this->tableName)->where('id', $id)->update([
                     'handle_action' => $action,
-                    'handle_remark' => '批量' . $actionText[$action],
-                    'handle_time' => time()
+                    'handle_remark' => $remark
                 ]);
             }
             if ($result !== false) {

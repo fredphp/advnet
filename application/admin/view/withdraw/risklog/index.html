@@ -8,36 +8,24 @@
                     <div id="toolbar" class="toolbar">
                         {:build_toolbar('refresh')}
                         <div class="dropdown btn-group">
-                            <a class="btn btn-info dropdown-toggle" data-toggle="dropdown">
-                                <i class="fa fa-check"></i> 通过
+                            <a class="btn btn-success btn-batch-pass" href="javascript:;">
+                                <i class="fa fa-check"></i> 批量通过
                             </a>
-                            <ul class="dropdown-menu">
-                                <li><a href="javascript:;" class="btn-batch-pass"><i class="fa fa-check"></i> 批量通过</a></li>
-                            </ul>
                         </div>
                         <div class="dropdown btn-group">
-                            <a class="btn btn-warning dropdown-toggle" data-toggle="dropdown">
-                                <i class="fa fa-user"></i> 人工审核
+                            <a class="btn btn-warning btn-batch-review" href="javascript:;">
+                                <i class="fa fa-user"></i> 批量审核
                             </a>
-                            <ul class="dropdown-menu">
-                                <li><a href="javascript:;" class="btn-batch-review"><i class="fa fa-user"></i> 批量标记审核</a></li>
-                            </ul>
                         </div>
                         <div class="dropdown btn-group">
-                            <a class="btn btn-danger dropdown-toggle" data-toggle="dropdown">
-                                <i class="fa fa-ban"></i> 拒绝
+                            <a class="btn btn-danger btn-batch-reject" href="javascript:;">
+                                <i class="fa fa-ban"></i> 批量拒绝
                             </a>
-                            <ul class="dropdown-menu">
-                                <li><a href="javascript:;" class="btn-batch-reject"><i class="fa fa-ban"></i> 批量拒绝</a></li>
-                            </ul>
                         </div>
                         <div class="dropdown btn-group">
-                            <a class="btn btn-default dropdown-toggle" data-toggle="dropdown">
-                                <i class="fa fa-snowflake-o"></i> 冻结
+                            <a class="btn btn-default btn-batch-freeze" href="javascript:;">
+                                <i class="fa fa-snowflake-o"></i> 批量冻结
                             </a>
-                            <ul class="dropdown-menu">
-                                <li><a href="javascript:;" class="btn-batch-freeze"><i class="fa fa-snowflake-o"></i> 批量冻结用户</a></li>
-                            </ul>
                         </div>
                         <div class="dropdown btn-group">
                             <a class="btn btn-default dropdown-toggle" data-toggle="dropdown">
@@ -55,11 +43,11 @@
                                 <i class="fa fa-filter"></i> 处理状态
                             </a>
                             <ul class="dropdown-menu">
-                                <li><a href="javascript:;" data-field="handle_status" data-value="pending">待处理</a></li>
-                                <li><a href="javascript:;" data-field="handle_status" data-value="pass">已通过</a></li>
-                                <li><a href="javascript:;" data-field="handle_status" data-value="review">人工审核</a></li>
-                                <li><a href="javascript:;" data-field="handle_status" data-value="reject">已拒绝</a></li>
-                                <li><a href="javascript:;" data-field="handle_status" data-value="freeze">已冻结</a></li>
+                                <li><a href="javascript:;" data-field="handle_action" data-value="">待处理</a></li>
+                                <li><a href="javascript:;" data-field="handle_action" data-value="pass">已通过</a></li>
+                                <li><a href="javascript:;" data-field="handle_action" data-value="review">人工审核</a></li>
+                                <li><a href="javascript:;" data-field="handle_action" data-value="reject">已拒绝</a></li>
+                                <li><a href="javascript:;" data-field="handle_action" data-value="freeze">已冻结</a></li>
                             </ul>
                         </div>
                     </div>
@@ -67,89 +55,6 @@
                            width="100%">
                     </table>
                 </div>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- 拒绝原因弹窗 -->
-<div class="modal fade" id="reject-modal" tabindex="-1" role="dialog">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                    <span aria-hidden="true">&times;</span>
-                </button>
-                <h4 class="modal-title">拒绝原因</h4>
-            </div>
-            <div class="modal-body">
-                <form class="form-horizontal" id="reject-form">
-                    <input type="hidden" name="ids" id="reject-ids">
-                    <div class="form-group">
-                        <label class="control-label col-xs-12 col-sm-3">拒绝原因:</label>
-                        <div class="col-xs-12 col-sm-9">
-                            <select name="reason" class="form-control">
-                                <option value="异常提现行为">异常提现行为</option>
-                                <option value="疑似刷单">疑似刷单</option>
-                                <option value="风险用户">风险用户</option>
-                                <option value="其他">其他</option>
-                            </select>
-                        </div>
-                    </div>
-                    <div class="form-group">
-                        <label class="control-label col-xs-12 col-sm-3">详细说明:</label>
-                        <div class="col-xs-12 col-sm-9">
-                            <textarea name="custom_reason" class="form-control" rows="3" placeholder="请输入详细说明"></textarea>
-                        </div>
-                    </div>
-                </form>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-default" data-dismiss="modal">取消</button>
-                <button type="button" class="btn btn-danger" id="btn-confirm-reject">确认拒绝</button>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- 冻结原因弹窗 -->
-<div class="modal fade" id="freeze-modal" tabindex="-1" role="dialog">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                    <span aria-hidden="true">&times;</span>
-                </button>
-                <h4 class="modal-title">冻结用户</h4>
-            </div>
-            <div class="modal-body">
-                <div class="alert alert-warning">
-                    <i class="fa fa-exclamation-triangle"></i> 警告：冻结后该用户将无法登录和操作，请谨慎操作！
-                </div>
-                <form class="form-horizontal" id="freeze-form">
-                    <input type="hidden" name="ids" id="freeze-ids">
-                    <div class="form-group">
-                        <label class="control-label col-xs-12 col-sm-3">冻结原因:</label>
-                        <div class="col-xs-12 col-sm-9">
-                            <select name="reason" class="form-control">
-                                <option value="涉嫌欺诈">涉嫌欺诈</option>
-                                <option value="频繁违规操作">频繁违规操作</option>
-                                <option value="高风险用户">高风险用户</option>
-                                <option value="其他">其他</option>
-                            </select>
-                        </div>
-                    </div>
-                    <div class="form-group">
-                        <label class="control-label col-xs-12 col-sm-3">详细说明:</label>
-                        <div class="col-xs-12 col-sm-9">
-                            <textarea name="custom_reason" class="form-control" rows="3" placeholder="请输入详细说明"></textarea>
-                        </div>
-                    </div>
-                </form>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-default" data-dismiss="modal">取消</button>
-                <button type="button" class="btn btn-warning" id="btn-confirm-freeze">确认冻结</button>
             </div>
         </div>
     </div>
