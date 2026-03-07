@@ -46,6 +46,7 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
                             events: Table.api.events.operate, 
                             formatter: Table.api.formatter.operate,
                             buttons: [
+                                // 详情按钮 - 所有状态都显示
                                 {
                                     name: 'detail',
                                     text: '详情',
@@ -57,6 +58,7 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
                                     },
                                     extend: 'data-area=\'["800px","600px"]\''
                                 },
+                                // 审核通过按钮 - 仅待审核状态显示
                                 {
                                     name: 'approve',
                                     text: '审核通过',
@@ -71,6 +73,7 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
                                     },
                                     extend: 'data-area=\'["800px","90%"]\''
                                 },
+                                // 审核拒绝按钮 - 仅待审核状态显示
                                 {
                                     name: 'reject',
                                     text: '审核拒绝',
@@ -85,6 +88,7 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
                                     },
                                     extend: 'data-area=\'["600px","500px"]\''
                                 },
+                                // 通过打款按钮 - 仅待审核状态显示
                                 {
                                     name: 'complete',
                                     text: '通过打款',
@@ -95,9 +99,33 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
                                         return 'withdraw/order/complete?order_no=' + encodeURIComponent(row.order_no);
                                     },
                                     hidden: function(row) {
-                                        return row.status != 0 && row.status != 1;
+                                        return row.status != 0;
                                     },
                                     extend: 'data-area=\'["800px","90%"]\''
+                                },
+                                // 已完成标签 - 审核通过状态显示（无点击效果）
+                                {
+                                    name: 'completed_tag',
+                                    text: '已完成',
+                                    title: '已完成',
+                                    classname: 'btn btn-xs btn-default disabled',
+                                    icon: 'fa fa-check-circle',
+                                    url: 'javascript:;',
+                                    hidden: function(row) {
+                                        return row.status != 1;
+                                    }
+                                },
+                                // 已拒绝标签 - 已拒绝状态显示（无点击效果）
+                                {
+                                    name: 'rejected_tag',
+                                    text: '已拒绝',
+                                    title: '已拒绝',
+                                    classname: 'btn btn-xs btn-default disabled',
+                                    icon: 'fa fa-times-circle',
+                                    url: 'javascript:;',
+                                    hidden: function(row) {
+                                        return row.status != 4;
+                                    }
                                 }
                             ]
                         }
