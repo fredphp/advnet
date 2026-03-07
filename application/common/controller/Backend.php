@@ -622,16 +622,6 @@ class Backend extends Controller
      */
     protected function success($msg = '', $data = null, $url = null, $wait = 3, array $header = [])
     {
-        // 处理参数兼容性：支持 success($msg, $url) 和 success($msg, $data, $url) 两种调用方式
-        if (is_array($data)) {
-            // $data 是数组，说明是 success($msg, $data, $url) 调用方式
-            // 保持 $data 作为数据，$url 作为跳转地址
-        } elseif (is_string($data) && $url === null) {
-            // $data 是字符串且 $url 为空，说明是 success($msg, $url) 调用方式
-            $url = $data;
-            $data = null;
-        }
-        
         $result = [
             'code' => 1,
             'msg'  => $msg,
@@ -641,8 +631,7 @@ class Backend extends Controller
             'wait' => $wait,
         ];
 
-        // 后台管理总是返回 JSON 格式（FastAdmin 后台都是 AJAX 请求）
-        $response = json($result, 200, $header);
+        $response = \think\Response::create($result, 'json', 200)->header($header);
         throw new \think\exception\HttpResponseException($response);
     }
 
@@ -656,16 +645,6 @@ class Backend extends Controller
      */
     protected function error($msg = '', $data = null, $url = null, $wait = 3, array $header = [])
     {
-        // 处理参数兼容性：支持 error($msg, $url) 和 error($msg, $data, $url) 两种调用方式
-        if (is_array($data)) {
-            // $data 是数组，说明是 error($msg, $data, $url) 调用方式
-            // 保持 $data 作为数据，$url 作为跳转地址
-        } elseif (is_string($data) && $url === null) {
-            // $data 是字符串且 $url 为空，说明是 error($msg, $url) 调用方式
-            $url = $data;
-            $data = null;
-        }
-        
         $result = [
             'code' => 0,
             'msg'  => $msg,
@@ -675,19 +654,7 @@ class Backend extends Controller
             'wait' => $wait,
         ];
 
-        // 后台管理总是返回 JSON 格式（FastAdmin 后台都是 AJAX 请求）
-        $response = json($result, 200, $header);
+        $response = \think\Response::create($result, 'json', 200)->header($header);
         throw new \think\exception\HttpResponseException($response);
-    }
-
-    /**
-     * 获取当前的response 输出类型
-     * @access protected
-     * @return string
-     */
-    protected function getResponseType()
-    {
-        // 后台管理总是返回 json（FastAdmin 后台都是 AJAX 请求）
-        return 'json';
     }
 }
