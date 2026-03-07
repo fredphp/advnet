@@ -7,29 +7,21 @@
                 <div class="widget-body no-padding">
                     <div id="toolbar" class="toolbar">
                         {:build_toolbar('refresh')}
-                        <div class="dropdown btn-group">
-                            <a class="btn btn-success btn-batch-pass" href="javascript:;">
-                                <i class="fa fa-check"></i> 批量通过
-                            </a>
-                        </div>
-                        <div class="dropdown btn-group">
-                            <a class="btn btn-warning btn-batch-review" href="javascript:;">
-                                <i class="fa fa-user"></i> 批量审核
-                            </a>
-                        </div>
-                        <div class="dropdown btn-group">
-                            <a class="btn btn-danger btn-batch-reject" href="javascript:;">
-                                <i class="fa fa-ban"></i> 批量拒绝
-                            </a>
-                        </div>
-                        <div class="dropdown btn-group">
-                            <a class="btn btn-default btn-batch-freeze" href="javascript:;">
-                                <i class="fa fa-snowflake-o"></i> 批量冻结
-                            </a>
-                        </div>
+                        <a class="btn btn-success btn-batch-pass" href="javascript:;">
+                            <i class="fa fa-check"></i> 批量通过
+                        </a>
+                        <a class="btn btn-warning btn-batch-review" href="javascript:;">
+                            <i class="fa fa-user"></i> 批量审核
+                        </a>
+                        <a class="btn btn-danger btn-batch-reject" href="javascript:;">
+                            <i class="fa fa-ban"></i> 批量拒绝
+                        </a>
+                        <a class="btn btn-default btn-batch-freeze" href="javascript:;">
+                            <i class="fa fa-snowflake-o"></i> 批量冻结
+                        </a>
                         <div class="dropdown btn-group">
                             <a class="btn btn-default dropdown-toggle" data-toggle="dropdown">
-                                <i class="fa fa-filter"></i> 风险等级
+                                <i class="fa fa-filter"></i> 风险等级 <span class="caret"></span>
                             </a>
                             <ul class="dropdown-menu">
                                 <li><a href="javascript:;" data-field="risk_level" data-value="0">普通</a></li>
@@ -40,7 +32,7 @@
                         </div>
                         <div class="dropdown btn-group">
                             <a class="btn btn-default dropdown-toggle" data-toggle="dropdown">
-                                <i class="fa fa-filter"></i> 处理状态
+                                <i class="fa fa-filter"></i> 处理状态 <span class="caret"></span>
                             </a>
                             <ul class="dropdown-menu">
                                 <li><a href="javascript:;" data-field="handle_action" data-value="">待处理</a></li>
@@ -48,6 +40,16 @@
                                 <li><a href="javascript:;" data-field="handle_action" data-value="review">人工审核</a></li>
                                 <li><a href="javascript:;" data-field="handle_action" data-value="reject">已拒绝</a></li>
                                 <li><a href="javascript:;" data-field="handle_action" data-value="freeze">已冻结</a></li>
+                            </ul>
+                        </div>
+                        <div class="dropdown btn-group">
+                            <a class="btn btn-default dropdown-toggle" data-toggle="dropdown">
+                                <i class="fa fa-filter"></i> 风险评分 <span class="caret"></span>
+                            </a>
+                            <ul class="dropdown-menu">
+                                <li><a href="javascript:;" data-field="risk_score" data-value="low">低风险(0-29)</a></li>
+                                <li><a href="javascript:;" data-field="risk_score" data-value="medium">中风险(30-49)</a></li>
+                                <li><a href="javascript:;" data-field="risk_score" data-value="high">高风险(50+)</a></li>
                             </ul>
                         </div>
                     </div>
@@ -59,3 +61,15 @@
         </div>
     </div>
 </div>
+
+<style>
+.table tr td .btn-xs {
+    margin: 2px;
+}
+#toolbar .btn {
+    margin-right: 5px;
+}
+.dropdown-menu a[data-field] {
+    cursor: pointer;
+}
+</style>

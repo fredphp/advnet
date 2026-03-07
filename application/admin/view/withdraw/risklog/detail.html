@@ -3,6 +3,7 @@
         <h3 class="panel-title">提现风控记录详情</h3>
     </div>
     <div class="panel-body">
+        <!-- 基本信息 -->
         <div class="row">
             <div class="col-md-6">
                 <table class="table table-bordered table-striped">
@@ -27,13 +28,17 @@
                             <th>风险评分</th>
                             <td>
                                 {if condition="$row.risk_score >= 50"}
-                                <span class="text-danger"><strong>{$row.risk_score|default=0}</strong></span>
+                                <span class="text-danger"><strong>{$row.risk_score|default=0}</strong> 分（高风险）</span>
                                 {elseif condition="$row.risk_score >= 30"}
-                                <span class="text-warning"><strong>{$row.risk_score|default=0}</strong></span>
+                                <span class="text-warning"><strong>{$row.risk_score|default=0}</strong> 分（中风险）</span>
                                 {else /}
-                                <span class="text-success">{$row.risk_score|default=0}</span>
+                                <span class="text-success"><strong>{$row.risk_score|default=0}</strong> 分（低风险）</span>
                                 {/if}
                             </td>
+                        </tr>
+                        <tr>
+                            <th>创建时间</th>
+                            <td>{$row.createtime|date='Y-m-d H:i:s',###}</td>
                         </tr>
                     </tbody>
                 </table>
@@ -55,7 +60,7 @@
                                 {elseif condition="$row.risk_level == 3"}
                                 <span class="label label-danger">高风险</span>
                                 {else /}
-                                <span class="label label-default">未知</span>
+                                <span class="label label-default">普通</span>
                                 {/if}
                             </td>
                         </tr>
@@ -63,11 +68,11 @@
                             <th>处理状态</th>
                             <td>
                                 {switch name="row.handle_action"}
-                                    {case value="pass"}<span class="label label-success">已通过</span>{/case}
-                                    {case value="review"}<span class="label label-info">人工审核中</span>{/case}
-                                    {case value="reject"}<span class="label label-warning">已拒绝</span>{/case}
-                                    {case value="freeze"}<span class="label label-danger">已冻结</span>{/case}
-                                    {default /}<span class="label label-default">待处理</span>
+                                    {case value="pass"}<span class="label label-success"><i class="fa fa-check"></i> 已通过</span>{/case}
+                                    {case value="review"}<span class="label label-info"><i class="fa fa-user"></i> 人工审核中</span>{/case}
+                                    {case value="reject"}<span class="label label-warning"><i class="fa fa-ban"></i> 已拒绝</span>{/case}
+                                    {case value="freeze"}<span class="label label-danger"><i class="fa fa-snowflake-o"></i> 已冻结</span>{/case}
+                                    {default /}<span class="label label-default"><i class="fa fa-clock-o"></i> 待处理</span>
                                 {/switch}
                             </td>
                         </tr>
@@ -75,10 +80,12 @@
                             <th>处理备注</th>
                             <td>{$row.handle_remark|default='-'}</td>
                         </tr>
+                        {if condition="$row.handle_action == 'reject' || $row.handle_action == 'freeze'"}
                         <tr>
-                            <th>创建时间</th>
+                            <th>处理时间</th>
                             <td>{$row.createtime|date='Y-m-d H:i:s',###}</td>
                         </tr>
+                        {/if}
                     </tbody>
                 </table>
             </div>
@@ -87,10 +94,10 @@
         {if condition="$row.risk_detail"}
         <div class="panel panel-info" style="margin-top: 15px;">
             <div class="panel-heading">
-                <h4 class="panel-title">风险详情</h4>
+                <h4 class="panel-title"><i class="fa fa-info-circle"></i> 风险详情</h4>
             </div>
             <div class="panel-body">
-                <pre style="background: #f5f5f5; padding: 10px; border-radius: 4px; max-height: 300px; overflow-y: auto;">{$row.risk_detail}</pre>
+                <pre style="background: #f5f5f5; padding: 15px; border-radius: 4px; max-height: 300px; overflow-y: auto; white-space: pre-wrap; word-wrap: break-word;">{$row.risk_detail}</pre>
             </div>
         </div>
         {/if}
@@ -98,14 +105,14 @@
         {if condition="$risk_score"}
         <div class="panel panel-warning" style="margin-top: 15px;">
             <div class="panel-heading">
-                <h4 class="panel-title">用户风险评分</h4>
+                <h4 class="panel-title"><i class="fa fa-shield"></i> 用户风险评分</h4>
             </div>
             <div class="panel-body">
                 <table class="table table-bordered">
                     <tbody>
                         <tr>
                             <th width="120">总风险分</th>
-                            <td width="150">{$risk_score.total_score|default=0}</td>
+                            <td width="150"><strong class="text-danger">{$risk_score.total_score|default=0}</strong></td>
                             <th width="120">风险状态</th>
                             <td>
                                 {switch name="risk_score.status"}
@@ -132,7 +139,7 @@
                             <th>邀请评分</th>
                             <td>{$risk_score.invite_score|default=0}</td>
                             <th>违规次数</th>
-                            <td>{$risk_score.violation_count|default=0}</td>
+                            <td><strong class="text-warning">{$risk_score.violation_count|default=0}</strong></td>
                         </tr>
                     </tbody>
                 </table>
@@ -143,7 +150,7 @@
         {if condition="$recent_logs"}
         <div class="panel panel-danger" style="margin-top: 15px;">
             <div class="panel-heading">
-                <h4 class="panel-title">该用户最近风控记录</h4>
+                <h4 class="panel-title"><i class="fa fa-history"></i> 该用户最近风控记录（共 {count($recent_logs)} 条）</h4>
             </div>
             <div class="panel-body">
                 <table class="table table-bordered table-hover">
@@ -175,7 +182,15 @@
                                 <span class="label label-default">-</span>
                                 {/if}
                             </td>
-                            <td>{$log.risk_score|default=0}</td>
+                            <td>
+                                {if condition="$log.risk_score >= 50"}
+                                <span class="text-danger">{$log.risk_score|default=0}</span>
+                                {elseif condition="$log.risk_score >= 30"}
+                                <span class="text-warning">{$log.risk_score|default=0}</span>
+                                {else /}
+                                <span class="text-success">{$log.risk_score|default=0}</span>
+                                {/if}
+                            </td>
                             <td>
                                 {switch name="log.handle_action"}
                                     {case value="pass"}<span class="label label-success">通过</span>{/case}
@@ -198,67 +213,133 @@
         {if condition="$row.handle_action == '' || $row.handle_action == 'review'"}
         <div class="panel panel-default" style="margin-top: 15px;">
             <div class="panel-heading">
-                <h4 class="panel-title">操作处理</h4>
+                <h4 class="panel-title"><i class="fa fa-edit"></i> 操作处理</h4>
             </div>
             <div class="panel-body">
                 <form id="handle-form" class="form-horizontal">
                     <input type="hidden" name="ids" value="{$row.id}">
                     
                     <div class="form-group">
-                        <label class="control-label col-xs-12 col-sm-2">操作类型:</label>
+                        <label class="control-label col-xs-12 col-sm-2">选择操作:</label>
                         <div class="col-xs-12 col-sm-8">
                             <div class="radio">
-                                <label><input type="radio" name="action" value="pass" checked> 通过 - 标记为正常，允许继续操作</label>
+                                <label><input type="radio" name="action" value="pass" checked> 
+                                    <strong class="text-success">通过</strong> - 标记为正常，允许继续操作
+                                </label>
                             </div>
                             <div class="radio">
-                                <label><input type="radio" name="action" value="review"> 人工审核 - 需要进一步人工确认</label>
+                                <label><input type="radio" name="action" value="review"> 
+                                    <strong class="text-warning">人工审核</strong> - 需要进一步人工确认
+                                </label>
                             </div>
                             <div class="radio">
-                                <label><input type="radio" name="action" value="reject"> 拒绝 - 拒绝该风控记录</label>
+                                <label><input type="radio" name="action" value="reject"> 
+                                    <strong class="text-danger">拒绝</strong> - 拒绝该风控记录
+                                </label>
                             </div>
                             <div class="radio">
-                                <label><input type="radio" name="action" value="freeze"> 冻结用户 - 冻结该用户账号</label>
+                                <label><input type="radio" name="action" value="freeze"> 
+                                    <strong class="text-muted">冻结用户</strong> - 冻结该用户账号（严重）
+                                </label>
                             </div>
                         </div>
                     </div>
 
+                    <!-- 通过说明 -->
+                    <div class="form-group action-desc action-pass-desc">
+                        <label class="control-label col-xs-12 col-sm-2">操作效果:</label>
+                        <div class="col-xs-12 col-sm-8">
+                            <div class="alert alert-success">
+                                <i class="fa fa-info-circle"></i> 
+                                <ul style="margin:0 0 0 20px;padding:0;">
+                                    <li>该风控记录将被标记为"已通过"</li>
+                                    <li>用户的提现请求将正常继续处理</li>
+                                    <li>用户账号状态不受影响</li>
+                                </ul>
+                            </div>
+                            <div class="alert alert-info">
+                                <i class="fa fa-list-ol"></i> <strong>后续操作：</strong>系统将自动继续处理用户的提现请求
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 人工审核说明 -->
+                    <div class="form-group action-desc action-review-desc" style="display:none;">
+                        <label class="control-label col-xs-12 col-sm-2">操作效果:</label>
+                        <div class="col-xs-12 col-sm-8">
+                            <div class="alert alert-warning">
+                                <i class="fa fa-info-circle"></i> 
+                                <ul style="margin:0 0 0 20px;padding:0;">
+                                    <li>该风控记录将被标记为"人工审核中"</li>
+                                    <li>提现请求将被暂停，等待人工进一步确认</li>
+                                    <li>用户账号状态不受影响</li>
+                                </ul>
+                            </div>
+                            <div class="alert alert-info">
+                                <i class="fa fa-list-ol"></i> <strong>后续操作：</strong>
+                                <ul style="margin:0 0 0 20px;padding:0;">
+                                    <li>需要高级管理员进行最终审核</li>
+                                    <li>可选择通过、拒绝或冻结用户</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 拒绝原因 -->
                     <div class="form-group reject-reason-wrap" style="display:none;">
                         <label class="control-label col-xs-12 col-sm-2"><span class="text-danger">*</span> 拒绝原因:</label>
                         <div class="col-xs-12 col-sm-8">
-                            <select name="reject_reason" class="form-control">
+                            <div class="alert alert-danger">
+                                <i class="fa fa-exclamation-triangle"></i> 
+                                <ul style="margin:0 0 0 20px;padding:0;">
+                                    <li>该风控记录将被标记为"已拒绝"</li>
+                                    <li>用户的提现请求将被取消</li>
+                                    <li>用户账号状态不受影响</li>
+                                </ul>
+                            </div>
+                            <select name="reject_reason" class="form-control" style="margin-bottom:10px;">
                                 <option value="">请选择拒绝原因</option>
                                 <option value="异常提现行为">异常提现行为</option>
                                 <option value="疑似刷单">疑似刷单</option>
                                 <option value="风险用户">风险用户</option>
                                 <option value="频繁操作">频繁操作</option>
+                                <option value="资料异常">资料异常</option>
                                 <option value="其他">其他</option>
                             </select>
-                            <textarea name="reject_remark" class="form-control" rows="2" placeholder="详细说明（选填）" style="margin-top: 10px;"></textarea>
+                            <textarea name="reject_remark" class="form-control" rows="2" placeholder="详细说明（选填）"></textarea>
                         </div>
                     </div>
 
+                    <!-- 冻结原因 -->
                     <div class="form-group freeze-reason-wrap" style="display:none;">
                         <label class="control-label col-xs-12 col-sm-2"><span class="text-danger">*</span> 冻结原因:</label>
                         <div class="col-xs-12 col-sm-8">
-                            <div class="alert alert-warning">
-                                <i class="fa fa-exclamation-triangle"></i> <strong>警告：</strong>冻结后该用户将无法登录和操作，请谨慎操作！
+                            <div class="alert alert-danger">
+                                <i class="fa fa-exclamation-triangle"></i> <strong>警告：此操作较为严重！</strong>
+                                <ul style="margin:5px 0 0 20px;padding:0;">
+                                    <li><span class="text-danger"><strong>该用户账号将被冻结，无法登录和操作</strong></span></li>
+                                    <li>用户的所有提现请求将被暂停</li>
+                                    <li>用户的金币将被冻结</li>
+                                </ul>
                             </div>
-                            <select name="freeze_reason" class="form-control">
+                            <select name="freeze_reason" class="form-control" style="margin-bottom:10px;">
                                 <option value="">请选择冻结原因</option>
                                 <option value="涉嫌欺诈">涉嫌欺诈</option>
                                 <option value="频繁违规操作">频繁违规操作</option>
                                 <option value="高风险用户">高风险用户</option>
                                 <option value="异常账号">异常账号</option>
+                                <option value="多账号作弊">多账号作弊</option>
                                 <option value="其他">其他</option>
                             </select>
-                            <textarea name="freeze_remark" class="form-control" rows="2" placeholder="详细说明（选填）" style="margin-top: 10px;"></textarea>
+                            <textarea name="freeze_remark" class="form-control" rows="2" placeholder="详细说明（选填）"></textarea>
                         </div>
                     </div>
 
                     <div class="form-group">
                         <div class="col-xs-12 col-sm-8 col-sm-offset-2">
-                            <button type="button" class="btn btn-primary btn-handle-submit">确认提交</button>
-                            <button type="button" class="btn btn-default" onclick="parent.Layer.closeAll()">取消</button>
+                            <button type="button" class="btn btn-primary btn-lg btn-block btn-handle-submit">
+                                <i class="fa fa-check"></i> 确认提交
+                            </button>
                         </div>
                     </div>
                 </form>
@@ -268,25 +349,28 @@
 
         {if condition="$row.handle_action == 'pass'"}
         <div class="alert alert-success" style="margin-top: 15px;">
-            <i class="fa fa-check-circle"></i> 该记录已通过审核，无需再次处理。
+            <h4><i class="fa fa-check-circle"></i> 该记录已通过审核</h4>
+            <p>该风控记录已被标记为通过，用户的提现请求已正常处理。</p>
         </div>
         {/if}
 
         {if condition="$row.handle_action == 'reject'"}
         <div class="alert alert-warning" style="margin-top: 15px;">
-            <i class="fa fa-ban"></i> 该记录已被拒绝。
+            <h4><i class="fa fa-ban"></i> 该记录已被拒绝</h4>
             {if condition="$row.handle_remark"}
-            <br><strong>拒绝原因：</strong>{$row.handle_remark}
+            <p><strong>拒绝原因：</strong>{$row.handle_remark}</p>
             {/if}
+            <p>用户的提现请求已被取消，用户可重新发起提现申请。</p>
         </div>
         {/if}
 
         {if condition="$row.handle_action == 'freeze'"}
         <div class="alert alert-danger" style="margin-top: 15px;">
-            <i class="fa fa-snowflake-o"></i> 该用户已被冻结。
+            <h4><i class="fa fa-snowflake-o"></i> 该用户已被冻结</h4>
             {if condition="$row.handle_remark"}
-            <br><strong>冻结原因：</strong>{$row.handle_remark}
+            <p><strong>冻结原因：</strong>{$row.handle_remark}</p>
             {/if}
+            <p>该用户已被冻结，无法登录APP。如需解冻，请在"用户管理"中操作。</p>
         </div>
         {/if}
     </div>
@@ -299,11 +383,16 @@ $(function() {
         var action = $(this).val();
         $('.reject-reason-wrap').hide();
         $('.freeze-reason-wrap').hide();
+        $('.action-desc').hide();
         
         if (action === 'reject') {
             $('.reject-reason-wrap').show();
         } else if (action === 'freeze') {
             $('.freeze-reason-wrap').show();
+        } else if (action === 'pass') {
+            $('.action-pass-desc').show();
+        } else if (action === 'review') {
+            $('.action-review-desc').show();
         }
     });
 
@@ -349,16 +438,23 @@ $(function() {
             confirmMsg = '确认冻结该用户？冻结后用户将无法登录！';
         }
 
-        Layer.confirm(confirmMsg, function(index) {
+        Layer.confirm(confirmMsg, {
+            title: '操作确认',
+            btn: ['<i class="fa fa-check"></i> 确认', '取消']
+        }, function(index) {
             Fast.api.ajax({
                 url: 'withdraw/risklog/' + action,
                 data: {ids: ids, remark: remark}
             }, function(data, ret) {
                 Layer.close(index);
-                parent.$('.btn-refresh').trigger('click');
+                Toastr.success(ret.msg);
+                // 刷新父页面表格
+                if (parent && parent.$) {
+                    parent.$('.btn-refresh').trigger('click');
+                }
+                // 关闭当前弹窗
                 var layerIndex = parent.layer.getFrameIndex(window.name);
                 parent.layer.close(layerIndex);
-                Toastr.success(ret.msg);
             });
         });
     });
