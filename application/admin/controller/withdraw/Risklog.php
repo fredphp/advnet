@@ -12,6 +12,7 @@ class Risklog extends Backend
 {
     protected $model = null;
     protected $searchFields = 'id,user_id,order_no,ip';
+    protected $relationSearch = false;
 
     // 风险类型映射
     protected $riskTypeList = [
@@ -25,6 +26,7 @@ class Risklog extends Backend
 
     // 处理动作映射
     protected $actionList = [
+        '' => '待处理',
         'pass' => '通过',
         'review' => '人工审核',
         'reject' => '拒绝',
@@ -37,14 +39,6 @@ class Risklog extends Backend
         1 => '低风险',
         2 => '中风险',
         3 => '高风险',
-    ];
-
-    // 原始处理动作映射
-    protected $originalActionList = [
-        'pass' => '通过',
-        'review' => '人工审核',
-        'reject' => '拒绝',
-        'freeze' => '冻结',
     ];
 
     public function _initialize()
@@ -61,58 +55,13 @@ class Risklog extends Backend
     public function index()
     {
         if ($this->request->isAjax()) {
-            // 排序参数
-            $sort = $this->request->get('sort', 'id');
-            $order = $this->request->get('order', 'desc');
-            $offset = $this->request->get('offset', 0);
-            $limit = $this->request->get('limit', 10);
+            list($where, $sort, $order, $offset, $limit) = $this->buildparams();
+
+            $total = Db::name('withdraw_risk_log')->where($where)->count();
             
-            // 筛选参数
-            $filter = json_decode($this->request->get('filter', '{}'), true);
-            $op = json_decode($this->request->get('op', '{}'), true);
-
-            // 构建查询
-            $query = Db::name('withdraw_risk_log');
-
-            // 处理筛选条件
-            foreach ($filter as $field => $value) {
-                if ($value === '' || $value === null) {
-                    continue;
-                }
-                
-                $fieldOp = $op[$field] ?? '=';
-                
-                switch ($field) {
-                    case 'username':
-                        // 关联用户表查询
-                        $userIds = Db::name('user')->where('username', 'like', "%{$value}%")->column('id');
-                        if ($userIds) {
-                            $query->where('user_id', 'in', $userIds);
-                        } else {
-                            $query->where('user_id', 0); // 无结果
-                        }
-                        break;
-                    case 'createtime':
-                        if ($fieldOp == 'RANGE' && strpos($value, ' - ') !== false) {
-                            list($start, $end) = explode(' - ', $value);
-                            $query->where('createtime', 'between', [strtotime($start), strtotime($end . ' 23:59:59')]);
-                        }
-                        break;
-                    case 'order_no':
-                    case 'ip':
-                        $query->where($field, 'like', "%{$value}%");
-                        break;
-                    default:
-                        $query->where($field, '=', $value);
-                        break;
-                }
-            }
-
-            // 查询总数
-            $total = $query->count();
-
-            // 查询列表
-            $list = $query->order($sort, $order)
+            $list = Db::name('withdraw_risk_log')
+                ->where($where)
+                ->order($sort, $order)
                 ->limit($offset, $limit)
                 ->select();
 
@@ -121,23 +70,8 @@ class Risklog extends Backend
                 // 获取用户信息
                 $userId = isset($row['user_id']) ? $row['user_id'] : 0;
                 $user = $userId ? Db::name('user')->where('id', $userId)->field('username,nickname')->find() : null;
-                $row['username'] = $user ? $user['username'] : '';
-                $row['nickname'] = $user ? $user['nickname'] : '';
-                
-                // 时间格式化
-                $row['createtime_text'] = isset($row['createtime']) ? date('Y-m-d H:i:s', $row['createtime']) : '';
-                
-                // 风险类型中文
-                $riskType = isset($row['risk_type']) ? $row['risk_type'] : '';
-                $row['risk_type_text'] = isset($this->riskTypeList[$riskType]) ? $this->riskTypeList[$riskType] : $riskType;
-                
-                // 处理动作中文 (使用 handle_action 字段)
-                $handleAction = isset($row['handle_action']) ? $row['handle_action'] : '';
-                $row['handle_action_text'] = isset($this->originalActionList[$handleAction]) ? $this->originalActionList[$handleAction] : ($handleAction ?: '待处理');
-                
-                // 风险等级中文
-                $riskLevel = isset($row['risk_level']) ? $row['risk_level'] : 0;
-                $row['risk_level_text'] = isset($this->riskLevelList[$riskLevel]) ? $this->riskLevelList[$riskLevel] : '普通';
+                $row['username'] = $user ? $user['username'] : '-';
+                $row['nickname'] = $user ? $user['nickname'] : '-';
             }
 
             return json(['total' => $total, 'rows' => $list]);
@@ -153,11 +87,14 @@ class Risklog extends Backend
     {
         $row = Db::name('withdraw_risk_log')->where('id', $ids)->find();
         if (!$row) {
-            $this->error('记录不存在');
+            $this->error(__('记录不存在'));
         }
 
         // 获取用户信息
-        $user = Db::name('user')->where('id', $row['user_id'])->find();
+        $user = null;
+        if (!empty($row['user_id'])) {
+            $user = Db::name('user')->where('id', $row['user_id'])->find();
+        }
         
         // 获取订单信息（如果有）
         $order = null;
@@ -180,78 +117,75 @@ class Risklog extends Backend
         if ($this->request->isPost()) {
             $ids = $ids ? $ids : $this->request->post('ids');
             if (empty($ids)) {
-                $this->error('参数错误');
+                $this->error(__('参数错误'));
             }
 
             $ids = is_array($ids) ? $ids : explode(',', $ids);
             
             $count = Db::name('withdraw_risk_log')
                 ->where('id', 'in', $ids)
-                ->where('handle_action', '')
                 ->update([
                     'handle_action' => 'pass',
                     'handle_remark' => '管理员通过',
                 ]);
             
-            $this->success("成功处理{$count}条记录");
+            $this->success(__('成功处理%d条记录', $count));
         }
         
-        $this->error('请求方式错误');
+        $this->error(__('请求方式错误'));
     }
 
     /**
-     * 人工审核（标记为需要人工审核）
+     * 人工审核
      */
     public function review($ids = null)
     {
         if ($this->request->isPost()) {
             $ids = $ids ? $ids : $this->request->post('ids');
             if (empty($ids)) {
-                $this->error('参数错误');
+                $this->error(__('参数错误'));
             }
 
             $ids = is_array($ids) ? $ids : explode(',', $ids);
             
             $count = Db::name('withdraw_risk_log')
                 ->where('id', 'in', $ids)
-                ->where('handle_action', '')
                 ->update([
                     'handle_action' => 'review',
                     'handle_remark' => '标记为人工审核',
                 ]);
             
-            $this->success("成功标记{$count}条记录为人工审核");
+            $this->success(__('成功标记%d条记录为人工审核', $count));
         }
         
-        $this->error('请求方式错误');
+        $this->error(__('请求方式错误'));
     }
 
     /**
-     * 拒绝（标记为已拒绝）
+     * 拒绝
      */
     public function reject($ids = null)
     {
         if ($this->request->isPost()) {
             $ids = $ids ? $ids : $this->request->post('ids');
-            $reason = $this->request->post('reason', '');
+            $reason = $this->request->post('reason', $this->request->post('handle_remark', ''));
             if (empty($ids)) {
-                $this->error('参数错误');
+                $this->error(__('参数错误'));
             }
 
             $ids = is_array($ids) ? $ids : explode(',', $ids);
             
             $count = Db::name('withdraw_risk_log')
                 ->where('id', 'in', $ids)
-                ->where('handle_action', '')
                 ->update([
                     'handle_action' => 'reject',
-                    'handle_remark' => $reason,
+                    'handle_remark' => $reason ?: '管理员拒绝',
                 ]);
             
-            $this->success("成功拒绝{$count}条记录");
+            $this->success(__('成功拒绝%d条记录', $count));
         }
         
-        $this->error('请求方式错误');
+        $this->error(__('请求方式错误'));
     }
 
     /**
@@ -261,19 +195,19 @@ class Risklog extends Backend
     {
         if ($this->request->isPost()) {
             $ids = $ids ? $ids : $this->request->post('ids');
-            $reason = $this->request->post('reason', '');
+            $reason = $this->request->post('reason', $this->request->post('handle_remark', ''));
             if (empty($ids)) {
-                $this->error('参数错误');
+                $this->error(__('参数错误'));
             }
 
             $ids = is_array($ids) ? $ids : explode(',', $ids);
             
             // 获取记录中的用户ID
-            $records = Db::name('withdraw_risk_log')
+            $userIds = Db::name('withdraw_risk_log')
                 ->where('id', 'in', $ids)
-                ->column('user_id', 'id');
+                ->column('user_id');
             
-            $userIds = array_unique(array_values($records));
+            $userIds = array_unique(array_filter($userIds));
             
             Db::startTrans();
             try {
@@ -282,7 +216,7 @@ class Risklog extends Backend
                     ->where('id', 'in', $ids)
                     ->update([
                         'handle_action' => 'freeze',
-                        'handle_remark' => $reason,
+                        'handle_remark' => $reason ?: '风控冻结',
                     ]);
                 
                 // 冻结用户
@@ -294,46 +228,14 @@ class Risklog extends Backend
                 }
                 
                 Db::commit();
-                $this->success("成功冻结" . count($userIds) . "个用户");
+                $this->success(__('成功冻结%d个用户', count($userIds)));
             } catch (\Exception $e) {
                 Db::rollback();
                 $this->error($e->getMessage());
             }
         }
         
-        $this->error('请求方式错误');
-    }
-
-    /**
-     * 批量处理
-     */
-    public function multi($ids = null)
-    {
-        if ($this->request->isPost()) {
-            $ids = $ids ? $ids : $this->request->post('ids');
-            $action = $this->request->post('action');
-            
-            if (empty($ids) || empty($action)) {
-                $this->error('参数错误');
-            }
-
-            switch ($action) {
-                case 'pass':
-                    return $this->pass($ids);
-                case 'review':
-                    return $this->review($ids);
-                case 'reject':
-                    return $this->reject($ids);
-                case 'freeze':
-                    return $this->freeze($ids);
-                case 'del':
-                    return $this->del($ids);
-                default:
-                    $this->error('未知操作');
-            }
-        }
-        
-        $this->error('请求方式错误');
+        $this->error(__('请求方式错误'));
     }
 
     /**
@@ -344,16 +246,16 @@ class Risklog extends Backend
         if ($this->request->isPost()) {
             $ids = $ids ? $ids : $this->request->post('ids');
             if (empty($ids)) {
-                $this->error('参数错误');
+                $this->error(__('参数错误'));
             }
 
             $ids = is_array($ids) ? $ids : explode(',', $ids);
             
             $count = Db::name('withdraw_risk_log')->where('id', 'in', $ids)->delete();
             
-            $this->success("成功删除{$count}条记录");
+            $this->success(__('成功删除%d条记录', $count));
         }
         
-        $this->error('请求方式错误');
+        $this->error(__('请求方式错误'));
     }
 }

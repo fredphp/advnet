@@ -43,12 +43,12 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
 
             // 风险类型格式化
             var riskTypeFormatter = function (value, row, index) {
-                return riskTypeMap[value] || value;
+                return riskTypeMap[value] || value || '-';
             };
 
-            // 处理动作格式化
+            // 处理状态格式化
             var actionFormatter = function (value, row, index) {
-                var text = actionMap[value] || value || '待处理';
+                var text = actionMap[value] || '待处理';
                 var className = '';
                 switch (value) {
                     case 'pass':
@@ -90,7 +90,7 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
                 return '<span class="' + className + '">' + text + '</span>';
             };
 
-            // 行样式（根据风险等级）
+            // 行样式（根据风险等级变色）
             var rowStyle = function (row, index) {
                 var level = parseInt(row.risk_level) || 0;
                 switch (level) {
@@ -103,25 +103,6 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
                     default:
                         return {};
                 }
-            };
-
-            // 操作按钮格式化
-            var operateFormatter = function (value, row, index) {
-                var html = [];
-                var handleAction = row.handle_action || '';
-                
-                // 查看详情按钮
-                html.push('<a href="javascript:;" class="btn btn-xs btn-primary btn-detail" data-id="' + row.id + '"><i class="fa fa-eye"></i> 详情</a> ');
-                
-                // 只有待处理状态才显示操作按钮
-                if (!handleAction) {
-                    html.push('<a href="javascript:;" class="btn btn-xs btn-success btn-pass" data-id="' + row.id + '"><i class="fa fa-check"></i> 通过</a> ');
-                    html.push('<a href="javascript:;" class="btn btn-xs btn-warning btn-review" data-id="' + row.id + '"><i class="fa fa-user"></i> 审核</a> ');
-                    html.push('<a href="javascript:;" class="btn btn-xs btn-danger btn-reject" data-id="' + row.id + '"><i class="fa fa-ban"></i> 拒绝</a> ');
-                    html.push('<a href="javascript:;" class="btn btn-xs btn-default btn-freeze" data-id="' + row.id + '"><i class="fa fa-snowflake-o"></i> 冻结</a>');
-                }
-                
-                return html.join('');
             };
 
             // 初始化表格
@@ -144,252 +125,114 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
                         {field: 'ip', title: 'IP地址', operate: 'LIKE'},
                         {field: 'handle_action', title: '处理状态', searchList: actionMap, formatter: actionFormatter},
                         {field: 'createtime', title: '创建时间', formatter: Table.api.formatter.datetime, operate: 'RANGE', addclass: 'datetimerange', sortable: true},
-                        {field: 'operate', title: '操作', table: table, events: Controller.api.events, formatter: operateFormatter, width: 250}
+                        {
+                            field: 'operate', 
+                            title: '操作', 
+                            table: table, 
+                            events: Table.api.events.operate, 
+                            formatter: Table.api.formatter.operate,
+                            buttons: [
+                                {
+                                    name: 'detail',
+                                    text: __('详情'),
+                                    title: __('风控记录详情'),
+                                    classname: 'btn btn-xs btn-primary btn-dialog',
+                                    icon: 'fa fa-eye',
+                                    url: 'withdraw/risklog/detail',
+                                    extend: 'data-area=\'["80%","80%"]\''
+                                },
+                                {
+                                    name: 'pass',
+                                    text: __('通过'),
+                                    title: __('确认通过'),
+                                    classname: 'btn btn-xs btn-success btn-ajax',
+                                    icon: 'fa fa-check',
+                                    url: 'withdraw/risklog/pass',
+                                    confirm: '确认通过该记录？',
+                                    success: function(data, ret) {
+                                        table.bootstrapTable('refresh');
+                                        Toastr.success(ret.msg);
+                                    },
+                                    error: function(data, ret) {
+                                        Toastr.error(ret.msg);
+                                    },
+                                    hidden: function(row) {
+                                        return row.handle_action && row.handle_action !== '';
+                                    }
+                                },
+                                {
+                                    name: 'review',
+                                    text: __('人工审核'),
+                                    title: __('确认人工审核'),
+                                    classname: 'btn btn-xs btn-warning btn-ajax',
+                                    icon: 'fa fa-user',
+                                    url: 'withdraw/risklog/review',
+                                    confirm: '确认标记为人工审核？',
+                                    success: function(data, ret) {
+                                        table.bootstrapTable('refresh');
+                                        Toastr.success(ret.msg);
+                                    },
+                                    error: function(data, ret) {
+                                        Toastr.error(ret.msg);
+                                    },
+                                    hidden: function(row) {
+                                        return row.handle_action && row.handle_action !== '';
+                                    }
+                                },
+                                {
+                                    name: 'reject',
+                                    text: __('拒绝'),
+                                    title: __('拒绝原因'),
+                                    classname: 'btn btn-xs btn-danger btn-ajax',
+                                    icon: 'fa fa-ban',
+                                    url: 'withdraw/risklog/reject',
+                                    confirm: '确认拒绝该记录？',
+                                    success: function(data, ret) {
+                                        table.bootstrapTable('refresh');
+                                        Toastr.success(ret.msg);
+                                    },
+                                    error: function(data, ret) {
+                                        Toastr.error(ret.msg);
+                                    },
+                                    hidden: function(row) {
+                                        return row.handle_action && row.handle_action !== '';
+                                    }
+                                },
+                                {
+                                    name: 'freeze',
+                                    text: __('冻结'),
+                                    title: __('确认冻结用户'),
+                                    classname: 'btn btn-xs btn-default btn-ajax',
+                                    icon: 'fa fa-snowflake-o',
+                                    url: 'withdraw/risklog/freeze',
+                                    confirm: '确认冻结该用户？冻结后用户将无法登录！',
+                                    success: function(data, ret) {
+                                        table.bootstrapTable('refresh');
+                                        Toastr.success(ret.msg);
+                                    },
+                                    error: function(data, ret) {
+                                        Toastr.error(ret.msg);
+                                    },
+                                    hidden: function(row) {
+                                        return row.handle_action && row.handle_action !== '';
+                                    }
+                                }
+                            ],
+                            width: 200
+                        }
                     ]
                 ]
             });
-
-            // 绑定事件
-            Controller.api.bindEvents(table);
 
             // 为表格绑定事件
             Table.api.bindevent(table);
         },
         detail: function () {
-            Controller.api.bindevent();
+            Form.api.bindevent($("form[role=form]"));
         },
         api: {
             bindevent: function () {
                 Form.api.bindevent($("form[role=form]"));
-            },
-            bindEvents: function (table) {
-                // 通过按钮
-                $(document).on('click', '.btn-pass', function (e) {
-                    e.stopPropagation();
-                    e.preventDefault();
-                    var id = $(this).data('id');
-                    if (!id) return;
-                    
-                    Layer.confirm('确认通过该记录？', { icon: 3, title: '提示' }, function (index) {
-                        $.ajax({
-                            url: 'withdraw/risklog/pass',
-                            type: 'POST',
-                            data: { ids: id },
-                            dataType: 'json',
-                            success: function (ret) {
-                                Layer.close(index);
-                                if (ret.code == 1) {
-                                    table.bootstrapTable('refresh');
-                                    Toastr.success(ret.msg);
-                                } else {
-                                    Toastr.error(ret.msg);
-                                }
-                            },
-                            error: function () {
-                                Layer.close(index);
-                                Toastr.error('操作失败');
-                            }
-                        });
-                    });
-                });
-
-                // 人工审核按钮
-                $(document).on('click', '.btn-review', function (e) {
-                    e.stopPropagation();
-                    e.preventDefault();
-                    var id = $(this).data('id');
-                    if (!id) return;
-                    
-                    Layer.confirm('确认标记为人工审核？', { icon: 3, title: '提示' }, function (index) {
-                        $.ajax({
-                            url: 'withdraw/risklog/review',
-                            type: 'POST',
-                            data: { ids: id },
-                            dataType: 'json',
-                            success: function (ret) {
-                                Layer.close(index);
-                                if (ret.code == 1) {
-                                    table.bootstrapTable('refresh');
-                                    Toastr.success(ret.msg);
-                                } else {
-                                    Toastr.error(ret.msg);
-                                }
-                            },
-                            error: function () {
-                                Layer.close(index);
-                                Toastr.error('操作失败');
-                            }
-                        });
-                    });
-                });
-
-                // 拒绝按钮
-                $(document).on('click', '.btn-reject', function (e) {
-                    e.stopPropagation();
-                    e.preventDefault();
-                    var id = $(this).data('id');
-                    if (!id) return;
-                    
-                    Layer.prompt({ title: '拒绝原因', formType: 0 }, function (value, index) {
-                        $.ajax({
-                            url: 'withdraw/risklog/reject',
-                            type: 'POST',
-                            data: { ids: id, reason: value },
-                            dataType: 'json',
-                            success: function (ret) {
-                                Layer.close(index);
-                                if (ret.code == 1) {
-                                    table.bootstrapTable('refresh');
-                                    Toastr.success(ret.msg);
-                                } else {
-                                    Toastr.error(ret.msg);
-                                }
-                            },
-                            error: function () {
-                                Layer.close(index);
-                                Toastr.error('操作失败');
-                            }
-                        });
-                    });
-                });
-
-                // 冻结按钮
-                $(document).on('click', '.btn-freeze', function (e) {
-                    e.stopPropagation();
-                    e.preventDefault();
-                    var id = $(this).data('id');
-                    if (!id) return;
-                    
-                    Layer.confirm('确认冻结该用户？冻结后用户将无法登录！', { icon: 3, title: '警告' }, function (index) {
-                        $.ajax({
-                            url: 'withdraw/risklog/freeze',
-                            type: 'POST',
-                            data: { ids: id },
-                            dataType: 'json',
-                            success: function (ret) {
-                                Layer.close(index);
-                                if (ret.code == 1) {
-                                    table.bootstrapTable('refresh');
-                                    Toastr.success(ret.msg);
-                                } else {
-                                    Toastr.error(ret.msg);
-                                }
-                            },
-                            error: function () {
-                                Layer.close(index);
-                                Toastr.error('操作失败');
-                            }
-                        });
-                    });
-                });
-
-                // 详情按钮
-                $(document).on('click', '.btn-detail', function (e) {
-                    e.stopPropagation();
-                    e.preventDefault();
-                    var id = $(this).data('id');
-                    if (!id) return;
-                    Fast.api.open('withdraw/risklog/detail?ids=' + id, '风控记录详情');
-                });
-
-                // 批量通过
-                $(document).on('click', '.btn-batch-pass', function (e) {
-                    e.stopPropagation();
-                    e.preventDefault();
-                    var ids = Table.api.selectedids(table);
-                    if (ids.length === 0) {
-                        Toastr.warning('请先选择要操作的记录');
-                        return;
-                    }
-                    
-                    Layer.confirm('确认批量通过选中的 ' + ids.length + ' 条记录？', { icon: 3, title: '提示' }, function (index) {
-                        $.ajax({
-                            url: 'withdraw/risklog/pass',
-                            type: 'POST',
-                            data: { ids: ids.join(',') },
-                            dataType: 'json',
-                            success: function (ret) {
-                                Layer.close(index);
-                                if (ret.code == 1) {
-                                    table.bootstrapTable('refresh');
-                                    Toastr.success(ret.msg);
-                                } else {
-                                    Toastr.error(ret.msg);
-                                }
-                            },
-                            error: function () {
-                                Layer.close(index);
-                                Toastr.error('操作失败');
-                            }
-                        });
-                    });
-                });
-
-                // 批量标记人工审核
-                $(document).on('click', '.btn-batch-review', function (e) {
-                    e.stopPropagation();
-                    e.preventDefault();
-                    var ids = Table.api.selectedids(table);
-                    if (ids.length === 0) {
-                        Toastr.warning('请先选择要操作的记录');
-                        return;
-                    }
-                    
-                    Layer.confirm('确认批量标记 ' + ids.length + ' 条记录为人工审核？', { icon: 3, title: '提示' }, function (index) {
-                        $.ajax({
-                            url: 'withdraw/risklog/review',
-                            type: 'POST',
-                            data: { ids: ids.join(',') },
-                            dataType: 'json',
-                            success: function (ret) {
-                                Layer.close(index);
-                                if (ret.code == 1) {
-                                    table.bootstrapTable('refresh');
-                                    Toastr.success(ret.msg);
-                                } else {
-                                    Toastr.error(ret.msg);
-                                }
-                            },
-                            error: function () {
-                                Layer.close(index);
-                                Toastr.error('操作失败');
-                            }
-                        });
-                    });
-                });
-
-                // 工具栏下拉筛选
-                $(document).on('click', '.dropdown-menu li a[data-field]', function () {
-                    var field = $(this).data('field');
-                    var value = $(this).data('value');
-                    if (field && value !== undefined) {
-                        var filter = {};
-                        filter[field] = value;
-                        table.bootstrapTable('refresh', { query: { filter: JSON.stringify(filter) } });
-                    }
-                });
-            },
-            events: {
-                'click .btn-pass': function (e, value, row, index) {
-                    e.stopPropagation();
-                    e.preventDefault();
-                },
-                'click .btn-review': function (e, value, row, index) {
-                    e.stopPropagation();
-                    e.preventDefault();
-                },
-                'click .btn-reject': function (e, value, row, index) {
-                    e.stopPropagation();
-                    e.preventDefault();
-                },
-                'click .btn-freeze': function (e, value, row, index) {
-                    e.stopPropagation();
-                    e.preventDefault();
-                },
-                'click .btn-detail': function (e, value, row, index) {
-                    e.stopPropagation();
-                    e.preventDefault();
-                }
             }
         }
     };
