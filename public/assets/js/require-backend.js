@@ -1,5 +1,5 @@
 require.config({
-    urlArgs: "v=" + requirejs.s.contexts._.config.config.site.version,
+    urlArgs: "v=" + (requirejs.s.contexts._.config.config && requirejs.s.contexts._.config.config.site ? requirejs.s.contexts._.config.config.site.version : '1.0.0'),
     packages: [{
         name: 'moment',
         location: '../libs/moment',
@@ -113,7 +113,7 @@ require.config({
         'validator-lang': ['validator'],
         'citypicker': ['citypicker-data', 'css!../libs/fastadmin-citypicker/dist/css/city-picker.css']
     },
-    baseUrl: requirejs.s.contexts._.config.config.site.cdnurl + '/assets/js/', //资源基础路径
+    baseUrl: (requirejs.s.contexts._.config.config && requirejs.s.contexts._.config.config.site && requirejs.s.contexts._.config.config.site.cdnurl ? requirejs.s.contexts._.config.config.site.cdnurl : '') + '/assets/js/', //资源基础路径
     map: {
         '*': {
             'css': '../libs/require-css/css.min'
