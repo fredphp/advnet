@@ -110,7 +110,7 @@ class Risklog extends Backend
         $recentLogs = Db::name($this->tableName)
             ->alias('rl')
             ->join($prefix . 'user u', 'u.id = rl.user_id', 'LEFT')
-            ->field('rl.id, rl.user_id, rl.order_no, rl.rule_name, rl.risk_type, rl.risk_level, rl.score_add, rl.handle_action, rl.createtime, u.username')
+            ->field('rl.id, rl.user_id, rl.order_no, rl.risk_type, rl.risk_level, rl.risk_score, rl.handle_action, rl.createtime, u.username')
             ->where('rl.user_id', $row['user_id'])
             ->where('rl.id', '<>', $ids)
             ->order('rl.createtime', 'desc')
@@ -159,8 +159,8 @@ class Risklog extends Backend
 
         $result = Db::name($this->tableName)->where('id', $ids)->update([
             'handle_action' => 'pass',
-            'handle_time' => time(),
-            'handle_admin_id' => $this->auth->id
+            'handle_remark' => '管理员通过',
+            'handle_time' => time()
         ]);
 
         if ($result !== false) {
@@ -187,8 +187,8 @@ class Risklog extends Backend
 
         $result = Db::name($this->tableName)->where('id', $ids)->update([
             'handle_action' => 'review',
-            'handle_time' => time(),
-            'handle_admin_id' => $this->auth->id
+            'handle_remark' => '需人工审核',
+            'handle_time' => time()
         ]);
 
         if ($result !== false) {
@@ -215,8 +215,8 @@ class Risklog extends Backend
 
         $result = Db::name($this->tableName)->where('id', $ids)->update([
             'handle_action' => 'reject',
-            'handle_time' => time(),
-            'handle_admin_id' => $this->auth->id
+            'handle_remark' => '管理员拒绝',
+            'handle_time' => time()
         ]);
 
         if ($result !== false) {
@@ -246,8 +246,8 @@ class Risklog extends Backend
             // 更新风控记录状态
             Db::name($this->tableName)->where('id', $ids)->update([
                 'handle_action' => 'freeze',
-                'handle_time' => time(),
-                'handle_admin_id' => $this->auth->id
+                'handle_remark' => '冻结用户',
+                'handle_time' => time()
             ]);
 
             // 冻结用户风险评分
@@ -291,22 +291,6 @@ class Risklog extends Backend
             $this->error('无效的操作');
         }
 
-        $count = 0;
-        foreach ($ids as $id) {
-            if ($action == 'del') {
-                $result = Db::name($this->tableName)->where('id', $id)->delete();
-            } else {
-                $result = Db::name($this->tableName)->where('id', $id)->update([
-                    'handle_action' => $action,
-                    'handle_time' => time(),
-                    'handle_admin_id' => $this->auth->id
-                ]);
-            }
-            if ($result !== false) {
-                $count++;
-            }
-        }
-
         $actionText = [
             'pass' => '通过',
             'review' => '人工审核',
@@ -314,6 +298,22 @@ class Risklog extends Backend
             'freeze' => '冻结',
             'del' => '删除'
         ];
+
+        $count = 0;
+        foreach ($ids as $id) {
+            if ($action == 'del') {
+                $result = Db::name($this->tableName)->where('id', $id)->delete();
+            } else {
+                $result = Db::name($this->tableName)->where('id', $id)->update([
+                    'handle_action' => $action,
+                    'handle_remark' => '批量' . $actionText[$action],
+                    'handle_time' => time()
+                ]);
+            }
+            if ($result !== false) {
+                $count++;
+            }
+        }
 
         $this->success("成功{$actionText[$action]}{$count}条记录");
     }

@@ -31,8 +31,6 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
                         {field: 'user_id', title: '用户ID', sortable: true},
                         {field: 'username', title: '用户名', operate: 'LIKE'},
                         {field: 'order_no', title: '订单号', operate: 'LIKE'},
-                        {field: 'rule_code', title: '规则代码'},
-                        {field: 'rule_name', title: '规则名称'},
                         {field: 'risk_type', title: '风险类型', searchList: {
                             "video": "视频",
                             "task": "任务",
@@ -51,22 +49,19 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
                             };
                             return map[value] || '<span class="label label-default">' + value + '</span>';
                         }},
-                        {field: 'trigger_value', title: '触发值'},
-                        {field: 'threshold', title: '阈值'},
-                        {field: 'score_add', title: '增加分数'},
                         {field: 'risk_level', title: '风险等级', searchList: {
                             "1": "低风险",
                             "2": "中风险",
                             "3": "高风险"
                         }, formatter: function(value, row, index) {
                             var map = {
-                                0: '<span class="label label-default">普通</span>',
                                 1: '<span class="label label-success">低风险</span>',
                                 2: '<span class="label label-warning">中风险</span>',
                                 3: '<span class="label label-danger">高风险</span>'
                             };
                             return map[value] || '<span class="label label-default">未知</span>';
                         }},
+                        {field: 'risk_score', title: '风险评分', sortable: true},
                         {field: 'handle_action', title: '处理状态', searchList: {
                             "pass": "通过",
                             "review": "人工审核",
@@ -81,8 +76,7 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
                             };
                             return map[value] || '<span class="label label-default">' + (value || '待处理') + '</span>';
                         }},
-                        {field: 'ip', title: 'IP地址', operate: 'LIKE'},
-                        {field: 'createtime', title: '时间', formatter: Table.api.formatter.datetime, operate: 'RANGE', addclass: 'datetimerange', sortable: true},
+                        {field: 'createtime', title: '创建时间', formatter: Table.api.formatter.datetime, operate: 'RANGE', addclass: 'datetimerange', sortable: true},
                         {
                             field: 'operate',
                             title: '操作',
@@ -169,7 +163,6 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
                     },
                     silent: true
                 });
-                // 设置搜索条件
                 var options = table.bootstrapTable('getOptions');
                 options.queryParams = function(params) {
                     params.filter = JSON.stringify({});
@@ -236,8 +229,6 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
             $(document).on('click', '#btn-confirm-reject', function(e) {
                 e.preventDefault();
                 var ids = $('#reject-ids').val();
-                var reason = $('#reject-form select[name="reason"]').val();
-                var customReason = $('#reject-form textarea[name="custom_reason"]').val();
 
                 Fast.api.ajax({
                     url: 'withdraw/risklog/multi',
@@ -265,7 +256,6 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
             $(document).on('click', '#btn-confirm-freeze', function(e) {
                 e.preventDefault();
                 var ids = $('#freeze-ids').val();
-                var reason = $('#freeze-form select[name="reason"]').val();
 
                 Fast.api.ajax({
                     url: 'withdraw/risklog/multi',
