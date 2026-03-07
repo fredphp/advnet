@@ -21,6 +21,13 @@
                                         </div>
                                     </div>
                                     <div class="form-group">
+                                        <label class="control-label col-xs-12 col-sm-2">可选提现金额:</label>
+                                        <div class="col-xs-12 col-sm-8">
+                                            <input type="text" name="row[withdraw_amounts]" class="form-control" value="{$config.withdraw_amounts|default='10,20,50,100'}">
+                                            <span class="help-block">用户可选的提现金额，多个金额用英文逗号分隔，如：10,20,50,100</span>
+                                        </div>
+                                    </div>
+                                    <div class="form-group">
                                         <label class="control-label col-xs-12 col-sm-2">最低提现金额(元):</label>
                                         <div class="col-xs-12 col-sm-8">
                                             <input type="number" name="row[min_withdraw]" class="form-control" value="{$config.min_withdraw|default=1}" step="0.01">

@@ -63,6 +63,8 @@ class SystemConfigService
             'min_withdraw' => 1,
             // 最高提现金额(元)
             'max_withdraw' => 500,
+            // 可选提现金额(元)，逗号分隔
+            'withdraw_amounts' => '10,20,50,100',
             // 每日提现次数限制
             'daily_withdraw_limit' => 3,
             // 每日提现金额限制(元)
@@ -356,11 +358,11 @@ class SystemConfigService
         if ($group === null) {
             // 清除所有配置缓存
             foreach (array_keys(self::$defaultConfig) as $g) {
-                Cache::delete(self::CACHE_PREFIX . $g);
+                Cache::rm(self::CACHE_PREFIX . $g);
                 unset(self::$configCache[$g]);
             }
         } else {
-            Cache::delete(self::CACHE_PREFIX . $group);
+            Cache::rm(self::CACHE_PREFIX . $group);
             unset(self::$configCache[$group]);
         }
     }
@@ -429,6 +431,29 @@ class SystemConfigService
     public static function getWithdrawConfig()
     {
         return self::getGroupConfig(self::GROUP_WITHDRAW);
+    }
+    
+    /**
+     * 获取可选提现金额数组
+     * @return array
+     */
+    public static function getWithdrawAmounts()
+    {
+        $amountsStr = self::get('withdraw.withdraw_amounts', '10,20,50,100');
+        $amounts = array_map('floatval', array_filter(explode(',', $amountsStr)));
+        sort($amounts);
+        return $amounts;
+    }
+    
+    /**
+     * 检查提现金额是否在可选范围内
+     * @param float $amount 提现金额
+     * @return bool
+     */
+    public static function isValidWithdrawAmount($amount)
+    {
+        $amounts = self::getWithdrawAmounts();
+        return in_array(floatval($amount), $amounts, true);
     }
     
     /**
