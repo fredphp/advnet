@@ -24,6 +24,7 @@ class Risklog extends Backend
 
     // 风险等级映射
     protected $riskLevelMap = [
+        0 => '普通',
         1 => '低风险',
         2 => '中风险',
         3 => '高风险'
@@ -50,9 +51,11 @@ class Risklog extends Backend
         if ($this->request->isAjax()) {
             list($where, $sort, $order, $offset, $limit) = $this->buildparams();
 
+            $prefix = \think\Config::get('database.prefix');
+
             $list = Db::name('risk_log')
                 ->alias('rl')
-                ->leftJoin('user u', 'u.id = rl.user_id')
+                ->join($prefix . 'user u', 'u.id = rl.user_id', 'LEFT')
                 ->field('rl.*, u.username, u.nickname')
                 ->where($where)
                 ->order("rl.{$sort}", $order)
@@ -61,7 +64,7 @@ class Risklog extends Backend
 
             $total = Db::name('risk_log')
                 ->alias('rl')
-                ->leftJoin('user u', 'u.id = rl.user_id')
+                ->join($prefix . 'user u', 'u.id = rl.user_id', 'LEFT')
                 ->where($where)
                 ->count();
 
@@ -82,9 +85,11 @@ class Risklog extends Backend
      */
     public function detail($ids = null)
     {
+        $prefix = \think\Config::get('database.prefix');
+
         $row = Db::name('risk_log')
             ->alias('rl')
-            ->leftJoin('user u', 'u.id = rl.user_id')
+            ->join($prefix . 'user u', 'u.id = rl.user_id', 'LEFT')
             ->field('rl.*, u.username, u.nickname, u.mobile, u.avatar')
             ->where('rl.id', $ids)
             ->find();
@@ -101,7 +106,7 @@ class Risklog extends Backend
         // 获取用户最近的风控记录
         $recentLogs = Db::name('risk_log')
             ->alias('rl')
-            ->leftJoin('user u', 'u.id = rl.user_id')
+            ->join($prefix . 'user u', 'u.id = rl.user_id', 'LEFT')
             ->field('rl.id, rl.user_id, rl.order_no, rl.rule_name, rl.risk_type, rl.risk_level, rl.score_add, rl.handle_action, rl.createtime, u.username')
             ->where('rl.user_id', $row['user_id'])
             ->where('rl.id', '<>', $ids)
