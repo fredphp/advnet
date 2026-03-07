@@ -1,0 +1,276 @@
+<?php
+
+namespace app\admin\controller\withdraw;
+
+use app\common\controller\Backend;
+use app\common\model\RiskLog;
+use app\common\model\UserRiskScore;
+use think\Db;
+
+/**
+ * 风控记录管理
+ */
+class Risklog extends Backend
+{
+    protected $model = null;
+
+    // 风险类型映射
+    protected $riskTypeMap = [
+        'video' => '视频',
+        'task' => '任务',
+        'withdraw' => '提现',
+        'redpacket' => '红包',
+        'invite' => '邀请',
+        'global' => '全局'
+    ];
+
+    // 风险等级映射
+    protected $riskLevelMap = [
+        1 => '低风险',
+        2 => '中风险',
+        3 => '高风险'
+    ];
+
+    // 处理动作映射
+    protected $handleActionMap = [
+        'pass' => '通过',
+        'review' => '人工审核',
+        'reject' => '拒绝',
+        'freeze' => '冻结'
+    ];
+
+    public function _initialize()
+    {
+        parent::_initialize();
+        $this->model = new RiskLog();
+    }
+
+    /**
+     * 风控记录列表
+     */
+    public function index()
+    {
+        if ($this->request->isAjax()) {
+            list($where, $sort, $order, $offset, $limit) = $this->buildparams();
+
+            $list = Db::name('risk_log')
+                ->alias('rl')
+                ->leftJoin('user u', 'u.id = rl.user_id')
+                ->field('rl.*, u.username, u.nickname')
+                ->where($where)
+                ->order("rl.{$sort}", $order)
+                ->limit($offset, $limit)
+                ->select();
+
+            $total = Db::name('risk_log')
+                ->alias('rl')
+                ->leftJoin('user u', 'u.id = rl.user_id')
+                ->where($where)
+                ->count();
+
+            // 格式化数据
+            foreach ($list as &$row) {
+                $row['risk_type_text'] = $this->riskTypeMap[$row['risk_type']] ?? $row['risk_type'];
+                $row['risk_level_text'] = $this->riskLevelMap[$row['risk_level']] ?? '未知';
+                $row['handle_action_text'] = $this->handleActionMap[$row['handle_action']] ?? $row['handle_action'];
+            }
+
+            return json(['total' => $total, 'rows' => $list]);
+        }
+        return $this->view->fetch();
+    }
+
+    /**
+     * 风控记录详情
+     */
+    public function detail($ids = null)
+    {
+        $row = Db::name('risk_log')
+            ->alias('rl')
+            ->leftJoin('user u', 'u.id = rl.user_id')
+            ->field('rl.*, u.username, u.nickname, u.mobile, u.avatar')
+            ->where('rl.id', $ids)
+            ->find();
+
+        if (!$row) {
+            $this->error('记录不存在');
+        }
+
+        // 获取用户风险评分
+        $riskScore = Db::name('user_risk_score')
+            ->where('user_id', $row['user_id'])
+            ->find();
+
+        // 获取用户最近的风控记录
+        $recentLogs = Db::name('risk_log')
+            ->alias('rl')
+            ->leftJoin('user u', 'u.id = rl.user_id')
+            ->field('rl.id, rl.user_id, rl.order_no, rl.rule_name, rl.risk_type, rl.risk_level, rl.score_add, rl.handle_action, rl.createtime, u.username')
+            ->where('rl.user_id', $row['user_id'])
+            ->where('rl.id', '<>', $ids)
+            ->order('rl.createtime', 'desc')
+            ->limit(10)
+            ->select();
+
+        // 格式化数据
+        $row['risk_type_text'] = $this->riskTypeMap[$row['risk_type']] ?? $row['risk_type'];
+        $row['risk_level_text'] = $this->riskLevelMap[$row['risk_level']] ?? '未知';
+        $row['handle_action_text'] = $this->handleActionMap[$row['handle_action']] ?? $row['handle_action'];
+
+        foreach ($recentLogs as &$log) {
+            $log['risk_type_text'] = $this->riskTypeMap[$log['risk_type']] ?? $log['risk_type'];
+            $log['risk_level_text'] = $this->riskLevelMap[$log['risk_level']] ?? '未知';
+            $log['handle_action_text'] = $this->handleActionMap[$log['handle_action']] ?? $log['handle_action'];
+        }
+
+        if ($this->request->isAjax()) {
+            $this->success('', [
+                'row' => $row,
+                'risk_score' => $riskScore,
+                'recent_logs' => $recentLogs
+            ]);
+        }
+
+        $this->view->assign('row', $row);
+        $this->view->assign('risk_score', $riskScore);
+        $this->view->assign('recent_logs', $recentLogs);
+        return $this->view->fetch();
+    }
+
+    /**
+     * 通过
+     */
+    public function pass($ids = null)
+    {
+        $row = Db::name('risk_log')->where('id', $ids)->find();
+        if (!$row) {
+            $this->error('记录不存在');
+        }
+
+        Db::name('risk_log')->where('id', $ids)->update([
+            'handle_action' => 'pass',
+            'handle_time' => time(),
+            'handle_admin_id' => $this->auth->id
+        ]);
+
+        $this->success('操作成功');
+    }
+
+    /**
+     * 人工审核
+     */
+    public function review($ids = null)
+    {
+        $row = Db::name('risk_log')->where('id', $ids)->find();
+        if (!$row) {
+            $this->error('记录不存在');
+        }
+
+        Db::name('risk_log')->where('id', $ids)->update([
+            'handle_action' => 'review',
+            'handle_time' => time(),
+            'handle_admin_id' => $this->auth->id
+        ]);
+
+        $this->success('操作成功');
+    }
+
+    /**
+     * 拒绝
+     */
+    public function reject($ids = null)
+    {
+        $row = Db::name('risk_log')->where('id', $ids)->find();
+        if (!$row) {
+            $this->error('记录不存在');
+        }
+
+        Db::name('risk_log')->where('id', $ids)->update([
+            'handle_action' => 'reject',
+            'handle_time' => time(),
+            'handle_admin_id' => $this->auth->id
+        ]);
+
+        $this->success('操作成功');
+    }
+
+    /**
+     * 冻结
+     */
+    public function freeze($ids = null)
+    {
+        $row = Db::name('risk_log')->where('id', $ids)->find();
+        if (!$row) {
+            $this->error('记录不存在');
+        }
+
+        Db::startTrans();
+        try {
+            // 更新风控记录状态
+            Db::name('risk_log')->where('id', $ids)->update([
+                'handle_action' => 'freeze',
+                'handle_time' => time(),
+                'handle_admin_id' => $this->auth->id
+            ]);
+
+            // 冻结用户
+            Db::name('user_risk_score')
+                ->where('user_id', $row['user_id'])
+                ->update(['status' => 'frozen']);
+
+            Db::commit();
+            $this->success('操作成功');
+        } catch (\Exception $e) {
+            Db::rollback();
+            $this->error($e->getMessage());
+        }
+    }
+
+    /**
+     * 批量操作
+     */
+    public function multi($ids = "")
+    {
+        $ids = $ids ? $ids : $this->request->param("ids");
+        if (empty($ids)) {
+            $this->error(__('参数错误'));
+        }
+        $ids = explode(',', $ids);
+
+        $action = $this->request->post('action');
+        if (!in_array($action, ['pass', 'review', 'reject', 'freeze', 'del'])) {
+            $this->error('无效的操作');
+        }
+
+        $count = 0;
+        foreach ($ids as $id) {
+            if ($action == 'del') {
+                Db::name('risk_log')->where('id', $id)->delete();
+            } else {
+                Db::name('risk_log')->where('id', $id)->update([
+                    'handle_action' => $action,
+                    'handle_time' => time(),
+                    'handle_admin_id' => $this->auth->id
+                ]);
+            }
+            $count++;
+        }
+
+        $this->success("成功操作{$count}条记录");
+    }
+
+    /**
+     * 删除
+     */
+    public function del($ids = "")
+    {
+        $ids = $ids ? $ids : $this->request->param("ids");
+        if (empty($ids)) {
+            $this->error(__('参数错误'));
+        }
+        $ids = explode(',', $ids);
+
+        $count = Db::name('risk_log')->whereIn('id', $ids)->delete();
+        $this->success("成功删除{$count}条记录");
+    }
+}
