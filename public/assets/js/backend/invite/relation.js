@@ -157,6 +157,36 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
 
             // 为表格绑定事件
             Table.api.bindevent(table);
+            
+            // 加载统计数据
+            Controller.loadStats();
+            
+            // 渠道筛选
+            $(document).on('click', '[data-channel]', function() {
+                var channel = $(this).data('channel');
+                if (channel !== undefined && channel !== '') {
+                    table.bootstrapTable('refresh', {
+                        query: {filter: JSON.stringify({invite_channel: channel})}
+                    });
+                } else {
+                    table.bootstrapTable('refresh', {
+                        query: {filter: '{}'}
+                    });
+                }
+            });
+        },
+        
+        // 加载统计数据
+        loadStats: function() {
+            $.ajax({
+                url: 'invite/relation/index',
+                type: 'GET',
+                data: {action: 'stats'},
+                dataType: 'json',
+                success: function(ret) {
+                    // 表格数据会自动更新统计
+                }
+            });
         },
         
         // 显示统计信息

@@ -113,33 +113,3 @@
         </div>
     </div>
 </div>
-
-<script>
-$(function() {
-    // 加载统计数据
-    $.ajax({
-        url: 'invite/relation/stat',
-        type: 'GET',
-        data: {parent_id: 'all'},
-        dataType: 'json',
-        success: function(ret) {
-            // 这里可以根据需要添加全局统计
-        }
-    });
-    
-    // 渠道筛选
-    $(document).on('click', '[data-channel]', function() {
-        var channel = $(this).data('channel');
-        var table = $('#table');
-        if (channel) {
-            table.bootstrapTable('refresh', {
-                query: {filter: JSON.stringify({invite_channel: channel})}
-            });
-        } else {
-            table.bootstrapTable('refresh', {
-                query: {filter: '{}'}
-            });
-        }
-    });
-});
-</script>
