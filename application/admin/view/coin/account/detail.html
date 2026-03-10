@@ -1,50 +1,347 @@
-<form id="detail-form" class="form-horizontal" role="form">
-    <div class="form-group">
-        <label class="control-label col-xs-12 col-sm-2">用户:</label>
-        <div class="col-xs-12 col-sm-8">
-            <p class="form-control-static">{$row.username|default='-'} ({$row.nickname|default='-'})</p>
+<style>
+    .detail-wrapper {
+        padding: 15px;
+    }
+
+    /* 用户信息卡片 */
+    .user-profile-card {
+        display: flex;
+        align-items: center;
+        padding: 20px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-radius: 12px;
+        margin-bottom: 20px;
+        color: #fff;
+        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+    }
+    .user-profile-card .avatar {
+        width: 80px;
+        height: 80px;
+        border-radius: 50%;
+        border: 4px solid rgba(255,255,255,0.3);
+        margin-right: 20px;
+        object-fit: cover;
+        background: #fff;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+    }
+    .user-profile-card .user-info {
+        flex: 1;
+    }
+    .user-profile-card .user-name {
+        font-size: 22px;
+        font-weight: 600;
+        margin-bottom: 5px;
+    }
+    .user-profile-card .user-meta {
+        font-size: 13px;
+        opacity: 0.9;
+        display: flex;
+        gap: 15px;
+        flex-wrap: wrap;
+    }
+    .user-profile-card .user-meta span {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+    }
+    .user-profile-card .user-meta i {
+        width: 16px;
+        text-align: center;
+    }
+
+    /* 统计卡片 */
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+        gap: 15px;
+        margin-bottom: 20px;
+    }
+    .stat-card {
+        background: #fff;
+        border-radius: 10px;
+        padding: 15px;
+        text-align: center;
+        border: 1px solid #e8e8e8;
+        transition: all 0.3s;
+    }
+    .stat-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+    .stat-card.primary {
+        background: linear-gradient(135deg, #3c8dbc 0%, #367fa9 100%);
+        color: #fff;
+        border: none;
+    }
+    .stat-card.success {
+        background: linear-gradient(135deg, #00a65a 0%, #008d4c 100%);
+        color: #fff;
+        border: none;
+    }
+    .stat-card.warning {
+        background: linear-gradient(135deg, #f39c12 0%, #e67e22 100%);
+        color: #fff;
+        border: none;
+    }
+    .stat-card.info {
+        background: linear-gradient(135deg, #00c0ef 0%, #0097bc 100%);
+        color: #fff;
+        border: none;
+    }
+    .stat-card.danger {
+        background: linear-gradient(135deg, #dd4b39 0%, #c23321 100%);
+        color: #fff;
+        border: none;
+    }
+    .stat-card .stat-icon {
+        font-size: 24px;
+        margin-bottom: 8px;
+        opacity: 0.9;
+    }
+    .stat-card .stat-value {
+        font-size: 24px;
+        font-weight: 700;
+        margin-bottom: 5px;
+    }
+    .stat-card .stat-label {
+        font-size: 12px;
+        opacity: 0.9;
+    }
+
+    /* 流水记录 */
+    .log-section {
+        background: #fff;
+        border-radius: 10px;
+        border: 1px solid #e8e8e8;
+        overflow: hidden;
+    }
+    .log-section .section-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 15px 20px;
+        background: #f8f9fa;
+        border-bottom: 1px solid #e8e8e8;
+    }
+    .log-section .section-title {
+        font-size: 15px;
+        font-weight: 600;
+        color: #333;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    .log-section .section-title i {
+        color: #3c8dbc;
+    }
+    .log-section .section-badge {
+        background: #3c8dbc;
+        color: #fff;
+        padding: 3px 10px;
+        border-radius: 12px;
+        font-size: 12px;
+    }
+
+    .log-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+    .log-table th {
+        background: #fafafa;
+        padding: 12px 15px;
+        text-align: left;
+        font-weight: 500;
+        color: #666;
+        font-size: 13px;
+        border-bottom: 1px solid #eee;
+    }
+    .log-table td {
+        padding: 12px 15px;
+        border-bottom: 1px solid #f0f0f0;
+        font-size: 13px;
+        color: #333;
+    }
+    .log-table tr:hover {
+        background: #fafafa;
+    }
+    .log-table tr:last-child td {
+        border-bottom: none;
+    }
+
+    .log-type {
+        display: inline-block;
+        padding: 4px 10px;
+        border-radius: 4px;
+        font-size: 12px;
+        font-weight: 500;
+    }
+    .log-type.income {
+        background: #e8f5e9;
+        color: #2e7d32;
+    }
+    .log-type.expense {
+        background: #ffebee;
+        color: #c62828;
+    }
+
+    .log-amount {
+        font-weight: 600;
+    }
+    .log-amount.positive {
+        color: #00a65a;
+    }
+    .log-amount.negative {
+        color: #dd4b39;
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 40px 20px;
+        color: #999;
+    }
+    .empty-state i {
+        font-size: 48px;
+        margin-bottom: 15px;
+        color: #ddd;
+    }
+    .empty-state p {
+        font-size: 14px;
+    }
+
+    /* 账户信息 */
+    .info-row {
+        display: flex;
+        margin-bottom: 10px;
+    }
+    .info-row .info-label {
+        width: 100px;
+        color: #666;
+        font-size: 13px;
+    }
+    .info-row .info-value {
+        flex: 1;
+        font-size: 13px;
+        color: #333;
+    }
+</style>
+
+<div class="detail-wrapper">
+    <!-- 用户信息卡片 -->
+    <div class="user-profile-card">
+        <img class="avatar" src="{$row.avatar|default='/assets/img/avatar.png'}" alt="头像" onerror="this.src='/assets/img/avatar.png'">
+        <div class="user-info">
+            <div class="user-name">{$row.nickname|default=$row.username}</div>
+            <div class="user-meta">
+                <span><i class="fa fa-user"></i> 用户ID: {$row.user_id}</span>
+                <span><i class="fa fa-user-circle"></i> {$row.username|default='-'}</span>
+                {if condition="$row['mobile']"}
+                <span><i class="fa fa-phone"></i> {$row.mobile}</span>
+                {/if}
+            </div>
         </div>
     </div>
-    <div class="form-group">
-        <label class="control-label col-xs-12 col-sm-2">余额:</label>
-        <div class="col-xs-12 col-sm-8">
-            <p class="form-control-static">{$row.balance|default=0}</p>
+
+    <!-- 账户统计 -->
+    <div class="stats-grid">
+        <div class="stat-card primary">
+            <div class="stat-icon"><i class="fa fa-diamond"></i></div>
+            <div class="stat-value">{$row.balance|default=0}</div>
+            <div class="stat-label">可用余额</div>
+        </div>
+        <div class="stat-card warning">
+            <div class="stat-icon"><i class="fa fa-lock"></i></div>
+            <div class="stat-value">{$row.frozen|default=0}</div>
+            <div class="stat-label">冻结金额</div>
+        </div>
+        <div class="stat-card success">
+            <div class="stat-icon"><i class="fa fa-arrow-up"></i></div>
+            <div class="stat-value">{$row.total_earn|default=0}</div>
+            <div class="stat-label">累计获得</div>
+        </div>
+        <div class="stat-card danger">
+            <div class="stat-icon"><i class="fa fa-arrow-down"></i></div>
+            <div class="stat-value">{$row.total_spend|default=0}</div>
+            <div class="stat-label">累计消费</div>
+        </div>
+        <div class="stat-card info">
+            <div class="stat-icon"><i class="fa fa-bank"></i></div>
+            <div class="stat-value">{$row.total_withdraw|default=0}</div>
+            <div class="stat-label">累计提现</div>
         </div>
     </div>
-    <div class="form-group">
-        <label class="control-label col-xs-12 col-sm-2">冻结:</label>
-        <div class="col-xs-12 col-sm-8">
-            <p class="form-control-static">{$row.frozen|default=0}</p>
+
+    <!-- 账户详情信息 -->
+    <div class="log-section" style="margin-bottom: 20px;">
+        <div class="section-header">
+            <div class="section-title">
+                <i class="fa fa-info-circle"></i>
+                账户信息
+            </div>
+        </div>
+        <div style="padding: 15px 20px;">
+            <div class="info-row">
+                <div class="info-label">今日获得:</div>
+                <div class="info-value">{$row.today_earn|default=0} 金币</div>
+            </div>
+            <div class="info-row">
+                <div class="info-label">创建时间:</div>
+                <div class="info-value">{$row.createtime|date='Y-m-d H:i:s',###}</div>
+            </div>
+            <div class="info-row">
+                <div class="info-label">更新时间:</div>
+                <div class="info-value">{$row.updatetime|date='Y-m-d H:i:s',###}</div>
+            </div>
         </div>
     </div>
-    <div class="form-group">
-        <label class="control-label col-xs-12 col-sm-2">累计收入:</label>
-        <div class="col-xs-12 col-sm-8">
-            <p class="form-control-static">{$row.total_income|default=0}</p>
+
+    <!-- 最近流水 -->
+    <div class="log-section">
+        <div class="section-header">
+            <div class="section-title">
+                <i class="fa fa-history"></i>
+                最近交易记录
+            </div>
+            <span class="section-badge">最近10条</span>
         </div>
-    </div>
-    <div class="form-group">
-        <label class="control-label col-xs-12 col-sm-2">累计支出:</label>
-        <div class="col-xs-12 col-sm-8">
-            <p class="form-control-static">{$row.total_expense|default=0}</p>
+
+        {if condition="!empty($recent_logs)"}
+        <table class="log-table">
+            <thead>
+                <tr>
+                    <th>类型</th>
+                    <th>金额</th>
+                    <th>变动后余额</th>
+                    <th>描述</th>
+                    <th>时间</th>
+                </tr>
+            </thead>
+            <tbody>
+                {volist name="recent_logs" id="log"}
+                <tr>
+                    <td>
+                        {if condition="$log['amount'] >= 0"}
+                        <span class="log-type income">收入</span>
+                        {else}
+                        <span class="log-type expense">支出</span>
+                        {/if}
+                    </td>
+                    <td>
+                        <span class="log-amount {if condition='$log[\"amount\"] >= 0'}positive{else}negative{/if}">
+                            {if condition="$log['amount'] >= 0"}+{/if}{$log.amount}
+                        </span>
+                    </td>
+                    <td>{$log.balance_after|default='-'}</td>
+                    <td>{$log.description|default='-'}</td>
+                    <td>{$log.createtime|date='Y-m-d H:i',###}</td>
+                </tr>
+                {/volist}
+            </tbody>
+        </table>
+        {else}
+        <div class="empty-state">
+            <i class="fa fa-inbox"></i>
+            <p>暂无交易记录</p>
         </div>
+        {/if}
     </div>
-    <div class="form-group">
-        <label class="control-label col-xs-12 col-sm-2">最近流水:</label>
-        <div class="col-xs-12 col-sm-8">
-            <table class="table table-bordered">
-                <thead><tr><th>类型</th><th>金额</th><th>余额</th><th>时间</th></tr></thead>
-                <tbody>
-                    {volist name="recent_logs" id="log"}
-                    <tr>
-                        <td>{$log.type}</td>
-                        <td>{$log.amount}</td>
-                        <td>{$log.after_balance}</td>
-                        <td>{$log.createtime|date='Y-m-d H:i:s',###}</td>
-                    </tr>
-                    {/volist}
-                </tbody>
-            </table>
-        </div>
-    </div>
-</form>
+</div>
