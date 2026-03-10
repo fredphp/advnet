@@ -138,20 +138,31 @@ class Account extends Backend
 
                 // 记录流水（写入当月分表）
                 $logTableName = CoinLog::getOrCreateTable();
-                Db::name($logTableName)->insert([
+                $logData = [
                     'user_id' => $row['user_id'],
                     'type' => 'admin_adjust',
                     'amount' => $adjustAmount,
                     'balance_before' => $row['balance'],
                     'balance_after' => $row['balance'] + $adjustAmount,
-                    'description' => '管理员调整: ' . $remark,
+                    'description' => '管理员调整: ' . $remark . ' [管理员ID: ' . $this->auth->id . ']',
                     'relation_type' => 'admin',
                     'relation_id' => $ids,
                     'relation_table' => '',
-                    'admin_id' => $this->auth->id,
                     'createtime' => time(),
                     'create_date' => date('Y-m-d'),
-                ]);
+                ];
+                
+                // 检查表中是否有 admin_id 字段
+                try {
+                    $columns = Db::query("SHOW COLUMNS FROM `" . config('database.prefix') . $logTableName . "` LIKE 'admin_id'");
+                    if (!empty($columns)) {
+                        $logData['admin_id'] = $this->auth->id;
+                    }
+                } catch (\Exception $e) {
+                    // 忽略错误，继续插入
+                }
+                
+                Db::name($logTableName)->insert($logData);
 
                 Db::commit();
                 $this->success();
