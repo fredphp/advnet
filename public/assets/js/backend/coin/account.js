@@ -86,11 +86,11 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
                 $('#preview-result').removeClass('add deduct').addClass(currentType);
             }
 
-            // 更新提交按钮
+            // 更新提交按钮样式
             function updateSubmitBtn() {
                 var $btn = $('#submit-btn');
                 var $text = $('#btn-text');
-                $btn.removeClass('add deduct').addClass(currentType);
+                $btn.removeClass('btn-add btn-deduct').addClass(currentType === 'add' ? 'btn-add' : 'btn-deduct');
                 if (currentType === 'add') {
                     $text.text('确认增加金币');
                 } else {
@@ -124,38 +124,62 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
                 updatePreview();
             });
 
-            // 表单提交
-            Form.api.bindevent($("form[role=form]"), function(data, ret) {
-                // 成功回调
-                if (ret.code === 1) {
-                    parent.Toastr.success(ret.msg || '操作成功');
-                    parent.Layer.closeAll();
-                    if (parent.$) {
-                        parent.$('#table').bootstrapTable('refresh');
-                    }
-                }
-            }, function(data, ret) {
-                // 失败回调
-                parent.Toastr.error(ret.msg || '操作失败');
-            }, function() {
-                // 提交前验证
+            // 提交按钮点击
+            $('#submit-btn').on('click', function() {
                 var amount = parseInt($('#c-amount').val()) || 0;
+                var type = $('#c-type').val();
+                var remark = $('#c-remark').val();
+                var ids = $('input[name="ids"]').val();
+
+                // 验证金额
                 if (amount <= 0) {
                     Toastr.error('请输入有效的金额');
                     return false;
                 }
-                
-                var type = $('#c-type').val();
+
+                // 确认操作
                 var confirmText = type === 'add' ? '确定要增加 ' + amount + ' 金币吗？' : '确定要扣除 ' + amount + ' 金币吗？';
                 if (!confirm(confirmText)) {
                     return false;
                 }
-                
+
                 // 禁用按钮
                 var $btn = $('#submit-btn');
+                var originalHtml = $btn.html();
                 $btn.prop('disabled', true).html('<i class="fa fa-spinner fa-spin"></i> 处理中...');
-                
-                return true;
+
+                // 发送AJAX请求
+                $.ajax({
+                    url: window.location.href,
+                    type: 'POST',
+                    dataType: 'json',
+                    data: {
+                        ids: ids,
+                        type: type,
+                        amount: amount,
+                        remark: remark
+                    },
+                    success: function(ret) {
+                        if (ret.code === 1) {
+                            Toastr.success(ret.msg || '操作成功');
+                            setTimeout(function() {
+                                parent.Layer.closeAll();
+                                if (parent.$) {
+                                    parent.$('#table').bootstrapTable('refresh');
+                                }
+                            }, 500);
+                        } else {
+                            Toastr.error(ret.msg || '操作失败');
+                            $btn.prop('disabled', false).html(originalHtml);
+                        }
+                    },
+                    error: function(xhr) {
+                        Toastr.error('网络请求失败');
+                        $btn.prop('disabled', false).html(originalHtml);
+                    }
+                });
+
+                return false;
             });
         },
         api: {

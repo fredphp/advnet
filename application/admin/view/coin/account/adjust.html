@@ -219,11 +219,11 @@
         cursor: pointer;
         transition: all 0.3s;
     }
-    .submit-btn.add {
+    .submit-btn.btn-add {
         background: linear-gradient(135deg, #00a65a 0%, #008d4c 100%);
         color: #fff;
     }
-    .submit-btn.deduct {
+    .submit-btn.btn-deduct {
         background: linear-gradient(135deg, #dd4b39 0%, #c23321 100%);
         color: #fff;
     }
@@ -238,11 +238,11 @@
     }
 </style>
 
-<form id="adjust-form" class="adjust-wrapper form-horizontal" role="form" data-toggle="validator" method="POST" action="">
+<form id="adjust-form" class="adjust-wrapper form-horizontal" role="form" method="POST" action="">
     <input type="hidden" name="__token__" value="{$Request.token|default=''}">
     <input type="hidden" name="ids" value="{$row.id}">
     <input type="hidden" name="type" id="c-type" value="add">
-    
+
     <!-- 用户信息卡片 -->
     <div class="user-card">
         <img class="avatar" src="{$row.avatar|default='/assets/img/avatar.png'}" alt="头像" onerror="this.src='/assets/img/avatar.png'">
@@ -252,7 +252,7 @@
         </div>
         <div class="balance-box">
             <div class="balance-label">当前余额</div>
-            <div class="balance-value">{$row.balance}</div>
+            <div class="balance-value" id="current-balance">{$row.balance}</div>
         </div>
     </div>
 
@@ -292,7 +292,7 @@
         <div class="preview-title">调整预览</div>
         <div class="preview-content">
             <div class="preview-item">
-                <div class="preview-value" id="current-balance">{$row.balance}</div>
+                <div class="preview-value">{$row.balance}</div>
                 <div class="preview-label">当前余额</div>
             </div>
             <div class="preview-arrow"><i class="fa fa-arrow-right"></i></div>
@@ -311,7 +311,7 @@
 
     <!-- 提交按钮 -->
     <div class="submit-btn-wrapper">
-        <button type="submit" class="submit-btn add" id="submit-btn">
+        <button type="button" class="submit-btn btn-add" id="submit-btn">
             <i class="fa fa-check"></i> <span id="btn-text">确认增加金币</span>
         </button>
     </div>
