@@ -17,7 +17,7 @@ class Commissionconfig extends Backend
     
     public function _initialize()
     {
-        parent::initialize();
+        parent::_initialize();
         $this->model = new \app\common\model\InviteCommissionConfig();
     }
     
