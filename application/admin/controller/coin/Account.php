@@ -12,6 +12,11 @@ use think\Db;
 class Account extends Backend
 {
     /**
+     * 不启用数据限制（coin_account 表没有 admin_id 字段）
+     */
+    protected $dataLimit = false;
+    
+    /**
      * 账户列表
      */
     public function index()
