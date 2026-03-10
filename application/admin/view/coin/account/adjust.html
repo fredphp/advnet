@@ -205,6 +205,10 @@
         outline: none;
     }
 
+    .submit-btn-wrapper {
+        text-align: center;
+        padding: 15px 0;
+    }
     .submit-btn {
         width: 100%;
         padding: 14px;
@@ -232,21 +236,12 @@
         cursor: not-allowed;
         transform: none;
     }
-
-    /* 隐藏 FastAdmin 默认的底部按钮区域 */
-    .layer-footer {
-        display: none !important;
-    }
-    /* 显示自定义的提交按钮区域 */
-    .custom-footer {
-        display: block !important;
-        text-align: center;
-        padding: 15px 0;
-    }
 </style>
 
 <form id="adjust-form" class="adjust-wrapper form-horizontal" role="form" data-toggle="validator" method="POST" action="">
     <input type="hidden" name="__token__" value="{$Request.token|default=''}">
+    <input type="hidden" name="ids" value="{$row.id}">
+    <input type="hidden" name="type" id="c-type" value="add">
     
     <!-- 用户信息卡片 -->
     <div class="user-card">
@@ -265,11 +260,11 @@
     <div class="adjust-type-wrapper">
         <div class="type-label">选择操作类型</div>
         <div class="type-btn-group">
-            <div class="type-btn add active" onclick="selectType('add')">
+            <div class="type-btn add active" data-type="add">
                 <div class="type-icon"><i class="fa fa-plus-circle"></i></div>
                 <div class="type-text">增加金币</div>
             </div>
-            <div class="type-btn deduct" onclick="selectType('deduct')">
+            <div class="type-btn deduct" data-type="deduct">
                 <div class="type-icon"><i class="fa fa-minus-circle"></i></div>
                 <div class="type-text">扣除金币</div>
             </div>
@@ -280,15 +275,15 @@
     <div class="amount-wrapper">
         <div class="amount-label">选择金额</div>
         <div class="quick-amounts">
-            <button type="button" class="quick-amount-btn" onclick="selectAmount(10, this)">10</button>
-            <button type="button" class="quick-amount-btn" onclick="selectAmount(50, this)">50</button>
-            <button type="button" class="quick-amount-btn" onclick="selectAmount(100, this)">100</button>
-            <button type="button" class="quick-amount-btn" onclick="selectAmount(200, this)">200</button>
-            <button type="button" class="quick-amount-btn" onclick="selectAmount(500, this)">500</button>
-            <button type="button" class="quick-amount-btn" onclick="selectAmount(1000, this)">1000</button>
+            <button type="button" class="quick-amount-btn" data-amount="10">10</button>
+            <button type="button" class="quick-amount-btn" data-amount="50">50</button>
+            <button type="button" class="quick-amount-btn" data-amount="100">100</button>
+            <button type="button" class="quick-amount-btn" data-amount="200">200</button>
+            <button type="button" class="quick-amount-btn" data-amount="500">500</button>
+            <button type="button" class="quick-amount-btn" data-amount="1000">1000</button>
         </div>
         <div class="custom-amount">
-            <input type="number" id="c-amount" name="amount" placeholder="或输入自定义金额" min="1" value="" data-rule="required;min(1)" oninput="onAmountInput()">
+            <input type="number" id="c-amount" name="amount" placeholder="或输入自定义金额" min="1" value="">
         </div>
     </div>
 
@@ -297,7 +292,7 @@
         <div class="preview-title">调整预览</div>
         <div class="preview-content">
             <div class="preview-item">
-                <div class="preview-value">{$row.balance}</div>
+                <div class="preview-value" id="current-balance">{$row.balance}</div>
                 <div class="preview-label">当前余额</div>
             </div>
             <div class="preview-arrow"><i class="fa fa-arrow-right"></i></div>
@@ -314,174 +309,10 @@
         <textarea id="c-remark" name="remark" rows="2" placeholder="请输入调整原因（可选）"></textarea>
     </div>
 
-    <!-- 隐藏字段 -->
-    <input type="hidden" name="ids" value="{$row.id}">
-    <input type="hidden" name="type" id="c-type" value="add">
-
     <!-- 提交按钮 -->
-    <div class="custom-footer">
-        <button type="button" class="submit-btn add" id="submit-btn">
+    <div class="submit-btn-wrapper">
+        <button type="submit" class="submit-btn add" id="submit-btn">
             <i class="fa fa-check"></i> <span id="btn-text">确认增加金币</span>
         </button>
     </div>
 </form>
-
-<script>
-var currentBalance = {$row.balance|default=0};
-var currentType = 'add';
-var currentAmount = 0;
-
-function selectType(type) {
-    currentType = type;
-    document.getElementById('c-type').value = type;
-    
-    // 更新按钮状态
-    var btns = document.querySelectorAll('.type-btn');
-    btns.forEach(function(btn) {
-        btn.classList.remove('active');
-    });
-    document.querySelector('.type-btn.' + type).classList.add('active');
-    
-    updatePreview();
-    updateSubmitBtn();
-}
-
-function selectAmount(amount, btn) {
-    currentAmount = amount;
-    document.getElementById('c-amount').value = amount;
-    
-    // 更新按钮状态
-    var btns = document.querySelectorAll('.quick-amount-btn');
-    btns.forEach(function(b) {
-        b.classList.remove('active');
-    });
-    btn.classList.add('active');
-    
-    updatePreview();
-}
-
-function onAmountInput() {
-    var amount = parseInt(document.getElementById('c-amount').value) || 0;
-    currentAmount = amount;
-    
-    // 清除快捷按钮选中状态
-    var btns = document.querySelectorAll('.quick-amount-btn');
-    btns.forEach(function(b) {
-        b.classList.remove('active');
-    });
-    
-    updatePreview();
-}
-
-function updatePreview() {
-    var result;
-    var resultEl = document.getElementById('preview-result');
-    
-    if (currentType === 'add') {
-        result = currentBalance + currentAmount;
-    } else {
-        result = currentBalance - currentAmount;
-    }
-    
-    resultEl.textContent = result;
-    resultEl.classList.remove('add', 'deduct');
-    resultEl.classList.add('result', currentType);
-}
-
-function updateSubmitBtn() {
-    var btn = document.getElementById('submit-btn');
-    var text = document.getElementById('btn-text');
-    
-    btn.classList.remove('add', 'deduct');
-    btn.classList.add(currentType);
-    
-    if (currentType === 'add') {
-        text.textContent = '确认增加金币';
-    } else {
-        text.textContent = '确认扣除金币';
-    }
-}
-
-// 提交按钮点击事件
-document.getElementById('submit-btn').addEventListener('click', function() {
-    var amount = parseInt(document.getElementById('c-amount').value) || 0;
-    var type = document.getElementById('c-type').value;
-    var remark = document.getElementById('c-remark').value;
-    
-    if (amount <= 0) {
-        if (typeof parent !== 'undefined' && parent.Toastr) {
-            parent.Toastr.error('请输入有效的金额');
-        } else {
-            alert('请输入有效的金额');
-        }
-        return;
-    }
-    
-    // 确认操作
-    var confirmText = type === 'add' ? '确定要增加 ' + amount + ' 金币吗？' : '确定要扣除 ' + amount + ' 金币吗？';
-    if (!confirm(confirmText)) {
-        return;
-    }
-    
-    // 禁用按钮防止重复提交
-    var btn = document.getElementById('submit-btn');
-    btn.disabled = true;
-    btn.innerHTML = '<i class="fa fa-spinner fa-spin"></i> 处理中...';
-    
-    // 获取当前页面 URL 作为基础 URL
-    var currentUrl = window.location.href;
-    var baseUrl = currentUrl.split('?')[0];
-    
-    // 发送请求
-    var xhr = new XMLHttpRequest();
-    xhr.open('POST', baseUrl, true);
-    xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
-    xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
-    
-    xhr.onreadystatechange = function() {
-        if (xhr.readyState === 4) {
-            btn.disabled = false;
-            updateSubmitBtn();
-            
-            if (xhr.status === 200) {
-                try {
-                    var res = JSON.parse(xhr.responseText);
-                    if (res.code === 1) {
-                        if (typeof parent !== 'undefined' && parent.Toastr) {
-                            parent.Toastr.success(res.msg || '操作成功');
-                        }
-                        if (typeof parent !== 'undefined' && parent.Layer) {
-                            parent.Layer.closeAll();
-                        }
-                        // 刷新父页面表格
-                        if (typeof parent !== 'undefined' && parent.$) {
-                            parent.$('#table').bootstrapTable('refresh');
-                        }
-                    } else {
-                        if (typeof parent !== 'undefined' && parent.Toastr) {
-                            parent.Toastr.error(res.msg || '操作失败');
-                        } else {
-                            alert(res.msg || '操作失败');
-                        }
-                    }
-                } catch (e) {
-                    if (typeof parent !== 'undefined' && parent.Toastr) {
-                        parent.Toastr.error('服务器返回数据格式错误');
-                    } else {
-                        alert('服务器返回数据格式错误');
-                    }
-                }
-            } else {
-                if (typeof parent !== 'undefined' && parent.Toastr) {
-                    parent.Toastr.error('网络请求失败');
-                } else {
-                    alert('网络请求失败');
-                }
-            }
-        }
-    };
-    
-    var params = 'ids={$row.id}&type=' + type + '&amount=' + amount + '&remark=' + encodeURIComponent(remark);
-    xhr.send(params);
-});
-</script>
