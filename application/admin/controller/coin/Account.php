@@ -170,11 +170,23 @@ class Account extends Backend
                 Db::name($logTableName)->insert($logData);
 
                 Db::commit();
-                $this->success();
-                return;  // 添加 return 防止继续执行
+                // 直接返回 JSON 响应
+                return json([
+                    'code' => 1,
+                    'msg' => '操作成功',
+                    'data' => null,
+                    'url' => '',
+                    'wait' => 3
+                ]);
             } catch (\Exception $e) {
                 Db::rollback();
-                $this->error($e->getMessage());
+                return json([
+                    'code' => 0,
+                    'msg' => $e->getMessage(),
+                    'data' => null,
+                    'url' => '',
+                    'wait' => 3
+                ]);
             }
         }
 
