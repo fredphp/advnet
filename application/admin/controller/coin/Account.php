@@ -171,6 +171,7 @@ class Account extends Backend
 
                 Db::commit();
                 $this->success();
+                return;  // 添加 return 防止继续执行
             } catch (\Exception $e) {
                 Db::rollback();
                 $this->error($e->getMessage());
