@@ -25,14 +25,15 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
                     [
                         {checkbox: true},
                         {field: 'id', title: 'ID', sortable: true},
-                        {field: 'inviter_id', title: '邀请人ID', sortable: true},
+                        {field: 'parent_id', title: '邀请人ID', sortable: true},
                         {field: 'inviter_name', title: '邀请人用户名', operate: 'LIKE'},
                         {field: 'inviter_nickname', title: '邀请人昵称', operate: 'LIKE'},
-                        {field: 'invitee_id', title: '被邀请人ID', sortable: true},
+                        {field: 'user_id', title: '被邀请人ID', sortable: true},
                         {field: 'invitee_name', title: '被邀请人用户名', operate: 'LIKE'},
                         {field: 'invitee_nickname', title: '被邀请人昵称', operate: 'LIKE'},
-                        {field: 'level', title: '邀请等级', searchList: {"1":"一级","2":"二级","3":"三级"}},
-                        {field: 'bind_time', title: '绑定时间', formatter: Table.api.formatter.datetime, operate: 'RANGE', addclass: 'datetimerange', sortable: true},
+                        {field: 'grandparent_id', title: '二级上级ID', sortable: true},
+                        {field: 'invite_code', title: '邀请码', operate: 'LIKE'},
+                        {field: 'invite_channel', title: '邀请渠道', searchList: {"link":"链接","qrcode":"二维码","share":"分享"}},
                         {field: 'createtime', title: '邀请时间', formatter: Table.api.formatter.datetime, operate: 'RANGE', addclass: 'datetimerange', sortable: true},
                         {field: 'operate', title: '操作', table: table, events: Table.api.events.operate, formatter: Table.api.formatter.operate}
                     ]

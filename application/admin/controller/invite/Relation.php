@@ -30,8 +30,8 @@ class Relation extends Backend
             $total = Db::name('invite_relation')->where($where)->count();
             $list = Db::name('invite_relation')
                 ->alias('ir')
-                ->join('user u1', 'u1.id = ir.inviter_id', 'LEFT')
-                ->join('user u2', 'u2.id = ir.invitee_id', 'LEFT')
+                ->join('user u1', 'u1.id = ir.parent_id', 'LEFT')
+                ->join('user u2', 'u2.id = ir.user_id', 'LEFT')
                 ->field('ir.*, u1.username as inviter_name, u1.nickname as inviter_nickname,
                          u2.username as invitee_name, u2.nickname as invitee_nickname')
                 ->where($where)
@@ -52,8 +52,8 @@ class Relation extends Backend
     {
         $row = Db::name('invite_relation')
             ->alias('ir')
-            ->join('user u1', 'u1.id = ir.inviter_id', 'LEFT')
-            ->join('user u2', 'u2.id = ir.invitee_id', 'LEFT')
+            ->join('user u1', 'u1.id = ir.parent_id', 'LEFT')
+            ->join('user u2', 'u2.id = ir.user_id', 'LEFT')
             ->field('ir.*, u1.username as inviter_name, u1.nickname as inviter_nickname, u1.mobile as inviter_mobile,
                      u2.username as invitee_name, u2.nickname as invitee_nickname, u2.mobile as invitee_mobile')
             ->where('ir.id', $ids)
@@ -65,7 +65,7 @@ class Relation extends Backend
 
         // 获取邀请人的累计邀请人数和佣金
         $inviterStats = Db::name('user_invite_stat')
-            ->where('user_id', $row['inviter_id'])
+            ->where('user_id', $row['parent_id'])
             ->find();
 
         // 获取被邀请人的消费统计（从最近6个月的分表查询）
@@ -82,7 +82,7 @@ class Relation extends Backend
         foreach ($tables as $table) {
             if (CoinLog::tableExists($table)) {
                 $result = Db::name($table)
-                    ->where('user_id', $row['invitee_id'])
+                    ->where('user_id', $row['user_id'])
                     ->where('type', 'spend')
                     ->field('SUM(amount) as total_spend, COUNT(*) as spend_count')
                     ->find();

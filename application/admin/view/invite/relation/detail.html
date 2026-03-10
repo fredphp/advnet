@@ -2,19 +2,31 @@
     <div class="form-group">
         <label class="control-label col-xs-12 col-sm-2">邀请人:</label>
         <div class="col-xs-12 col-sm-8">
-            <p class="form-control-static">{$row.inviter_name|default='-'} ({$row.inviter_nickname|default='-'})</p>
+            <p class="form-control-static">{$row.inviter_name|default='-'} ({$row.inviter_nickname|default='-'}) [ID: {$row.parent_id|default=0}]</p>
         </div>
     </div>
     <div class="form-group">
         <label class="control-label col-xs-12 col-sm-2">被邀请人:</label>
         <div class="col-xs-12 col-sm-8">
-            <p class="form-control-static">{$row.invitee_name|default='-'} ({$row.invitee_nickname|default='-'})</p>
+            <p class="form-control-static">{$row.invitee_name|default='-'} ({$row.invitee_nickname|default='-'}) [ID: {$row.user_id|default=0}]</p>
         </div>
     </div>
     <div class="form-group">
-        <label class="control-label col-xs-12 col-sm-2">邀请等级:</label>
+        <label class="control-label col-xs-12 col-sm-2">二级上级:</label>
         <div class="col-xs-12 col-sm-8">
-            <p class="form-control-static">{$row.level|default=1}级</p>
+            <p class="form-control-static">{$row.grandparent_id|default=0}</p>
+        </div>
+    </div>
+    <div class="form-group">
+        <label class="control-label col-xs-12 col-sm-2">邀请码:</label>
+        <div class="col-xs-12 col-sm-8">
+            <p class="form-control-static">{$row.invite_code|default='-'}</p>
+        </div>
+    </div>
+    <div class="form-group">
+        <label class="control-label col-xs-12 col-sm-2">邀请渠道:</label>
+        <div class="col-xs-12 col-sm-8">
+            <p class="form-control-static">{if $row.invite_channel == 'link'}链接邀请{elseif $row.invite_channel == 'qrcode'}二维码邀请{elseif $row.invite_channel == 'share'}分享邀请{else}{$row.invite_channel|default='-'}{/if}</p>
         </div>
     </div>
     <div class="form-group">
@@ -24,9 +36,21 @@
         </div>
     </div>
     <div class="form-group">
+        <label class="control-label col-xs-12 col-sm-2">邀请IP:</label>
+        <div class="col-xs-12 col-sm-8">
+            <p class="form-control-static">{$row.invite_ip|default='-'}</p>
+        </div>
+    </div>
+    <div class="form-group">
         <label class="control-label col-xs-12 col-sm-2">邀请人累计邀请:</label>
         <div class="col-xs-12 col-sm-8">
             <p class="form-control-static">{$inviterStats.total_invite_count|default=0}人，累计佣金 {$inviterStats.total_commission|default=0}</p>
+        </div>
+    </div>
+    <div class="form-group">
+        <label class="control-label col-xs-12 col-sm-2">被邀请人消费统计:</label>
+        <div class="col-xs-12 col-sm-8">
+            <p class="form-control-static">消费 {$inviteeStats.spend_count|default=0} 次，累计消费 {$inviteeStats.total_spend|default=0}</p>
         </div>
     </div>
 </form>
