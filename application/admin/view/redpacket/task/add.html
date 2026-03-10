@@ -1,0 +1,121 @@
+<form id="add-form" class="form-horizontal" role="form" data-toggle="validator" method="POST" action="">
+    <div class="form-group">
+        <label class="control-label col-xs-12 col-sm-2">任务名称:</label>
+        <div class="col-xs-12 col-sm-8">
+            <input id="c-name" class="form-control" name="row[name]" type="text" placeholder="任务名称" required>
+        </div>
+    </div>
+
+    <div class="form-group">
+        <label class="control-label col-xs-12 col-sm-2">展示标题:</label>
+        <div class="col-xs-12 col-sm-8">
+            <input id="c-display_title" class="form-control" name="row[display_title]" type="text" placeholder="展示标题（可选，不填则使用资源名称）">
+            <span class="help-block">前端展示的标题，如下载App时显示的应用名称。留空则使用关联资源的名称</span>
+        </div>
+    </div>
+
+    <div class="form-group">
+        <label class="control-label col-xs-12 col-sm-2">任务描述:</label>
+        <div class="col-xs-12 col-sm-8">
+            <textarea id="c-description" class="form-control" name="row[description]" rows="3" placeholder="任务描述"></textarea>
+        </div>
+    </div>
+
+    <div class="form-group">
+        <label class="control-label col-xs-12 col-sm-2">展示描述:</label>
+        <div class="col-xs-12 col-sm-8">
+            <textarea id="c-display_description" class="form-control" name="row[display_description]" rows="2" placeholder="展示描述（可选）"></textarea>
+            <span class="help-block">前端展示的详细描述。留空则使用关联资源的描述</span>
+        </div>
+    </div>
+
+    <div class="form-group">
+        <label class="control-label col-xs-12 col-sm-2">任务类型:</label>
+        <div class="col-xs-12 col-sm-8">
+            <select id="c-type" class="form-control selectpicker" name="row[type]" required>
+                <option value="chat" selected>普通聊天</option>
+                <option value="download">下载App</option>
+                <option value="miniapp">小程序游戏</option>
+                <option value="adv">广告时长</option>
+                <option value="video">观看视频</option>
+            </select>
+            <span class="help-block type-tip">
+                <strong>小程序游戏</strong>：前端显示红包，用户点击可累计红包金额<br>
+                <strong>其他类型</strong>：前端显示文字/广告卡片，点击跳转对应链接
+            </span>
+        </div>
+    </div>
+
+    <div class="form-group">
+        <label class="control-label col-xs-12 col-sm-2">是否显示红包:</label>
+        <div class="col-xs-12 col-sm-8">
+            <select id="c-show_red_packet" class="form-control selectpicker" name="row[show_red_packet]">
+                <option value="0">否</option>
+                <option value="1" selected>是</option>
+            </select>
+            <span class="help-block">默认只有"小程序游戏"类型显示红包，可手动控制</span>
+        </div>
+    </div>
+
+    <!-- 资源选择区域 -->
+    <div class="form-group resource-select-area">
+        <label class="control-label col-xs-12 col-sm-2">关联资源:</label>
+        <div class="col-xs-12 col-sm-8">
+            <input id="c-resource_id" class="form-control selectpage" name="row[resource_id]"
+                   type="text" value=""
+                   data-source="redpacket/resource/select"
+                   data-field="name"
+                   data-primary-key="id"
+                   data-pagination="true"
+                   data-page-size="10"
+                   data-params='{"custom[type]":""}'
+                   placeholder="请选择关联资源">
+            <span class="help-block resource-type-tip">选择资源后，将使用资源中的图标、背景图、跳转链接等信息</span>
+        </div>
+    </div>
+
+    <!-- 资源信息展示区域 -->
+    <div class="form-group resource-info-area" style="display:none;">
+        <label class="control-label col-xs-12 col-sm-2">资源详情:</label>
+        <div class="col-xs-12 col-sm-8">
+            <div class="panel panel-info" style="margin-bottom:0;">
+                <div class="panel-heading">
+                    <h4 class="panel-title"><i class="fa fa-info-circle"></i> 关联资源信息</h4>
+                </div>
+                <div class="panel-body" style="padding:15px;">
+                    <div class="media">
+                        <div class="media-left">
+                            <img id="resource-logo" src="" style="width:64px;height:64px;border-radius:8px;border:1px solid #eee;background:#f5f5f5;">
+                        </div>
+                        <div class="media-body">
+                            <h4 id="resource-name" class="media-heading" style="margin-top:0;margin-bottom:5px;"></h4>
+                            <p id="resource-description" class="text-muted" style="margin-bottom:10px;"></p>
+                            <div id="resource-detail-info"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <span class="help-block text-info"><i class="fa fa-info-circle"></i> 背景图、跳转链接等信息将使用关联资源中的配置</span>
+        </div>
+    </div>
+
+    <div class="form-group">
+        <label class="control-label col-xs-12 col-sm-2">状态:</label>
+        <div class="col-xs-12 col-sm-8">
+            <select id="c-status" class="form-control selectpicker" name="row[status]">
+                <option value="pending" selected>待发送</option>
+                <option value="normal">进行中</option>
+                <option value="finished">已抢完</option>
+                <option value="expired">已过期</option>
+            </select>
+        </div>
+    </div>
+
+    <div class="form-group layer-footer">
+        <label class="control-label col-xs-12 col-sm-2"></label>
+        <div class="col-xs-12 col-sm-8">
+            <button type="submit" class="btn btn-success btn-embossed disabled">{:__('OK')}</button>
+            <button type="reset" class="btn btn-default btn-embossed">{:__('Reset')}</button>
+        </div>
+    </div>
+</form>

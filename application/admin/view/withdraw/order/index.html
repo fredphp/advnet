@@ -1,0 +1,75 @@
+<div class="panel panel-default panel-intro">
+    {:build_heading()}
+
+    <div class="panel-body">
+        <!-- 统计卡片区域 -->
+        <div class="row" style="margin-bottom: 15px;" id="stats-cards">
+            <div class="col-xs-6 col-sm-4 col-md-2">
+                <div class="panel panel-default">
+                    <div class="panel-body text-center">
+                        <div class="text-muted">今日提现金额</div>
+                        <h3 class="text-primary" id="stat-today-total">¥0.00</h3>
+                        <small class="text-muted">共 <span id="stat-today-count">0</span> 笔</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-xs-6 col-sm-4 col-md-2">
+                <div class="panel panel-warning">
+                    <div class="panel-body text-center">
+                        <div class="text-muted">待审核金额</div>
+                        <h3 class="text-warning" id="stat-pending-amount">¥0.00</h3>
+                        <small class="text-muted">共 <span id="stat-pending-count">0</span> 笔</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-xs-6 col-sm-4 col-md-2">
+                <div class="panel panel-info">
+                    <div class="panel-body text-center">
+                        <div class="text-muted">待打款金额</div>
+                        <h3 class="text-info" id="stat-approved-amount">¥0.00</h3>
+                        <small class="text-muted">共 <span id="stat-approved-count">0</span> 笔</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-xs-6 col-sm-4 col-md-2">
+                <div class="panel panel-danger">
+                    <div class="panel-body text-center">
+                        <div class="text-muted">已拒绝金额</div>
+                        <h3 class="text-danger" id="stat-rejected-amount">¥0.00</h3>
+                        <small class="text-muted">共 <span id="stat-rejected-count">0</span> 笔</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-xs-6 col-sm-4 col-md-2">
+                <div class="panel panel-success">
+                    <div class="panel-body text-center">
+                        <div class="text-muted">已成功金额</div>
+                        <h3 class="text-success" id="stat-success-amount">¥0.00</h3>
+                        <small class="text-muted">共 <span id="stat-success-count">0</span> 笔</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div id="myTabContent" class="tab-content">
+            <div class="tab-pane fade active in" id="one">
+                <div class="widget-body no-padding">
+                    <div id="toolbar" class="toolbar">
+                        <a href="javascript:;" class="btn btn-primary btn-refresh" title="{:__('Refresh')}"><i class="fa fa-refresh"></i></a>
+                        <a href="javascript:;" class="btn btn-success btn-approve btn-disabled disabled {:$auth->check('withdraw/order/approve')?'':'hide'}" title="审核通过"><i class="fa fa-check"></i> 审核通过</a>
+                        <a href="javascript:;" class="btn btn-danger btn-reject btn-disabled disabled {:$auth->check('withdraw/order/reject')?'':'hide'}" title="审核拒绝"><i class="fa fa-times"></i> 审核拒绝</a>
+                        <a href="javascript:;" class="btn btn-warning btn-complete btn-disabled disabled {:$auth->check('withdraw/order/complete')?'':'hide'}" title="确认打款"><i class="fa fa-money"></i> 确认打款</a>
+                        <a href="javascript:;" class="btn btn-info btn-export {:$auth->check('withdraw/order/export')?'':'hide'}" title="导出"><i class="fa fa-download"></i> 导出</a>
+                    </div>
+                    <table id="table" class="table table-striped table-bordered table-hover table-nowrap"
+                           data-operate-detail="{:$auth->check('withdraw/order/detail')}"
+                           data-operate-approve="{:$auth->check('withdraw/order/approve')}"
+                           data-operate-reject="{:$auth->check('withdraw/order/reject')}"
+                           data-operate-complete="{:$auth->check('withdraw/order/complete')}"
+                           width="100%">
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

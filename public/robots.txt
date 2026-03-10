@@ -1,0 +1,19 @@
+<<<<<<< HEAD
+User-agent: *
+Disallow:
+=======
+User-agent: Googlebot
+Allow: /
+
+User-agent: Bingbot
+Allow: /
+
+User-agent: Twitterbot
+Allow: /
+
+User-agent: facebookexternalhit
+Allow: /
+
+User-agent: *
+Allow: /
+>>>>>>> 2575e4d (Initial commit)

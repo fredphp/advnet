@@ -1,0 +1,227 @@
+<form id="approve-form" class="form-horizontal" role="form" method="post" action="{$Request.url}">
+    <div class="panel-body">
+        <!-- 订单信息 -->
+        <div class="panel panel-default">
+            <div class="panel-heading"><strong>订单信息</strong></div>
+            <div class="panel-body">
+                <table class="table table-bordered">
+                    <tr>
+                        <td width="120">订单号</td>
+                        <td>{$order.order_no}</td>
+                        <td width="120">申请时间</td>
+                        <td>{$order.createtime|date='Y-m-d H:i:s',###}</td>
+                    </tr>
+                    <tr>
+                        <td>提现金币</td>
+                        <td><strong class="text-primary">{$order.coin_amount|number_format=###}</strong></td>
+                        <td>提现金额</td>
+                        <td><strong class="text-danger">¥{$order.cash_amount}</strong></td>
+                    </tr>
+                    <tr>
+                        <td>提现方式</td>
+                        <td>{$withdrawTypeText}</td>
+                        <td>收款人</td>
+                        <td>{$order.withdraw_name}</td>
+                    </tr>
+                    <tr>
+                        <td>收款账号</td>
+                        <td colspan="3">{$order.withdraw_account}</td>
+                    </tr>
+                    {if $order.bank_name}
+                    <tr>
+                        <td>银行名称</td>
+                        <td colspan="3">{$order.bank_name} {$order.bank_branch}</td>
+                    </tr>
+                    {/if}
+                </table>
+            </div>
+        </div>
+
+        <!-- 用户信息 -->
+        <div class="panel panel-default">
+            <div class="panel-heading"><strong>用户信息</strong></div>
+            <div class="panel-body">
+                <table class="table table-bordered">
+                    <tr>
+                        <td width="120">用户ID</td>
+                        <td>{$user.id}</td>
+                        <td width="120">用户昵称</td>
+                        <td>{$user.nickname}</td>
+                    </tr>
+                    <tr>
+                        <td>手机号</td>
+                        <td>{$user.mobile}</td>
+                        <td>注册时间</td>
+                        <td>{$user.createtime|date='Y-m-d H:i',###}</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+
+        <!-- 用户提现统计 -->
+        <div class="panel panel-info">
+            <div class="panel-heading"><strong>用户提现统计</strong></div>
+            <div class="panel-body">
+                <div class="row">
+                    <div class="col-xs-6">
+                        <table class="table table-bordered">
+                            <tr class="info">
+                                <th colspan="2" class="text-center">今日提现</th>
+                            </tr>
+                            <tr>
+                                <td width="120">今日申请</td>
+                                <td>
+                                    <strong class="text-primary">{$todayStats.count} 笔</strong><br>
+                                    <small class="text-muted">金币: {$todayStats.coin_amount|number_format=###}</small><br>
+                                    <small class="text-success">金额: ¥{$todayStats.cash_amount}</small>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>今日成功</td>
+                                <td>
+                                    <strong class="text-success">{$todayStats.success_count} 笔</strong><br>
+                                    <small class="text-success">金额: ¥{$todayStats.success_amount}</small>
+                                </td>
+                            </tr>
+                        </table>
+                    </div>
+                    <div class="col-xs-6">
+                        <table class="table table-bordered">
+                            <tr class="info">
+                                <th colspan="2" class="text-center">累计提现</th>
+                            </tr>
+                            <tr>
+                                <td width="120">累计申请</td>
+                                <td>
+                                    <strong class="text-primary">{$totalStats.total_count} 笔</strong><br>
+                                    <small class="text-muted">金币: {$totalStats.total_coin|number_format=###}</small><br>
+                                    <small class="text-success">金额: ¥{$totalStats.total_amount}</small>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>累计成功</td>
+                                <td>
+                                    <strong class="text-success">{$totalStats.success_count} 笔</strong><br>
+                                    <small class="text-success">金额: ¥{$totalStats.success_amount}</small>
+                                </td>
+                            </tr>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- 账户余额 -->
+                <div class="well well-sm">
+                    <div class="row">
+                        <div class="col-xs-4 text-center">
+                            <strong>账户余额:</strong> <span class="text-primary">{$account.balance|number_format=###}</span> 金币
+                        </div>
+                        <div class="col-xs-4 text-center">
+                            <strong>冻结金额:</strong> <span class="text-warning">{$account.frozen|number_format=###}</span> 金币
+                        </div>
+                        <div class="col-xs-4 text-center">
+                            <strong>累计收益:</strong> <span class="text-success">{$account.total_earn|number_format=###}</span> 金币
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 风控信息 -->
+        {if $riskInfo}
+        <div class="panel {if $riskInfo.risk_level == 'high'}panel-danger{elseif $riskInfo.risk_level == 'medium'}panel-warning{else}panel-default{/if}">
+            <div class="panel-heading"><strong>风控信息</strong></div>
+            <div class="panel-body">
+                <table class="table table-bordered">
+                    <tr>
+                        <td width="120">风险等级</td>
+                        <td>
+                            {if $riskInfo.risk_level == 'high'}
+                            <span class="label label-danger">高风险</span>
+                            {elseif $riskInfo.risk_level == 'medium'}
+                            <span class="label label-warning">中风险</span>
+                            {else}
+                            <span class="label label-success">低风险</span>
+                            {/if}
+                        </td>
+                        <td width="120">风险评分</td>
+                        <td><strong>{$riskInfo.total_score}</strong></td>
+                    </tr>
+                    {if $riskInfoTags}
+                    <tr>
+                        <td>风险标签</td>
+                        <td colspan="3">
+                            {foreach $riskInfoTags as $tag}
+                            <span class="label label-warning">{$tag}</span>
+                            {/foreach}
+                        </td>
+                    </tr>
+                    {/if}
+                </table>
+            </div>
+        </div>
+        {/if}
+
+        <!-- 订单风控标签 -->
+        {if $order.risk_tags}
+        <div class="panel panel-warning">
+            <div class="panel-heading"><strong>订单风控标签</strong></div>
+            <div class="panel-body">
+                {foreach $orderRiskTags as $tag}
+                <span class="label label-warning" style="margin-right:5px;">{$tag}</span>
+                {/foreach}
+                <span class="text-muted">(风控评分: {$order.risk_score})</span>
+            </div>
+        </div>
+        {/if}
+
+        <!-- 最近提现记录 -->
+        {if $recentOrders}
+        <div class="panel panel-default">
+            <div class="panel-heading"><strong>最近提现记录</strong></div>
+            <div class="panel-body">
+                <table class="table table-bordered table-condensed">
+                    <thead>
+                        <tr>
+                            <th>订单号</th>
+                            <th>金额</th>
+                            <th>状态</th>
+                            <th>时间</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {foreach $recentOrders as $recent}
+                        <tr>
+                            <td>{$recent.order_no}</td>
+                            <td>¥{$recent.cash_amount}</td>
+                            <td>{$recent.status_text}</td>
+                            <td>{$recent.createtime|date='m-d H:i',###}</td>
+                        </tr>
+                        {/foreach}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {/if}
+
+        <!-- 审核备注 -->
+        <div class="form-group">
+            <label class="control-label col-xs-12 col-sm-2">审核备注:</label>
+            <div class="col-xs-12 col-sm-8">
+                <textarea name="remark" class="form-control" rows="2" placeholder="选填，审核备注信息"></textarea>
+            </div>
+        </div>
+
+        <!-- 隐藏字段 - 使用订单号作为唯一标识 -->
+        <input type="hidden" name="order_no" value="{$order.order_no}">
+    </div>
+
+    <!-- 确认按钮 -->
+    <div class="form-group layer-footer">
+        <label class="control-label col-xs-12 col-sm-2"></label>
+        <div class="col-xs-12 col-sm-8">
+            <button type="submit" class="btn btn-success btn-embossed">
+                <i class="fa fa-check"></i> 确认审核通过
+            </button>
+        </div>
+    </div>
+</form>

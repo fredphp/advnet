@@ -1,0 +1,233 @@
+<form id="detail-form" class="form-horizontal" role="form">
+    <div class="panel-body">
+        <!-- 订单基本信息 -->
+        <div class="panel panel-default">
+            <div class="panel-heading"><strong>订单信息</strong></div>
+            <div class="panel-body">
+                <table class="table table-bordered">
+                    <tr>
+                        <td width="120">订单号</td>
+                        <td>{$order.order_no|default=''}</td>
+                        <td width="120">状态</td>
+                        <td>
+                            {if condition="$order.status == 0"}
+                            <span class="label label-warning">待审核</span>
+                            {elseif condition="$order.status == 1"}
+                            <span class="label label-info">审核通过</span>
+                            {elseif condition="$order.status == 2"}
+                            <span class="label label-primary">打款中</span>
+                            {elseif condition="$order.status == 3"}
+                            <span class="label label-success">提现成功</span>
+                            {elseif condition="$order.status == 4"}
+                            <span class="label label-danger">审核拒绝</span>
+                            {elseif condition="$order.status == 5"}
+                            <span class="label label-danger">打款失败</span>
+                            {else}
+                            <span class="label label-default">已取消</span>
+                            {/if}
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>提现金币</td>
+                        <td><strong class="text-primary">{$order.coin_amount|default=0}</strong></td>
+                        <td>提现金额</td>
+                        <td><strong class="text-danger">¥{$order.cash_amount|default='0.00'}</strong></td>
+                    </tr>
+                    <tr>
+                        <td>手续费</td>
+                        <td>¥{$order.fee_amount|default='0.00'}</td>
+                        <td>实际到账</td>
+                        <td><strong class="text-success">¥{$order.actual_amount|default=$order.cash_amount|default='0.00'}</strong></td>
+                    </tr>
+                    <tr>
+                        <td>提现方式</td>
+                        <td>{$withdrawTypeText|default='微信'}</td>
+                        <td>收款人</td>
+                        <td>{$order.withdraw_name|default=''}</td>
+                    </tr>
+                    <tr>
+                        <td>收款账号</td>
+                        <td colspan="3">{$order.withdraw_account|default=''}</td>
+                    </tr>
+                    {if condition="isset($order['bank_name']) && $order['bank_name']"}
+                    <tr>
+                        <td>银行信息</td>
+                        <td colspan="3">{$order.bank_name|default=''} {$order.bank_branch|default=''}</td>
+                    </tr>
+                    {/if}
+                    <tr>
+                        <td>申请时间</td>
+                        <td>{$order.createtime|date='Y-m-d H:i:s',###}</td>
+                        <td>用户ID</td>
+                        <td>{$order.user_id|default=0}</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+
+        <!-- 审核信息 -->
+        {if condition="isset($order['status']) && $order['status'] > 0"}
+        <div class="panel panel-default">
+            <div class="panel-heading"><strong>审核信息</strong></div>
+            <div class="panel-body">
+                <table class="table table-bordered">
+                    {if condition="isset($order['audit_admin_name']) && $order['audit_admin_name']"}
+                    <tr>
+                        <td width="120">审核人</td>
+                        <td>{$order.audit_admin_name|default=''} (ID: {$order.audit_admin_id|default=0})</td>
+                        <td width="120">审核时间</td>
+                        <td>{$order.audit_time|date='Y-m-d H:i:s',###}</td>
+                    </tr>
+                    {/if}
+                    {if condition="isset($order['audit_remark']) && $order['audit_remark']"}
+                    <tr>
+                        <td>审核备注</td>
+                        <td colspan="3">{$order.audit_remark|default=''}</td>
+                    </tr>
+                    {/if}
+                    {if condition="isset($order['reject_reason']) && $order['reject_reason']"}
+                    <tr>
+                        <td>拒绝原因</td>
+                        <td colspan="3" class="text-danger"><strong>{$order.reject_reason|default=''}</strong></td>
+                    </tr>
+                    {/if}
+                </table>
+            </div>
+        </div>
+        {/if}
+
+        <!-- 打款信息 -->
+        {if condition="isset($order['status']) && $order['status'] >= 3"}
+        <div class="panel panel-default">
+            <div class="panel-heading"><strong>打款信息</strong></div>
+            <div class="panel-body">
+                <table class="table table-bordered">
+                    {if condition="isset($order['transfer_no']) && $order['transfer_no']"}
+                    <tr>
+                        <td width="120">打款流水号</td>
+                        <td colspan="3">{$order.transfer_no|default=''}</td>
+                    </tr>
+                    {/if}
+                    {if condition="isset($order['complete_time']) && $order['complete_time']"}
+                    <tr>
+                        <td>完成时间</td>
+                        <td colspan="3">{$order.complete_time|date='Y-m-d H:i:s',###}</td>
+                    </tr>
+                    {/if}
+                    {if condition="isset($order['fail_reason']) && $order['fail_reason']"}
+                    <tr>
+                        <td>失败原因</td>
+                        <td colspan="3" class="text-danger">{$order.fail_reason|default=''}</td>
+                    </tr>
+                    {/if}
+                </table>
+            </div>
+        </div>
+        {/if}
+
+        <!-- 用户信息 -->
+        <div class="panel panel-default">
+            <div class="panel-heading"><strong>用户信息</strong></div>
+            <div class="panel-body">
+                <table class="table table-bordered">
+                    <tr>
+                        <td width="120">用户ID</td>
+                        <td>{$user.id|default='-'}</td>
+                        <td width="120">用户昵称</td>
+                        <td>{$user.nickname|default='-'}</td>
+                    </tr>
+                    <tr>
+                        <td>手机号</td>
+                        <td>{$user.mobile|default='-'}</td>
+                        <td>注册时间</td>
+                        <td>{$user.createtime|date='Y-m-d H:i',###}</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+
+        <!-- 用户提现统计 -->
+        <div class="panel panel-info">
+            <div class="panel-heading"><strong>用户提现统计</strong></div>
+            <div class="panel-body">
+                <div class="row">
+                    <div class="col-xs-6">
+                        <table class="table table-bordered">
+                            <tr class="info">
+                                <th colspan="2" class="text-center">累计提现</th>
+                            </tr>
+                            <tr>
+                                <td width="120">累计申请</td>
+                                <td>
+                                    <strong class="text-primary">{$user_stats.total_count|default=0} 笔</strong><br>
+                                    <small class="text-success">金额: ¥{$user_stats.total_amount|default='0.00'}</small>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>累计成功</td>
+                                <td>
+                                    <strong class="text-success">{$user_stats.success_count|default=0} 笔</strong><br>
+                                    <small class="text-success">金额: ¥{$user_stats.success_amount|default='0.00'}</small>
+                                </td>
+                            </tr>
+                        </table>
+                    </div>
+                    <div class="col-xs-6">
+                        <table class="table table-bordered">
+                            <tr class="info">
+                                <th colspan="2" class="text-center">风险信息</th>
+                            </tr>
+                            {if condition="$risk_info"}
+                            <tr>
+                                <td width="120">风险等级</td>
+                                <td>
+                                    {if condition="$risk_info['risk_level'] == 'high'"}
+                                    <span class="label label-danger">高风险</span>
+                                    {elseif condition="$risk_info['risk_level'] == 'medium'"}
+                                    <span class="label label-warning">中风险</span>
+                                    {else}
+                                    <span class="label label-success">低风险</span>
+                                    {/if}
+                                </td>
+                            </tr>
+                            {else}
+                            <tr>
+                                <td colspan="2" class="text-center text-muted">暂无风险信息</td>
+                            </tr>
+                            {/if}
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 最近提现记录 -->
+        {if condition="$recent_orders"}
+        <div class="panel panel-default">
+            <div class="panel-heading"><strong>最近提现记录</strong></div>
+            <div class="panel-body">
+                <table class="table table-bordered table-condensed">
+                    <thead>
+                        <tr>
+                            <th>订单号</th>
+                            <th>金额</th>
+                            <th>状态</th>
+                            <th>时间</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {foreach $recent_orders as $recent}
+                        <tr>
+                            <td>{$recent.order_no}</td>
+                            <td>¥{$recent.cash_amount}</td>
+                            <td>{$recent.status_text}</td>
+                            <td>{$recent.createtime|date='m-d H:i',###}</td>
+                        </tr>
+                        {/foreach}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {/if}
+    </div>
+</form>

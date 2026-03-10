@@ -1,0 +1,187 @@
+<form id="edit-form" class="form-horizontal" role="form" data-toggle="validator" method="POST" action="">
+    <input type="hidden" name="row[id]" value="{$row.id}">
+    
+    <!-- 数据统计编辑卡片 -->
+    <div class="panel panel-info" style="margin-bottom: 15px;">
+        <div class="panel-heading">
+            <h3 class="panel-title"><i class="fa fa-bar-chart"></i> 统计数据 <small style="color:#fff;">（可编辑）</small></h3>
+        </div>
+        <div class="panel-body">
+            <div class="row">
+                <div class="col-xs-6 col-sm-3">
+                    <div class="form-group" style="margin-bottom: 10px;">
+                        <label class="control-label" style="color: #337ab7;"><i class="fa fa-video-camera"></i> 视频数量</label>
+                        <input type="number" class="form-control" name="row[video_count]" value="{$row.video_count|default=0}" min="0">
+                    </div>
+                </div>
+                <div class="col-xs-6 col-sm-3">
+                    <div class="form-group" style="margin-bottom: 10px;">
+                        <label class="control-label" style="color: #d9534f;"><i class="fa fa-play-circle"></i> 总播放量</label>
+                        <input type="number" class="form-control" name="row[total_views]" value="{$row.total_views|default=0}" min="0">
+                    </div>
+                </div>
+                <div class="col-xs-6 col-sm-3">
+                    <div class="form-group" style="margin-bottom: 10px;">
+                        <label class="control-label" style="color: #f0ad4e;"><i class="fa fa-thumbs-up"></i> 总点赞数</label>
+                        <input type="number" class="form-control" name="row[total_likes]" value="{$row.total_likes|default=0}" min="0">
+                    </div>
+                </div>
+                <div class="col-xs-6 col-sm-3">
+                    <div class="form-group" style="margin-bottom: 10px;">
+                        <label class="control-label" style="color: #5bc0de;"><i class="fa fa-money"></i> 总获得金币</label>
+                        <input type="number" class="form-control" name="row[total_coins]" value="{$row.total_coins|default=0}" min="0">
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="form-group">
+        <label class="control-label col-xs-12 col-sm-2">{:__('作者名称')}:</label>
+        <div class="col-xs-12 col-sm-8">
+            <input id="c-name" data-rule="required" class="form-control" name="row[name]" type="text" value="{$row.name}">
+        </div>
+    </div>
+    <div class="form-group">
+        <label class="control-label col-xs-12 col-sm-2">{:__('昵称')}:</label>
+        <div class="col-xs-12 col-sm-8">
+            <input id="c-nickname" class="form-control" name="row[nickname]" type="text" value="{$row.nickname}">
+        </div>
+    </div>
+    <div class="form-group">
+        <label class="control-label col-xs-12 col-sm-2">{:__('头像')}:</label>
+        <div class="col-xs-12 col-sm-8">
+            <div class="input-group">
+                <input id="c-avatar" class="form-control" size="50" name="row[avatar]" type="text" value="{$row.avatar}" placeholder="头像URL">
+                <div class="input-group-addon no-border no-padding">
+                    <span><button type="button" id="faupload-avatar" class="btn btn-danger faupload" data-input-id="c-avatar" data-mimetype="image/*" data-preview-id="p-avatar"><i class="fa fa-upload"></i> {:__('Upload')}</button></span>
+                    <span><button type="button" id="fachoose-avatar" class="btn btn-primary fachoose" data-input-id="c-avatar" data-mimetype="image/*"><i class="fa fa-list"></i> {:__('Choose')}</button></span>
+                </div>
+            </div>
+            <ul class="row list-inline faupload-preview" id="p-avatar"></ul>
+        </div>
+    </div>
+    <div class="form-group">
+        <label class="control-label col-xs-12 col-sm-2">{:__('联系电话')}:</label>
+        <div class="col-xs-12 col-sm-8">
+            <input id="c-phone" class="form-control" name="row[phone]" type="text" value="{$row.phone}">
+        </div>
+    </div>
+    <div class="form-group">
+        <label class="control-label col-xs-12 col-sm-2">{:__('邮箱')}:</label>
+        <div class="col-xs-12 col-sm-8">
+            <input id="c-email" class="form-control" name="row[email]" type="email" value="{$row.email}">
+        </div>
+    </div>
+    <div class="form-group">
+        <label class="control-label col-xs-12 col-sm-2">{:__('微信号')}:</label>
+        <div class="col-xs-12 col-sm-8">
+            <input id="c-wechat" class="form-control" name="row[wechat]" type="text" value="{$row.wechat}">
+        </div>
+    </div>
+    
+    <div class="panel panel-default">
+        <div class="panel-heading"><strong>{:__('地区信息')}</strong></div>
+        <div class="panel-body">
+            <div class="form-group">
+                <label class="control-label col-xs-12 col-sm-2">{:__('IP地址')}:</label>
+                <div class="col-xs-12 col-sm-8">
+                    <input id="c-ip" class="form-control" name="row[ip]" type="text" value="{$row.ip}">
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="control-label col-xs-12 col-sm-2">{:__('国家')}:</label>
+                <div class="col-xs-12 col-sm-8">
+                    <input id="c-country" class="form-control" name="row[country]" type="text" value="{$row.country}">
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="control-label col-xs-12 col-sm-2">{:__('省份')}:</label>
+                <div class="col-xs-12 col-sm-8">
+                    <input id="c-province" class="form-control" name="row[province]" type="text" value="{$row.province}">
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="control-label col-xs-12 col-sm-2">{:__('城市')}:</label>
+                <div class="col-xs-12 col-sm-8">
+                    <input id="c-city" class="form-control" name="row[city]" type="text" value="{$row.city}">
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="control-label col-xs-12 col-sm-2">{:__('地区')}:</label>
+                <div class="col-xs-12 col-sm-8">
+                    <input id="c-region" class="form-control" name="row[region]" type="text" value="{$row.region}">
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="form-group">
+        <label class="control-label col-xs-12 col-sm-2">{:__('简介')}:</label>
+        <div class="col-xs-12 col-sm-8">
+            <textarea id="c-description" class="form-control" name="row[description]" rows="3">{$row.description}</textarea>
+        </div>
+    </div>
+    
+    <div class="panel panel-default">
+        <div class="panel-heading"><strong>{:__('认证信息')}</strong></div>
+        <div class="panel-body">
+            <div class="form-group">
+                <label class="control-label col-xs-12 col-sm-2">{:__('认证状态')}:</label>
+                <div class="col-xs-12 col-sm-8">
+                    <select id="c-verify_status" class="form-control selectpicker" name="row[verify_status]">
+                        {foreach name="verifyStatusList" item="vo" key="k"}
+                        <option value="{$k}" {if $row.verify_status == $k}selected{/if}>{$vo}</option>
+                        {/foreach}
+                    </select>
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="control-label col-xs-12 col-sm-2">{:__('认证类型')}:</label>
+                <div class="col-xs-12 col-sm-8">
+                    <select id="c-verify_type" class="form-control selectpicker" name="row[verify_type]">
+                        <option value="">请选择认证类型</option>
+                        {foreach name="verifyTypeList" item="vo" key="k"}
+                        <option value="{$k}" {if $row.verify_type == $k}selected{/if}>{$vo}</option>
+                        {/foreach}
+                    </select>
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="control-label col-xs-12 col-sm-2">{:__('认证信息')}:</label>
+                <div class="col-xs-12 col-sm-8">
+                    <input id="c-verify_info" class="form-control" name="row[verify_info]" type="text" value="{$row.verify_info}">
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="form-group">
+        <label class="control-label col-xs-12 col-sm-2">{:__('排序权重')}:</label>
+        <div class="col-xs-12 col-sm-8">
+            <input id="c-weigh" class="form-control" name="row[weigh]" type="number" value="{$row.weigh}">
+        </div>
+    </div>
+    <div class="form-group">
+        <label class="control-label col-xs-12 col-sm-2">{:__('状态')}:</label>
+        <div class="col-xs-12 col-sm-8">
+            <select id="c-status" class="form-control selectpicker" name="row[status]">
+                {foreach name="statusList" item="vo" key="k"}
+                <option value="{$k}" {if $row.status == $k}selected{/if}>{$vo}</option>
+                {/foreach}
+            </select>
+        </div>
+    </div>
+    <div class="form-group">
+        <label class="control-label col-xs-12 col-sm-2">{:__('备注')}:</label>
+        <div class="col-xs-12 col-sm-8">
+            <textarea id="c-remark" class="form-control" name="row[remark]" rows="2">{$row.remark}</textarea>
+        </div>
+    </div>
+    <div class="form-group layer-footer">
+        <label class="control-label col-xs-12 col-sm-2"></label>
+        <div class="col-xs-12 col-sm-8">
+            <button type="submit" class="btn btn-primary btn-embossed disabled">{:__('OK')}</button>
+        </div>
+    </div>
+</form>

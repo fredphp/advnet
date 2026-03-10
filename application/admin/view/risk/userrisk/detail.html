@@ -1,0 +1,44 @@
+<form id="detail-form" class="form-horizontal" role="form">
+    <div class="form-group">
+        <label class="control-label col-xs-12 col-sm-2">用户ID:</label>
+        <div class="col-xs-12 col-sm-8">
+            <p class="form-control-static">{$row.user_id}</p>
+        </div>
+    </div>
+    <div class="form-group">
+        <label class="control-label col-xs-12 col-sm-2">用户名:</label>
+        <div class="col-xs-12 col-sm-8">
+            <p class="form-control-static">{$row.username|default='-'}</p>
+        </div>
+    </div>
+    <div class="form-group">
+        <label class="control-label col-xs-12 col-sm-2">风险分数:</label>
+        <div class="col-xs-12 col-sm-8">
+            <p class="form-control-static">{$row.total_score}</p>
+        </div>
+    </div>
+    <div class="form-group">
+        <label class="control-label col-xs-12 col-sm-2">风险等级:</label>
+        <div class="col-xs-12 col-sm-8">
+            <p class="form-control-static">{$row.risk_level}</p>
+        </div>
+    </div>
+    <div class="form-group">
+        <label class="control-label col-xs-12 col-sm-2">状态:</label>
+        <div class="col-xs-12 col-sm-8">
+            <p class="form-control-static">{$row.status}</p>
+        </div>
+    </div>
+    <div class="form-group">
+        <label class="control-label col-xs-12 col-sm-2">违规次数:</label>
+        <div class="col-xs-12 col-sm-8">
+            <p class="form-control-static">{$row.violation_count}</p>
+        </div>
+    </div>
+    <div class="form-group">
+        <label class="control-label col-xs-12 col-sm-2">最后违规时间:</label>
+        <div class="col-xs-12 col-sm-8">
+            <p class="form-control-static">{$row.last_violation_time|date='Y-m-d H:i:s',###}</p>
+        </div>
+    </div>
+</form>

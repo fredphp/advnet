@@ -1,0 +1,108 @@
+<div class="panel panel-default panel-intro">
+    <div class="panel-heading">
+        {:build_heading(null,FALSE)}
+        <ul class="nav nav-tabs" data-field="status">
+            <li class="active"><a href="#t-basic" data-toggle="tab">基本信息</a></li>
+        </ul>
+    </div>
+    <div class="panel-body">
+        <div id="myTabContent" class="tab-content">
+            <div class="tab-pane fade active in" id="t-basic">
+                <div class="widget-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <table class="table table-bordered table-striped">
+                                <tbody>
+                                    <tr>
+                                        <td width="120">记录ID</td>
+                                        <td>{$row.id}</td>
+                                    </tr>
+                                    <tr>
+                                        <td>用户ID</td>
+                                        <td>{$row.user_id}</td>
+                                    </tr>
+                                    <tr>
+                                        <td>用户名</td>
+                                        <td>{$userData.username|default='-'}</td>
+                                    </tr>
+                                    <tr>
+                                        <td>昵称</td>
+                                        <td>{$userData.nickname|default='-'}</td>
+                                    </tr>
+                                    <tr>
+                                        <td>用户类型</td>
+                                        <td>
+                                            {if $row.is_new_user}
+                                            <span class="label label-success">新用户</span>
+                                            {else}
+                                            <span class="label label-default">老用户</span>
+                                            {/if}
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td>任务ID</td>
+                                        <td>{$row.task_id}</td>
+                                    </tr>
+                                    <tr>
+                                        <td>任务名称</td>
+                                        <td>{$task.name|default='-'}</td>
+                                    </tr>
+                                    <tr>
+                                        <td>任务类型</td>
+                                        <td>{$task.type_text|default='-'}</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="col-md-6">
+                            <table class="table table-bordered table-striped">
+                                <tbody>
+                                    <tr>
+                                        <td width="120">基础金额</td>
+                                        <td><span class="text-primary">{$row.base_amount|number_format=0,',',','}</span> 金币</td>
+                                    </tr>
+                                    <tr>
+                                        <td>累加金额</td>
+                                        <td><span class="text-info">{$row.accumulate_amount|number_format=0,',',','}</span> 金币</td>
+                                    </tr>
+                                    <tr>
+                                        <td>总金额</td>
+                                        <td><span class="text-success"><b>{$row.total_amount|number_format=0,',',','}</b></span> 金币</td>
+                                    </tr>
+                                    <tr>
+                                        <td>点击次数</td>
+                                        <td>{$row.click_count} 次</td>
+                                    </tr>
+                                    <tr>
+                                        <td>领取状态</td>
+                                        <td>
+                                            {if $row.is_collected}
+                                            <span class="label label-success">已领取</span>
+                                            {else}
+                                            <span class="label label-warning">待领取</span>
+                                            {/if}
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td>创建时间</td>
+                                        <td>{$row.createtime|date='Y-m-d H:i:s',###}</td>
+                                    </tr>
+                                    <tr>
+                                        <td>领取时间</td>
+                                        <td>
+                                            {if $row.collect_time}
+                                            {$row.collect_time|date='Y-m-d H:i:s',###}
+                                            {else}
+                                            -
+                                            {/if}
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

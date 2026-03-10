@@ -1,0 +1,396 @@
+<style>
+    .adjust-wrapper {
+        padding: 10px;
+    }
+    .user-card {
+        display: flex;
+        align-items: center;
+        padding: 15px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-radius: 10px;
+        margin-bottom: 20px;
+        color: #fff;
+    }
+    .user-card .avatar {
+        width: 60px;
+        height: 60px;
+        border-radius: 50%;
+        border: 3px solid rgba(255,255,255,0.3);
+        margin-right: 15px;
+        object-fit: cover;
+        background: #fff;
+    }
+    .user-card .user-info {
+        flex: 1;
+    }
+    .user-card .user-name {
+        font-size: 18px;
+        font-weight: 600;
+        margin-bottom: 4px;
+    }
+    .user-card .user-id {
+        font-size: 12px;
+        opacity: 0.8;
+    }
+    .user-card .balance-box {
+        text-align: right;
+    }
+    .user-card .balance-label {
+        font-size: 12px;
+        opacity: 0.8;
+    }
+    .user-card .balance-value {
+        font-size: 28px;
+        font-weight: bold;
+    }
+
+    .adjust-type-wrapper {
+        margin-bottom: 20px;
+    }
+    .adjust-type-wrapper .type-label {
+        font-size: 14px;
+        color: #666;
+        margin-bottom: 10px;
+    }
+    .type-btn-group {
+        display: flex;
+        gap: 10px;
+    }
+    .type-btn {
+        flex: 1;
+        padding: 15px;
+        border: 2px solid #e0e0e0;
+        border-radius: 10px;
+        background: #fff;
+        cursor: pointer;
+        transition: all 0.3s;
+        text-align: center;
+    }
+    .type-btn:hover {
+        border-color: #3c8dbc;
+    }
+    .type-btn.active {
+        border-color: #3c8dbc;
+        background: #e7f3ff;
+    }
+    .type-btn.active.add {
+        border-color: #00a65a;
+        background: #e8f8f0;
+    }
+    .type-btn.active.deduct {
+        border-color: #dd4b39;
+        background: #fce8e8;
+    }
+    .type-btn .type-icon {
+        font-size: 24px;
+        margin-bottom: 5px;
+    }
+    .type-btn.add .type-icon {
+        color: #00a65a;
+    }
+    .type-btn.deduct .type-icon {
+        color: #dd4b39;
+    }
+    .type-btn .type-text {
+        font-size: 14px;
+        font-weight: 500;
+    }
+
+    .amount-wrapper {
+        margin-bottom: 20px;
+    }
+    .amount-wrapper .amount-label {
+        font-size: 14px;
+        color: #666;
+        margin-bottom: 10px;
+    }
+    .quick-amounts {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+        margin-bottom: 10px;
+    }
+    .quick-amount-btn {
+        padding: 8px 16px;
+        border: 1px solid #ddd;
+        border-radius: 20px;
+        background: #fff;
+        cursor: pointer;
+        font-size: 13px;
+        transition: all 0.2s;
+    }
+    .quick-amount-btn:hover {
+        border-color: #3c8dbc;
+        background: #e7f3ff;
+    }
+    .quick-amount-btn.active {
+        border-color: #3c8dbc;
+        background: #3c8dbc;
+        color: #fff;
+    }
+
+    .custom-amount input {
+        width: 100%;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        padding: 10px 12px;
+        font-size: 16px;
+    }
+    .custom-amount input:focus {
+        border-color: #3c8dbc;
+        outline: none;
+    }
+
+    .preview-box {
+        padding: 15px;
+        background: #f8f9fa;
+        border-radius: 10px;
+        margin-bottom: 20px;
+    }
+    .preview-box .preview-title {
+        font-size: 12px;
+        color: #999;
+        margin-bottom: 8px;
+    }
+    .preview-box .preview-content {
+        display: flex;
+        justify-content: space-around;
+        align-items: center;
+    }
+    .preview-box .preview-item {
+        text-align: center;
+    }
+    .preview-box .preview-value {
+        font-size: 24px;
+        font-weight: bold;
+        color: #333;
+    }
+    .preview-box .preview-value.result {
+        color: #3c8dbc;
+    }
+    .preview-box .preview-value.result.add {
+        color: #00a65a;
+    }
+    .preview-box .preview-value.result.deduct {
+        color: #dd4b39;
+    }
+    .preview-box .preview-label {
+        font-size: 12px;
+        color: #999;
+        margin-top: 4px;
+    }
+    .preview-box .preview-arrow {
+        font-size: 20px;
+        color: #3c8dbc;
+    }
+
+    .remark-wrapper {
+        margin-bottom: 15px;
+    }
+    .remark-wrapper .remark-label {
+        font-size: 14px;
+        color: #666;
+        margin-bottom: 8px;
+    }
+    .remark-wrapper textarea {
+        width: 100%;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        padding: 10px 12px;
+        font-size: 14px;
+        resize: none;
+    }
+    .remark-wrapper textarea:focus {
+        border-color: #3c8dbc;
+        outline: none;
+    }
+
+    .submit-btn {
+        width: 100%;
+        padding: 14px;
+        font-size: 16px;
+        font-weight: 600;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: all 0.3s;
+    }
+    .submit-btn.add {
+        background: linear-gradient(135deg, #00a65a 0%, #008d4c 100%);
+        color: #fff;
+    }
+    .submit-btn.deduct {
+        background: linear-gradient(135deg, #dd4b39 0%, #c23321 100%);
+        color: #fff;
+    }
+    .submit-btn:hover {
+        opacity: 0.9;
+        transform: translateY(-1px);
+    }
+    .submit-btn:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+        transform: none;
+    }
+
+    .layer-footer {
+        display: none !important;
+    }
+</style>
+
+<form id="adjust-form" class="adjust-wrapper form-horizontal" role="form" data-toggle="validator" method="POST" action="">
+    <input type="hidden" name="__token__" value="{$Request.token|default=''}">
+    
+    <!-- 用户信息卡片 -->
+    <div class="user-card">
+        <img class="avatar" src="{$row.avatar|default='/assets/img/avatar.png'}" alt="头像" onerror="this.src='/assets/img/avatar.png'">
+        <div class="user-info">
+            <div class="user-name">{$row.nickname|default=$row.username}</div>
+            <div class="user-id">ID: {$row.user_id} {if $row.mobile}· {$row.mobile}{/if}</div>
+        </div>
+        <div class="balance-box">
+            <div class="balance-label">当前余额</div>
+            <div class="balance-value">{$row.balance}</div>
+        </div>
+    </div>
+
+    <!-- 操作类型 -->
+    <div class="adjust-type-wrapper">
+        <div class="type-label">选择操作类型</div>
+        <div class="type-btn-group">
+            <div class="type-btn add active" onclick="selectType('add')">
+                <div class="type-icon"><i class="fa fa-plus-circle"></i></div>
+                <div class="type-text">增加金币</div>
+            </div>
+            <div class="type-btn deduct" onclick="selectType('deduct')">
+                <div class="type-icon"><i class="fa fa-minus-circle"></i></div>
+                <div class="type-text">扣除金币</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 金额选择 -->
+    <div class="amount-wrapper">
+        <div class="amount-label">选择金额</div>
+        <div class="quick-amounts">
+            <button type="button" class="quick-amount-btn" onclick="selectAmount(10, this)">10</button>
+            <button type="button" class="quick-amount-btn" onclick="selectAmount(50, this)">50</button>
+            <button type="button" class="quick-amount-btn" onclick="selectAmount(100, this)">100</button>
+            <button type="button" class="quick-amount-btn" onclick="selectAmount(200, this)">200</button>
+            <button type="button" class="quick-amount-btn" onclick="selectAmount(500, this)">500</button>
+            <button type="button" class="quick-amount-btn" onclick="selectAmount(1000, this)">1000</button>
+        </div>
+        <div class="custom-amount">
+            <input type="number" id="c-amount" name="amount" placeholder="或输入自定义金额" min="1" value="" data-rule="required;min(1)" oninput="onAmountInput()">
+        </div>
+    </div>
+
+    <!-- 预览 -->
+    <div class="preview-box">
+        <div class="preview-title">调整预览</div>
+        <div class="preview-content">
+            <div class="preview-item">
+                <div class="preview-value">{$row.balance}</div>
+                <div class="preview-label">当前余额</div>
+            </div>
+            <div class="preview-arrow"><i class="fa fa-arrow-right"></i></div>
+            <div class="preview-item">
+                <div class="preview-value result add" id="preview-result">{$row.balance}</div>
+                <div class="preview-label">调整后余额</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 备注 -->
+    <div class="remark-wrapper">
+        <div class="remark-label">备注说明</div>
+        <textarea id="c-remark" name="remark" rows="2" placeholder="请输入调整原因（可选）"></textarea>
+    </div>
+
+    <!-- 隐藏字段 -->
+    <input type="hidden" name="type" id="c-type" value="add">
+
+    <!-- 提交按钮 -->
+    <div class="layer-footer" style="display: block; text-align: center; padding: 15px 0;">
+        <button type="submit" class="submit-btn add" id="submit-btn">
+            <i class="fa fa-check"></i> <span id="btn-text">确认增加金币</span>
+        </button>
+    </div>
+</form>
+
+<script>
+var currentBalance = {$row.balance};
+var currentType = 'add';
+var currentAmount = 0;
+
+function selectType(type) {
+    currentType = type;
+    document.getElementById('c-type').value = type;
+    
+    // 更新按钮状态
+    var btns = document.querySelectorAll('.type-btn');
+    btns.forEach(function(btn) {
+        btn.classList.remove('active');
+    });
+    document.querySelector('.type-btn.' + type).classList.add('active');
+    
+    updatePreview();
+    updateSubmitBtn();
+}
+
+function selectAmount(amount, btn) {
+    currentAmount = amount;
+    document.getElementById('c-amount').value = amount;
+    
+    // 更新按钮状态
+    var btns = document.querySelectorAll('.quick-amount-btn');
+    btns.forEach(function(b) {
+        b.classList.remove('active');
+    });
+    btn.classList.add('active');
+    
+    updatePreview();
+}
+
+function onAmountInput() {
+    var amount = parseInt(document.getElementById('c-amount').value) || 0;
+    currentAmount = amount;
+    
+    // 清除快捷按钮选中状态
+    var btns = document.querySelectorAll('.quick-amount-btn');
+    btns.forEach(function(b) {
+        b.classList.remove('active');
+    });
+    
+    updatePreview();
+}
+
+function updatePreview() {
+    var result;
+    var resultEl = document.getElementById('preview-result');
+    
+    if (currentType === 'add') {
+        result = currentBalance + currentAmount;
+    } else {
+        result = currentBalance - currentAmount;
+    }
+    
+    resultEl.textContent = result;
+    resultEl.classList.remove('add', 'deduct');
+    resultEl.classList.add('result', currentType);
+}
+
+function updateSubmitBtn() {
+    var btn = document.getElementById('submit-btn');
+    var text = document.getElementById('btn-text');
+    
+    btn.classList.remove('add', 'deduct');
+    btn.classList.add(currentType);
+    
+    if (currentType === 'add') {
+        text.textContent = '确认增加金币';
+    } else {
+        text.textContent = '确认扣除金币';
+    }
+}
+</script>

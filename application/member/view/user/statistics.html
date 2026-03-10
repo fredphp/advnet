@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>会员统计</title>
+    <link rel="stylesheet" href="__CDN__/assets/css/bootstrap.min.css">
+    <link rel="stylesheet" href="__CDN__/assets/css/fastadmin.min.css">
+</head>
+<body>
+<div class="panel panel-default panel-intro">
+    <div class="panel-heading">
+        <div class="panel-lead"><em>会员统计</em></div>
+    </div>
+    <div class="panel-body">
+        <div class="row" style="margin-bottom: 20px;">
+            <form class="form-inline" id="filter-form">
+                <div class="form-group">
+                    <label>开始日期:</label>
+                    <input type="date" class="form-control" name="start_date" value="{$start_date|default=''}">
+                </div>
+                <div class="form-group">
+                    <label>结束日期:</label>
+                    <input type="date" class="form-control" name="end_date" value="{$end_date|default=''}">
+                </div>
+                <button type="submit" class="btn btn-primary">查询</button>
+            </form>
+        </div>
+        <div class="row">
+            <div class="col-md-4">
+                <div class="panel panel-info">
+                    <div class="panel-heading">总会员数</div>
+                    <div class="panel-body text-center">
+                        <h2 id="total-users">{$statistics.total_users|default=0}</h2>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="panel panel-success">
+                    <div class="panel-heading">新增会员</div>
+                    <div class="panel-body text-center">
+                        <h2 id="new-users">{$statistics.new_users|default=0}</h2>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="panel panel-warning">
+                    <div class="panel-heading">活跃会员</div>
+                    <div class="panel-body text-center">
+                        <h2 id="active-users">{$statistics.active_users|default=0}</h2>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-md-12">
+                <div id="chart-container" style="height: 400px;"></div>
+            </div>
+        </div>
+    </div>
+</div>
+<script src="__CDN__/assets/js/jquery.min.js"></script>
+<script src="__CDN__/assets/js/echarts.min.js"></script>
+<script>
+$(function() {
+    // 初始化图表
+    var chart = echarts.init(document.getElementById('chart-container'));
+    var option = {
+        title: { text: '每日新增会员' },
+        tooltip: { trigger: 'axis' },
+        xAxis: { type: 'category', data: [] },
+        yAxis: { type: 'value' },
+        series: [{ name: '新增会员', type: 'line', data: [] }]
+    };
+    chart.setOption(option);
+
+    // 加载数据
+    function loadData() {
+        var startDate = $('input[name="start_date"]').val();
+        var endDate = $('input[name="end_date"]').val();
+        $.ajax({
+            url: '{:url("member/user/statistics")}',
+            type: 'GET',
+            data: { start_date: startDate, end_date: endDate },
+            dataType: 'json',
+            success: function(res) {
+                if (res && res.total) {
+                    $('#total-users').text(res.total.total_users);
+                    $('#new-users').text(res.total.new_users);
+                    $('#active-users').text(res.total.active_users);
+
+                    var dates = [];
+                    var counts = [];
+                    res.daily.forEach(function(item) {
+                        dates.push(item.date);
+                        counts.push(item.count);
+                    });
+                    chart.setOption({
+                        xAxis: { data: dates },
+                        series: [{ data: counts }]
+                    });
+                }
+            }
+        });
+    }
+
+    loadData();
+
+    $('#filter-form').on('submit', function(e) {
+        e.preventDefault();
+        loadData();
+    });
+});
+</script>
+</body>
+</html>

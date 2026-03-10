@@ -1,0 +1,144 @@
+<div class="panel panel-default">
+    <div class="panel-heading">
+        <h3 class="panel-title">任务详情</h3>
+    </div>
+    <div class="panel-body">
+        <table class="table table-bordered">
+            <tbody>
+                <tr>
+                    <td width="120" class="text-right"><strong>任务ID</strong></td>
+                    <td>{$row.id}</td>
+                    <td width="120" class="text-right"><strong>任务名称</strong></td>
+                    <td>{$row.name}</td>
+                </tr>
+                <tr>
+                    <td class="text-right"><strong>任务类型</strong></td>
+                    <td>{$row.type_text}</td>
+                    <td class="text-right"><strong>状态</strong></td>
+                    <td>
+                        {if $row.status == 'pending'}
+                        <span class="label label-default">待发送</span>
+                        {elseif $row.status == 'normal'}
+                        <span class="label label-success">进行中</span>
+                        {elseif $row.status == 'finished'}
+                        <span class="label label-info">已抢完</span>
+                        {elseif $row.status == 'expired'}
+                        <span class="label label-warning">已过期</span>
+                        {else}
+                        <span class="label label-default">{$row.status}</span>
+                        {/if}
+                    </td>
+                </tr>
+                <tr>
+                    <td class="text-right"><strong>总金额</strong></td>
+                    <td>{$row.total_amount} 金币</td>
+                    <td class="text-right"><strong>单个金额</strong></td>
+                    <td>{$row.reward} 金币</td>
+                </tr>
+                <tr>
+                    <td class="text-right"><strong>总数量</strong></td>
+                    <td>{$row.total_count} 个</td>
+                    <td class="text-right"><strong>已领取人数</strong></td>
+                    <td>{$stats.total_records} 人</td>
+                </tr>
+                <tr>
+                    <td class="text-right"><strong>已发放金额</strong></td>
+                    <td>{$stats.total_amount_sent} 金币</td>
+                    <td class="text-right"><strong>显示红包</strong></td>
+                    <td>
+                        {if $row.show_red_packet == 1}
+                        <span class="label label-success">是</span>
+                        {else}
+                        <span class="label label-default">否</span>
+                        {/if}
+                    </td>
+                </tr>
+                <tr>
+                    <td class="text-right"><strong>任务描述</strong></td>
+                    <td colspan="3">{$row.description|default='暂无描述'}</td>
+                </tr>
+                <tr>
+                    <td class="text-right"><strong>创建时间</strong></td>
+                    <td>{$row.createtime|date='Y-m-d H:i:s',###}</td>
+                    <td class="text-right"><strong>推送状态</strong></td>
+                    <td>
+                        {if $row.push_status == 1}
+                        <span class="label label-success">已推送</span>
+                        {else}
+                        <span class="label label-default">未推送</span>
+                        {/if}
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+
+        {if $row.resource}
+        <div class="panel panel-info" style="margin-top:15px;">
+            <div class="panel-heading">
+                <h4 class="panel-title">关联资源</h4>
+            </div>
+            <div class="panel-body">
+                <div class="media">
+                    <div class="media-left">
+                        <img src="{$row.resource.logo|default='/assets/img/avatar.png'}"
+                             style="width:64px;height:64px;border-radius:8px;">
+                    </div>
+                    <div class="media-body">
+                        <h4 class="media-heading">{$row.resource.name}</h4>
+                        <p class="text-muted">{$row.resource.description|default='暂无描述'}</p>
+                        <p>
+                            <span class="label label-primary">{$row.resource.type_text}</span>
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {/if}
+    </div>
+</div>
+
+<div class="panel panel-default">
+    <div class="panel-heading">
+        <h3 class="panel-title">领取记录 (最近20条)</h3>
+    </div>
+    <div class="panel-body">
+        {if $records}
+        <table class="table table-striped table-hover">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>用户</th>
+                    <th>基础金额</th>
+                    <th>累加金额</th>
+                    <th>总金额</th>
+                    <th>点击次数</th>
+                    <th>状态</th>
+                    <th>领取时间</th>
+                </tr>
+            </thead>
+            <tbody>
+                {foreach name="records" item="record"}
+                <tr>
+                    <td>{$record.id}</td>
+                    <td>{$record.user.nickname|default=$record.user_id}</td>
+                    <td>{$record.base_amount}</td>
+                    <td>{$record.accumulate_amount}</td>
+                    <td><strong>{$record.total_amount}</strong> 金币</td>
+                    <td>{$record.click_count}</td>
+                    <td>
+                        {if $record.is_collected == 1}
+                        <span class="label label-success">已领取</span>
+                        {else}
+                        <span class="label label-default">待领取</span>
+                        {/if}
+                    </td>
+                    <td>{$record.createtime|date='Y-m-d H:i:s',###}</td>
+                </tr>
+                {/foreach}
+            </tbody>
+        </table>
+        {else}
+        <div class="text-center text-muted" style="padding:20px;">暂无领取记录</div>
+        {/if}
+    </div>
+</div>

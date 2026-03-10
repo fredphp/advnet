@@ -1,0 +1,170 @@
+<div class="panel panel-default">
+    <div class="panel-heading">
+        <h3 class="panel-title">
+            <i class="fa fa-send"></i> 发送任务确认
+            <span class="label label-warning pull-right">发送后无法修改</span>
+        </h3>
+    </div>
+    <div class="panel-body">
+        <!-- 警告提示 -->
+        <div class="alert alert-warning">
+            <i class="fa fa-exclamation-triangle"></i>
+            <strong>注意：</strong>发送后任务将推送到所有客户端，且无法再进行修改。请确认以下信息无误后再发送。
+        </div>
+
+        <!-- 任务基本信息 -->
+        <div class="panel panel-info">
+            <div class="panel-heading">
+                <h4 class="panel-title">任务信息</h4>
+            </div>
+            <div class="panel-body">
+                <table class="table table-bordered">
+                    <tbody>
+                        <tr>
+                            <td width="120" class="text-right"><strong>任务ID</strong></td>
+                            <td>{$row.id}</td>
+                            <td width="120" class="text-right"><strong>任务名称</strong></td>
+                            <td>{$row.name}</td>
+                        </tr>
+                        <tr>
+                            <td class="text-right"><strong>任务类型</strong></td>
+                            <td><span class="label label-primary">{$row.type_text}</span></td>
+                            <td class="text-right"><strong>当前状态</strong></td>
+                            <td>
+                                {if $row.push_status == 1}
+                                <span class="label label-success">已发送</span>
+                                {else}
+                                <span class="label label-default">未发送</span>
+                                {/if}
+                            </td>
+                        </tr>
+                        <tr>
+                            <td class="text-right"><strong>总金额</strong></td>
+                            <td><span class="text-danger">{$row.total_amount} 金币</span></td>
+                            <td class="text-right"><strong>红包数量</strong></td>
+                            <td>{$row.total_count} 个</td>
+                        </tr>
+                        <tr>
+                            <td class="text-right"><strong>单个金额</strong></td>
+                            <td>{$row.reward} 金币</td>
+                            <td class="text-right"><strong>创建时间</strong></td>
+                            <td>{$row.createtime|date='Y-m-d H:i:s',###}</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- 聊天内容预览（普通聊天类型显示） -->
+        {if $row.type == 'chat'}
+        <div class="panel panel-success">
+            <div class="panel-heading">
+                <h4 class="panel-title"><i class="fa fa-comment"></i> 聊天内容预览</h4>
+            </div>
+            <div class="panel-body">
+                {if $row.resource}
+                <div class="media">
+                    <div class="media-left">
+                        <img src="{$row.resource.logo|default='/assets/img/avatar.png'}" 
+                             style="width:64px;height:64px;border-radius:8px;">
+                    </div>
+                    <div class="media-body">
+                        <h4 class="media-heading">{$row.resource.name}</h4>
+                        <p class="text-muted">{$row.resource.description|default='暂无描述'}</p>
+                    </div>
+                </div>
+                <hr>
+                {/if}
+                <div class="well" style="background:#f8f9fa;min-height:100px;">
+                    <p><strong>聊天内容/要求：</strong></p>
+                    <div style="white-space: pre-wrap;">{$chatContent|default='暂无内容'}</div>
+                </div>
+                {if $row.resource && $row.resource.chat_duration}
+                <p class="text-info"><i class="fa fa-clock-o"></i> 要求聊天时长：{$row.resource.chat_duration} 秒</p>
+                {else}
+                <p class="text-info"><i class="fa fa-clock-o"></i> 默认聊天时长：30 秒</p>
+                {/if}
+            </div>
+        </div>
+        {/if}
+
+        <!-- 关联资源信息 -->
+        {if $row.resource && $row.type != 'chat'}
+        <div class="panel panel-primary">
+            <div class="panel-heading">
+                <h4 class="panel-title">关联资源</h4>
+            </div>
+            <div class="panel-body">
+                <div class="media">
+                    <div class="media-left">
+                        <img src="{$row.resource.logo|default='/assets/img/avatar.png'}" 
+                             style="width:64px;height:64px;border-radius:8px;">
+                    </div>
+                    <div class="media-body">
+                        <h4 class="media-heading">{$row.resource.name}</h4>
+                        <p class="text-muted">{$row.resource.description|default='暂无描述'}</p>
+                        <p><span class="label label-info">{$row.resource.type_text}</span></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {/if}
+
+        <!-- 任务描述 -->
+        {if $row.description}
+        <div class="panel panel-default">
+            <div class="panel-heading">
+                <h4 class="panel-title">任务描述</h4>
+            </div>
+            <div class="panel-body">
+                <div style="white-space: pre-wrap;">{$row.description}</div>
+            </div>
+        </div>
+        {/if}
+
+        <!-- 发送数据预览 -->
+        <div class="panel panel-default">
+            <div class="panel-heading">
+                <h4 class="panel-title">
+                    <a data-toggle="collapse" href="#sendDataPreview" style="color:inherit;text-decoration:none;">
+                        <i class="fa fa-code"></i> 发送数据预览 
+                        <i class="fa fa-chevron-down pull-right"></i>
+                    </a>
+                </h4>
+            </div>
+            <div id="sendDataPreview" class="panel-collapse collapse">
+                <div class="panel-body">
+                    <pre style="max-height:300px;overflow:auto;">{$sendDataJson|htmlspecialchars}</pre>
+                </div>
+            </div>
+        </div>
+
+        <!-- 发送人信息 -->
+        <div class="panel panel-warning">
+            <div class="panel-heading">
+                <h4 class="panel-title"><i class="fa fa-user"></i> 发送人信息</h4>
+            </div>
+            <div class="panel-body">
+                <table class="table table-bordered">
+                    <tr>
+                        <td width="120" class="text-right"><strong>发送人ID</strong></td>
+                        <td>{$row.sender_id|default='-'}</td>
+                        <td width="120" class="text-right"><strong>发送人昵称</strong></td>
+                        <td>{$row.sender_name|default='未知'}</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-xs-12 text-center" style="margin-top:20px;">
+        <button type="button" id="btn-confirm-send" class="btn btn-warning btn-lg" data-task-id="{$row.id}">
+            <i class="fa fa-send"></i> 确认发送
+        </button>
+        <button type="button" class="btn btn-default btn-lg" onclick="parent.layer.close(parent.layer.getFrameIndex(window.name));">
+            <i class="fa fa-times"></i> 取消
+        </button>
+    </div>
+</div>

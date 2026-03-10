@@ -1,0 +1,169 @@
+<div class="panel panel-default panel-intro">
+    {:build_heading()}
+
+    <div class="panel-body">
+        <!-- 筛选条件 -->
+        <div class="row" style="margin-bottom: 15px;">
+            <div class="col-sm-6 col-md-4">
+                <div class="input-group">
+                    <span class="input-group-addon">开始日期</span>
+                    <input type="date" class="form-control" id="start_date" value="{:date('Y-m-d', strtotime('-7 days'))}">
+                </div>
+            </div>
+            <div class="col-sm-6 col-md-4">
+                <div class="input-group">
+                    <span class="input-group-addon">结束日期</span>
+                    <input type="date" class="form-control" id="end_date" value="{:date('Y-m-d')}">
+                </div>
+            </div>
+        </div>
+
+        <!-- 统计卡片 -->
+        <div class="row">
+            <div class="col-lg-3 col-md-6">
+                <div class="small-box bg-aqua">
+                    <div class="inner">
+                        <h3 id="total-tasks">0</h3>
+                        <p>任务总数</p>
+                    </div>
+                    <div class="icon"><i class="fa fa-tasks"></i></div>
+                </div>
+            </div>
+            <div class="col-lg-3 col-md-6">
+                <div class="small-box bg-green">
+                    <div class="inner">
+                        <h3 id="total-grabs">0</h3>
+                        <p>抢红包次数</p>
+                    </div>
+                    <div class="icon"><i class="fa fa-gift"></i></div>
+                </div>
+            </div>
+            <div class="col-lg-3 col-md-6">
+                <div class="small-box bg-yellow">
+                    <div class="inner">
+                        <h3 id="total-amount">0</h3>
+                        <p>发放金额</p>
+                    </div>
+                    <div class="icon"><i class="fa fa-coins"></i></div>
+                </div>
+            </div>
+            <div class="col-lg-3 col-md-6">
+                <div class="small-box bg-red">
+                    <div class="inner">
+                        <h3 id="total-collected">0</h3>
+                        <p>已领取次数</p>
+                    </div>
+                    <div class="icon"><i class="fa fa-check-circle"></i></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 详细数据 -->
+        <div class="row">
+            <div class="col-md-6">
+                <div class="box box-primary">
+                    <div class="box-header with-border">
+                        <h3 class="box-title">任务状态分布</h3>
+                    </div>
+                    <div class="box-body">
+                        <table class="table table-bordered">
+                            <thead>
+                                <tr>
+                                    <th>状态</th>
+                                    <th>数量</th>
+                                </tr>
+                            </thead>
+                            <tbody id="task-status-stats">
+                                <tr><td colspan="2" class="text-center text-muted">加载中...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="box box-success">
+                    <div class="box-header with-border">
+                        <h3 class="box-title">任务类型分布</h3>
+                    </div>
+                    <div class="box-body">
+                        <table class="table table-bordered">
+                            <thead>
+                                <tr>
+                                    <th>类型</th>
+                                    <th>数量</th>
+                                </tr>
+                            </thead>
+                            <tbody id="type-stats">
+                                <tr><td colspan="2" class="text-center text-muted">加载中...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-12">
+                <div class="box box-info">
+                    <div class="box-header with-border">
+                        <h3 class="box-title">每日统计</h3>
+                    </div>
+                    <div class="box-body">
+                        <table class="table table-bordered table-striped">
+                            <thead>
+                                <tr>
+                                    <th>日期</th>
+                                    <th>抢红包次数</th>
+                                    <th>已领取</th>
+                                    <th>发放金额</th>
+                                </tr>
+                            </thead>
+                            <tbody id="daily-stats">
+                                <tr><td colspan="4" class="text-center text-muted">加载中...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 详细统计 -->
+        <div class="row">
+            <div class="col-md-12">
+                <div class="box box-default">
+                    <div class="box-header with-border">
+                        <h3 class="box-title">详细统计</h3>
+                    </div>
+                    <div class="box-body">
+                        <div class="row">
+                            <div class="col-md-3">
+                                <div class="description-block border-right">
+                                    <h5 class="description-header" id="total-base-amount">0</h5>
+                                    <span class="description-text">基础金额合计</span>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="description-block border-right">
+                                    <h5 class="description-header" id="total-accumulate-amount">0</h5>
+                                    <span class="description-text">累加金额合计</span>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="description-block border-right">
+                                    <h5 class="description-header" id="total-clicks">0</h5>
+                                    <span class="description-text">总点击次数</span>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="description-block">
+                                    <h5 class="description-header" id="avg-amount">0</h5>
+                                    <span class="description-text">平均每次领取金额</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

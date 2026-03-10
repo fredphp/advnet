@@ -1,0 +1,71 @@
+<div class="panel panel-default panel-intro">
+    {:build_heading()}
+
+    <div class="panel-body">
+        <!-- 统计卡片 -->
+        <div class="row" style="margin-bottom: 15px;">
+            <div class="col-xs-6 col-sm-3">
+                <div class="panel panel-default">
+                    <div class="panel-body text-center">
+                        <div class="text-muted">今日领取人数</div>
+                        <h2 class="text-primary" id="stat-today-count">0</h2>
+                    </div>
+                </div>
+            </div>
+            <div class="col-xs-6 col-sm-3">
+                <div class="panel panel-default">
+                    <div class="panel-body text-center">
+                        <div class="text-muted">今日领取金额</div>
+                        <h2 class="text-success" id="stat-today-amount">0</h2>
+                    </div>
+                </div>
+            </div>
+            <div class="col-xs-6 col-sm-3">
+                <div class="panel panel-default">
+                    <div class="panel-body text-center">
+                        <div class="text-muted">总领取人数</div>
+                        <h2 class="text-info" id="stat-total-users">0</h2>
+                    </div>
+                </div>
+            </div>
+            <div class="col-xs-6 col-sm-3">
+                <div class="panel panel-default">
+                    <div class="panel-body text-center">
+                        <div class="text-muted">总领取金额</div>
+                        <h2 class="text-warning" id="stat-total-amount">0</h2>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div id="myTabContent" class="tab-content">
+            <div class="tab-pane fade active in" id="one">
+                <div class="widget-body no-padding">
+                    <div id="toolbar" class="toolbar">
+                        {:build_toolbar('refresh')}
+                        <div class="dropdown btn-group">
+                            <a class="btn btn-warning dropdown-toggle" data-toggle="dropdown">
+                                {:__('领取状态')} <span class="caret"></span>
+                            </a>
+                            <ul class="dropdown-menu">
+                                <li><a href="javascript:;" data-field="is_collected" data-value="0">待领取</a></li>
+                                <li><a href="javascript:;" data-field="is_collected" data-value="1">已领取</a></li>
+                            </ul>
+                        </div>
+                        <div class="dropdown btn-group">
+                            <a class="btn btn-info dropdown-toggle" data-toggle="dropdown">
+                                {:__('用户类型')} <span class="caret"></span>
+                            </a>
+                            <ul class="dropdown-menu">
+                                <li><a href="javascript:;" data-field="is_new_user" data-value="0">老用户</a></li>
+                                <li><a href="javascript:;" data-field="is_new_user" data-value="1">新用户</a></li>
+                            </ul>
+                        </div>
+                    </div>
+                    <table id="table" class="table table-striped table-bordered table-hover table-nowrap" width="100%">
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

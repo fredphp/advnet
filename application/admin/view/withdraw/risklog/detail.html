@@ -1,0 +1,240 @@
+<div class="panel panel-default">
+    <div class="panel-heading">
+        <h3 class="panel-title">提现风控记录详情</h3>
+    </div>
+    <div class="panel-body">
+        <!-- 基本信息 -->
+        <div class="row">
+            <div class="col-md-6">
+                <table class="table table-bordered table-striped">
+                    <tbody>
+                        <tr>
+                            <th width="120">记录ID</th>
+                            <td>{$row.id}</td>
+                        </tr>
+                        <tr>
+                            <th>用户ID</th>
+                            <td>{$row.user_id}</td>
+                        </tr>
+                        <tr>
+                            <th>用户名</th>
+                            <td>{$row.username|default='-'}</td>
+                        </tr>
+                        <tr>
+                            <th>订单号</th>
+                            <td>{$row.order_no|default='-'}</td>
+                        </tr>
+                        <tr>
+                            <th>风险评分</th>
+                            <td>
+                                {if condition="$row.risk_score >= 50"}
+                                <span class="text-danger"><strong>{$row.risk_score|default=0}</strong> 分（高风险）</span>
+                                {elseif condition="$row.risk_score >= 30"}
+                                <span class="text-warning"><strong>{$row.risk_score|default=0}</strong> 分（中风险）</span>
+                                {else /}
+                                <span class="text-success"><strong>{$row.risk_score|default=0}</strong> 分（低风险）</span>
+                                {/if}
+                            </td>
+                        </tr>
+                        <tr>
+                            <th>创建时间</th>
+                            <td>{$row.createtime|date='Y-m-d H:i:s',###}</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="col-md-6">
+                <table class="table table-bordered table-striped">
+                    <tbody>
+                        <tr>
+                            <th width="120">风险类型</th>
+                            <td><span class="label label-info">{$row.risk_type_text}</span></td>
+                        </tr>
+                        <tr>
+                            <th>风险等级</th>
+                            <td>
+                                {if condition="$row.risk_level == 1"}
+                                <span class="label label-success">低风险</span>
+                                {elseif condition="$row.risk_level == 2"}
+                                <span class="label label-warning">中风险</span>
+                                {elseif condition="$row.risk_level == 3"}
+                                <span class="label label-danger">高风险</span>
+                                {else /}
+                                <span class="label label-default">普通</span>
+                                {/if}
+                            </td>
+                        </tr>
+                        <tr>
+                            <th>处理状态</th>
+                            <td>
+                                {switch name="row.handle_action"}
+                                    {case value="pass"}<span class="label label-success"><i class="fa fa-check"></i> 已通过</span>{/case}
+                                    {case value="review"}<span class="label label-info"><i class="fa fa-user"></i> 人工审核中</span>{/case}
+                                    {case value="reject"}<span class="label label-warning"><i class="fa fa-ban"></i> 已拒绝</span>{/case}
+                                    {case value="freeze"}<span class="label label-danger"><i class="fa fa-snowflake-o"></i> 已冻结</span>{/case}
+                                    {default /}<span class="label label-default"><i class="fa fa-clock-o"></i> 待处理</span>
+                                {/switch}
+                            </td>
+                        </tr>
+                        <tr>
+                            <th>处理备注</th>
+                            <td>{$row.handle_remark|default='-'}</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        {if condition="$row.risk_detail"}
+        <div class="panel panel-info" style="margin-top: 15px;">
+            <div class="panel-heading">
+                <h4 class="panel-title"><i class="fa fa-info-circle"></i> 风险详情</h4>
+            </div>
+            <div class="panel-body">
+                <pre style="background: #f5f5f5; padding: 15px; border-radius: 4px; max-height: 300px; overflow-y: auto; white-space: pre-wrap; word-wrap: break-word;">{$row.risk_detail}</pre>
+            </div>
+        </div>
+        {/if}
+
+        {if condition="$risk_score"}
+        <div class="panel panel-warning" style="margin-top: 15px;">
+            <div class="panel-heading">
+                <h4 class="panel-title"><i class="fa fa-shield"></i> 用户风险评分</h4>
+            </div>
+            <div class="panel-body">
+                <table class="table table-bordered">
+                    <tbody>
+                        <tr>
+                            <th width="120">总风险分</th>
+                            <td width="150"><strong class="text-danger">{$risk_score.total_score|default=0}</strong></td>
+                            <th width="120">风险状态</th>
+                            <td>
+                                {switch name="risk_score.status"}
+                                    {case value="normal"}<span class="label label-success">正常</span>{/case}
+                                    {case value="frozen"}<span class="label label-warning">冻结</span>{/case}
+                                    {case value="banned"}<span class="label label-danger">封禁</span>{/case}
+                                    {default /}<span class="label label-default">{$risk_score.status}</span>
+                                {/switch}
+                            </td>
+                        </tr>
+                        <tr>
+                            <th>视频评分</th>
+                            <td>{$risk_score.video_score|default=0}</td>
+                            <th>任务评分</th>
+                            <td>{$risk_score.task_score|default=0}</td>
+                        </tr>
+                        <tr>
+                            <th>提现评分</th>
+                            <td>{$risk_score.withdraw_score|default=0}</td>
+                            <th>红包评分</th>
+                            <td>{$risk_score.redpacket_score|default=0}</td>
+                        </tr>
+                        <tr>
+                            <th>邀请评分</th>
+                            <td>{$risk_score.invite_score|default=0}</td>
+                            <th>违规次数</th>
+                            <td><strong class="text-warning">{$risk_score.violation_count|default=0}</strong></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {/if}
+
+        {if condition="$recent_logs"}
+        <div class="panel panel-danger" style="margin-top: 15px;">
+            <div class="panel-heading">
+                <h4 class="panel-title"><i class="fa fa-history"></i> 该用户最近风控记录（共 {count($recent_logs)} 条）</h4>
+            </div>
+            <div class="panel-body">
+                <table class="table table-bordered table-hover">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>订单号</th>
+                            <th>风险类型</th>
+                            <th>风险等级</th>
+                            <th>风险评分</th>
+                            <th>处理状态</th>
+                            <th>时间</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {volist name="recent_logs" id="log"}
+                        <tr>
+                            <td>{$log.id}</td>
+                            <td>{$log.order_no|default='-'}</td>
+                            <td><span class="label label-info">{$log.risk_type_text}</span></td>
+                            <td>
+                                {if condition="$log.risk_level == 1"}
+                                <span class="label label-success">低</span>
+                                {elseif condition="$log.risk_level == 2"}
+                                <span class="label label-warning">中</span>
+                                {elseif condition="$log.risk_level == 3"}
+                                <span class="label label-danger">高</span>
+                                {else /}
+                                <span class="label label-default">-</span>
+                                {/if}
+                            </td>
+                            <td>
+                                {if condition="$log.risk_score >= 50"}
+                                <span class="text-danger">{$log.risk_score|default=0}</span>
+                                {elseif condition="$log.risk_score >= 30"}
+                                <span class="text-warning">{$log.risk_score|default=0}</span>
+                                {else /}
+                                <span class="text-success">{$log.risk_score|default=0}</span>
+                                {/if}
+                            </td>
+                            <td>
+                                {switch name="log.handle_action"}
+                                    {case value="pass"}<span class="label label-success">通过</span>{/case}
+                                    {case value="review"}<span class="label label-info">审核</span>{/case}
+                                    {case value="reject"}<span class="label label-warning">拒绝</span>{/case}
+                                    {case value="freeze"}<span class="label label-danger">冻结</span>{/case}
+                                    {default /}<span class="label label-default">待处理</span>
+                                {/switch}
+                            </td>
+                            <td>{$log.createtime|date='Y-m-d H:i:s',###}</td>
+                        </tr>
+                        {/volist}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {/if}
+
+        <!-- 处理状态提示 -->
+        {if condition="$row.handle_action == 'pass'"}
+        <div class="alert alert-success" style="margin-top: 15px;">
+            <h4><i class="fa fa-check-circle"></i> 该记录已通过审核</h4>
+            <p>该风控记录已被标记为通过，用户的提现请求已正常处理。</p>
+        </div>
+        {elseif condition="$row.handle_action == 'reject'" /}
+        <div class="alert alert-warning" style="margin-top: 15px;">
+            <h4><i class="fa fa-ban"></i> 该记录已被拒绝</h4>
+            {if condition="$row.handle_remark"}
+            <p><strong>拒绝原因：</strong>{$row.handle_remark}</p>
+            {/if}
+            <p>用户的提现请求已被取消，用户可重新发起提现申请。</p>
+        </div>
+        {elseif condition="$row.handle_action == 'freeze'" /}
+        <div class="alert alert-danger" style="margin-top: 15px;">
+            <h4><i class="fa fa-snowflake-o"></i> 该用户已被冻结</h4>
+            {if condition="$row.handle_remark"}
+            <p><strong>冻结原因：</strong>{$row.handle_remark}</p>
+            {/if}
+            <p>该用户已被冻结，无法登录APP。如需解冻，请在"用户管理"中操作。</p>
+        </div>
+        {elseif condition="$row.handle_action == 'review'" /}
+        <div class="alert alert-info" style="margin-top: 15px;">
+            <h4><i class="fa fa-user"></i> 该记录正在人工审核中</h4>
+            <p>该风控记录已被标记为人工审核中，请等待高级管理员进行最终审核。</p>
+        </div>
+        {else /}
+        <div class="alert alert-default" style="margin-top: 15px; background: #f5f5f5; border-color: #ddd;">
+            <h4><i class="fa fa-clock-o"></i> 该记录待处理</h4>
+            <p>该风控记录尚未处理，请在列表页面进行操作。</p>
+        </div>
+        {/if}
+    </div>
+</div>
