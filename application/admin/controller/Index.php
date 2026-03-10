@@ -100,7 +100,7 @@ class Index extends Backend
             $result = $this->auth->login($username, $password, $keeplogin ? $keeyloginhours * 3600 : 0);
             if ($result === true) {
                 Hook::listen("admin_login_after", $this->request);
-                $this->success(__('Login successful'), ['url' => $url, 'id' => $this->auth->id, 'username' => $username, 'avatar' => $this->auth->avatar], $url);
+                $this->success(__('Login successful'), $url, ['url' => $url, 'id' => $this->auth->id, 'username' => $username, 'avatar' => $this->auth->avatar]);
             } else {
                 $msg = $this->auth->getError();
                 $msg = $msg ? $msg : __('Username or password is incorrect');
