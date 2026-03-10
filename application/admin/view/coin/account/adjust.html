@@ -233,13 +233,22 @@
         transform: none;
     }
 
+    /* 隐藏 FastAdmin 默认的底部按钮区域 */
     .layer-footer {
         display: none !important;
+    }
+    /* 显示自定义的提交按钮区域 */
+    .custom-submit-footer {
+        display: block !important;
+        text-align: center;
+        padding: 15px 0;
     }
 </style>
 
 <form id="adjust-form" class="adjust-wrapper form-horizontal" role="form" data-toggle="validator" method="POST" action="">
     <input type="hidden" name="__token__" value="{$Request.token|default=''}">
+    <input type="hidden" name="ids" value="{$row.id}">
+    <input type="hidden" name="type" id="c-type" value="add">
     
     <!-- 用户信息卡片 -->
     <div class="user-card">
@@ -281,7 +290,7 @@
             <button type="button" class="quick-amount-btn" onclick="selectAmount(1000, this)">1000</button>
         </div>
         <div class="custom-amount">
-            <input type="number" id="c-amount" name="amount" placeholder="或输入自定义金额" min="1" value="" data-rule="required;min(1)" oninput="onAmountInput()">
+            <input type="number" id="c-amount" name="amount" placeholder="或输入自定义金额" min="1" value="" oninput="onAmountInput()">
         </div>
     </div>
 
@@ -307,19 +316,16 @@
         <textarea id="c-remark" name="remark" rows="2" placeholder="请输入调整原因（可选）"></textarea>
     </div>
 
-    <!-- 隐藏字段 -->
-    <input type="hidden" name="type" id="c-type" value="add">
-
     <!-- 提交按钮 -->
-    <div class="layer-footer" style="display: block; text-align: center; padding: 15px 0;">
-        <button type="submit" class="submit-btn add" id="submit-btn">
+    <div class="custom-submit-footer">
+        <button type="button" class="submit-btn add" id="submit-btn">
             <i class="fa fa-check"></i> <span id="btn-text">确认增加金币</span>
         </button>
     </div>
 </form>
 
 <script>
-var currentBalance = {$row.balance};
+var currentBalance = {$row.balance|default=0};
 var currentType = 'add';
 var currentAmount = 0;
 
@@ -393,4 +399,87 @@ function updateSubmitBtn() {
         text.textContent = '确认扣除金币';
     }
 }
+
+// 提交按钮点击事件
+document.getElementById('submit-btn').addEventListener('click', function() {
+    var amount = parseInt(document.getElementById('c-amount').value) || 0;
+    var type = document.getElementById('c-type').value;
+    var remark = document.getElementById('c-remark').value;
+    
+    if (amount <= 0) {
+        if (typeof parent !== 'undefined' && parent.Toastr) {
+            parent.Toastr.error('请输入有效的金额');
+        } else {
+            alert('请输入有效的金额');
+        }
+        return;
+    }
+    
+    // 确认操作
+    var confirmText = type === 'add' ? '确定要增加 ' + amount + ' 金币吗？' : '确定要扣除 ' + amount + ' 金币吗？';
+    if (!confirm(confirmText)) {
+        return;
+    }
+    
+    // 禁用按钮防止重复提交
+    var btn = document.getElementById('submit-btn');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fa fa-spinner fa-spin"></i> 处理中...';
+    
+    // 获取当前页面 URL
+    var currentUrl = window.location.href;
+    var baseUrl = currentUrl.split('?')[0];
+    
+    // 发送请求
+    var xhr = new XMLHttpRequest();
+    xhr.open('POST', baseUrl, true);
+    xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+    xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+    
+    xhr.onreadystatechange = function() {
+        if (xhr.readyState === 4) {
+            btn.disabled = false;
+            updateSubmitBtn();
+            
+            if (xhr.status === 200) {
+                try {
+                    var res = JSON.parse(xhr.responseText);
+                    if (res.code === 1) {
+                        if (typeof parent !== 'undefined' && parent.Toastr) {
+                            parent.Toastr.success(res.msg || '操作成功');
+                        }
+                        if (typeof parent !== 'undefined' && parent.Layer) {
+                            parent.Layer.closeAll();
+                        }
+                        // 刷新父页面表格
+                        if (typeof parent !== 'undefined' && parent.$) {
+                            parent.$('#table').bootstrapTable('refresh');
+                        }
+                    } else {
+                        if (typeof parent !== 'undefined' && parent.Toastr) {
+                            parent.Toastr.error(res.msg || '操作失败');
+                        } else {
+                            alert(res.msg || '操作失败');
+                        }
+                    }
+                } catch (e) {
+                    if (typeof parent !== 'undefined' && parent.Toastr) {
+                        parent.Toastr.error('服务器返回数据格式错误');
+                    } else {
+                        alert('服务器返回数据格式错误');
+                    }
+                }
+            } else {
+                if (typeof parent !== 'undefined' && parent.Toastr) {
+                    parent.Toastr.error('网络请求失败');
+                } else {
+                    alert('网络请求失败');
+                }
+            }
+        }
+    };
+    
+    var params = 'ids={$row.id}&type=' + type + '&amount=' + amount + '&remark=' + encodeURIComponent(remark);
+    xhr.send(params);
+});
 </script>
