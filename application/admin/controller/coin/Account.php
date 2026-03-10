@@ -146,6 +146,7 @@ class Account extends Backend
                 $logData = [
                     'user_id' => $row['user_id'],
                     'type' => 'admin_reduce',
+                    'title'=> '管理员加扣',
                     'amount' => $adjustAmount,
                     'balance_before' => $row['balance'],
                     'balance_after' => $row['balance'] + $adjustAmount,
@@ -153,6 +154,7 @@ class Account extends Backend
                     'relation_type' => 'admin',
                     'relation_id' => $ids,
                     'relation_table' => '',
+                    'ip' => $this->request->ip(),
                     'createtime' => time(),
                     'create_date' => date('Y-m-d'),
                 ];

@@ -28,10 +28,10 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
                         {checkbox: true},
                         {field: 'id', title: 'ID', sortable: true},
                         {field: 'user_id', title: '用户ID', sortable: true},
-                        {field: 'username', title: '用户名', operate: 'LIKE'},
-                        {field: 'nickname', title: '昵称', operate: 'LIKE'},
+                        {field: 'user.username', title: '用户名', operate: 'LIKE'},
+                        {field: 'user.nickname', title: '昵称', operate: 'LIKE'},
                         {field: 'task_id', title: '任务ID', sortable: true},
-                        {field: 'task_name', title: '任务名称', operate: 'LIKE'},
+                        {field: 'task.name', title: '任务名称', operate: 'LIKE'},
                         {field: 'is_new_user', title: '用户类型', searchList: {
                             "0": "老用户",
                             "1": "新用户"
@@ -56,7 +56,7 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
                             "0": "待领取",
                             "1": "已领取"
                         }, formatter: Table.api.formatter.status},
-                        {field: 'createtime', title: '创建时间', formatter: Table.api.formatter.datetime, operate: 'RANGE', addclass: 'datetimerange', sortable: true},
+                        // {field: 'createtime', title: '创建时间', formatter: Table.api.formatter.datetime, operate: 'RANGE', addclass: 'datetimerange', sortable: true},
                         {field: 'collect_time', title: '领取时间', formatter: Table.api.formatter.datetime, operate: 'RANGE', addclass: 'datetimerange', sortable: true},
                         {field: 'operate', title: '操作', table: table, events: Table.api.events.operate, formatter: Table.api.formatter.operate}
                     ]
