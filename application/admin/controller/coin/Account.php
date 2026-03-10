@@ -145,7 +145,7 @@ class Account extends Backend
                 $logTableName = CoinLog::getOrCreateTable();
                 $logData = [
                     'user_id' => $row['user_id'],
-                    'type' => 'admin_adjust',
+                    'type' => 'admin_reduce',
                     'amount' => $adjustAmount,
                     'balance_before' => $row['balance'],
                     'balance_after' => $row['balance'] + $adjustAmount,

@@ -18,6 +18,7 @@ class Log extends Backend
     {
         parent::_initialize();
         $this->model = new CoinLog();
+        $this->view->assign("typeList",CoinLog::$typeList);
     }
 
     /**

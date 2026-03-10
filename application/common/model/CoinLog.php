@@ -37,13 +37,13 @@ class CoinLog extends Model
         'withdraw_return' => '提现退回',
         'withdraw_freeze' => '提现冻结',
         'withdraw_refund' => '提现退还',
+        'withdraw_success' => '提现成功',
         'withdraw' => '提现',
         'withdraw_cancel' => '取消提现',
         // 支出类型
         'withdraw_fee' => '提现手续费',
         'admin_reduce' => '后台扣减',
     ];
-    
     /**
      * 关联用户
      */
