@@ -112,15 +112,6 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
                             }
                         },
                         {
-                            field: 'coin_commission',
-                            title: '金币佣金',
-                            sortable: true,
-                            width: '100px',
-                            formatter: function(value, row, index) {
-                                return '<span style="color:#9b59b6;">' + parseFloat(value || 0).toFixed(0) + ' 币</span>';
-                            }
-                        },
-                        {
                             field: 'operate',
                             title: '操作',
                             table: table,
@@ -133,10 +124,10 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
                                     title: '查看被邀请人名单',
                                     classname: 'btn btn-xs btn-success btn-dialog',
                                     icon: 'fa fa-users',
-                                    url: function(row) {
-                                        return 'invite/relation/invitees?parent_id=' + row.parent_id;
-                                    },
-                                    extend: 'data-area=\'["90%","80%"]\''
+                                    url: 'invite/relation/invitees',
+                                    callback: function(data) {
+                                        table.bootstrapTable('refresh');
+                                    }
                                 },
                                 {
                                     name: 'view_stat',
@@ -158,9 +149,6 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
             // 为表格绑定事件
             Table.api.bindevent(table);
             
-            // 加载统计数据
-            Controller.loadStats();
-            
             // 渠道筛选
             $(document).on('click', '[data-channel]', function() {
                 var channel = $(this).data('channel');
@@ -176,19 +164,6 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
             });
         },
         
-        // 加载统计数据
-        loadStats: function() {
-            $.ajax({
-                url: 'invite/relation/index',
-                type: 'GET',
-                data: {action: 'stats'},
-                dataType: 'json',
-                success: function(ret) {
-                    // 表格数据会自动更新统计
-                }
-            });
-        },
-        
         // 显示统计信息
         showStat: function(parentId) {
             $.ajax({
@@ -200,7 +175,7 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
                     if (ret.code === 1) {
                         var data = ret.data;
                         var inviter = data.inviter || {};
-                        var html = '<div class="stat-modal">';
+                        var html = '<div class="stat-modal" style="padding:10px;">';
                         html += '<div class="row">';
                         
                         // 邀请人信息
@@ -238,7 +213,7 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
                         
                         Layer.alert(html, {
                             title: '邀请统计详情',
-                            area: ['600px', 'auto'],
+                            area: ['650px', 'auto'],
                             btn: ['关闭']
                         });
                     } else {

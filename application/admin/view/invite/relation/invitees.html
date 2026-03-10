@@ -1,9 +1,22 @@
+<style>
+.user-info-cell {
+    display: flex;
+    align-items: center;
+    min-height: 40px;
+}
+.user-info-cell:after {
+    content: '';
+    clear: both;
+    display: table;
+}
+</style>
+
 <div class="panel panel-default panel-intro">
     <div class="panel-heading">
         <h3 class="panel-title">
             <i class="fa fa-users"></i> 被邀请人名单
             <small class="text-muted" style="margin-left:10px;">
-                邀请人ID: {$Request.get.parent_id|default=0}
+                邀请人ID: {$parent_id|default=0}
             </small>
         </h3>
     </div>
@@ -15,7 +28,7 @@
                         <div class="alert alert-info" style="margin-bottom:10px;padding:8px 15px;">
                             <i class="fa fa-info-circle"></i>
                             <strong>说明：</strong>
-                            <span class="label label-primary">一级</span> 直接邀请的用户
+                            <span class="label label-primary">一级</span> 直接邀请的用户 &nbsp;
                             <span class="label label-warning">二级</span> 下级邀请的用户（间接邀请）
                         </div>
                     </div>
