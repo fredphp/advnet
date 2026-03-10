@@ -15,7 +15,7 @@ class Invitestat extends Backend
      */
     protected $model = null;
     
-    public function initialize()
+    public function _initialize()
     {
         parent::initialize();
         $this->model = new \app\common\model\UserInviteStat();
