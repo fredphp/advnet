@@ -326,7 +326,7 @@
                         {/if}
                     </td>
                     <td>
-                        <span class="log-amount {if condition='$log[\"amount\"] >= 0'}positive{else}negative{/if}">
+                        <span class="log-amount {if condition="$log['amount'] >= 0"}positive{else}negative{/if}">
                             {if condition="$log['amount'] >= 0"}+{/if}{$log.amount}
                         </span>
                     </td>
