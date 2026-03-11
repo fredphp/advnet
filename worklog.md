@@ -118,3 +118,26 @@ Stage Summary:
 - 配置从 advn_invite_commission_config 表移到 advn_config 表
 - 相关菜单已删除
 - 代码已推送到 GitHub
+
+---
+Task ID: 2
+Agent: Main Agent
+Task: 将重新绑定上级功能更新到GitHub项目
+
+Work Log:
+- 检查项目状态，确认功能已实现
+- 验证Relation控制器包含完整的重新绑定上级方法
+- 验证前端JS包含showRebindModal、doRebind等功能
+- 验证rebind.html视图文件完整
+- 验证migrationlog.html视图文件完整
+- 验证数据库迁移文件已创建
+- 推送代码到GitHub (commit: 4e1fe95)
+
+Stage Summary:
+- 代码已成功推送到 https://github.com/fredphp/advnet.git
+- 功能完整实现：
+  1. 后端API：getUserDetail、getNewParentDetail、rebindParent、migrationLog
+  2. 前端视图：rebind.html（重新绑定弹窗）、migrationlog.html（迁移记录列表）
+  3. 前端JS：showRebindModal、loadUserDetail、loadNewParentDetail、doRebind
+  4. 数据库表：fa_invite_relation_migration_log
+  5. 迁移文件：sql/migrations/20260311_create_invite_relation_migration_log.sql

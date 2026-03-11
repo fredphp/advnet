@@ -457,7 +457,8 @@ class Relation extends Backend
                         'updatetime' => time(),
                     ]);
             } else {
-                // 如果没有邀请关系记录，                Db::name('invite_relation')->insert([
+                // 如果没有邀请关系记录，创建新的记录
+                Db::name('invite_relation')->insert([
                     'user_id' => $userId,
                     'parent_id' => $newParentId,
                     'grandparent_id' => $newGrandparentId,
