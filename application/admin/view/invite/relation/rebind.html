@@ -138,17 +138,17 @@
                 <i class="fa fa-search"></i> 选择新上级会员
             </div>
             <div class="panel-body">
-                <div class="select-new-parent">
-                    <select id="select-new-parent" class="form-control selectpage" 
-                            data-source="user/user/selectpage"
-                            data-field="nickname"
-                            data-primary-key="id"
-                            data-pagination="true"
-                            data-page-size="10"
-                            data-multiple="false"
-                            style="width:100%;">
-                        <option value="">请搜索并选择新上级会员</option>
-                    </select>
+                <div class="form-group">
+                    <input type="text" id="select-new-parent" class="form-control selectpage" 
+                           name="new_parent_id"
+                           data-source="user/user/selectpage"
+                           data-field="nickname"
+                           data-primary-key="id"
+                           data-pagination="true"
+                           data-page-size="10"
+                           data-multiple="false"
+                           placeholder="请搜索并选择新上级会员"
+                           style="width:100%;">
                 </div>
                 
                 <!-- 新上级信息卡片 -->

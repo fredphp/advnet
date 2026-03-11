@@ -323,13 +323,28 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
             // 获取用户详情
             Controller.loadUserDetail(userId);
             
-            // 初始化selectpage
-            Controller.initSelectPage();
-            
             // 绑定确认按钮事件
             $('#btn-confirm-rebind').on('click', function() {
                 Controller.doRebind();
             });
+            
+            // 监听 selectpage 选择事件
+            $(document).on('selectpage:select', '#select-new-parent', function(e, data) {
+                if (data && data.id) {
+                    Controller.loadNewParentDetail(data.id);
+                } else {
+                    $('#new-parent-card').hide();
+                }
+            });
+            
+            // 监听 selectpage 清除事件
+            $(document).on('selectpage:clear', '#select-new-parent', function(e) {
+                $('#new-parent-card').hide();
+                $('#new-parent-id').val('');
+            });
+            
+            // 初始化表单（包括selectpage组件）
+            Controller.api.bindevent();
         },
         
         // 加载用户详情
@@ -374,18 +389,6 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
                 },
                 error: function() {
                     Toastr.error('网络错误');
-                }
-            });
-        },
-        
-        // 初始化selectpage
-        initSelectPage: function() {
-            $('#select-new-parent').on('change', function() {
-                var newParentId = $(this).val();
-                if (newParentId) {
-                    Controller.loadNewParentDetail(newParentId);
-                } else {
-                    $('#new-parent-card').hide();
                 }
             });
         },
