@@ -39,8 +39,14 @@ class Commissionlog extends Backend
             
             // 添加额外信息
             foreach ($list as $item) {
+                // 来源用户（产生分佣的用户，如提现的用户）
                 $item->user_nickname = $item->user ? $item->user->nickname : '';
+                $item->user_id_val = $item->user_id;
+                // 获益用户（获得佣金的上级）
                 $item->parent_nickname = $item->parent ? $item->parent->nickname : '';
+                $item->parent_id_val = $item->parent_id;
+                // 来源类型中文
+                $item->source_type_text = $this->getSourceTypeText($item->source_type);
                 $item->status_text = $item->status_text;
             }
             
@@ -49,6 +55,21 @@ class Commissionlog extends Backend
         }
         
         return $this->view->fetch();
+    }
+    
+    /**
+     * 获取来源类型文本
+     */
+    protected function getSourceTypeText($type)
+    {
+        $types = [
+            'withdraw' => '提现',
+            'video' => '视频观看',
+            'red_packet' => '红包',
+            'game' => '游戏',
+            'task' => '任务',
+        ];
+        return $types[$type] ?? $type;
     }
     
     /**
