@@ -323,28 +323,27 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
             // 获取用户详情
             Controller.loadUserDetail(userId);
             
+            // 先初始化表单（包括selectpage组件）
+            Form.api.bindevent($("form[role=form]"));
+            
+            // 延迟绑定事件，确保selectpage已初始化
+            setTimeout(function() {
+                // 监听 selectpage 选择事件
+                $('#select-new-parent').on('change', function(e) {
+                    var newParentId = $(this).val();
+                    console.log('selectpage change:', newParentId);
+                    if (newParentId) {
+                        Controller.loadNewParentDetail(newParentId);
+                    } else {
+                        $('#new-parent-card').hide();
+                    }
+                });
+            }, 500);
+            
             // 绑定确认按钮事件
             $('#btn-confirm-rebind').on('click', function() {
                 Controller.doRebind();
             });
-            
-            // 监听 selectpage 选择事件
-            $(document).on('selectpage:select', '#select-new-parent', function(e, data) {
-                if (data && data.id) {
-                    Controller.loadNewParentDetail(data.id);
-                } else {
-                    $('#new-parent-card').hide();
-                }
-            });
-            
-            // 监听 selectpage 清除事件
-            $(document).on('selectpage:clear', '#select-new-parent', function(e) {
-                $('#new-parent-card').hide();
-                $('#new-parent-id').val('');
-            });
-            
-            // 初始化表单（包括selectpage组件）
-            Controller.api.bindevent();
         },
         
         // 加载用户详情
@@ -433,7 +432,8 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
         // 执行重新绑定
         doRebind: function() {
             var userId = $('#rebind-user-id').val();
-            var newParentId = $('#new-parent-id').val();
+            // 直接从selectpage input获取值
+            var newParentId = $('#select-new-parent').val();
             var reason = $('#bind-reason').val();
             
             if (!newParentId) {
