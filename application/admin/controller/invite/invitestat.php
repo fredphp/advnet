@@ -96,18 +96,20 @@ class Invitestat extends Backend
                 ->where('parent_id', $parentId)
                 ->count();
             
-            $list = Db::name('invite_relation')
+            $queryList = Db::name('invite_relation')
                 ->alias('ir')
                 ->join('user u', 'u.id = ir.user_id', 'LEFT')
                 ->where('ir.parent_id', $parentId)
-                ->field('ir.*, u.username, u.nickname, u.mobile, u.avatar, u.level as user_level')
+                ->field('ir.id, ir.user_id, ir.parent_id, ir.grandparent_id, ir.invite_code, ir.invite_channel, ir.createtime, ir.updatetime, u.username, u.nickname, u.mobile, u.avatar, u.level as user_level')
                 ->order('ir.' . $sort, $order)
                 ->limit($offset, $limit)
                 ->select();
             
-            // 设置层级
-            foreach ($list as &$item) {
-                $item['level_num'] = 1; // 相对于当前parent都是一级
+            // 转换为数组并设置层级
+            foreach ($queryList as $item) {
+                $row = is_array($item) ? $item : $item->toArray();
+                $row['level_num'] = 1; // 相对于当前parent都是一级
+                $list[] = $row;
             }
         } else {
             // 查看原始用户的邀请列表
@@ -117,17 +119,19 @@ class Invitestat extends Backend
                     ->where('parent_id', $userId)
                     ->count();
                 
-                $list = Db::name('invite_relation')
+                $queryList = Db::name('invite_relation')
                     ->alias('ir')
                     ->join('user u', 'u.id = ir.user_id', 'LEFT')
                     ->where('ir.parent_id', $userId)
-                    ->field('ir.*, u.username, u.nickname, u.mobile, u.avatar, u.level as user_level')
+                    ->field('ir.id, ir.user_id, ir.parent_id, ir.grandparent_id, ir.invite_code, ir.invite_channel, ir.createtime, ir.updatetime, u.username, u.nickname, u.mobile, u.avatar, u.level as user_level')
                     ->order('ir.' . $sort, $order)
                     ->limit($offset, $limit)
                     ->select();
                 
-                foreach ($list as &$item) {
-                    $item['level_num'] = 1;
+                foreach ($queryList as $item) {
+                    $row = is_array($item) ? $item : $item->toArray();
+                    $row['level_num'] = 1;
+                    $list[] = $row;
                 }
             } elseif ($levelFilter == 2) {
                 // 只查询二级邀请
@@ -136,37 +140,53 @@ class Invitestat extends Backend
                     ->where('grandparent_id', '>', 0)
                     ->count();
                 
-                $list = Db::name('invite_relation')
+                $queryList = Db::name('invite_relation')
                     ->alias('ir')
                     ->join('user u', 'u.id = ir.user_id', 'LEFT')
                     ->where('ir.grandparent_id', $userId)
                     ->where('ir.grandparent_id', '>', 0)
-                    ->field('ir.*, u.username, u.nickname, u.mobile, u.avatar, u.level as user_level')
+                    ->field('ir.id, ir.user_id, ir.parent_id, ir.grandparent_id, ir.invite_code, ir.invite_channel, ir.createtime, ir.updatetime, u.username, u.nickname, u.mobile, u.avatar, u.level as user_level')
                     ->order('ir.' . $sort, $order)
                     ->limit($offset, $limit)
                     ->select();
                 
-                foreach ($list as &$item) {
-                    $item['level_num'] = 2;
+                foreach ($queryList as $item) {
+                    $row = is_array($item) ? $item : $item->toArray();
+                    $row['level_num'] = 2;
+                    $list[] = $row;
                 }
             } else {
                 // 查询全部（一级+二级）
                 // 先获取一级
-                $level1List = Db::name('invite_relation')
+                $level1Query = Db::name('invite_relation')
                     ->alias('ir')
                     ->join('user u', 'u.id = ir.user_id', 'LEFT')
                     ->where('ir.parent_id', $userId)
-                    ->field('ir.*, u.username, u.nickname, u.mobile, u.avatar, u.level as user_level, 1 as level_num')
+                    ->field('ir.id, ir.user_id, ir.parent_id, ir.grandparent_id, ir.invite_code, ir.invite_channel, ir.createtime, ir.updatetime, u.username, u.nickname, u.mobile, u.avatar, u.level as user_level')
                     ->select();
                 
+                $level1List = [];
+                foreach ($level1Query as $item) {
+                    $row = is_array($item) ? $item : $item->toArray();
+                    $row['level_num'] = 1;
+                    $level1List[] = $row;
+                }
+                
                 // 再获取二级
-                $level2List = Db::name('invite_relation')
+                $level2Query = Db::name('invite_relation')
                     ->alias('ir')
                     ->join('user u', 'u.id = ir.user_id', 'LEFT')
                     ->where('ir.grandparent_id', $userId)
                     ->where('ir.grandparent_id', '>', 0)
-                    ->field('ir.*, u.username, u.nickname, u.mobile, u.avatar, u.level as user_level, 2 as level_num')
+                    ->field('ir.id, ir.user_id, ir.parent_id, ir.grandparent_id, ir.invite_code, ir.invite_channel, ir.createtime, ir.updatetime, u.username, u.nickname, u.mobile, u.avatar, u.level as user_level')
                     ->select();
+                
+                $level2List = [];
+                foreach ($level2Query as $item) {
+                    $row = is_array($item) ? $item : $item->toArray();
+                    $row['level_num'] = 2;
+                    $level2List[] = $row;
+                }
                 
                 // 合并
                 $allList = array_merge($level1List, $level2List);
@@ -189,7 +209,12 @@ class Invitestat extends Backend
         }
         
         // 获取所有被邀请人ID
-        $inviteeIds = array_column($list, 'user_id');
+        $inviteeIds = [];
+        foreach ($list as $item) {
+            if (isset($item['user_id']) && $item['user_id']) {
+                $inviteeIds[] = $item['user_id'];
+            }
+        }
         
         // 获取每个被邀请人的下级数量
         $subCounts = [];
@@ -200,13 +225,18 @@ class Invitestat extends Backend
                 ->field('parent_id, COUNT(*) as count')
                 ->select();
             foreach ($subCountsQuery as $item) {
-                $subCounts[$item['parent_id']] = $item['count'];
+                $row = is_array($item) ? $item : $item->toArray();
+                $subCounts[$row['parent_id']] = $row['count'];
             }
         }
         
         // 为每个被邀请人添加统计信息
         foreach ($list as &$item) {
-            $item['sub_count'] = $subCounts[$item['user_id']] ?? 0;
+            $item['sub_count'] = isset($item['user_id']) ? ($subCounts[$item['user_id']] ?? 0) : 0;
+            
+            if (!isset($item['user_id'])) {
+                continue;
+            }
             
             // 消费总额
             $spendTotal = Db::name('coin_log')
@@ -233,7 +263,7 @@ class Invitestat extends Backend
             $account = Db::name('coin_account')
                 ->where('user_id', $item['user_id'])
                 ->find();
-            $item['balance'] = $account ? $account['balance'] : 0;
+            $item['balance'] = $account ? ($account['balance'] ?? 0) : 0;
         }
         
         // 统计数据 - 根据当前查看的用户返回统计
