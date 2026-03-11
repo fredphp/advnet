@@ -153,17 +153,6 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
                                     callback: function(data) {
                                         table.bootstrapTable('refresh');
                                     }
-                                },
-                                {
-                                    name: 'view_relation',
-                                    text: '邀请关系',
-                                    title: '邀请关系详情',
-                                    classname: 'btn btn-xs btn-info btn-dialog',
-                                    icon: 'fa fa-sitemap',
-                                    url: 'invite/relation/invitees?parent_id={user_id}',
-                                    callback: function(data) {
-                                        table.bootstrapTable('refresh');
-                                    }
                                 }
                             ],
                             formatter: Table.api.formatter.operate
