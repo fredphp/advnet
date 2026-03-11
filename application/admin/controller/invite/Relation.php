@@ -506,13 +506,9 @@ class Relation extends Backend
             ->where('grandparent_id', '>', 0)
             ->count();
         
-        // 检查是否会形成循环关系（新上级不能是当前用户的下级）
-        $isChild = Db::name('invite_relation')
-            ->where('user_id', $newParentId)
-            ->where('parent_id', $userId)
-            ->whereOr('grandparent_id', $userId)
-            ->find();
-        if ($isChild) {
+        // 检查是否会形成循环关系（新上级不能是当前用户的任意层级下级）
+        $allSubordinateIds = $this->getAllSubordinateIds($userId);
+        if (in_array($newParentId, $allSubordinateIds)) {
             $this->error('不能将自己的下级设置为上级，会形成循环关系');
         }
         
@@ -549,15 +545,9 @@ class Relation extends Backend
             $oldGrandparentId = $inviteRelation['grandparent_id'] ?? 0;
         }
         
-        // 检查是否会形成循环关系
-        $isChild = Db::name('invite_relation')
-            ->where('user_id', $newParentId)
-            ->where(function($query) use ($userId) {
-                $query->where('parent_id', $userId)
-                    ->whereOr('grandparent_id', $userId);
-            })
-            ->find();
-        if ($isChild) {
+        // 检查是否会形成循环关系（新上级不能是当前用户的任意层级下级）
+        $allSubordinateIds = $this->getAllSubordinateIds($userId);
+        if (in_array($newParentId, $allSubordinateIds)) {
             $this->error('不能将自己的下级设置为上级，会形成循环关系');
         }
         
