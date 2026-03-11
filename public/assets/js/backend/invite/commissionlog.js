@@ -38,7 +38,7 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
                         {field: 'level', title: '层级', searchList: {"1":"一级","2":"二级","3":"三级"}},
                         {field: 'status', title: '状态', searchList: {"0":"待结算","1":"已结算","2":"已取消","3":"已冻结"}, formatter: Table.api.formatter.status},
                         {field: 'settle_time', title: '结算时间', formatter: Table.api.formatter.datetime, operate: 'RANGE', addclass: 'datetimerange', sortable: true},
-                        {field: 'createtime', title: '创建时间', formatter: Table.api.formatter.datetime, operate: 'RANGE', addclass: 'datetimerange', sortable: true},
+                        // {field: 'createtime', title: '创建时间', formatter: Table.api.formatter.datetime, operate: 'RANGE', addclass: 'datetimerange', sortable: true},
                         {field: 'operate', title: '操作', table: table, events: Table.api.events.operate, formatter: Table.api.formatter.operate}
                     ]
                 ]
