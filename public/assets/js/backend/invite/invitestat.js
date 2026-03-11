@@ -32,7 +32,7 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
                             width: '180px',
                             formatter: function(value, row, index) {
                                 var avatar = row.user_avatar || '/assets/img/avatar.png';
-                                var html = '<div class="user-info-cell" style="cursor:pointer;" onclick="Controller.showInvitees(' + row.user_id + ', \'' + (row.user_nickname || row.username || '-') + '\', 1)">';
+                                var html = '<div class="user-info-cell" style="cursor:pointer;" onclick="Controller.showInvitees(' + row.user_id + ', \'' + (row.user_nickname || row.username || '-').replace(/'/g, "\\'") + '\', 1)">';
                                 html += '<img src="' + avatar + '" class="img-circle" style="width:36px;height:36px;margin-right:8px;float:left;">';
                                 html += '<div style="float:left;">';
                                 html += '<div style="font-weight:bold;color:#333;">' + (row.user_nickname || '-') + '</div>';
@@ -55,7 +55,7 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
                             formatter: function(value, row, index) {
                                 var count = value || 0;
                                 if (count > 0) {
-                                    return '<a href="javascript:;" onclick="Controller.showInvitees(' + row.user_id + ', \'' + (row.user_nickname || row.username || '-') + '\', 1)" class="btn btn-xs btn-success">' + count + ' 人 <i class="fa fa-arrow-right"></i></a>';
+                                    return '<a href="javascript:;" onclick="Controller.showInvitees(' + row.user_id + ', \'' + (row.user_nickname || row.username || '-').replace(/'/g, "\\'") + '\', 1)" class="btn btn-xs btn-success">' + count + ' 人 <i class="fa fa-arrow-right"></i></a>';
                                 }
                                 return '<span class="text-muted">0</span>';
                             }
@@ -68,7 +68,7 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
                             formatter: function(value, row, index) {
                                 var count = value || 0;
                                 if (count > 0) {
-                                    return '<a href="javascript:;" onclick="Controller.showInvitees(' + row.user_id + ', \'' + (row.user_nickname || row.username || '-') + '\', 2)" class="btn btn-xs btn-warning">' + count + ' 人 <i class="fa fa-arrow-right"></i></a>';
+                                    return '<a href="javascript:;" onclick="Controller.showInvitees(' + row.user_id + ', \'' + (row.user_nickname || row.username || '-').replace(/'/g, "\\'") + '\', 2)" class="btn btn-xs btn-warning">' + count + ' 人 <i class="fa fa-arrow-right"></i></a>';
                                 }
                                 return '<span class="text-muted">0</span>';
                             }
@@ -81,7 +81,7 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
                             formatter: function(value, row, index) {
                                 var count = (row.level1_count || 0) + (row.level2_count || 0);
                                 if (count > 0) {
-                                    return '<a href="javascript:;" onclick="Controller.showInvitees(' + row.user_id + ', \'' + (row.user_nickname || row.username || '-') + '\', 0)" class="label label-primary" style="cursor:pointer;">' + count + ' 人</a>';
+                                    return '<a href="javascript:;" onclick="Controller.showInvitees(' + row.user_id + ', \'' + (row.user_nickname || row.username || '-').replace(/'/g, "\\'") + '\', 0)" class="label label-primary" style="cursor:pointer;">' + count + ' 人</a>';
                                 }
                                 return '<span class="text-muted">0</span>';
                             }
@@ -196,171 +196,227 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
             var userId = Fast.api.query('user_id');
             var initLevel = parseInt(Fast.api.query('level', 0)); // 0=全部, 1=一级, 2=二级
             
-            Table.api.init({
-                extend: {
-                    index_url: 'invite/invitestat/invitees?user_id=' + userId,
-                    table: 'invite_relation',
-                }
-            });
-
-            var table = $("#table");
-            var currentLevel = initLevel || 0; // 当前显示的层级筛选
-            var currentParentId = userId; // 当前查看的用户ID
-            var parentStack = [{id: userId, level: 1, nickname: '主用户'}]; // 导航栈
-            
-            // 初始化表格
-            table.bootstrapTable({
-                url: $.fn.bootstrapTable.defaults.extend.index_url,
-                pk: 'id',
-                sortName: 'createtime',
-                sortOrder: 'desc',
-                pagination: true,
-                sidePagination: 'server',
-                pageSize: 15,
-                pageList: [10, 15, 20, 50],
-                queryParams: function(params) {
-                    params.parent_id = currentParentId;
-                    params.level = currentLevel;
-                    return params;
-                },
-                responseHandler: function(res) {
-                    // 更新统计数据
-                    if (res.level1_count !== undefined) {
-                        $('#level1-count').text(res.level1_count || 0);
-                        $('#level2-count').text(res.level2_count || 0);
-                    }
-                    return res;
-                },
-                columns: [
-                    [
-                        {field: 'id', title: 'ID', sortable: true, width: '60px'},
-                        {
-                            field: 'user_info', 
-                            title: '用户信息', 
-                            operate: false,
-                            width: '160px',
-                            formatter: function(value, row, index) {
-                                var avatar = row.avatar || '/assets/img/avatar.png';
-                                var html = '<div class="user-info-cell">';
-                                html += '<img src="' + avatar + '" class="img-circle" style="width:32px;height:32px;margin-right:8px;float:left;">';
-                                html += '<div style="float:left;">';
-                                html += '<div style="font-weight:bold;">' + (row.nickname || row.username || '-') + '</div>';
-                                html += '<small class="text-muted">ID: ' + row.user_id + '</small>';
-                                html += '</div></div>';
-                                return html;
-                            }
-                        },
-                        {
-                            field: 'level_num',
-                            title: '关系层级',
-                            operate: false,
-                            width: '100px',
-                            formatter: function(value, row, index) {
-                                if (value === 1) {
-                                    return '<span class="label label-primary">一级</span>';
-                                } else if (value === 2) {
-                                    return '<span class="label label-warning">二级</span>';
-                                } else {
-                                    return '<span class="label label-default">' + (value || '-') + '</span>';
-                                }
-                            }
-                        },
-                        {
-                            field: 'sub_count',
-                            title: '下级数量',
-                            sortable: true,
-                            width: '100px',
-                            formatter: function(value, row, index) {
-                                var count = value || 0;
-                                if (count > 0) {
-                                    return '<a href="javascript:;" onclick="Controller.viewSubInvitees(' + row.user_id + ', \'' + (row.nickname || '用户').replace(/'/g, "\\'") + '\')" class="btn btn-xs btn-info">' + count + ' 人 <i class="fa fa-arrow-right"></i></a>';
-                                }
-                                return '<span class="text-muted">0</span>';
-                            }
-                        },
-                        {
-                            field: 'balance',
-                            title: '账户余额',
-                            sortable: true,
-                            width: '100px',
-                            formatter: function(value, row, index) {
-                                var val = parseFloat(value || 0);
-                                return val.toFixed(2);
-                            }
-                        },
-                        {
-                            field: 'spend_total',
-                            title: '消费总额',
-                            sortable: true,
-                            width: '100px',
-                            formatter: function(value, row, index) {
-                                return '<span style="color:#e74c3c;">¥' + parseFloat(value || 0).toFixed(2) + '</span>';
-                            }
-                        },
-                        {
-                            field: 'withdraw_total',
-                            title: '提现总额',
-                            sortable: true,
-                            width: '100px',
-                            formatter: function(value, row, index) {
-                                return '<span style="color:#3498db;">¥' + parseFloat(value || 0).toFixed(2) + '</span>';
-                            }
-                        },
-                        {
-                            field: 'commission_total',
-                            title: '产生佣金',
-                            sortable: true,
-                            width: '100px',
-                            formatter: function(value, row, index) {
-                                return '<span style="color:#27ae60;">¥' + parseFloat(value || 0).toFixed(2) + '</span>';
-                            }
-                        },
-                        {
-                            field: 'createtime',
-                            title: '绑定时间',
-                            sortable: true,
-                            formatter: Table.api.formatter.datetime,
-                            operate: 'RANGE',
-                            addclass: 'datetimerange'
-                        },
-                        {
-                            field: 'operate',
-                            title: '操作',
-                            width: '80px',
-                            formatter: function(value, row, index) {
-                                var count = row.sub_count || 0;
-                                if (count > 0) {
-                                    return '<a href="javascript:;" onclick="Controller.viewSubInvitees(' + row.user_id + ', \'' + (row.nickname || '用户').replace(/'/g, "\\'") + '\')" class="btn btn-xs btn-success"><i class="fa fa-users"></i> 查看下级</a>';
-                                }
-                                return '-';
-                            }
+            // 使用全局对象来避免闭包问题
+            window.InviteesController = {
+                userId: userId,
+                initLevel: initLevel || 0,
+                currentLevel: initLevel || 0,
+                currentParentId: userId,
+                parentStack: [{id: userId, level: 1, nickname: '主用户'}],
+                table: null,
+                
+                // 初始化
+                init: function() {
+                    var self = this;
+                    
+                    Table.api.init({
+                        extend: {
+                            index_url: 'invite/invitestat/invitees?user_id=' + this.userId,
+                            table: 'invite_relation',
                         }
-                    ]
-                ]
-            });
+                    });
 
-            Table.api.bindevent(table);
-            
-            // 查看下级邀请人
-            window.Controller_viewSubInvitees = function(userId, nickname) {
-                // 添加到导航栈
-                parentStack.push({id: userId, level: parentStack.length + 1, nickname: nickname});
+                    this.table = $("#table");
+                    
+                    // 初始化表格
+                    this.table.bootstrapTable({
+                        url: $.fn.bootstrapTable.defaults.extend.index_url,
+                        pk: 'id',
+                        sortName: 'createtime',
+                        sortOrder: 'desc',
+                        pagination: true,
+                        sidePagination: 'server',
+                        pageSize: 15,
+                        pageList: [10, 15, 20, 50],
+                        queryParams: function(params) {
+                            params.parent_id = self.currentParentId;
+                            params.level = self.currentLevel;
+                            return params;
+                        },
+                        responseHandler: function(res) {
+                            // 更新统计数据
+                            if (res.level1_count !== undefined) {
+                                $('#level1-count').text(res.level1_count || 0);
+                                $('#level2-count').text(res.level2_count || 0);
+                            }
+                            return res;
+                        },
+                        columns: [
+                            [
+                                {field: 'id', title: 'ID', sortable: true, width: '60px'},
+                                {
+                                    field: 'user_info', 
+                                    title: '用户信息', 
+                                    operate: false,
+                                    width: '160px',
+                                    formatter: function(value, row, index) {
+                                        var avatar = row.avatar || '/assets/img/avatar.png';
+                                        var html = '<div class="user-info-cell">';
+                                        html += '<img src="' + avatar + '" class="img-circle" style="width:32px;height:32px;margin-right:8px;float:left;">';
+                                        html += '<div style="float:left;">';
+                                        html += '<div style="font-weight:bold;">' + (row.nickname || row.username || '-') + '</div>';
+                                        html += '<small class="text-muted">ID: ' + row.user_id + '</small>';
+                                        html += '</div></div>';
+                                        return html;
+                                    }
+                                },
+                                {
+                                    field: 'level_num',
+                                    title: '关系层级',
+                                    operate: false,
+                                    width: '100px',
+                                    formatter: function(value, row, index) {
+                                        if (value === 1) {
+                                            return '<span class="label label-primary">一级</span>';
+                                        } else if (value === 2) {
+                                            return '<span class="label label-warning">二级</span>';
+                                        } else {
+                                            return '<span class="label label-default">' + (value || '-') + '</span>';
+                                        }
+                                    }
+                                },
+                                {
+                                    field: 'sub_count',
+                                    title: '下级数量',
+                                    sortable: true,
+                                    width: '100px',
+                                    formatter: function(value, row, index) {
+                                        var count = value || 0;
+                                        if (count > 0) {
+                                            return '<a href="javascript:;" onclick="window.InviteesController.viewSubInvitees(' + row.user_id + ', \'' + (row.nickname || '用户').replace(/'/g, "\\'") + '\')" class="btn btn-xs btn-info">' + count + ' 人 <i class="fa fa-arrow-right"></i></a>';
+                                        }
+                                        return '<span class="text-muted">0</span>';
+                                    }
+                                },
+                                {
+                                    field: 'balance',
+                                    title: '账户余额',
+                                    sortable: true,
+                                    width: '100px',
+                                    formatter: function(value, row, index) {
+                                        var val = parseFloat(value || 0);
+                                        return val.toFixed(2);
+                                    }
+                                },
+                                {
+                                    field: 'spend_total',
+                                    title: '消费总额',
+                                    sortable: true,
+                                    width: '100px',
+                                    formatter: function(value, row, index) {
+                                        return '<span style="color:#e74c3c;">¥' + parseFloat(value || 0).toFixed(2) + '</span>';
+                                    }
+                                },
+                                {
+                                    field: 'withdraw_total',
+                                    title: '提现总额',
+                                    sortable: true,
+                                    width: '100px',
+                                    formatter: function(value, row, index) {
+                                        return '<span style="color:#3498db;">¥' + parseFloat(value || 0).toFixed(2) + '</span>';
+                                    }
+                                },
+                                {
+                                    field: 'commission_total',
+                                    title: '产生佣金',
+                                    sortable: true,
+                                    width: '100px',
+                                    formatter: function(value, row, index) {
+                                        return '<span style="color:#27ae60;">¥' + parseFloat(value || 0).toFixed(2) + '</span>';
+                                    }
+                                },
+                                {
+                                    field: 'createtime',
+                                    title: '绑定时间',
+                                    sortable: true,
+                                    formatter: Table.api.formatter.datetime,
+                                    operate: 'RANGE',
+                                    addclass: 'datetimerange'
+                                },
+                                {
+                                    field: 'operate',
+                                    title: '操作',
+                                    width: '80px',
+                                    formatter: function(value, row, index) {
+                                        var count = row.sub_count || 0;
+                                        if (count > 0) {
+                                            return '<a href="javascript:;" onclick="window.InviteesController.viewSubInvitees(' + row.user_id + ', \'' + (row.nickname || '用户').replace(/'/g, "\\'") + '\')" class="btn btn-xs btn-success"><i class="fa fa-users"></i> 查看下级</a>';
+                                        }
+                                        return '-';
+                                    }
+                                }
+                            ]
+                        ]
+                    });
+
+                    Table.api.bindevent(this.table);
+                },
                 
-                // 更新当前查看的用户
-                currentParentId = userId;
-                currentLevel = 0; // 查看下级时显示全部
+                // 查看下级邀请人
+                viewSubInvitees: function(targetUserId, nickname) {
+                    // 添加到导航栈
+                    this.parentStack.push({
+                        id: targetUserId, 
+                        level: this.parentStack.length + 1, 
+                        nickname: nickname
+                    });
+                    
+                    // 更新当前查看的用户
+                    this.currentParentId = targetUserId;
+                    this.currentLevel = 0; // 查看下级时显示全部
+                    
+                    // 更新面包屑导航
+                    this.updateBreadcrumb();
+                    
+                    // 刷新表格
+                    this.table.bootstrapTable('refresh');
+                },
                 
-                // 刷新表格
-                $("#table").bootstrapTable('refresh', {
-                    query: {parent_id: userId, level: 0}
-                });
+                // 更新面包屑导航
+                updateBreadcrumb: function() {
+                    var breadcrumbHtml = '<ol class="breadcrumb">';
+                    for (var i = 0; i < this.parentStack.length; i++) {
+                        var item = this.parentStack[i];
+                        if (i === this.parentStack.length - 1) {
+                            breadcrumbHtml += '<li class="active">' + item.nickname + '</li>';
+                        } else {
+                            breadcrumbHtml += '<li><a href="javascript:;" onclick="window.InviteesController.goBackTo(' + i + ')">' + item.nickname + '</a></li>';
+                        }
+                    }
+                    breadcrumbHtml += '</ol>';
+                    
+                    // 如果面包屑容器不存在，创建一个
+                    if ($('#breadcrumb-container').length === 0) {
+                        $('.panel-heading .panel-lead').after('<div id="breadcrumb-container" style="padding: 8px 15px;"></div>');
+                    }
+                    $('#breadcrumb-container').html(breadcrumbHtml);
+                },
+                
+                // 返回到指定层级
+                goBackTo: function(index) {
+                    // 截断导航栈
+                    this.parentStack = this.parentStack.slice(0, index + 1);
+                    
+                    // 更新当前查看的用户
+                    this.currentParentId = this.parentStack[index].id;
+                    this.currentLevel = index === 0 ? this.initLevel : 0;
+                    
+                    // 更新面包屑导航
+                    this.updateBreadcrumb();
+                    
+                    // 刷新表格
+                    this.table.bootstrapTable('refresh');
+                }
             };
+            
+            // 初始化控制器
+            window.InviteesController.init();
         },
-        
+
         // 查看下级邀请人（在弹窗页面调用）
         viewSubInvitees: function(userId, nickname) {
-            if (typeof Controller_viewSubInvitees === 'function') {
-                Controller_viewSubInvitees(userId, nickname);
+            if (typeof window.InviteesController !== 'undefined' && window.InviteesController.viewSubInvitees) {
+                window.InviteesController.viewSubInvitees(userId, nickname);
             }
         },
         

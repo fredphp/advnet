@@ -229,10 +229,10 @@ class Invitestat extends Backend
             $item['balance'] = $account ? $account['balance'] : 0;
         }
         
-        // 统计数据
-        $level1Count = Db::name('invite_relation')->where('parent_id', $userId)->count();
+        // 统计数据 - 根据当前查看的用户返回统计
+        $level1Count = Db::name('invite_relation')->where('parent_id', $parentId)->count();
         $level2Count = Db::name('invite_relation')
-            ->where('grandparent_id', $userId)
+            ->where('grandparent_id', $parentId)
             ->where('grandparent_id', '>', 0)
             ->count();
         
