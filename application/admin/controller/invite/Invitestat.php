@@ -39,6 +39,7 @@ class Invitestat extends Backend
             foreach ($list as $item) {
                 $item->user_nickname = $item->user ? $item->user->nickname : '';
                 $item->user_avatar = $item->user ? $item->user->avatar : '';
+                $item->username = $item->user ? $item->user->username : '';
             }
             
             $result = ['total' => $total, 'rows' => $list];
@@ -49,16 +50,114 @@ class Invitestat extends Backend
     }
     
     /**
-     * 邀请排行
+     * 查看用户的一级邀请列表
      */
-    public function ranking()
+    public function invitees()
     {
-        $type = $this->request->get('type', 'total');
-        $limit = $this->request->get('limit', 50);
+        $userId = $this->request->get('user_id', 0);
         
-        $list = \app\common\model\UserInviteStat::getRanking($type, $limit);
+        if (!$userId) {
+            $this->error('参数错误');
+        }
         
-        $this->success('', null, ['list' => $list]);
+        // 获取用户信息
+        $user = Db::name('user')->where('id', $userId)->find();
+        
+        // 非AJAX请求，返回视图
+        if (!$this->request->isAjax()) {
+            $this->view->assign('user', $user);
+            $this->view->assign('user_id', $userId);
+            return $this->view->fetch();
+        }
+        
+        // AJAX请求，返回数据
+        $parentId = $this->request->get('parent_id', $userId);
+        $sort = $this->request->get('sort', 'createtime');
+        $order = $this->request->get('order', 'desc');
+        $offset = $this->request->get('offset', 0);
+        $limit = $this->request->get('limit', 15);
+        
+        // 获取一级被邀请人（只显示直接下级）
+        $list = Db::name('invite_relation')
+            ->alias('ir')
+            ->join('user u', 'u.id = ir.user_id', 'LEFT')
+            ->where('ir.parent_id', $parentId)
+            ->field('ir.*, u.username, u.nickname, u.mobile, u.avatar, u.level as user_level, 1 as level_num')
+            ->order('ir.' . $sort, $order)
+            ->select();
+        
+        $total = count($list);
+        
+        // 获取所有被邀请人ID
+        $inviteeIds = array_column($list, 'user_id');
+        
+        // 获取每个被邀请人的下级数量
+        $subCounts = [];
+        if (!empty($inviteeIds)) {
+            $subCountsQuery = Db::name('invite_relation')
+                ->whereIn('parent_id', $inviteeIds)
+                ->group('parent_id')
+                ->field('parent_id, COUNT(*) as count')
+                ->select();
+            foreach ($subCountsQuery as $item) {
+                $subCounts[$item['parent_id']] = $item['count'];
+            }
+        }
+        
+        // 获取金币账户
+        $accounts = [];
+        if (!empty($inviteeIds)) {
+            $accountQuery = Db::name('coin_account')
+                ->whereIn('user_id', $inviteeIds)
+                ->select();
+            foreach ($accountQuery as $item) {
+                $accounts[$item['user_id']] = $item;
+            }
+        }
+        
+        // 为每个被邀请人添加统计信息
+        foreach ($list as &$item) {
+            $item['sub_count'] = $subCounts[$item['user_id']] ?? 0;
+            
+            // 消费总额
+            $spendTotal = Db::name('coin_log')
+                ->where('user_id', $item['user_id'])
+                ->where('type', 'spend')
+                ->sum('amount');
+            $item['spend_total'] = abs($spendTotal ?? 0);
+            
+            // 提现总额
+            $withdrawTotal = Db::name('coin_log')
+                ->where('user_id', $item['user_id'])
+                ->where('type', 'withdraw')
+                ->sum('amount');
+            $item['withdraw_total'] = abs($withdrawTotal ?? 0);
+            
+            // 产生佣金
+            $commissionTotal = Db::name('invite_commission_log')
+                ->where('user_id', $item['user_id'])
+                ->where('status', 1)
+                ->sum('commission_amount');
+            $item['commission_total'] = $commissionTotal ?? 0;
+            
+            // 账户余额
+            $account = $accounts[$item['user_id']] ?? null;
+            $item['balance'] = $account ? $account['balance'] : 0;
+        }
+        
+        // 分页
+        $list = array_slice($list, $offset, $limit);
+        
+        // 统计数据
+        $level1Count = Db::name('invite_relation')->where('parent_id', $userId)->count();
+        $level2Count = Db::name('invite_relation')->where('grandparent_id', $userId)->where('grandparent_id', '>', 0)->count();
+        
+        return json([
+            'total' => $total, 
+            'rows' => $list,
+            'level1_count' => $level1Count,
+            'level2_count' => $level2Count,
+        ]);
     }
     
     /**
@@ -109,41 +208,5 @@ class Invitestat extends Backend
             'invited_user_count' => $invitedUserCount,
             'bind_rate' => $bindRate,
         ]);
-    }
-    
-    /**
-     * 用户详情
-     */
-    public function detail($ids = null)
-    {
-        $row = $this->model->with(['user'])->find($ids);
-        if (!$row) {
-            $this->error(__('No Results were found'));
-        }
-        
-        // 获取下级列表
-        $level1Ids = Db::name('invite_relation')
-            ->where('parent_id', $row->user_id)
-            ->column('user_id');
-        
-        $level2Ids = Db::name('invite_relation')
-            ->where('grandparent_id', $row->user_id)
-            ->column('user_id');
-        
-        // 获取用户贡献排行
-        $topContributors = Db::name('invite_commission_log')
-            ->where('parent_id', $row->user_id)
-            ->field('user_id, SUM(commission_amount) as total')
-            ->group('user_id')
-            ->order('total', 'desc')
-            ->limit(10)
-            ->select();
-        
-        $this->view->assign('row', $row);
-        $this->view->assign('level1_count', count($level1Ids));
-        $this->view->assign('level2_count', count($level2Ids));
-        $this->view->assign('top_contributors', $topContributors);
-        
-        return $this->view->fetch();
     }
 }
