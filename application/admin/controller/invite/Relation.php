@@ -292,6 +292,16 @@ class Relation extends Backend
     }
 
     /**
+     * 重新绑定上级页面
+     */
+    public function rebind()
+    {
+        $userId = $this->request->get('user_id', 0);
+        $this->view->assign('user_id', $userId);
+        return $this->view->fetch();
+    }
+
+    /**
      * 获取用户详情（用于重新绑定上级）
      */
     public function getUserDetail()
