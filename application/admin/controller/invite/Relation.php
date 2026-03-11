@@ -24,7 +24,7 @@ class Relation extends Backend
     public function index()
     {
         if ($this->request->isAjax()) {
-            $sort = $this->request->get('sort', 'id');
+            $sort = $this->request->get('sort', 'total_invite_count');
             $order = $this->request->get('order', 'desc');
             $offset = $this->request->get('offset', 0);
             $limit = $this->request->get('limit', 15);
@@ -50,11 +50,9 @@ class Relation extends Backend
             // 获取总数
             $total = $query->count();
             
-            // 获取用户列表
+            // 获取所有用户（不分页，先获取全部再排序）
             $users = Db::name('user')
                 ->field('id, username, nickname, mobile, avatar, level, invite_code, parent_id, grandparent_id, createtime')
-                ->order($sort, $order)
-                ->limit($offset, $limit)
                 ->select();
             
             if (empty($users)) {
@@ -174,8 +172,22 @@ class Relation extends Backend
                     'createtime' => $user['createtime'] ?? 0,
                 ];
             }
+            
+            // 排序
+            usort($list, function($a, $b) use ($sort, $order) {
+                if (!isset($a[$sort]) || !isset($b[$sort])) {
+                    return 0;
+                }
+                if ($order === 'desc') {
+                    return $b[$sort] <=> $a[$sort];
+                }
+                return $a[$sort] <=> $b[$sort];
+            });
+            
+            // 分页
+            $rows = array_slice($list, $offset, $limit);
 
-            return json(['total' => $total, 'rows' => $list]);
+            return json(['total' => $total, 'rows' => $rows]);
         }
         return $this->view->fetch();
     }
