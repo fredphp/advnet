@@ -102,4 +102,13 @@ class User extends Backend
         $this->success();
     }
 
+    /**
+     * Selectpage搜索
+     * 用于弹窗选择会员
+     */
+    public function selectpage()
+    {
+        return parent::selectpage();
+    }
+
 }
