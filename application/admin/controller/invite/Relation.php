@@ -319,6 +319,9 @@ class Relation extends Backend
             }
         }
         
+        // 将排除的用户ID列表存储到Session中，供selectpage使用
+        session('rebind_exclude_user_ids', $excludeUserIds);
+        
         $this->view->assign('user_id', $userId);
         $this->view->assign('exclude_user_id', $userId);
         $this->view->assign('exclude_user_ids', implode(',', $excludeUserIds));
@@ -332,39 +335,18 @@ class Relation extends Backend
     {
         $this->request->filter(['strip_tags', 'trim']);
         
-        // 获取当前用户ID（需要排除的用户）- 直接从URL参数获取
-        $excludeUserId = intval($this->request->get('exclude_user_id', 0));
-        
-        \think\Log::write('selectpage请求 - exclude_user_id: ' . $excludeUserId, 'info');
-        
-        // 获取需要排除的用户ID列表（自己和所有下级）
-        $excludeIds = [];
-        
-        if ($excludeUserId > 0) {
-            $excludeIds[] = $excludeUserId;
-            
-            // 获取一级下级ID
-            $level1Ids = Db::name('invite_relation')
-                ->where('parent_id', $excludeUserId)
-                ->column('user_id');
-            if (!empty($level1Ids)) {
-                $excludeIds = array_merge($excludeIds, $level1Ids);
-                
-                // 获取二级下级ID
-                $level2Ids = Db::name('invite_relation')
-                    ->whereIn('parent_id', $level1Ids)
-                    ->column('user_id');
-                if (!empty($level2Ids)) {
-                    $excludeIds = array_merge($excludeIds, $level2Ids);
-                }
-            }
+        // 从Session中获取需要排除的用户ID列表
+        $excludeIds = session('rebind_exclude_user_ids');
+        if (!is_array($excludeIds)) {
+            $excludeIds = [];
         }
-        
-        \think\Log::write('selectpage排除用户ID列表: ' . json_encode($excludeIds), 'info');
         
         // 搜索关键词
         $searchValue = $this->request->request('searchValue', '');
-        $keyValue = $this->request->request('keyValue', '');
+        
+        // 分页
+        $page = $this->request->request('pageNumber', 1);
+        $pageSize = $this->request->request('pageSize', 10);
         
         // 构建查询
         $query = Db::name('user');
@@ -382,10 +364,7 @@ class Relation extends Backend
         // 统计总数
         $total = $query->count();
         
-        // 分页
-        $page = $this->request->request('pageNumber', 1);
-        $pageSize = $this->request->request('pageSize', 10);
-        
+        // 获取列表
         $list = Db::name('user')
             ->where(function($q) use ($excludeIds, $searchValue) {
                 if (!empty($excludeIds)) {
@@ -412,8 +391,6 @@ class Relation extends Backend
                 'name' => $item['id'] . ' - ' . ($item['nickname'] ?: $item['username']),
             ];
         }
-        
-        \think\Log::write('selectpage返回结果数量: ' . count($rows) . ', 总数: ' . $total, 'info');
         
         return json(['total' => $total, 'rows' => $rows]);
     }
