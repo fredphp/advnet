@@ -298,25 +298,11 @@ class Relation extends Backend
     {
         $userId = $this->request->get('user_id', 0);
         
-        // 获取需要排除的用户ID列表（自己和所有下级）
-        $excludeUserIds = [$userId];
-        
+        // 获取需要排除的用户ID列表（自己和所有层级的下级）
+        $excludeUserIds = $this->getAllSubordinateIds($userId);
+        // 将自己也加入排除列表
         if ($userId > 0) {
-            // 获取一级下级ID
-            $level1Ids = Db::name('invite_relation')
-                ->where('parent_id', $userId)
-                ->column('user_id');
-            if (!empty($level1Ids)) {
-                $excludeUserIds = array_merge($excludeUserIds, $level1Ids);
-                
-                // 获取二级下级ID
-                $level2Ids = Db::name('invite_relation')
-                    ->whereIn('parent_id', $level1Ids)
-                    ->column('user_id');
-                if (!empty($level2Ids)) {
-                    $excludeUserIds = array_merge($excludeUserIds, $level2Ids);
-                }
-            }
+            array_unshift($excludeUserIds, $userId);
         }
         
         // 将排除的用户ID列表存储到Session中，供selectpage使用
@@ -326,6 +312,42 @@ class Relation extends Backend
         $this->view->assign('exclude_user_id', $userId);
         $this->view->assign('exclude_user_ids', implode(',', $excludeUserIds));
         return $this->view->fetch();
+    }
+    
+    /**
+     * 递归获取所有下级用户ID
+     * @param int $userId 用户ID
+     * @return array 所有下级用户ID数组
+     */
+    private function getAllSubordinateIds($userId)
+    {
+        $allIds = [];
+        
+        if ($userId <= 0) {
+            return $allIds;
+        }
+        
+        // 获取直接下级（一级下级）
+        $level1Ids = Db::name('invite_relation')
+            ->where('parent_id', $userId)
+            ->column('user_id');
+        
+        if (empty($level1Ids)) {
+            return $allIds;
+        }
+        
+        // 将一级下级加入结果
+        $allIds = array_merge($allIds, $level1Ids);
+        
+        // 递归获取每个一级下级的所有下级
+        foreach ($level1Ids as $level1Id) {
+            $subIds = $this->getAllSubordinateIds($level1Id);
+            if (!empty($subIds)) {
+                $allIds = array_merge($allIds, $subIds);
+            }
+        }
+        
+        return array_unique($allIds);
     }
 
     /**
@@ -351,7 +373,7 @@ class Relation extends Backend
         // 构建查询
         $query = Db::name('user');
         
-        // 排除自己和下级
+        // 排除自己和所有下级
         if (!empty($excludeIds)) {
             $query->whereNotIn('id', $excludeIds);
         }
