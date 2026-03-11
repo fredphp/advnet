@@ -124,7 +124,7 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
                                     title: '查看被邀请人名单',
                                     classname: 'btn btn-xs btn-success btn-dialog',
                                     icon: 'fa fa-users',
-                                    url: 'invite/relation/invitees',
+                                    url: 'invite/relation/invitees?parent_id={parent_id}',
                                     callback: function(data) {
                                         table.bootstrapTable('refresh');
                                     }
