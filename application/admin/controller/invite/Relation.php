@@ -292,6 +292,269 @@ class Relation extends Backend
     }
 
     /**
+     * 获取用户详情（用于重新绑定上级）
+     */
+    public function getUserDetail()
+    {
+        $userId = $this->request->get('user_id', 0);
+        
+        if (!$userId) {
+            $this->error('参数错误');
+        }
+        
+        // 获取用户信息
+        $user = Db::name('user')->where('id', $userId)->find();
+        if (!$user) {
+            $this->error('用户不存在');
+        }
+        $user = is_array($user) ? $user : $user->toArray();
+        
+        // 获取当前上级信息
+        $currentParent = null;
+        if (!empty($user['parent_id'])) {
+            $currentParent = Db::name('user')->where('id', $user['parent_id'])->find();
+            if ($currentParent) {
+                $currentParent = is_array($currentParent) ? $currentParent : $currentParent->toArray();
+                
+                // 获取当前上级的一级邀请人数
+                $currentParent['level1_count'] = Db::name('invite_relation')
+                    ->where('parent_id', $currentParent['id'])
+                    ->count();
+                // 获取当前上级的二级邀请人数
+                $currentParent['level2_count'] = Db::name('invite_relation')
+                    ->where('grandparent_id', $currentParent['id'])
+                    ->where('grandparent_id', '>', 0)
+                    ->count();
+            }
+        }
+        
+        // 获取用户自己的一级邀请人数
+        $user['level1_count'] = Db::name('invite_relation')
+            ->where('parent_id', $userId)
+            ->count();
+        
+        // 获取用户自己的二级邀请人数
+        $user['level2_count'] = Db::name('invite_relation')
+            ->where('grandparent_id', $userId)
+            ->where('grandparent_id', '>', 0)
+            ->count();
+        
+        $this->success('', null, [
+            'user' => $user,
+            'current_parent' => $currentParent,
+        ]);
+    }
+    
+    /**
+     * 获取新上级详情（选择后）
+     */
+    public function getNewParentDetail()
+    {
+        $newParentId = $this->request->get('new_parent_id', 0);
+        $userId = $this->request->get('user_id', 0);
+        
+        if (!$newParentId) {
+            $this->error('参数错误');
+        }
+        
+        // 不能绑定自己为上级
+        if ($newParentId == $userId) {
+            $this->error('不能将自己设置为上级');
+        }
+        
+        // 获取新上级信息
+        $newParent = Db::name('user')->where('id', $newParentId)->find();
+        if (!$newParent) {
+            $this->error('用户不存在');
+        }
+        $newParent = is_array($newParent) ? $newParent : $newParent->toArray();
+        
+        // 获取新上级的一级邀请人数
+        $newParent['level1_count'] = Db::name('invite_relation')
+            ->where('parent_id', $newParentId)
+            ->count();
+        
+        // 获取新上级的二级邀请人数
+        $newParent['level2_count'] = Db::name('invite_relation')
+            ->where('grandparent_id', $newParentId)
+            ->where('grandparent_id', '>', 0)
+            ->count();
+        
+        // 检查是否会形成循环关系（新上级不能是当前用户的下级）
+        $isChild = Db::name('invite_relation')
+            ->where('user_id', $newParentId)
+            ->where('parent_id', $userId)
+            ->whereOr('grandparent_id', $userId)
+            ->find();
+        if ($isChild) {
+            $this->error('不能将自己的下级设置为上级，会形成循环关系');
+        }
+        
+        $this->success('', null, [
+            'new_parent' => $newParent,
+        ]);
+    }
+    
+    /**
+     * 重新绑定上级
+     */
+    public function rebindParent()
+    {
+        $userId = $this->request->post('user_id', 0);
+        $newParentId = $this->request->post('new_parent_id', 0);
+        $reason = $this->request->post('reason', '');
+        
+        if (!$userId || !$newParentId) {
+            $this->error('参数错误');
+        }
+        
+        // 不能绑定自己为上级
+        if ($newParentId == $userId) {
+            $this->error('不能将自己设置为上级');
+        }
+        
+        // 获取用户当前的邀请关系
+        $inviteRelation = Db::name('invite_relation')->where('user_id', $userId)->find();
+        $oldParentId = 0;
+        $oldGrandparentId = 0;
+        if ($inviteRelation) {
+            $inviteRelation = is_array($inviteRelation) ? $inviteRelation : $inviteRelation->toArray();
+            $oldParentId = $inviteRelation['parent_id'] ?? 0;
+            $oldGrandparentId = $inviteRelation['grandparent_id'] ?? 0;
+        }
+        
+        // 检查是否会形成循环关系
+        $isChild = Db::name('invite_relation')
+            ->where('user_id', $newParentId)
+            ->where(function($query) use ($userId) {
+                $query->where('parent_id', $userId)
+                    ->whereOr('grandparent_id', $userId);
+            })
+            ->find();
+        if ($isChild) {
+            $this->error('不能将自己的下级设置为上级，会形成循环关系');
+        }
+        
+        Db::startTrans();
+        try {
+            // 获取新上级的上级（作为新的grandparent）
+            $newGrandparentId = 0;
+            $newParentRelation = Db::name('invite_relation')->where('user_id', $newParentId)->find();
+            if ($newParentRelation) {
+                $newParentRelation = is_array($newParentRelation) ? $newParentRelation : $newParentRelation->toArray();
+                if (!empty($newParentRelation['parent_id'])) {
+                    $newGrandparentId = $newParentRelation['parent_id'];
+                }
+            }
+            
+            // 更新邀请关系表
+            if ($inviteRelation) {
+                Db::name('invite_relation')
+                    ->where('user_id', $userId)
+                    ->update([
+                        'parent_id' => $newParentId,
+                        'grandparent_id' => $newGrandparentId,
+                        'updatetime' => time(),
+                    ]);
+            } else {
+                // 如果没有邀请关系记录，                Db::name('invite_relation')->insert([
+                    'user_id' => $userId,
+                    'parent_id' => $newParentId,
+                    'grandparent_id' => $newGrandparentId,
+                    'invite_code' => '',
+                    'invite_channel' => 'admin',
+                    'createtime' => time(),
+                    'updatetime' => time(),
+                ]);
+            }
+            
+            // 更新用户表的parent_id和grandparent_id
+            Db::name('user')
+                ->where('id', $userId)
+                ->update([
+                    'parent_id' => $newParentId,
+                    'grandparent_id' => $newGrandparentId,
+                ]);
+            
+            // 更新该用户所有下级的grandparent_id
+            // 一级下级的grandparent_id需要更新为新上级
+            Db::name('invite_relation')
+                ->where('parent_id', $userId)
+                ->update([
+                    'grandparent_id' => $newParentId,
+                    'updatetime' => time(),
+                ]);
+            
+            // 更新用户表的parent_id
+            $level1UserIds = Db::name('invite_relation')
+                ->where('parent_id', $userId)
+                ->column('user_id');
+            if (!empty($level1UserIds)) {
+                Db::name('user')
+                    ->whereIn('id', $level1UserIds)
+                    ->update([
+                        'grandparent_id' => $newParentId,
+                    ]);
+            }
+            
+            // 记录迁移日志
+            Db::name('invite_relation_migration_log')->insert([
+                'user_id' => $userId,
+                'old_parent_id' => $oldParentId,
+                'old_grandparent_id' => $oldGrandparentId,
+                'new_parent_id' => $newParentId,
+                'new_grandparent_id' => $newGrandparentId,
+                'admin_id' => $this->auth->id,
+                'reason' => $reason,
+                'createtime' => time(),
+            ]);
+
+            Db::commit();
+            $this->success('绑定上级成功');
+        } catch (\Exception $e) {
+            Db::rollback();
+            $this->error('绑定失败：' . $e->getMessage());
+        }
+    }
+    
+    /**
+     * 邀请关系迁移日志列表
+     */
+    public function migrationLog()
+    {
+        if ($this->request->isAjax()) {
+            $sort = $this->request->get('sort', 'createtime');
+            $order = $this->request->get('order', 'desc');
+            $offset = intval($this->request->get('offset', 0));
+            $limit = intval($this->request->get('limit', 15));
+            
+            $total = Db::name('invite_relation_migration_log')->count();
+
+            $list = Db::name('invite_relation_migration_log')
+                ->alias('log')
+                ->join('user u', 'u.id = log.user_id', 'LEFT')
+                ->join('user old_parent', 'old_parent.id = log.old_parent_id', 'LEFT')
+                ->join('user new_parent', 'new_parent.id = log.new_parent_id', 'LEFT')
+                ->join('admin a', 'a.id = log.admin_id', 'LEFT')
+                ->field('log.*, u.nickname as user_nickname, u.username as user_username, 
+                         old_parent.nickname as old_parent_nickname, old_parent.username as old_parent_username,
+                         new_parent.nickname as new_parent_nickname, new_parent.username as new_parent_username,
+                         a.username as admin_username')
+                ->order('log.' . $sort, $order)
+                ->limit($offset, $limit)
+                ->select();
+
+            $rows = [];
+            foreach ($list as $item) {
+                $rows[] = is_array($item) ? $item : $item->toArray();
+            }
+
+            return json(['total' => $total, 'rows' => $rows]);
+        }
+        return $this->view->fetch();
+    }
+
+    /**
      * 统计概览
      */
     public function stat()

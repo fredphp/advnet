@@ -1,0 +1,186 @@
+<style>
+.rebind-modal .panel {
+    margin-bottom: 15px;
+    border-radius: 4px;
+    border: 1px solid #e7e7e7;
+    box-shadow: none;
+}
+.rebind-modal .panel-heading {
+    padding: 10px 15px;
+    font-weight: bold;
+    background: #f5f5f5;
+    border-bottom: 1px solid #e7e7e7;
+}
+.rebind-modal .panel-body {
+    padding: 15px;
+}
+.rebind-modal .panel-body p {
+    margin-bottom: 8px;
+}
+.rebind-modal .user-card {
+    display: flex;
+    align-items: center;
+    padding: 15px;
+    background: #fafafa;
+    border-radius: 4px;
+    margin-bottom: 10px;
+    border: 1px solid #eee;
+}
+.rebind-modal .user-card img {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    margin-right: 15px;
+    object-fit: cover;
+    border: 2px solid #fff;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+.rebind-modal .user-card .info {
+    flex: 1;
+}
+.rebind-modal .user-card .info .nickname {
+    font-weight: bold;
+    font-size: 16px;
+    color: #333;
+    margin-bottom: 3px;
+}
+.rebind-modal .user-card .info .username {
+    color: #666;
+    font-size: 13px;
+    margin-bottom: 5px;
+}
+.rebind-modal .user-card .info .stats {
+    margin-top: 8px;
+}
+.rebind-modal .user-card .info .stats span {
+    margin-right: 10px;
+}
+.rebind-modal .select-new-parent {
+    margin-top: 10px;
+}
+.rebind-modal .arrow-indicator {
+    text-align: center;
+    padding: 10px 0;
+    font-size: 24px;
+    color: #999;
+}
+.rebind-modal .hidden-card {
+    display: none;
+}
+.rebind-modal .form-group {
+    margin-bottom: 15px;
+}
+.rebind-modal .form-group label {
+    font-weight: normal;
+}
+.btn-rebind-confirm {
+    width: 100%;
+    height: 40px;
+    font-size: 14px;
+}
+</style>
+
+<div class="rebind-modal">
+    <form id="rebind-form" class="form-horizontal" role="form">
+        <input type="hidden" id="rebind-user-id" name="user_id">
+        <input type="hidden" id="new-parent-id" name="new_parent_id">
+        
+        <!-- 当前用户信息 -->
+        <div class="panel panel-default">
+            <div class="panel-heading">
+                <i class="fa fa-user"></i> 当前用户信息
+            </div>
+            <div class="panel-body">
+                <div class="user-card" id="current-user-card">
+                    <img src="/assets/img/avatar.png" id="current-user-avatar">
+                    <div class="info">
+                        <div class="nickname" id="current-user-nickname">加载中...</div>
+                        <div class="username">用户名: <span id="current-user-username">-</span> | ID: <span id="current-user-id">-</span></div>
+                        <div class="stats">
+                            <span class="label label-primary">一级邀请: <span id="current-user-level1">0</span> 人</span>
+                            <span class="label label-warning">二级邀请: <span id="current-user-level2">0</span> 人</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 当前上级信息 -->
+        <div class="panel panel-default">
+            <div class="panel-heading">
+                <i class="fa fa-arrow-up"></i> 当前上级会员
+            </div>
+            <div class="panel-body">
+                <div class="user-card hidden-card" id="current-parent-card">
+                    <img src="/assets/img/avatar.png" id="current-parent-avatar">
+                    <div class="info">
+                        <div class="nickname" id="current-parent-nickname">加载中...</div>
+                        <div class="username">用户名: <span id="current-parent-username">-</span> | ID: <span id="current-parent-id">-</span></div>
+                        <div class="stats">
+                            <span class="label label-primary">一级邀请: <span id="current-parent-level1">0</span> 人</span>
+                            <span class="label label-warning">二级邀请: <span id="current-parent-level2">0</span> 人</span>
+                        </div>
+                    </div>
+                </div>
+                <div id="no-parent-tip" class="text-muted" style="display:none;">
+                    <i class="fa fa-info-circle"></i> 该用户当前没有上级
+                </div>
+            </div>
+        </div>
+        
+        <div class="arrow-indicator">
+            <i class="fa fa-arrow-down"></i>
+        </div>
+        
+        <!-- 选择新上级 -->
+        <div class="panel panel-default">
+            <div class="panel-heading">
+                <i class="fa fa-search"></i> 选择新上级会员
+            </div>
+            <div class="panel-body">
+                <div class="select-new-parent">
+                    <select id="select-new-parent" class="form-control selectpage" 
+                            data-source="user/selectpage"
+                            data-field="id"
+                            data-primary-key="id"
+                            data-pagination="true"
+                            data-page-size="10"
+                            data-multiple="false"
+                            style="width:100%;">
+                        <option value="">请搜索并选择新上级会员</option>
+                    </select>
+                </div>
+                
+                <!-- 新上级信息卡片 -->
+                <div class="user-card hidden-card" id="new-parent-card" style="margin-top:15px;">
+                    <img src="/assets/img/avatar.png" id="new-parent-avatar">
+                    <div class="info">
+                        <div class="nickname" id="new-parent-nickname">-</div>
+                        <div class="username">用户名: <span id="new-parent-username">-</span></div>
+                        <div class="stats" id="new-parent-stats">
+                            <span class="label label-primary">一级邀请: 0 人</span>
+                            <span class="label label-warning">二级邀请: 0 人</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 变更原因 -->
+        <div class="panel panel-default">
+            <div class="panel-heading">
+                <i class="fa fa-comment"></i> 变更原因（选填）
+            </div>
+            <div class="panel-body">
+                <textarea id="bind-reason" class="form-control" rows="3" placeholder="请填写变更上级的原因（选填）"></textarea>
+            </div>
+        </div>
+        
+        <!-- 确认按钮 -->
+        <div class="form-group">
+            <button type="button" id="btn-confirm-rebind" class="btn btn-warning btn-rebind-confirm">
+                <i class="fa fa-check"></i> 确认重新绑定
+            </button>
+        </div>
+    </form>
+</div>
