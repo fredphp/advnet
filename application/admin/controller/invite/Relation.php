@@ -332,8 +332,11 @@ class Relation extends Backend
     {
         $this->request->filter(['strip_tags', 'trim']);
         
-        // 获取当前用户ID（需要排除的用户）
-        $excludeUserId = $this->request->request('custom.exclude_user_id', 0);
+        // 获取当前用户ID（需要排除的用户）- 支持多种参数获取方式
+        $excludeUserId = $this->request->get('exclude_user_id', 0);
+        if (!$excludeUserId) {
+            $excludeUserId = $this->request->request('custom.exclude_user_id', 0);
+        }
         if (!$excludeUserId) {
             $excludeUserId = $this->request->request('exclude_user_id', 0);
         }
