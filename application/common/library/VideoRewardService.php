@@ -239,7 +239,7 @@ class VideoRewardService
             Db::name('video')->where('id', $videoId)->inc('reward_count')->inc('reward_coin_total', $rewardCoin)->update();
             
             // 发放邀请佣金
-            $this->processInviteCommission($userId, $rewardCoin, $videoId);
+            // $this->processInviteCommission($userId, $rewardCoin, $videoId);
             
             Db::commit();
             

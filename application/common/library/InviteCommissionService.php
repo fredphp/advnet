@@ -6,7 +6,6 @@ use think\Db;
 use think\Cache;
 use think\Log;
 use app\common\model\InviteRelation;
-use app\common\model\InviteCommissionConfig;
 use app\common\model\InviteCommissionLog;
 use app\common\model\UserInviteStat;
 use app\common\model\UserCommissionStat;
@@ -17,7 +16,7 @@ use app\common\model\User;
  * 
  * 核心功能：
  * 1. 绑定邀请关系
- * 2. 触发分佣结算（提现/视频/红包/游戏）
+ * 2. 触发提现分佣
  * 3. 统计邀请人数和收益
  */
 class InviteCommissionService
@@ -111,7 +110,7 @@ class InviteCommissionService
     }
     
     /**
-     * 提现触发分佣
+     * 提现触发分佣（唯一分佣入口）
      * @param int $userId 提现用户ID
      * @param float $cashAmount 提现金额(元)
      * @param string $orderNo 提现订单号
@@ -119,76 +118,6 @@ class InviteCommissionService
      * @return array
      */
     public function triggerWithdrawCommission($userId, $cashAmount, $orderNo, $withdrawId)
-    {
-        return $this->triggerCommission($userId, 'withdraw', $cashAmount, [
-            'source_id' => $withdrawId,
-            'source_order_no' => $orderNo,
-        ]);
-    }
-    
-    /**
-     * 视频收益触发分佣
-     * @param int $userId 用户ID
-     * @param float $coinAmount 金币数量
-     * @param int $videoId 视频ID
-     * @param int $watchRecordId 观看记录ID
-     * @return array
-     */
-    public function triggerVideoCommission($userId, $coinAmount, $videoId, $watchRecordId)
-    {
-        // 金币转人民币
-        $cashAmount = $coinAmount / self::COIN_RATE;
-        
-        return $this->triggerCommission($userId, 'video', $cashAmount, [
-            'source_id' => $watchRecordId,
-            'coin_amount' => $coinAmount,
-        ]);
-    }
-    
-    /**
-     * 红包收益触发分佣
-     * @param int $userId 用户ID
-     * @param float $coinAmount 金币数量
-     * @param int $packetId 红包ID
-     * @param int $recordId 领取记录ID
-     * @return array
-     */
-    public function triggerRedPacketCommission($userId, $coinAmount, $packetId, $recordId)
-    {
-        $cashAmount = $coinAmount / self::COIN_RATE;
-        
-        return $this->triggerCommission($userId, 'red_packet', $cashAmount, [
-            'source_id' => $recordId,
-            'coin_amount' => $coinAmount,
-        ]);
-    }
-    
-    /**
-     * 游戏收益触发分佣
-     * @param int $userId 用户ID
-     * @param float $coinAmount 金币数量
-     * @param int $gameRecordId 游戏记录ID
-     * @return array
-     */
-    public function triggerGameCommission($userId, $coinAmount, $gameRecordId)
-    {
-        $cashAmount = $coinAmount / self::COIN_RATE;
-        
-        return $this->triggerCommission($userId, 'game', $cashAmount, [
-            'source_id' => $gameRecordId,
-            'coin_amount' => $coinAmount,
-        ]);
-    }
-    
-    /**
-     * 核心分佣触发方法
-     * @param int $userId 产生收益的用户ID
-     * @param string $sourceType 来源类型
-     * @param float $sourceAmount 来源金额(元)
-     * @param array $options 额外选项
-     * @return array
-     */
-    protected function triggerCommission($userId, $sourceType, $sourceAmount, $options = [])
     {
         $result = [
             'success' => false,
@@ -209,15 +138,14 @@ class InviteCommissionService
             return $result;
         }
         
-        // 获取分佣配置
-        $config = InviteCommissionConfig::getByCode($sourceType);
-        if (!$config || $config['status'] != 1) {
-            $result['message'] = '分佣配置不存在或已禁用';
-            return $result;
-        }
+        // 从 advn_config 获取分佣比例
+        $level1Rate = floatval($this->getConfig('level1_commission_rate', 0.10));
+        $level2Rate = floatval($this->getConfig('level2_commission_rate', 0.05));
         
-        // 检查最低触发金额
-        if ($sourceAmount < $config['min_amount']) {
+        // 获取最低触发金额
+        $minAmount = floatval($this->getConfig('commission_min_amount', 0));
+        
+        if ($cashAmount < $minAmount) {
             $result['message'] = '金额未达分佣门槛';
             return $result;
         }
@@ -227,42 +155,48 @@ class InviteCommissionService
         Db::startTrans();
         try {
             // 一级分佣
-            if ($relation->parent_id > 0) {
-                $level1Result = $this->createCommissionLog(
-                    $userId,
-                    $relation->parent_id,
-                    1,
-                    $sourceType,
-                    $sourceAmount,
-                    $config,
-                    $options
-                );
-                
-                if ($level1Result) {
-                    $commissionLogs[] = $level1Result;
+            if ($relation->parent_id > 0 && $level1Rate > 0) {
+                $level1Commission = round($cashAmount * $level1Rate, 4);
+                if ($level1Commission > 0) {
+                    $log = $this->createCommissionLog([
+                        'source_type' => 'withdraw',
+                        'source_id' => $withdrawId,
+                        'source_order_no' => $orderNo,
+                        'user_id' => $userId,
+                        'parent_id' => $relation->parent_id,
+                        'level' => 1,
+                        'source_amount' => $cashAmount,
+                        'commission_rate' => $level1Rate,
+                        'commission_amount' => $level1Commission,
+                    ]);
                     
-                    // 标记为有效邀请
-                    UserInviteStat::incrementValidInvite($relation->parent_id);
+                    if ($log) {
+                        $commissionLogs[] = $log;
+                        UserInviteStat::incrementValidInvite($relation->parent_id);
+                    }
                 }
             }
             
             // 二级分佣
-            if ($relation->grandparent_id > 0) {
-                $level2Result = $this->createCommissionLog(
-                    $userId,
-                    $relation->grandparent_id,
-                    2,
-                    $sourceType,
-                    $sourceAmount,
-                    $config,
-                    $options
-                );
-                
-                if ($level2Result) {
-                    $commissionLogs[] = $level2Result;
+            if ($relation->grandparent_id > 0 && $level2Rate > 0) {
+                $level2Commission = round($cashAmount * $level2Rate, 4);
+                if ($level2Commission > 0) {
+                    $log = $this->createCommissionLog([
+                        'source_type' => 'withdraw',
+                        'source_id' => $withdrawId,
+                        'source_order_no' => $orderNo,
+                        'user_id' => $userId,
+                        'parent_id' => $relation->grandparent_id,
+                        'level' => 2,
+                        'source_amount' => $cashAmount,
+                        'commission_rate' => $level2Rate,
+                        'commission_amount' => $level2Commission,
+                    ]);
                     
-                    // 标记为有效邀请
-                    UserInviteStat::incrementValidInvite($relation->grandparent_id);
+                    if ($log) {
+                        $commissionLogs[] = $log;
+                        UserInviteStat::incrementValidInvite($relation->grandparent_id);
+                    }
                 }
             }
             
@@ -287,39 +221,39 @@ class InviteCommissionService
     /**
      * 创建分佣记录
      */
-    protected function createCommissionLog($userId, $parentId, $level, $sourceType, $sourceAmount, $config, $options)
+    protected function createCommissionLog($data)
     {
-        // 计算佣金
-        $commission = InviteCommissionConfig::calculateCommission($sourceType, $sourceAmount, $level);
-        
-        if ($commission['amount'] <= 0) {
-            return null;
-        }
-        
         // 佣金转金币
-        $coinAmount = $commission['amount'] * self::COIN_RATE;
+        $coinAmount = $data['commission_amount'] * self::COIN_RATE;
+        
+        // 生成订单号
+        $orderNo = 'CM' . date('YmdHis') . str_pad(mt_rand(0, 9999), 4, '0', STR_PAD_LEFT);
         
         // 创建分佣记录
-        $log = InviteCommissionLog::createLog([
-            'source_type' => $sourceType,
-            'source_id' => $options['source_id'] ?? null,
-            'source_order_no' => $options['source_order_no'] ?? null,
-            'user_id' => $userId,
-            'parent_id' => $parentId,
-            'level' => $level,
-            'source_amount' => $sourceAmount,
-            'commission_rate' => $commission['rate'],
-            'commission_fixed' => $commission['fixed'],
-            'commission_amount' => $commission['amount'],
-            'coin_amount' => $coinAmount,
-            'config_id' => $config['id'],
-        ]);
+        $log = new InviteCommissionLog();
+        $log->order_no = $orderNo;
+        $log->source_type = $data['source_type'];
+        $log->source_id = $data['source_id'];
+        $log->source_order_no = $data['source_order_no'];
+        $log->user_id = $data['user_id'];
+        $log->parent_id = $data['parent_id'];
+        $log->level = $data['level'];
+        $log->source_amount = $data['source_amount'];
+        $log->commission_rate = $data['commission_rate'];
+        $log->commission_fixed = 0;
+        $log->commission_amount = $data['commission_amount'];
+        $log->coin_amount = $coinAmount;
+        $log->status = 0; // 待结算
+        $log->remark = $data['level'] == 1 ? '一级分佣' : '二级分佣';
+        $log->createtime = time();
+        $log->updatetime = time();
+        $log->save();
         
         // 更新用户佣金统计（待结算）
-        $stat = UserCommissionStat::getOrCreate($parentId);
-        $stat->addPending($commission['amount']);
+        $stat = UserCommissionStat::getOrCreate($data['parent_id']);
+        $stat->addPending($data['commission_amount']);
         
-        return $log;
+        return $log->toArray();
     }
     
     /**
@@ -340,7 +274,7 @@ class InviteCommissionService
             return $result;
         }
         
-        if ($log->status != InviteCommissionLog::STATUS_PENDING) {
+        if ($log->status != 0) {
             $result['message'] = '分佣状态异常';
             return $result;
         }
@@ -405,7 +339,7 @@ class InviteCommissionService
      */
     protected function giveRegisterReward($userId, $relation)
     {
-        $rewardCoin = $this->getConfig('invite_register_reward', 0);
+        $rewardCoin = intval($this->getConfig('invite_register_reward', 0));
         
         if ($rewardCoin <= 0) {
             return false;
@@ -419,12 +353,14 @@ class InviteCommissionService
         
         // 给一级上级发邀请奖励（如果有）
         if ($relation->parent_id > 0) {
-            $inviteReward = $rewardCoin * 0.5; // 邀请人获得50%
-            $coinService->addCoin($relation->parent_id, $inviteReward, 'invite_reward', [
-                'relation_type' => 'user',
-                'relation_id' => $userId,
-                'description' => '邀请新用户注册奖励',
-            ]);
+            $inviteReward = intval($this->getConfig('invite_register_reward_parent', 0));
+            if ($inviteReward > 0) {
+                $coinService->addCoin($relation->parent_id, $inviteReward, 'invite_reward', [
+                    'relation_type' => 'user',
+                    'relation_id' => $userId,
+                    'description' => '邀请新用户注册奖励',
+                ]);
+            }
         }
         
         return true;
@@ -472,9 +408,6 @@ class InviteCommissionService
             'today_commission' => $commissionStat['today_commission'],
             'yesterday_commission' => $commissionStat['yesterday_commission'],
             'withdraw_commission' => $commissionStat['withdraw_commission'],
-            'video_commission' => $commissionStat['video_commission'],
-            'red_packet_commission' => $commissionStat['red_packet_commission'],
-            'game_commission' => $commissionStat['game_commission'],
             
             // 邀请人信息
             'parent_info' => $parentInfo,
@@ -584,7 +517,7 @@ class InviteCommissionService
      */
     protected function isCommissionEnabled()
     {
-        return $this->getConfig('invite_commission_enabled', 1) == 1;
+        return $this->getConfig('commission_enabled', 1) == 1;
     }
     
     /**
