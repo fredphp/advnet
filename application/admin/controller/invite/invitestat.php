@@ -92,13 +92,15 @@ class Invitestat extends Backend
         // 如果指定了parent_id且与user_id不同，说明是在查看下级
         if ($parentId != $userId) {
             // 查看某个下级的邀请列表（只显示该下级的一级邀请）
-            $query = Db::name('invite_relation')
+            $total = Db::name('invite_relation')
+                ->where('parent_id', $parentId)
+                ->count();
+            
+            $list = Db::name('invite_relation')
                 ->alias('ir')
                 ->join('user u', 'u.id = ir.user_id', 'LEFT')
-                ->where('ir.parent_id', $parentId);
-            
-            $total = $query->count();
-            $list = $query->field('ir.*, u.username, u.nickname, u.mobile, u.avatar, u.level as user_level')
+                ->where('ir.parent_id', $parentId)
+                ->field('ir.*, u.username, u.nickname, u.mobile, u.avatar, u.level as user_level')
                 ->order('ir.' . $sort, $order)
                 ->limit($offset, $limit)
                 ->select();
@@ -111,13 +113,15 @@ class Invitestat extends Backend
             // 查看原始用户的邀请列表
             if ($levelFilter == 1) {
                 // 只查询一级邀请
-                $query = Db::name('invite_relation')
+                $total = Db::name('invite_relation')
+                    ->where('parent_id', $userId)
+                    ->count();
+                
+                $list = Db::name('invite_relation')
                     ->alias('ir')
                     ->join('user u', 'u.id = ir.user_id', 'LEFT')
-                    ->where('ir.parent_id', $userId);
-                
-                $total = $query->count();
-                $list = $query->field('ir.*, u.username, u.nickname, u.mobile, u.avatar, u.level as user_level')
+                    ->where('ir.parent_id', $userId)
+                    ->field('ir.*, u.username, u.nickname, u.mobile, u.avatar, u.level as user_level')
                     ->order('ir.' . $sort, $order)
                     ->limit($offset, $limit)
                     ->select();
@@ -127,14 +131,17 @@ class Invitestat extends Backend
                 }
             } elseif ($levelFilter == 2) {
                 // 只查询二级邀请
-                $query = Db::name('invite_relation')
+                $total = Db::name('invite_relation')
+                    ->where('grandparent_id', $userId)
+                    ->where('grandparent_id', '>', 0)
+                    ->count();
+                
+                $list = Db::name('invite_relation')
                     ->alias('ir')
                     ->join('user u', 'u.id = ir.user_id', 'LEFT')
                     ->where('ir.grandparent_id', $userId)
-                    ->where('ir.grandparent_id', '>', 0);
-                
-                $total = $query->count();
-                $list = $query->field('ir.*, u.username, u.nickname, u.mobile, u.avatar, u.level as user_level')
+                    ->where('ir.grandparent_id', '>', 0)
+                    ->field('ir.*, u.username, u.nickname, u.mobile, u.avatar, u.level as user_level')
                     ->order('ir.' . $sort, $order)
                     ->limit($offset, $limit)
                     ->select();
