@@ -202,12 +202,18 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
                 initLevel: initLevel || 0,
                 currentLevel: initLevel || 0,
                 currentParentId: userId,
-                parentStack: [{id: userId, level: 1, nickname: '主用户'}],
+                parentStack: [],
+                rootNickname: '',
                 table: null,
                 
                 // 初始化
                 init: function() {
                     var self = this;
+                    
+                    // 获取根用户昵称
+                    var rootNickname = $('#breadcrumb-root').text() || '主用户';
+                    this.rootNickname = rootNickname;
+                    this.parentStack = [{id: userId, nickname: rootNickname}];
                     
                     Table.api.init({
                         extend: {
@@ -217,6 +223,11 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
                     });
 
                     this.table = $("#table");
+                    
+                    // 绑定返回按钮事件
+                    $('#btn-back').on('click', function() {
+                        self.goBack();
+                    });
                     
                     // 初始化表格
                     this.table.bootstrapTable({
@@ -357,7 +368,6 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
                     // 添加到导航栈
                     this.parentStack.push({
                         id: targetUserId, 
-                        level: this.parentStack.length + 1, 
                         nickname: nickname
                     });
                     
@@ -368,8 +378,70 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
                     // 更新面包屑导航
                     this.updateBreadcrumb();
                     
+                    // 显示返回按钮
+                    this.updateBackButton();
+                    
                     // 刷新表格
                     this.table.bootstrapTable('refresh');
+                },
+                
+                // 返回上一级
+                goBack: function() {
+                    if (this.parentStack.length <= 1) {
+                        return; // 已经在根级别，无法返回
+                    }
+                    
+                    // 移除当前级别
+                    this.parentStack.pop();
+                    
+                    // 获取上一级
+                    var prevLevel = this.parentStack[this.parentStack.length - 1];
+                    
+                    // 更新当前查看的用户
+                    this.currentParentId = prevLevel.id;
+                    this.currentLevel = this.parentStack.length === 1 ? this.initLevel : 0;
+                    
+                    // 更新面包屑导航
+                    this.updateBreadcrumb();
+                    
+                    // 更新返回按钮
+                    this.updateBackButton();
+                    
+                    // 刷新表格
+                    this.table.bootstrapTable('refresh');
+                },
+                
+                // 返回到指定层级
+                goBackTo: function(index) {
+                    if (index < 0 || index >= this.parentStack.length) {
+                        return;
+                    }
+                    
+                    // 截断导航栈
+                    this.parentStack = this.parentStack.slice(0, index + 1);
+                    
+                    // 更新当前查看的用户
+                    var targetLevel = this.parentStack[index];
+                    this.currentParentId = targetLevel.id;
+                    this.currentLevel = index === 0 ? this.initLevel : 0;
+                    
+                    // 更新面包屑导航
+                    this.updateBreadcrumb();
+                    
+                    // 更新返回按钮
+                    this.updateBackButton();
+                    
+                    // 刷新表格
+                    this.table.bootstrapTable('refresh');
+                },
+                
+                // 更新返回按钮显示状态
+                updateBackButton: function() {
+                    if (this.parentStack.length > 1) {
+                        $('#btn-back').show();
+                    } else {
+                        $('#btn-back').hide();
+                    }
                 },
                 
                 // 更新面包屑导航
@@ -385,27 +457,14 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
                     }
                     breadcrumbHtml += '</ol>';
                     
-                    // 如果面包屑容器不存在，创建一个
-                    if ($('#breadcrumb-container').length === 0) {
-                        $('.panel-heading .panel-lead').after('<div id="breadcrumb-container" style="padding: 8px 15px;"></div>');
-                    }
                     $('#breadcrumb-container').html(breadcrumbHtml);
-                },
-                
-                // 返回到指定层级
-                goBackTo: function(index) {
-                    // 截断导航栈
-                    this.parentStack = this.parentStack.slice(0, index + 1);
                     
-                    // 更新当前查看的用户
-                    this.currentParentId = this.parentStack[index].id;
-                    this.currentLevel = index === 0 ? this.initLevel : 0;
-                    
-                    // 更新面包屑导航
-                    this.updateBreadcrumb();
-                    
-                    // 刷新表格
-                    this.table.bootstrapTable('refresh');
+                    // 如果有多级导航，显示面包屑容器
+                    if (this.parentStack.length > 1) {
+                        $('#breadcrumb-container').addClass('has-nav');
+                    } else {
+                        $('#breadcrumb-container').removeClass('has-nav');
+                    }
                 }
             };
             
