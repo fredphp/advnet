@@ -332,14 +332,10 @@ class Relation extends Backend
     {
         $this->request->filter(['strip_tags', 'trim']);
         
-        // 获取当前用户ID（需要排除的用户）- 支持多种参数获取方式
-        $excludeUserId = $this->request->get('exclude_user_id', 0);
-        if (!$excludeUserId) {
-            $excludeUserId = $this->request->request('custom.exclude_user_id', 0);
-        }
-        if (!$excludeUserId) {
-            $excludeUserId = $this->request->request('exclude_user_id', 0);
-        }
+        // 获取当前用户ID（需要排除的用户）- 直接从URL参数获取
+        $excludeUserId = intval($this->request->get('exclude_user_id', 0));
+        
+        \think\Log::write('selectpage请求 - exclude_user_id: ' . $excludeUserId, 'info');
         
         // 获取需要排除的用户ID列表（自己和所有下级）
         $excludeIds = [];
@@ -364,6 +360,8 @@ class Relation extends Backend
             }
         }
         
+        \think\Log::write('selectpage排除用户ID列表: ' . json_encode($excludeIds), 'info');
+        
         // 搜索关键词
         $searchValue = $this->request->request('searchValue', '');
         $keyValue = $this->request->request('keyValue', '');
@@ -381,11 +379,6 @@ class Relation extends Backend
             $query->where('id|username|nickname|mobile', 'like', '%' . $searchValue . '%');
         }
         
-        // 如果是keyValue请求（加载已选中的值）
-        if ($keyValue !== '') {
-            $query->whereOr('id', 'in', $keyValue);
-        }
-        
         // 统计总数
         $total = $query->count();
         
@@ -394,15 +387,12 @@ class Relation extends Backend
         $pageSize = $this->request->request('pageSize', 10);
         
         $list = Db::name('user')
-            ->where(function($q) use ($excludeIds, $searchValue, $keyValue) {
+            ->where(function($q) use ($excludeIds, $searchValue) {
                 if (!empty($excludeIds)) {
                     $q->whereNotIn('id', $excludeIds);
                 }
                 if ($searchValue !== '') {
                     $q->where('id|username|nickname|mobile', 'like', '%' . $searchValue . '%');
-                }
-                if ($keyValue !== '') {
-                    $q->whereOr('id', 'in', $keyValue);
                 }
             })
             ->field('id, username, nickname, mobile, avatar')
@@ -422,6 +412,8 @@ class Relation extends Backend
                 'name' => $item['id'] . ' - ' . ($item['nickname'] ?: $item['username']),
             ];
         }
+        
+        \think\Log::write('selectpage返回结果数量: ' . count($rows) . ', 总数: ' . $total, 'info');
         
         return json(['total' => $total, 'rows' => $rows]);
     }
