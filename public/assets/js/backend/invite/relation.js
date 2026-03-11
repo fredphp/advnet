@@ -323,6 +323,14 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
             // 获取用户详情
             Controller.loadUserDetail(userId);
             
+            // 手动初始化selectpage，动态设置source URL
+            var excludeUserId = $('#select-new-parent').data('exclude-user-id');
+            var sourceUrl = 'invite/relation/selectpage?exclude_user_id=' + excludeUserId;
+            $('#select-new-parent').attr('data-source', sourceUrl);
+            
+            // 添加selectpage类并初始化
+            $('#select-new-parent').addClass('selectpage');
+            
             // 先初始化表单（包括selectpage组件）
             Form.api.bindevent($("form[role=form]"));
             
