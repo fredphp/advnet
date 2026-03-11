@@ -96,3 +96,25 @@ INSERT INTO withdraw_order_2026 SELECT * FROM withdraw_order_202602;
 3. 验证新增提现订单写入当年分表
 4. 验证跨年查询能正确获取历史数据
 5. 验证API端提现统计、详情等接口正常工作
+
+---
+Task ID: commission-simplify
+Agent: Z.ai Code
+Task: 简化分佣系统，只保留提现分佣
+
+Work Log:
+- 分析现有分佣逻辑，发现有多处分佣触发点
+- 删除 invite/commissionconfig 控制器、视图、JS文件
+- 简化 InviteCommissionService，只保留 triggerWithdrawCommission
+- 注释 VideoRewardService 中的分佣调用
+- 创建 SQL 部署脚本 remove_commissionconfig.sql
+- 创建 SQL 部署脚本 update_commission_config.sql
+- 创建完整部署脚本 deploy_commission_update.sql
+- 删除多余的分佣配置项
+- 推送所有更改到 GitHub
+
+Stage Summary:
+- 分佣系统已简化，只保留提现分佣
+- 配置从 advn_invite_commission_config 表移到 advn_config 表
+- 相关菜单已删除
+- 代码已推送到 GitHub
