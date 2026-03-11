@@ -297,8 +297,130 @@ class Relation extends Backend
     public function rebind()
     {
         $userId = $this->request->get('user_id', 0);
+        
+        // 获取需要排除的用户ID列表（自己和所有下级）
+        $excludeUserIds = [$userId];
+        
+        if ($userId > 0) {
+            // 获取一级下级ID
+            $level1Ids = Db::name('invite_relation')
+                ->where('parent_id', $userId)
+                ->column('user_id');
+            if (!empty($level1Ids)) {
+                $excludeUserIds = array_merge($excludeUserIds, $level1Ids);
+                
+                // 获取二级下级ID
+                $level2Ids = Db::name('invite_relation')
+                    ->whereIn('parent_id', $level1Ids)
+                    ->column('user_id');
+                if (!empty($level2Ids)) {
+                    $excludeUserIds = array_merge($excludeUserIds, $level2Ids);
+                }
+            }
+        }
+        
         $this->view->assign('user_id', $userId);
+        $this->view->assign('exclude_user_id', $userId);
+        $this->view->assign('exclude_user_ids', implode(',', $excludeUserIds));
         return $this->view->fetch();
+    }
+
+    /**
+     * Selectpage选择新上级（排除自己和下级）
+     */
+    public function selectpage()
+    {
+        $this->request->filter(['strip_tags', 'trim']);
+        
+        // 获取当前用户ID（需要排除的用户）
+        $excludeUserId = $this->request->request('custom.exclude_user_id', 0);
+        if (!$excludeUserId) {
+            $excludeUserId = $this->request->request('exclude_user_id', 0);
+        }
+        
+        // 获取需要排除的用户ID列表（自己和所有下级）
+        $excludeIds = [];
+        
+        if ($excludeUserId > 0) {
+            $excludeIds[] = $excludeUserId;
+            
+            // 获取一级下级ID
+            $level1Ids = Db::name('invite_relation')
+                ->where('parent_id', $excludeUserId)
+                ->column('user_id');
+            if (!empty($level1Ids)) {
+                $excludeIds = array_merge($excludeIds, $level1Ids);
+                
+                // 获取二级下级ID
+                $level2Ids = Db::name('invite_relation')
+                    ->whereIn('parent_id', $level1Ids)
+                    ->column('user_id');
+                if (!empty($level2Ids)) {
+                    $excludeIds = array_merge($excludeIds, $level2Ids);
+                }
+            }
+        }
+        
+        // 搜索关键词
+        $searchValue = $this->request->request('searchValue', '');
+        $keyValue = $this->request->request('keyValue', '');
+        
+        // 构建查询
+        $query = Db::name('user');
+        
+        // 排除自己和下级
+        if (!empty($excludeIds)) {
+            $query->whereNotIn('id', $excludeIds);
+        }
+        
+        // 搜索条件
+        if ($searchValue !== '') {
+            $query->where('id|username|nickname|mobile', 'like', '%' . $searchValue . '%');
+        }
+        
+        // 如果是keyValue请求（加载已选中的值）
+        if ($keyValue !== '') {
+            $query->whereOr('id', 'in', $keyValue);
+        }
+        
+        // 统计总数
+        $total = $query->count();
+        
+        // 分页
+        $page = $this->request->request('pageNumber', 1);
+        $pageSize = $this->request->request('pageSize', 10);
+        
+        $list = Db::name('user')
+            ->where(function($q) use ($excludeIds, $searchValue, $keyValue) {
+                if (!empty($excludeIds)) {
+                    $q->whereNotIn('id', $excludeIds);
+                }
+                if ($searchValue !== '') {
+                    $q->where('id|username|nickname|mobile', 'like', '%' . $searchValue . '%');
+                }
+                if ($keyValue !== '') {
+                    $q->whereOr('id', 'in', $keyValue);
+                }
+            })
+            ->field('id, username, nickname, mobile, avatar')
+            ->page($page, $pageSize)
+            ->order('id', 'desc')
+            ->select();
+        
+        $rows = [];
+        foreach ($list as $item) {
+            $item = is_array($item) ? $item : $item->toArray();
+            $rows[] = [
+                'id' => $item['id'],
+                'nickname' => $item['nickname'] ?: $item['username'],
+                'username' => $item['username'],
+                'mobile' => $item['mobile'] ?? '',
+                'avatar' => $item['avatar'] ?: '/assets/img/avatar.png',
+                'name' => $item['id'] . ' - ' . ($item['nickname'] ?: $item['username']),
+            ];
+        }
+        
+        return json(['total' => $total, 'rows' => $rows]);
     }
 
     /**

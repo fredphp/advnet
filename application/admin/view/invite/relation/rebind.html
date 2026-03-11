@@ -82,8 +82,8 @@
 
 <div class="rebind-modal">
     <form id="rebind-form" class="form-horizontal" role="form">
-        <input type="hidden" id="rebind-user-id" name="user_id">
-        <input type="hidden" id="new-parent-id" name="new_parent_id">
+        <input type="hidden" id="rebind-user-id" name="user_id" value="{$user_id}">
+        <input type="hidden" id="exclude-user-ids" value="{$exclude_user_ids}">
         
         <!-- 当前用户信息 -->
         <div class="panel panel-default">
@@ -141,17 +141,16 @@
                 <div class="form-group">
                     <input type="text" id="select-new-parent" class="form-control selectpage" 
                            name="new_parent_id"
-                           data-source="user/user/selectpage"
+                           data-source="invite/relation/selectpage"
+                           data-params='{"custom[exclude_user_id]":"{$exclude_user_id}"}'
                            data-field="nickname"
                            data-primary-key="id"
                            data-pagination="true"
                            data-page-size="10"
                            data-multiple="false"
-                           data-search-field="id,username,nickname"
-                           data-format-item="{id} - {nickname} ({username})"
                            placeholder="输入用户ID、用户名或昵称搜索..."
                            style="width:100%;">
-                    <span class="help-block">支持搜索：用户ID、用户名、昵称</span>
+                    <span class="help-block">支持搜索：用户ID、用户名、昵称（已排除自己及下级）</span>
                 </div>
                 
                 <!-- 新上级信息卡片 -->
