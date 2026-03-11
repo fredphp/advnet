@@ -141,7 +141,8 @@
                 <div class="form-group">
                     <input type="text" id="select-new-parent" class="form-control selectpage" 
                            name="new_parent_id"
-                           data-source="invite/relation/selectpage?exclude_user_id={$exclude_user_id}"
+                           data-source="invite/relation/selectpage"
+                           data-params='{"custom[exclude_user_id]":"{$exclude_user_id}","exclude_user_id":"{$exclude_user_id}"}'
                            data-field="nickname"
                            data-primary-key="id"
                            data-pagination="true"
