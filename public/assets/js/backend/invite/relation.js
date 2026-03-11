@@ -31,6 +31,7 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
                             field: 'user_info', 
                             title: '用户信息', 
                             operate: false,
+                            width: '120px',
                             formatter: function(value, row, index) {
                                 var avatar = row.avatar || '/assets/img/avatar.png';
                                 var html = '<div class="user-info-cell">';
@@ -60,7 +61,7 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
                         {
                             field: 'invite_code',
                             title: '邀请码',
-                            width: '100px',
+                            width: '80px',
                             formatter: function(value, row, index) {
                                 if (!value || value === '-') {
                                     return '<span class="text-muted">未生成</span>';
@@ -72,7 +73,7 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
                             field: 'level1_count',
                             title: '一级下级',
                             sortable: true,
-                            width: '80px',
+                            width: '120px',
                             formatter: function(value, row, index) {
                                 var count = value || 0;
                                 if (count > 0) {
@@ -85,7 +86,7 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
                             field: 'level2_count',
                             title: '二级下级',
                             sortable: true,
-                            width: '80px',
+                            width: '120px',
                             formatter: function(value, row, index) {
                                 var count = value || 0;
                                 if (count > 0) {
@@ -98,7 +99,7 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
                             field: 'total_invite_count',
                             title: '总下级数',
                             sortable: true,
-                            width: '80px',
+                            width: '120px',
                             formatter: function(value, row, index) {
                                 var count = (row.level1_count || 0) + (row.level2_count || 0);
                                 if (count > 0) {
@@ -111,7 +112,7 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
                             field: 'withdraw_total',
                             title: '下级提现总额',
                             sortable: true,
-                            width: '100px',
+                            width: '120px',
                             formatter: function(value, row, index) {
                                 var val = parseFloat(value || 0);
                                 if (val > 0) {
