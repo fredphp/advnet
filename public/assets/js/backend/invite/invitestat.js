@@ -32,7 +32,7 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
                             width: '180px',
                             formatter: function(value, row, index) {
                                 var avatar = row.user_avatar || '/assets/img/avatar.png';
-                                var html = '<div class="user-info-cell" style="cursor:pointer;" onclick="Controller.showInvitees(' + row.user_id + ', \'' + (row.user_nickname || row.username || '-') + '\')">';
+                                var html = '<div class="user-info-cell" style="cursor:pointer;" onclick="Controller.showInvitees(' + row.user_id + ', \'' + (row.user_nickname || row.username || '-') + '\', 1)">';
                                 html += '<img src="' + avatar + '" class="img-circle" style="width:36px;height:36px;margin-right:8px;float:left;">';
                                 html += '<div style="float:left;">';
                                 html += '<div style="font-weight:bold;color:#333;">' + (row.user_nickname || '-') + '</div>';
@@ -55,7 +55,7 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
                             formatter: function(value, row, index) {
                                 var count = value || 0;
                                 if (count > 0) {
-                                    return '<a href="javascript:;" onclick="Controller.showInvitees(' + row.user_id + ', \'' + (row.user_nickname || row.username || '-') + '\')" class="btn btn-xs btn-success">' + count + ' 人 <i class="fa fa-arrow-right"></i></a>';
+                                    return '<a href="javascript:;" onclick="Controller.showInvitees(' + row.user_id + ', \'' + (row.user_nickname || row.username || '-') + '\', 1)" class="btn btn-xs btn-success">' + count + ' 人 <i class="fa fa-arrow-right"></i></a>';
                                 }
                                 return '<span class="text-muted">0</span>';
                             }
@@ -68,7 +68,7 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
                             formatter: function(value, row, index) {
                                 var count = value || 0;
                                 if (count > 0) {
-                                    return '<span class="label label-warning">' + count + ' 人</span>';
+                                    return '<a href="javascript:;" onclick="Controller.showInvitees(' + row.user_id + ', \'' + (row.user_nickname || row.username || '-') + '\', 2)" class="btn btn-xs btn-warning">' + count + ' 人 <i class="fa fa-arrow-right"></i></a>';
                                 }
                                 return '<span class="text-muted">0</span>';
                             }
@@ -81,7 +81,7 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
                             formatter: function(value, row, index) {
                                 var count = (row.level1_count || 0) + (row.level2_count || 0);
                                 if (count > 0) {
-                                    return '<span class="label label-primary">' + count + ' 人</span>';
+                                    return '<a href="javascript:;" onclick="Controller.showInvitees(' + row.user_id + ', \'' + (row.user_nickname || row.username || '-') + '\', 0)" class="label label-primary" style="cursor:pointer;">' + count + ' 人</a>';
                                 }
                                 return '<span class="text-muted">0</span>';
                             }
@@ -176,9 +176,13 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
             Table.api.bindevent(table);
         },
         
-        // 显示邀请列表弹窗
-        showInvitees: function(userId, nickname) {
-            Fast.api.open('invite/invitestat/invitees?user_id=' + userId, nickname + ' 的邀请列表', {
+        // 显示邀请列表弹窗 (level: 0=全部, 1=一级, 2=二级)
+        showInvitees: function(userId, nickname, level) {
+            var url = 'invite/invitestat/invitees?user_id=' + userId;
+            if (level) {
+                url += '&level=' + level;
+            }
+            Fast.api.open(url, nickname + ' 的邀请列表', {
                 area: ['95%', '90%'],
                 callback: function() {
                     // 刷新主表格
@@ -190,6 +194,7 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
         // 邀请列表页面
         invitees: function () {
             var userId = Fast.api.query('user_id');
+            var initLevel = parseInt(Fast.api.query('level', 0)); // 0=全部, 1=一级, 2=二级
             
             Table.api.init({
                 extend: {
@@ -199,25 +204,10 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
             });
 
             var table = $("#table");
-            var currentLevel = 1; // 当前显示的层级
+            var currentLevel = initLevel || 0; // 当前显示的层级筛选
             var currentParentId = userId; // 当前查看的用户ID
-            var parentStack = [{id: userId, level: 1}]; // 导航栈
+            var parentStack = [{id: userId, level: 1, nickname: '主用户'}]; // 导航栈
             
-            // 更新面包屑导航
-            function updateBreadcrumb() {
-                var html = '<ol class="breadcrumb" style="margin-bottom:10px;background:#f5f5f5;padding:10px;border-radius:4px;">';
-                for (var i = 0; i < parentStack.length; i++) {
-                    if (i === parentStack.length - 1) {
-                        html += '<li class="active">' + (parentStack[i].nickname || '用户') + '</li>';
-                    } else {
-                        html += '<li><a href="javascript:;" onclick="Controller.navigateTo(' + i + ')">' + (parentStack[i].nickname || '用户') + '</a></li>';
-                    }
-                }
-                html += '</ol>';
-                $('.panel-heading').find('.breadcrumb').remove();
-                $('.panel-heading').append(html);
-            }
-
             // 初始化表格
             table.bootstrapTable({
                 url: $.fn.bootstrapTable.defaults.extend.index_url,
@@ -230,13 +220,14 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
                 pageList: [10, 15, 20, 50],
                 queryParams: function(params) {
                     params.parent_id = currentParentId;
+                    params.level = currentLevel;
                     return params;
                 },
                 responseHandler: function(res) {
                     // 更新统计数据
-                    if (res.total !== undefined) {
-                        $('#level1-count').text(res.level1_count || '-');
-                        $('#level2-count').text(res.level2_count || '-');
+                    if (res.level1_count !== undefined) {
+                        $('#level1-count').text(res.level1_count || 0);
+                        $('#level2-count').text(res.level2_count || 0);
                     }
                     return res;
                 },
@@ -267,8 +258,10 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
                             formatter: function(value, row, index) {
                                 if (value === 1) {
                                     return '<span class="label label-primary">一级</span>';
-                                } else {
+                                } else if (value === 2) {
                                     return '<span class="label label-warning">二级</span>';
+                                } else {
+                                    return '<span class="label label-default">' + (value || '-') + '</span>';
                                 }
                             }
                         },
@@ -280,7 +273,7 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
                             formatter: function(value, row, index) {
                                 var count = value || 0;
                                 if (count > 0) {
-                                    return '<a href="javascript:;" onclick="Controller.viewSubInvitees(' + row.user_id + ', \'' + (row.nickname || '用户') + '\')" class="btn btn-xs btn-info">' + count + ' 人 <i class="fa fa-arrow-right"></i></a>';
+                                    return '<a href="javascript:;" onclick="Controller.viewSubInvitees(' + row.user_id + ', \'' + (row.nickname || '用户').replace(/'/g, "\\'") + '\')" class="btn btn-xs btn-info">' + count + ' 人 <i class="fa fa-arrow-right"></i></a>';
                                 }
                                 return '<span class="text-muted">0</span>';
                             }
@@ -337,7 +330,7 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
                             formatter: function(value, row, index) {
                                 var count = row.sub_count || 0;
                                 if (count > 0) {
-                                    return '<a href="javascript:;" onclick="Controller.viewSubInvitees(' + row.user_id + ', \'' + (row.nickname || '用户') + '\')" class="btn btn-xs btn-success"><i class="fa fa-users"></i> 查看下级</a>';
+                                    return '<a href="javascript:;" onclick="Controller.viewSubInvitees(' + row.user_id + ', \'' + (row.nickname || '用户').replace(/'/g, "\\'") + '\')" class="btn btn-xs btn-success"><i class="fa fa-users"></i> 查看下级</a>';
                                 }
                                 return '-';
                             }
@@ -348,50 +341,27 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
 
             Table.api.bindevent(table);
             
-            // 返回上级
-            window.goBack = function() {
-                if (parentStack.length > 1) {
-                    parentStack.pop();
-                    var prev = parentStack[parentStack.length - 1];
-                    currentParentId = prev.id;
-                    currentLevel = prev.level;
-                    table.bootstrapTable('refresh');
-                    updateBreadcrumb();
-                }
-            };
-            
-            // 导航到指定层级
-            window.navigateTo = function(index) {
-                if (index < parentStack.length - 1) {
-                    parentStack = parentStack.slice(0, index + 1);
-                    var target = parentStack[index];
-                    currentParentId = target.id;
-                    currentLevel = target.level;
-                    table.bootstrapTable('refresh');
-                    updateBreadcrumb();
-                }
+            // 查看下级邀请人
+            window.Controller_viewSubInvitees = function(userId, nickname) {
+                // 添加到导航栈
+                parentStack.push({id: userId, level: parentStack.length + 1, nickname: nickname});
+                
+                // 更新当前查看的用户
+                currentParentId = userId;
+                currentLevel = 0; // 查看下级时显示全部
+                
+                // 刷新表格
+                $("#table").bootstrapTable('refresh', {
+                    query: {parent_id: userId, level: 0}
+                });
             };
         },
         
-        // 查看下级邀请人
+        // 查看下级邀请人（在弹窗页面调用）
         viewSubInvitees: function(userId, nickname) {
-            // 添加到导航栈
-            if (typeof parentStack !== 'undefined') {
-                parentStack.push({id: userId, level: parentStack.length + 1, nickname: nickname});
+            if (typeof Controller_viewSubInvitees === 'function') {
+                Controller_viewSubInvitees(userId, nickname);
             }
-            
-            // 更新当前查看的用户
-            currentParentId = userId;
-            
-            // 更新面包屑
-            if (typeof updateBreadcrumb === 'function') {
-                updateBreadcrumb();
-            }
-            
-            // 刷新表格
-            $("#table").bootstrapTable('refresh', {
-                query: {parent_id: userId}
-            });
         },
         
         api: {

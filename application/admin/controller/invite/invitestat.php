@@ -50,7 +50,10 @@ class Invitestat extends Backend
     }
     
     /**
-     * 查看用户的一级邀请列表
+     * 查看用户的邀请列表
+     * @param int user_id 用户ID
+     * @param int level 层级筛选: 0=全部, 1=一级, 2=二级
+     * @param int parent_id 当前查看的父级ID（用于下钻）
      */
     public function invitees()
     {
@@ -63,30 +66,120 @@ class Invitestat extends Backend
         // 获取用户信息
         $user = Db::name('user')->where('id', $userId)->find();
         
+        // 获取层级筛选参数 (0=全部, 1=一级, 2=二级)
+        $levelFilter = intval($this->request->get('level', 0));
+        
+        // 获取当前查看的用户ID（用于下钻查看下级）
+        $parentId = intval($this->request->get('parent_id', 0)) ?: $userId;
+        
         // 非AJAX请求，返回视图
         if (!$this->request->isAjax()) {
             $this->view->assign('user', $user);
             $this->view->assign('user_id', $userId);
+            $this->view->assign('level', $levelFilter);
             return $this->view->fetch();
         }
         
         // AJAX请求，返回数据
-        $parentId = $this->request->get('parent_id', $userId);
         $sort = $this->request->get('sort', 'createtime');
         $order = $this->request->get('order', 'desc');
-        $offset = $this->request->get('offset', 0);
-        $limit = $this->request->get('limit', 15);
+        $offset = intval($this->request->get('offset', 0));
+        $limit = intval($this->request->get('limit', 15));
         
-        // 获取一级被邀请人（只显示直接下级）
-        $list = Db::name('invite_relation')
-            ->alias('ir')
-            ->join('user u', 'u.id = ir.user_id', 'LEFT')
-            ->where('ir.parent_id', $parentId)
-            ->field('ir.*, u.username, u.nickname, u.mobile, u.avatar, u.level as user_level, 1 as level_num')
-            ->order('ir.' . $sort, $order)
-            ->select();
+        $list = [];
+        $total = 0;
         
-        $total = count($list);
+        // 如果指定了parent_id且与user_id不同，说明是在查看下级
+        if ($parentId != $userId) {
+            // 查看某个下级的邀请列表（只显示该下级的一级邀请）
+            $query = Db::name('invite_relation')
+                ->alias('ir')
+                ->join('user u', 'u.id = ir.user_id', 'LEFT')
+                ->where('ir.parent_id', $parentId);
+            
+            $total = $query->count();
+            $list = $query->field('ir.*, u.username, u.nickname, u.mobile, u.avatar, u.level as user_level')
+                ->order('ir.' . $sort, $order)
+                ->limit($offset, $limit)
+                ->select();
+            
+            // 设置层级
+            foreach ($list as &$item) {
+                $item['level_num'] = 1; // 相对于当前parent都是一级
+            }
+        } else {
+            // 查看原始用户的邀请列表
+            if ($levelFilter == 1) {
+                // 只查询一级邀请
+                $query = Db::name('invite_relation')
+                    ->alias('ir')
+                    ->join('user u', 'u.id = ir.user_id', 'LEFT')
+                    ->where('ir.parent_id', $userId);
+                
+                $total = $query->count();
+                $list = $query->field('ir.*, u.username, u.nickname, u.mobile, u.avatar, u.level as user_level')
+                    ->order('ir.' . $sort, $order)
+                    ->limit($offset, $limit)
+                    ->select();
+                
+                foreach ($list as &$item) {
+                    $item['level_num'] = 1;
+                }
+            } elseif ($levelFilter == 2) {
+                // 只查询二级邀请
+                $query = Db::name('invite_relation')
+                    ->alias('ir')
+                    ->join('user u', 'u.id = ir.user_id', 'LEFT')
+                    ->where('ir.grandparent_id', $userId)
+                    ->where('ir.grandparent_id', '>', 0);
+                
+                $total = $query->count();
+                $list = $query->field('ir.*, u.username, u.nickname, u.mobile, u.avatar, u.level as user_level')
+                    ->order('ir.' . $sort, $order)
+                    ->limit($offset, $limit)
+                    ->select();
+                
+                foreach ($list as &$item) {
+                    $item['level_num'] = 2;
+                }
+            } else {
+                // 查询全部（一级+二级）
+                // 先获取一级
+                $level1List = Db::name('invite_relation')
+                    ->alias('ir')
+                    ->join('user u', 'u.id = ir.user_id', 'LEFT')
+                    ->where('ir.parent_id', $userId)
+                    ->field('ir.*, u.username, u.nickname, u.mobile, u.avatar, u.level as user_level, 1 as level_num')
+                    ->select();
+                
+                // 再获取二级
+                $level2List = Db::name('invite_relation')
+                    ->alias('ir')
+                    ->join('user u', 'u.id = ir.user_id', 'LEFT')
+                    ->where('ir.grandparent_id', $userId)
+                    ->where('ir.grandparent_id', '>', 0)
+                    ->field('ir.*, u.username, u.nickname, u.mobile, u.avatar, u.level as user_level, 2 as level_num')
+                    ->select();
+                
+                // 合并
+                $allList = array_merge($level1List, $level2List);
+                $total = count($allList);
+                
+                // 排序
+                usort($allList, function($a, $b) use ($sort, $order) {
+                    if (!isset($a[$sort]) || !isset($b[$sort])) {
+                        return 0;
+                    }
+                    if ($order === 'desc') {
+                        return $b[$sort] <=> $a[$sort];
+                    }
+                    return $a[$sort] <=> $b[$sort];
+                });
+                
+                // 分页
+                $list = array_slice($allList, $offset, $limit);
+            }
+        }
         
         // 获取所有被邀请人ID
         $inviteeIds = array_column($list, 'user_id');
@@ -101,17 +194,6 @@ class Invitestat extends Backend
                 ->select();
             foreach ($subCountsQuery as $item) {
                 $subCounts[$item['parent_id']] = $item['count'];
-            }
-        }
-        
-        // 获取金币账户
-        $accounts = [];
-        if (!empty($inviteeIds)) {
-            $accountQuery = Db::name('coin_account')
-                ->whereIn('user_id', $inviteeIds)
-                ->select();
-            foreach ($accountQuery as $item) {
-                $accounts[$item['user_id']] = $item;
             }
         }
         
@@ -141,16 +223,18 @@ class Invitestat extends Backend
             $item['commission_total'] = $commissionTotal ?? 0;
             
             // 账户余额
-            $account = $accounts[$item['user_id']] ?? null;
+            $account = Db::name('coin_account')
+                ->where('user_id', $item['user_id'])
+                ->find();
             $item['balance'] = $account ? $account['balance'] : 0;
         }
         
-        // 分页
-        $list = array_slice($list, $offset, $limit);
-        
         // 统计数据
         $level1Count = Db::name('invite_relation')->where('parent_id', $userId)->count();
-        $level2Count = Db::name('invite_relation')->where('grandparent_id', $userId)->where('grandparent_id', '>', 0)->count();
+        $level2Count = Db::name('invite_relation')
+            ->where('grandparent_id', $userId)
+            ->where('grandparent_id', '>', 0)
+            ->count();
         
         return json([
             'total' => $total, 
