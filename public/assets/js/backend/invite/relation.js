@@ -9,7 +9,7 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
                     edit_url: '',
                     del_url: '',
                     multi_url: '',
-                    table: 'invite_relation',
+                    table: 'user',
                 }
             });
 
@@ -18,104 +18,139 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
             // 初始化表格
             table.bootstrapTable({
                 url: $.fn.bootstrapTable.defaults.extend.index_url,
-                pk: 'parent_id',
-                sortName: 'level1_count',
+                pk: 'id',
+                sortName: 'id',
                 sortOrder: 'desc',
-                showToggle: false,
-                showColumns: false,
                 search: false,
+                showToggle: true,
+                showColumns: true,
                 columns: [
                     [
-                        {field: 'parent_id', title: '邀请人ID', sortable: true, width: '80px'},
+                        {field: 'id', title: '用户ID', sortable: true, width: '70px'},
                         {
-                            field: 'inviter_info', 
-                            title: '邀请人信息', 
+                            field: 'user_info', 
+                            title: '用户信息', 
                             operate: false,
                             formatter: function(value, row, index) {
-                                var avatar = row.inviter_avatar || '/assets/img/avatar.png';
+                                var avatar = row.avatar || '/assets/img/avatar.png';
                                 var html = '<div class="user-info-cell">';
-                                html += '<img src="' + avatar + '" class="img-circle" style="width:32px;height:32px;margin-right:8px;float:left;">';
+                                html += '<img src="' + avatar + '" class="img-circle" style="width:36px;height:36px;margin-right:8px;float:left;">';
                                 html += '<div style="float:left;">';
-                                html += '<div style="font-weight:bold;">' + (row.inviter_nickname || row.inviter_name || '-') + '</div>';
-                                html += '<small class="text-muted">' + (row.inviter_name || '-') + '</small>';
+                                html += '<div style="font-weight:bold;color:#333;">' + (row.nickname || '-') + '</div>';
+                                html += '<small class="text-muted">@' + (row.username || '-') + '</small>';
                                 html += '</div></div>';
                                 return html;
                             }
                         },
                         {
-                            field: 'inviter_level',
-                            title: '用户等级',
+                            field: 'username',
+                            title: '用户名搜索',
+                            visible: false,
+                            operate: 'LIKE'
+                        },
+                        {
+                            field: 'level',
+                            title: '等级',
                             sortable: true,
-                            width: '80px',
+                            width: '60px',
                             formatter: function(value, row, index) {
                                 return '<span class="label label-info">Lv.' + (value || 0) + '</span>';
                             }
                         },
                         {
-                            field: 'inviter_name',
-                            title: '邀请人搜索',
-                            visible: false,
-                            operate: 'LIKE'
+                            field: 'invite_code',
+                            title: '邀请码',
+                            width: '100px',
+                            formatter: function(value, row, index) {
+                                if (!value || value === '-') {
+                                    return '<span class="text-muted">未生成</span>';
+                                }
+                                return '<code style="background:#f5f5f5;padding:2px 6px;border-radius:3px;">' + value + '</code>';
+                            }
                         },
                         {
                             field: 'level1_count',
-                            title: '一级邀请人数',
+                            title: '一级下级',
                             sortable: true,
-                            width: '100px',
+                            width: '80px',
                             formatter: function(value, row, index) {
-                                return '<span class="label label-primary">' + (value || 0) + ' 人</span>';
+                                var count = value || 0;
+                                if (count > 0) {
+                                    return '<span class="label label-primary">' + count + ' 人</span>';
+                                }
+                                return '<span class="text-muted">0</span>';
                             }
                         },
                         {
                             field: 'level2_count',
-                            title: '二级邀请人数',
+                            title: '二级下级',
                             sortable: true,
-                            width: '100px',
+                            width: '80px',
                             formatter: function(value, row, index) {
-                                return '<span class="label label-default">' + (value || 0) + ' 人</span>';
+                                var count = value || 0;
+                                if (count > 0) {
+                                    return '<span class="label label-default">' + count + ' 人</span>';
+                                }
+                                return '<span class="text-muted">0</span>';
                             }
                         },
                         {
                             field: 'total_invite_count',
-                            title: '总邀请人数',
+                            title: '总下级数',
                             sortable: true,
-                            width: '100px',
+                            width: '80px',
                             formatter: function(value, row, index) {
-                                return '<span class="label label-success">' + ((row.level1_count || 0) + (row.level2_count || 0)) + ' 人</span>';
+                                var count = (row.level1_count || 0) + (row.level2_count || 0);
+                                if (count > 0) {
+                                    return '<span class="label label-success">' + count + ' 人</span>';
+                                }
+                                return '<span class="text-muted">0</span>';
                             }
                         },
                         {
                             field: 'withdraw_total',
-                            title: '被邀请人提现总额',
+                            title: '下级提现总额',
                             sortable: true,
-                            width: '120px',
+                            width: '100px',
                             formatter: function(value, row, index) {
-                                return '<span style="color:#e74c3c;">¥' + parseFloat(value || 0).toFixed(2) + '</span>';
+                                var val = parseFloat(value || 0);
+                                if (val > 0) {
+                                    return '<span style="color:#e74c3c;">¥' + val.toFixed(2) + '</span>';
+                                }
+                                return '<span class="text-muted">-</span>';
                             }
                         },
                         {
                             field: 'commission_total',
-                            title: '累计返现佣金',
+                            title: '累计佣金',
                             sortable: true,
-                            width: '120px',
+                            width: '100px',
                             formatter: function(value, row, index) {
-                                return '<span style="color:#27ae60;">¥' + parseFloat(value || 0).toFixed(2) + '</span>';
+                                var val = parseFloat(value || 0);
+                                if (val > 0) {
+                                    return '<span style="color:#27ae60;">¥' + val.toFixed(2) + '</span>';
+                                }
+                                return '<span class="text-muted">-</span>';
                             }
                         },
                         {
                             field: 'pending_commission',
-                            title: '待结算佣金',
+                            title: '待结算',
                             sortable: true,
-                            width: '100px',
+                            width: '80px',
                             formatter: function(value, row, index) {
-                                return '<span style="color:#f39c12;">¥' + parseFloat(value || 0).toFixed(2) + '</span>';
+                                var val = parseFloat(value || 0);
+                                if (val > 0) {
+                                    return '<span style="color:#f39c12;">¥' + val.toFixed(2) + '</span>';
+                                }
+                                return '<span class="text-muted">-</span>';
                             }
                         },
                         {
                             field: 'operate',
                             title: '操作',
                             table: table,
-                            width: '150px',
+                            width: '120px',
                             events: Table.api.events.operate,
                             buttons: [
                                 {
@@ -124,7 +159,7 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
                                     title: '查看被邀请人名单',
                                     classname: 'btn btn-xs btn-success btn-dialog',
                                     icon: 'fa fa-users',
-                                    url: 'invite/relation/invitees?parent_id={parent_id}',
+                                    url: 'invite/relation/invitees?parent_id={id}',
                                     callback: function(data) {
                                         table.bootstrapTable('refresh');
                                     }
@@ -136,7 +171,7 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
                                     classname: 'btn btn-xs btn-info btn-click',
                                     icon: 'fa fa-bar-chart',
                                     click: function(e, row) {
-                                        Controller.showStat(row.parent_id);
+                                        Controller.showStat(row.id);
                                     }
                                 }
                             ],
@@ -178,18 +213,19 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
                         var html = '<div class="stat-modal" style="padding:10px;">';
                         html += '<div class="row">';
                         
-                        // 邀请人信息
-                        html += '<div class="col-md-6"><div class="panel panel-default"><div class="panel-heading"><i class="fa fa-user"></i> 邀请人信息</div><div class="panel-body">';
+                        // 用户信息
+                        html += '<div class="col-md-6"><div class="panel panel-default"><div class="panel-heading"><i class="fa fa-user"></i> 用户信息</div><div class="panel-body">';
                         html += '<p><strong>用户名：</strong>' + (inviter.username || '-') + '</p>';
                         html += '<p><strong>昵称：</strong>' + (inviter.nickname || '-') + '</p>';
                         html += '<p><strong>等级：</strong>Lv.' + (inviter.level || 0) + '</p>';
+                        html += '<p><strong>邀请码：</strong>' + (inviter.invite_code || '-') + '</p>';
                         html += '</div></div></div>';
                         
                         // 邀请统计
                         html += '<div class="col-md-6"><div class="panel panel-default"><div class="panel-heading"><i class="fa fa-users"></i> 邀请统计</div><div class="panel-body">';
-                        html += '<p><strong>一级邀请：</strong>' + data.level1_count + ' 人</p>';
-                        html += '<p><strong>二级邀请：</strong>' + data.level2_count + ' 人</p>';
-                        html += '<p><strong>总邀请数：</strong>' + data.total_count + ' 人</p>';
+                        html += '<p><strong>一级下级：</strong>' + data.level1_count + ' 人</p>';
+                        html += '<p><strong>二级下级：</strong>' + data.level2_count + ' 人</p>';
+                        html += '<p><strong>总下级数：</strong>' + data.total_count + ' 人</p>';
                         html += '</div></div></div>';
                         
                         html += '</div><div class="row">';
@@ -203,9 +239,9 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
                         
                         // 金额统计
                         html += '<div class="col-md-6"><div class="panel panel-default"><div class="panel-heading"><i class="fa fa-money"></i> 金额统计</div><div class="panel-body">';
-                        html += '<p><strong>被邀请人提现总额：</strong><span style="color:#e74c3c;">¥' + parseFloat(data.withdraw_total).toFixed(2) + '</span></p>';
-                        html += '<p><strong>被邀请人消费总额：</strong><span style="color:#3498db;">¥' + parseFloat(data.spend_total).toFixed(2) + '</span></p>';
-                        html += '<p><strong>累计返现佣金：</strong><span style="color:#27ae60;">¥' + parseFloat(data.commission_total).toFixed(2) + '</span></p>';
+                        html += '<p><strong>下级提现总额：</strong><span style="color:#e74c3c;">¥' + parseFloat(data.withdraw_total).toFixed(2) + '</span></p>';
+                        html += '<p><strong>下级消费总额：</strong><span style="color:#3498db;">¥' + parseFloat(data.spend_total).toFixed(2) + '</span></p>';
+                        html += '<p><strong>累计佣金：</strong><span style="color:#27ae60;">¥' + parseFloat(data.commission_total).toFixed(2) + '</span></p>';
                         html += '<p><strong>待结算佣金：</strong><span style="color:#f39c12;">¥' + parseFloat(data.pending_commission).toFixed(2) + '</span></p>';
                         html += '</div></div></div>';
                         
@@ -250,7 +286,7 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
                 columns: [
                     [
                         {field: 'id', title: 'ID', sortable: true, width: '60px'},
-                        {field: 'user_id', title: '用户ID', sortable: true, width: '80px'},
+                        {field: 'user_id', title: '用户ID', sortable: true, width: '70px'},
                         {
                             field: 'user_info', 
                             title: '用户信息', 
@@ -270,19 +306,20 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
                             field: 'relation_level',
                             title: '关系层级',
                             operate: false,
+                            width: '120px',
                             formatter: function(value, row, index) {
                                 if (row.level_num === 1) {
-                                    return '<span class="label label-primary">一级</span>';
+                                    return '<span class="label label-primary">一级下级</span>';
                                 } else {
-                                    return '<span class="label label-warning">' + value + '</span>';
+                                    return '<span class="label label-warning">二级下级</span>';
                                 }
                             }
                         },
                         {
                             field: 'user_level',
-                            title: '用户等级',
+                            title: '等级',
                             sortable: true,
-                            width: '80px',
+                            width: '60px',
                             formatter: function(value, row, index) {
                                 return '<span class="label label-info">Lv.' + (value || 0) + '</span>';
                             }
@@ -290,6 +327,7 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
                         {
                             field: 'invite_channel',
                             title: '邀请渠道',
+                            width: '80px',
                             formatter: function(value, row, index) {
                                 var channels = {link: '链接', qrcode: '二维码', share: '分享'};
                                 return channels[value] || value || '-';
@@ -299,6 +337,7 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
                             field: 'balance',
                             title: '账户余额',
                             sortable: true,
+                            width: '80px',
                             formatter: function(value, row, index) {
                                 return parseFloat(value || 0).toFixed(2);
                             }
@@ -307,6 +346,7 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
                             field: 'spend_total',
                             title: '消费总额',
                             sortable: true,
+                            width: '90px',
                             formatter: function(value, row, index) {
                                 return '<span style="color:#e74c3c;">¥' + parseFloat(value || 0).toFixed(2) + '</span>';
                             }
@@ -315,6 +355,7 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
                             field: 'withdraw_total',
                             title: '提现总额',
                             sortable: true,
+                            width: '90px',
                             formatter: function(value, row, index) {
                                 return '<span style="color:#e74c3c;">¥' + parseFloat(value || 0).toFixed(2) + '</span>';
                             }
@@ -323,6 +364,7 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
                             field: 'commission_total',
                             title: '产生佣金',
                             sortable: true,
+                            width: '90px',
                             formatter: function(value, row, index) {
                                 return '<span style="color:#27ae60;">¥' + parseFloat(value || 0).toFixed(2) + '</span>';
                             }

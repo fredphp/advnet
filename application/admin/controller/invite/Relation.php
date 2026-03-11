@@ -19,7 +19,7 @@ class Relation extends Backend
     }
 
     /**
-     * 邀请关系列表（按邀请人分组）
+     * 用户邀请列表（显示所有用户）
      */
     public function index()
     {
@@ -31,43 +31,42 @@ class Relation extends Backend
             $filter = $this->request->get('filter', '{}');
             $filter = json_decode($filter, true);
             
-            // 获取所有邀请人ID
-            $query = Db::name('invite_relation')
-                ->where('parent_id', '>', 0);
+            // 构建用户查询
+            $query = Db::name('user');
             
             // 应用筛选条件
             if (!empty($filter)) {
-                if (isset($filter['parent_id']) && $filter['parent_id'] !== '') {
-                    $query->where('parent_id', $filter['parent_id']);
+                if (isset($filter['id']) && $filter['id'] !== '') {
+                    $query->where('id', $filter['id']);
                 }
-                if (isset($filter['invite_channel']) && $filter['invite_channel'] !== '') {
-                    $query->where('invite_channel', $filter['invite_channel']);
+                if (isset($filter['username']) && $filter['username'] !== '') {
+                    $query->where('username|nickname', 'like', '%' . $filter['username'] . '%');
+                }
+                if (isset($filter['level']) && $filter['level'] !== '') {
+                    $query->where('level', $filter['level']);
                 }
             }
             
-            $inviterIds = $query->group('parent_id')->column('parent_id');
-            $total = count($inviterIds);
+            // 获取总数
+            $total = $query->count();
             
-            if ($total == 0) {
+            // 获取用户列表
+            $users = Db::name('user')
+                ->field('id, username, nickname, mobile, avatar, level, invite_code, parent_id, grandparent_id, createtime')
+                ->order($sort, $order)
+                ->limit($offset, $limit)
+                ->select();
+            
+            if (empty($users)) {
                 return json(['total' => 0, 'rows' => []]);
             }
             
-            // 分页
-            $pageInviterIds = array_slice($inviterIds, $offset, $limit);
+            // 获取所有用户ID
+            $userIds = array_column($users, 'id');
             
-            // 获取邀请人信息
-            $inviters = Db::name('user')
-                ->whereIn('id', $pageInviterIds)
-                ->field('id, username, nickname, mobile, avatar, level')
-                ->select();
-            $inviterMap = [];
-            foreach ($inviters as $inv) {
-                $inviterMap[$inv['id']] = $inv;
-            }
-            
-            // 获取一级邀请人数
+            // 获取一级邀请人数（该用户邀请了多少人）
             $level1Counts = Db::name('invite_relation')
-                ->whereIn('parent_id', $pageInviterIds)
+                ->whereIn('parent_id', $userIds)
                 ->group('parent_id')
                 ->field('parent_id, COUNT(*) as count')
                 ->select();
@@ -76,9 +75,9 @@ class Relation extends Backend
                 $level1Map[$item['parent_id']] = $item['count'];
             }
             
-            // 获取二级邀请人数
+            // 获取二级邀请人数（该用户的下级又邀请了多少人）
             $level2Counts = Db::name('invite_relation')
-                ->whereIn('grandparent_id', $pageInviterIds)
+                ->whereIn('grandparent_id', $userIds)
                 ->where('grandparent_id', '>', 0)
                 ->group('grandparent_id')
                 ->field('grandparent_id, COUNT(*) as count')
@@ -90,16 +89,16 @@ class Relation extends Backend
             
             // 获取邀请统计
             $stats = Db::name('user_invite_stat')
-                ->whereIn('user_id', $pageInviterIds)
+                ->whereIn('user_id', $userIds)
                 ->select();
             $statMap = [];
             foreach ($stats as $stat) {
                 $statMap[$stat['user_id']] = $stat;
             }
             
-            // 获取佣金统计
+            // 获取佣金统计（已结算）
             $commissionStats = Db::name('invite_commission_log')
-                ->whereIn('parent_id', $pageInviterIds)
+                ->whereIn('parent_id', $userIds)
                 ->where('status', 1)
                 ->group('parent_id')
                 ->field('parent_id, SUM(commission_amount) as total_commission, SUM(coin_amount) as total_coin')
@@ -111,7 +110,7 @@ class Relation extends Backend
             
             // 获取待结算佣金
             $pendingStats = Db::name('invite_commission_log')
-                ->whereIn('parent_id', $pageInviterIds)
+                ->whereIn('parent_id', $userIds)
                 ->where('status', 0)
                 ->group('parent_id')
                 ->field('parent_id, SUM(commission_amount) as pending_commission')
@@ -121,22 +120,32 @@ class Relation extends Backend
                 $pendingMap[$item['parent_id']] = $item['pending_commission'];
             }
             
+            // 获取每个用户的被邀请人ID列表（用于统计提现）
+            $inviteeByParent = [];
+            $inviteeQuery = Db::name('invite_relation')
+                ->whereIn('parent_id', $userIds)
+                ->field('parent_id, user_id')
+                ->select();
+            foreach ($inviteeQuery as $item) {
+                if (!isset($inviteeByParent[$item['parent_id']])) {
+                    $inviteeByParent[$item['parent_id']] = [];
+                }
+                $inviteeByParent[$item['parent_id']][] = $item['user_id'];
+            }
+            
             // 组装数据
             $list = [];
-            foreach ($pageInviterIds as $parentId) {
-                $inviter = $inviterMap[$parentId] ?? [];
-                $level1Count = $level1Map[$parentId] ?? 0;
-                $level2Count = $level2Map[$parentId] ?? 0;
-                $stat = $statMap[$parentId] ?? [];
-                $commissionData = $commissionMap[$parentId] ?? [];
-                $pendingData = $pendingMap[$parentId] ?? 0;
+            foreach ($users as $user) {
+                $userId = $user['id'];
+                $level1Count = $level1Map[$userId] ?? 0;
+                $level2Count = $level2Map[$userId] ?? 0;
+                $stat = $statMap[$userId] ?? [];
+                $commissionData = $commissionMap[$userId] ?? [];
+                $pendingCommission = $pendingMap[$userId] ?? 0;
                 
                 // 获取被邀请人的提现总额
-                $inviteeIds = Db::name('invite_relation')
-                    ->where('parent_id', $parentId)
-                    ->column('user_id');
-                
                 $withdrawTotal = 0;
+                $inviteeIds = $inviteeByParent[$userId] ?? [];
                 if (!empty($inviteeIds)) {
                     $withdrawTotal = abs(Db::name('coin_log')
                         ->whereIn('user_id', $inviteeIds)
@@ -145,12 +154,15 @@ class Relation extends Backend
                 }
                 
                 $list[] = [
-                    'parent_id' => $parentId,
-                    'inviter_name' => $inviter['username'] ?? '-',
-                    'inviter_nickname' => $inviter['nickname'] ?? '-',
-                    'inviter_mobile' => $inviter['mobile'] ?? '-',
-                    'inviter_avatar' => $inviter['avatar'] ?? '/assets/img/avatar.png',
-                    'inviter_level' => $inviter['level'] ?? 0,
+                    'id' => $userId,
+                    'username' => $user['username'] ?? '-',
+                    'nickname' => $user['nickname'] ?? '-',
+                    'mobile' => $user['mobile'] ?? '-',
+                    'avatar' => $user['avatar'] ?? '/assets/img/avatar.png',
+                    'level' => $user['level'] ?? 0,
+                    'invite_code' => $user['invite_code'] ?? '-',
+                    'parent_id' => $user['parent_id'] ?? 0,
+                    'grandparent_id' => $user['grandparent_id'] ?? 0,
                     'level1_count' => $level1Count,
                     'level2_count' => $level2Count,
                     'total_invite_count' => $level1Count + $level2Count,
@@ -158,20 +170,10 @@ class Relation extends Backend
                     'withdraw_total' => $withdrawTotal,
                     'commission_total' => $commissionData['total_commission'] ?? 0,
                     'coin_commission' => $commissionData['total_coin'] ?? 0,
-                    'pending_commission' => $pendingData,
+                    'pending_commission' => $pendingCommission,
+                    'createtime' => $user['createtime'] ?? 0,
                 ];
             }
-            
-            // 排序
-            usort($list, function($a, $b) use ($sort, $order) {
-                if (!isset($a[$sort]) || !isset($b[$sort])) {
-                    return 0;
-                }
-                if ($order === 'desc') {
-                    return $b[$sort] <=> $a[$sort];
-                }
-                return $a[$sort] <=> $b[$sort];
-            });
 
             return json(['total' => $total, 'rows' => $list]);
         }
@@ -179,7 +181,7 @@ class Relation extends Backend
     }
 
     /**
-     * 获取邀请人的被邀请人列表
+     * 获取用户的被邀请人列表
      */
     public function invitees()
     {
