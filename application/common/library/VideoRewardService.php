@@ -11,6 +11,7 @@ use app\common\model\VideoCollection;
 use app\common\model\VideoCollectionItem;
 use app\common\model\UserDailyRewardStat;
 use app\common\model\AnticheatLog;
+use app\common\library\RiskControlService;
 
 /**
  * 视频收益服务类
@@ -39,6 +40,11 @@ class VideoRewardService
      * @var AntiCheatService
      */
     protected $antiCheatService;
+    
+    /**
+     * @var RiskControlService
+     */
+    protected $riskService;
     
     /**
      * 构造函数
@@ -201,6 +207,32 @@ class VideoRewardService
                 $result['message'] = $antiCheatResult['message'];
                 Db::rollback();
                 return $result;
+            }
+            
+            // 调用统一风控服务
+            try {
+                $this->riskService = new RiskControlService();
+                $this->riskService->init(
+                    $userId,
+                    $options['device_id'] ?? '',
+                    $options['ip'] ?? '',
+                    $options['user_agent'] ?? ''
+                );
+                
+                $riskResult = $this->riskService->check('video', 'claim', [
+                    'video_id' => $videoId,
+                    'watch_duration' => $record->watch_duration,
+                    'watch_progress' => $record->watch_progress,
+                    'coin_earned' => $rewardCoin,
+                ]);
+                
+                if (!$riskResult['passed']) {
+                    $result['message'] = $riskResult['message'] ?: '风控检测未通过';
+                    Db::rollback();
+                    return $result;
+                }
+            } catch (\Exception $e) {
+                Log::error('视频奖励风控服务调用失败: ' . $e->getMessage());
             }
             
             // 检查每日上限

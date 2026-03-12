@@ -4,6 +4,7 @@ namespace app\api\controller;
 
 use app\common\controller\Api;
 use app\common\library\CoinService;
+use app\common\library\RiskControlService;
 use app\common\model\RedPacketRewardConfig;
 use app\common\model\CoinLog;
 use think\Db;
@@ -25,6 +26,11 @@ class RedPacket extends Api
     const REDIS_EXPIRE = 3600;
     
     protected $service = null;
+    
+    /**
+     * @var RiskControlService
+     */
+    protected $riskService;
 
     public function _initialize()
     {
@@ -53,6 +59,28 @@ class RedPacket extends Api
         
         $taskId = $this->request->post('task_id/d', 0);
         $reset = $this->request->post('reset/d', 0);
+        
+        // 调用统一风控服务
+        try {
+            $this->riskService = new RiskControlService();
+            $this->riskService->init(
+                $userId,
+                $this->request->header('X-Device-Id', ''),
+                $this->request->ip(),
+                $this->request->header('user-agent', '')
+            );
+            
+            $riskResult = $this->riskService->check('redpacket', 'click', [
+                'task_id' => $taskId,
+                'reset' => $reset,
+            ]);
+            
+            if (!$riskResult['passed']) {
+                $this->error($riskResult['message'] ?: '风控检测未通过');
+            }
+        } catch (\Exception $e) {
+            Log::error('红包点击风控服务调用失败: ' . $e->getMessage());
+        }
         
         try {
             $redis = Cache::store('redis')->handler();
@@ -164,6 +192,19 @@ class RedPacket extends Api
         
         $redisKey = self::REDIS_CLICK_PREFIX . $userId;
         
+        // 调用统一风控服务
+        try {
+            $this->riskService = new RiskControlService();
+            $this->riskService->init(
+                $userId,
+                $this->request->header('X-Device-Id', ''),
+                $this->request->ip(),
+                $this->request->header('user-agent', '')
+            );
+        } catch (\Exception $e) {
+            Log::error('红包领取风控服务初始化失败: ' . $e->getMessage());
+        }
+        
         try {
             $redis = Cache::store('redis')->handler();
             
@@ -177,6 +218,25 @@ class RedPacket extends Api
             $baseAmount = intval($clickData['base_amount'] ?? 0);
             $accumulateAmount = intval($clickData['accumulate_amount'] ?? 0);
             $clickCount = intval($clickData['click_count'] ?? 0);
+            
+            // 执行风控检查
+            if ($this->riskService) {
+                try {
+                    $riskResult = $this->riskService->check('redpacket', 'claim', [
+                        'task_id' => $taskId,
+                        'total_amount' => $totalAmount,
+                        'base_amount' => $baseAmount,
+                        'accumulate_amount' => $accumulateAmount,
+                        'click_count' => $clickCount,
+                    ]);
+                    
+                    if (!$riskResult['passed']) {
+                        $this->error($riskResult['message'] ?: '风控检测未通过');
+                    }
+                } catch (\Exception $e) {
+                    Log::error('红包领取风控检查失败: ' . $e->getMessage());
+                }
+            }
             
             // 发放金币
             $coinService = new CoinService();

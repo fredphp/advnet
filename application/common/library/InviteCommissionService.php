@@ -29,6 +29,11 @@ class InviteCommissionService
     const COIN_RATE = 10000;
     
     /**
+     * @var RiskControlService
+     */
+    protected $riskService;
+    
+    /**
      * 绑定邀请关系
      * @param int $userId 新用户ID
      * @param string $inviteCode 邀请码
@@ -65,6 +70,30 @@ class InviteCommissionService
         if ($existRelation) {
             $result['message'] = '已绑定邀请关系';
             return $result;
+        }
+        
+        // 调用统一风控服务
+        try {
+            $this->riskService = new RiskControlService();
+            $this->riskService->init(
+                $inviter->id,  // 邀请人的风控检查
+                $options['device_id'] ?? '',
+                $options['ip'] ?? '',
+                $options['user_agent'] ?? ''
+            );
+            
+            $riskResult = $this->riskService->check('invite', 'bind', [
+                'invitee_id' => $userId,
+                'invite_code' => $inviteCode,
+                'channel' => $options['channel'] ?? 'link',
+            ]);
+            
+            if (!$riskResult['passed']) {
+                $result['message'] = $riskResult['message'] ?: '邀请关系绑定异常';
+                return $result;
+            }
+        } catch (\Exception $e) {
+            Log::error('邀请风控服务调用失败: ' . $e->getMessage());
         }
         
         Db::startTrans();

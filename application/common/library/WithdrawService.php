@@ -944,7 +944,39 @@ class WithdrawService
         ];
         
         $config = $this->getConfig();
+        $cashAmount = $this->coinToCash($coinAmount);
         
+        // 调用统一风控服务
+        try {
+            $riskService = new RiskControlService();
+            $riskService->init(
+                $userId,
+                $options['device_id'] ?? '',
+                $options['ip'] ?? '',
+                $options['user_agent'] ?? ''
+            );
+            
+            // 执行风控检查
+            $riskResult = $riskService->check('withdraw', 'apply', [
+                'amount' => $cashAmount,
+                'coin_amount' => $coinAmount,
+            ]);
+            
+            // 合并风控结果
+            if (!$riskResult['passed']) {
+                $result['pass'] = false;
+                $result['score'] += $riskResult['risk_score'];
+                foreach ($riskResult['violations'] as $violation) {
+                    $result['tags'][] = $violation['rule_name'];
+                }
+            } else {
+                $result['score'] += $riskResult['risk_score'];
+            }
+        } catch (\Exception $e) {
+            Log::error('风控服务调用失败: ' . $e->getMessage());
+        }
+        
+        // 保留原有风控逻辑作为补充
         // 1. 检查同一IP提现次数
         $ip = $options['ip'] ?? '';
         if ($ip) {
@@ -972,7 +1004,6 @@ class WithdrawService
         }
         
         // 3. 检查大额提现
-        $cashAmount = $this->coinToCash($coinAmount);
         if ($cashAmount >= $config['manual_audit_amount']) {
             $result['score'] += 20;
             $result['tags'][] = '大额提现';
