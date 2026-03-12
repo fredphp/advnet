@@ -1,88 +1,519 @@
-<form id="edit-form" class="form-horizontal" role="form" data-toggle="validator" method="POST" action="">
-    <div class="form-group">
-        <label class="control-label col-xs-12 col-sm-2">规则名称:</label>
-        <div class="col-xs-12 col-sm-8">
-            <input id="c-rule_name" class="form-control" name="row[rule_name]" type="text" value="{$row.rule_name|default=''}" data-rule="required">
+<style>
+    .rule-form-wrapper {
+        padding: 10px;
+    }
+    
+    .form-section {
+        background: #fff;
+        border-radius: 12px;
+        padding: 20px;
+        margin-bottom: 20px;
+        box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+    }
+    
+    .form-section-title {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 20px;
+        padding-bottom: 12px;
+        border-bottom: 2px solid #f0f0f0;
+    }
+    
+    .form-section-title i {
+        width: 32px;
+        height: 32px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-radius: 8px;
+        color: #fff;
+        font-size: 14px;
+    }
+    
+    .form-section-title span {
+        font-size: 15px;
+        font-weight: 600;
+        color: #333;
+    }
+    
+    .form-group {
+        margin-bottom: 18px;
+    }
+    
+    .control-label {
+        font-weight: 500;
+        color: #495057;
+        margin-bottom: 6px;
+    }
+    
+    .form-control {
+        border-radius: 8px;
+        border: 1px solid #e0e0e0;
+        padding: 10px 14px;
+        transition: all 0.3s ease;
+        font-size: 14px;
+    }
+    
+    .form-control:focus {
+        border-color: #667eea;
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.15);
+    }
+    
+    .form-control[readonly] {
+        background: #f8f9fa;
+        color: #6c757d;
+    }
+    
+    .help-block {
+        font-size: 12px;
+        color: #868e96;
+        margin-top: 6px;
+        padding-left: 2px;
+    }
+    
+    .help-block i {
+        margin-right: 4px;
+    }
+    
+    /* 输入组 */
+    .input-group-addon {
+        border-radius: 8px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: #fff;
+        border: none;
+    }
+    
+    /* 规则类型选择卡片 */
+    .rule-type-cards {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        margin-bottom: 15px;
+    }
+    
+    .rule-type-card {
+        flex: 1;
+        min-width: 100px;
+        padding: 12px;
+        border: 2px solid #e0e0e0;
+        border-radius: 10px;
+        text-align: center;
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+    
+    .rule-type-card:hover {
+        border-color: #667eea;
+        background: #f8f9ff;
+    }
+    
+    .rule-type-card.active {
+        border-color: #667eea;
+        background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
+    }
+    
+    .rule-type-card i {
+        font-size: 20px;
+        margin-bottom: 6px;
+        display: block;
+    }
+    
+    .rule-type-card span {
+        font-size: 12px;
+        color: #666;
+    }
+    
+    .rule-type-card.video i { color: #f5576c; }
+    .rule-type-card.task i { color: #4facfe; }
+    .rule-type-card.withdraw i { color: #43e97b; }
+    .rule-type-card.redpacket i { color: #fa709a; }
+    .rule-type-card.invite i { color: #a8edea; }
+    .rule-type-card.global i { color: #667eea; }
+    
+    /* 处理动作选择 */
+    .action-options {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+    }
+    
+    .action-option {
+        flex: 1;
+        min-width: 100px;
+        padding: 12px;
+        border: 2px solid #e0e0e0;
+        border-radius: 10px;
+        text-align: center;
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+    
+    .action-option:hover {
+        transform: translateY(-2px);
+    }
+    
+    .action-option.active {
+        transform: translateY(-2px);
+    }
+    
+    .action-option.warn { border-color: #ffc107; }
+    .action-option.warn.active { background: #fff3cd; }
+    .action-option.warn i { color: #856404; }
+    
+    .action-option.block { border-color: #f5c6cb; }
+    .action-option.block.active { background: #f8d7da; }
+    .action-option.block i { color: #721c24; }
+    
+    .action-option.freeze { border-color: #b8daff; }
+    .action-option.freeze.active { background: #cce5ff; }
+    .action-option.freeze i { color: #004085; }
+    
+    .action-option.ban { border-color: #c3e6cb; }
+    .action-option.ban.active { background: #d4edda; }
+    .action-option.ban i { color: #155724; }
+    
+    .action-option i {
+        font-size: 18px;
+        margin-bottom: 4px;
+        display: block;
+    }
+    
+    .action-option span {
+        font-size: 12px;
+        color: #666;
+    }
+    
+    /* 时长快捷选项 */
+    .duration-quick-btns {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 10px;
+        flex-wrap: wrap;
+    }
+    
+    .duration-quick-btn {
+        padding: 6px 12px;
+        border: 1px solid #e0e0e0;
+        border-radius: 20px;
+        font-size: 12px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        background: #fff;
+    }
+    
+    .duration-quick-btn:hover {
+        border-color: #667eea;
+        background: #f8f9ff;
+    }
+    
+    .duration-quick-btn.active {
+        border-color: #667eea;
+        background: #667eea;
+        color: #fff;
+    }
+    
+    /* 状态开关 */
+    .status-switch {
+        display: flex;
+        align-items: center;
+        gap: 15px;
+    }
+    
+    .status-switch label {
+        margin: 0;
+        cursor: pointer;
+    }
+    
+    /* 提交按钮 */
+    .submit-btn {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border: none;
+        padding: 12px 40px;
+        border-radius: 25px;
+        font-weight: 500;
+        letter-spacing: 1px;
+        transition: all 0.3s ease;
+    }
+    
+    .submit-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+    }
+    
+    /* 数字输入框 */
+    input[type="number"] {
+        -moz-appearance: textfield;
+    }
+    
+    input[type="number"]::-webkit-outer-spin-button,
+    input[type="number"]::-webkit-inner-spin-button {
+        -webkit-appearance: none;
+        margin: 0;
+    }
+    
+    /* 编辑历史信息 */
+    .edit-info {
+        background: #f8f9fa;
+        border-radius: 8px;
+        padding: 12px 15px;
+        margin-bottom: 20px;
+        display: flex;
+        align-items: center;
+        gap: 20px;
+        font-size: 13px;
+        color: #6c757d;
+    }
+    
+    .edit-info i {
+        color: #667eea;
+    }
+</style>
+
+<div class="rule-form-wrapper">
+    <form id="edit-form" class="form-horizontal" role="form" data-toggle="validator" method="POST" action="">
+        <!-- 编辑提示 -->
+        <div class="edit-info">
+            <span><i class="fa fa-hashtag"></i> ID: {$row.id}</span>
+            <span><i class="fa fa-clock-o"></i> 创建于: {$row.createtime|date='Y-m-d H:i',###}</span>
+            <span><i class="fa fa-edit"></i> 更新于: {$row.updatetime|date='Y-m-d H:i',###}</span>
         </div>
-    </div>
-    <div class="form-group">
-        <label class="control-label col-xs-12 col-sm-2">规则代码:</label>
-        <div class="col-xs-12 col-sm-8">
-            <input id="c-rule_code" class="form-control" name="row[rule_code]" type="text" value="{$row.rule_code|default=''}" data-rule="required" readonly>
-            <span class="help-block">规则代码创建后不可修改</span>
+        
+        <!-- 基本信息 -->
+        <div class="form-section">
+            <div class="form-section-title">
+                <i class="fa fa-info-circle"></i>
+                <span>基本信息</span>
+            </div>
+            
+            <div class="form-group">
+                <label class="control-label col-xs-12 col-sm-2">规则名称 <span class="text-danger">*</span></label>
+                <div class="col-xs-12 col-sm-8">
+                    <input id="c-rule_name" class="form-control" name="row[rule_name]" type="text" value="{$row.rule_name|default=''}" data-rule="required">
+                    <span class="help-block"><i class="fa fa-lightbulb-o"></i> 简明扼要地描述规则的作用</span>
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label class="control-label col-xs-12 col-sm-2">规则代码 <span class="text-danger">*</span></label>
+                <div class="col-xs-12 col-sm-8">
+                    <input id="c-rule_code" class="form-control" name="row[rule_code]" type="text" value="{$row.rule_code|default=''}" data-rule="required" readonly style="font-family: Monaco, Menlo, monospace; background: #f8f9fa;">
+                    <span class="help-block"><i class="fa fa-lock"></i> 规则代码创建后不可修改</span>
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label class="control-label col-xs-12 col-sm-2">规则类型 <span class="text-danger">*</span></label>
+                <div class="col-xs-12 col-sm-8">
+                    <div class="rule-type-cards" id="rule-type-cards">
+                        <div class="rule-type-card video" data-value="video">
+                            <i class="fa fa-video-camera"></i>
+                            <span>视频</span>
+                        </div>
+                        <div class="rule-type-card task" data-value="task">
+                            <i class="fa fa-tasks"></i>
+                            <span>任务</span>
+                        </div>
+                        <div class="rule-type-card withdraw" data-value="withdraw">
+                            <i class="fa fa-money"></i>
+                            <span>提现</span>
+                        </div>
+                        <div class="rule-type-card redpacket" data-value="redpacket">
+                            <i class="fa fa-gift"></i>
+                            <span>红包</span>
+                        </div>
+                        <div class="rule-type-card invite" data-value="invite">
+                            <i class="fa fa-user-plus"></i>
+                            <span>邀请</span>
+                        </div>
+                        <div class="rule-type-card global" data-value="global">
+                            <i class="fa fa-globe"></i>
+                            <span>全局</span>
+                        </div>
+                    </div>
+                    <select id="c-rule_type" class="form-control hidden" name="row[rule_type]" data-rule="required">
+                        <option value="video" {if $row.rule_type=='video'}selected{/if}>视频</option>
+                        <option value="task" {if $row.rule_type=='task'}selected{/if}>任务</option>
+                        <option value="withdraw" {if $row.rule_type=='withdraw'}selected{/if}>提现</option>
+                        <option value="redpacket" {if $row.rule_type=='redpacket'}selected{/if}>红包</option>
+                        <option value="invite" {if $row.rule_type=='invite'}selected{/if}>邀请</option>
+                        <option value="global" {if $row.rule_type=='global'}selected{/if}>全局</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label class="control-label col-xs-12 col-sm-2">规则描述</label>
+                <div class="col-xs-12 col-sm-8">
+                    <textarea id="c-description" class="form-control" name="row[description]" rows="3" placeholder="详细描述该规则的检测逻辑和触发条件...">{$row.description|default=''}</textarea>
+                </div>
+            </div>
         </div>
-    </div>
-    <div class="form-group">
-        <label class="control-label col-xs-12 col-sm-2">规则类型:</label>
-        <div class="col-xs-12 col-sm-8">
-            <select id="c-rule_type" class="form-control" name="row[rule_type]" data-rule="required">
-                <option value="video" {if $row.rule_type=='video'}selected{/if}>视频</option>
-                <option value="task" {if $row.rule_type=='task'}selected{/if}>任务</option>
-                <option value="withdraw" {if $row.rule_type=='withdraw'}selected{/if}>提现</option>
-                <option value="redpacket" {if $row.rule_type=='redpacket'}selected{/if}>红包</option>
-                <option value="invite" {if $row.rule_type=='invite'}selected{/if}>邀请</option>
-                <option value="global" {if $row.rule_type=='global'}selected{/if}>全局</option>
-            </select>
+        
+        <!-- 规则参数 -->
+        <div class="form-section">
+            <div class="form-section-title">
+                <i class="fa fa-sliders"></i>
+                <span>规则参数</span>
+            </div>
+            
+            <div class="form-group">
+                <label class="control-label col-xs-12 col-sm-2">阈值 <span class="text-danger">*</span></label>
+                <div class="col-xs-12 col-sm-8">
+                    <div class="input-group">
+                        <input id="c-threshold" class="form-control" name="row[threshold]" type="number" step="0.01" value="{$row.threshold|default=0}" data-rule="required">
+                        <span class="input-group-addon"><i class="fa fa-bolt"></i></span>
+                    </div>
+                    <span class="help-block"><i class="fa fa-info-circle"></i> 触发规则的最小值，当检测指标超过此值时触发</span>
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label class="control-label col-xs-12 col-sm-2">风险权重 <span class="text-danger">*</span></label>
+                <div class="col-xs-12 col-sm-8">
+                    <div class="input-group">
+                        <input id="c-score_weight" class="form-control" name="row[score_weight]" type="number" value="{$row.score_weight|default=10}" min="1" max="100" data-rule="required">
+                        <span class="input-group-addon"><i class="fa fa-balance-scale"></i></span>
+                    </div>
+                    <span class="help-block"><i class="fa fa-exclamation-triangle"></i> 触发规则后增加的风险分数 (1-100)，分数越高风险越大</span>
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label class="control-label col-xs-12 col-sm-2">优先级</label>
+                <div class="col-xs-12 col-sm-8">
+                    <div class="input-group">
+                        <input id="c-level" class="form-control" name="row[level]" type="number" value="{$row.level|default=1}" min="1" max="10">
+                        <span class="input-group-addon"><i class="fa fa-sort-numeric-asc"></i></span>
+                    </div>
+                    <span class="help-block"><i class="fa fa-info-circle"></i> 数值越大优先级越高 (1-10)</span>
+                </div>
+            </div>
         </div>
-    </div>
-    <div class="form-group">
-        <label class="control-label col-xs-12 col-sm-2">规则描述:</label>
-        <div class="col-xs-12 col-sm-8">
-            <textarea id="c-description" class="form-control" name="row[description]" rows="2">{$row.description|default=''}</textarea>
+        
+        <!-- 处理动作 -->
+        <div class="form-section">
+            <div class="form-section-title">
+                <i class="fa fa-gavel"></i>
+                <span>处理动作</span>
+            </div>
+            
+            <div class="form-group">
+                <label class="control-label col-xs-12 col-sm-2">处理动作 <span class="text-danger">*</span></label>
+                <div class="col-xs-12 col-sm-8">
+                    <div class="action-options" id="action-options">
+                        <div class="action-option warn" data-value="warn">
+                            <i class="fa fa-exclamation-triangle"></i>
+                            <span>警告</span>
+                        </div>
+                        <div class="action-option block" data-value="block">
+                            <i class="fa fa-ban"></i>
+                            <span>拦截</span>
+                        </div>
+                        <div class="action-option freeze" data-value="freeze">
+                            <i class="fa fa-snowflake-o"></i>
+                            <span>冻结</span>
+                        </div>
+                        <div class="action-option ban" data-value="ban">
+                            <i class="fa fa-lock"></i>
+                            <span>封禁</span>
+                        </div>
+                    </div>
+                    <select id="c-action" class="form-control hidden" name="row[action]" data-rule="required">
+                        <option value="warn" {if $row.action=='warn'}selected{/if}>警告</option>
+                        <option value="block" {if $row.action=='block'}selected{/if}>拦截</option>
+                        <option value="freeze" {if $row.action=='freeze'}selected{/if}>冻结</option>
+                        <option value="ban" {if $row.action=='ban'}selected{/if}>封禁</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label class="control-label col-xs-12 col-sm-2">处罚时长</label>
+                <div class="col-xs-12 col-sm-8">
+                    <div class="duration-quick-btns">
+                        <span class="duration-quick-btn" data-value="0">永久</span>
+                        <span class="duration-quick-btn" data-value="3600">1小时</span>
+                        <span class="duration-quick-btn" data-value="86400">1天</span>
+                        <span class="duration-quick-btn" data-value="604800">7天</span>
+                        <span class="duration-quick-btn" data-value="2592000">30天</span>
+                    </div>
+                    <div class="input-group">
+                        <input id="c-action_duration" class="form-control" name="row[action_duration]" type="number" value="{$row.action_duration|default=0}" placeholder="输入秒数">
+                        <span class="input-group-addon">秒</span>
+                    </div>
+                    <span class="help-block"><i class="fa fa-clock-o"></i> 0表示永久，或输入具体秒数</span>
+                </div>
+            </div>
         </div>
-    </div>
-    <div class="form-group">
-        <label class="control-label col-xs-12 col-sm-2">阈值:</label>
-        <div class="col-xs-12 col-sm-8">
-            <input id="c-threshold" class="form-control" name="row[threshold]" type="number" step="0.01" value="{$row.threshold|default=0}" data-rule="required">
-            <span class="help-block">触发规则的最小值</span>
+        
+        <!-- 状态设置 -->
+        <div class="form-section">
+            <div class="form-section-title">
+                <i class="fa fa-power-off"></i>
+                <span>状态设置</span>
+            </div>
+            
+            <div class="form-group">
+                <label class="control-label col-xs-12 col-sm-2">状态</label>
+                <div class="col-xs-12 col-sm-8">
+                    <div class="status-switch">
+                        <label class="radio-inline">
+                            <input type="radio" name="row[enabled]" value="1" {if $row.enabled==1}checked{/if}> 
+                            <span class="label label-success"><i class="fa fa-check"></i> 启用</span>
+                        </label>
+                        <label class="radio-inline">
+                            <input type="radio" name="row[enabled]" value="0" {if $row.enabled==0}checked{/if}> 
+                            <span class="label label-default"><i class="fa fa-pause"></i> 禁用</span>
+                        </label>
+                    </div>
+                </div>
+            </div>
         </div>
-    </div>
-    <div class="form-group">
-        <label class="control-label col-xs-12 col-sm-2">风险权重:</label>
-        <div class="col-xs-12 col-sm-8">
-            <input id="c-score_weight" class="form-control" name="row[score_weight]" type="number" value="{$row.score_weight|default=10}" min="1" max="100" data-rule="required">
-            <span class="help-block">触发规则后增加的风险分数(1-100)</span>
+        
+        <div class="form-group layer-footer">
+            <label class="control-label col-xs-12 col-sm-2"></label>
+            <div class="col-xs-12 col-sm-8">
+                <button type="submit" class="btn btn-primary btn-embossed submit-btn disabled">{:__('OK')}</button>
+                <button type="reset" class="btn btn-default btn-embossed" style="margin-left: 10px;">{:__('Reset')}</button>
+            </div>
         </div>
-    </div>
-    <div class="form-group">
-        <label class="control-label col-xs-12 col-sm-2">处理动作:</label>
-        <div class="col-xs-12 col-sm-8">
-            <select id="c-action" class="form-control" name="row[action]" data-rule="required">
-                <option value="warn" {if $row.action=='warn'}selected{/if}>警告</option>
-                <option value="block" {if $row.action=='block'}selected{/if}>拦截</option>
-                <option value="freeze" {if $row.action=='freeze'}selected{/if}>冻结</option>
-                <option value="ban" {if $row.action=='ban'}selected{/if}>封禁</option>
-            </select>
-        </div>
-    </div>
-    <div class="form-group">
-        <label class="control-label col-xs-12 col-sm-2">处罚时长(秒):</label>
-        <div class="col-xs-12 col-sm-8">
-            <input id="c-action_duration" class="form-control" name="row[action_duration]" type="number" value="{$row.action_duration|default=0}">
-            <span class="help-block">0表示永久，常用：86400(1天)、604800(7天)、2592000(30天)</span>
-        </div>
-    </div>
-    <div class="form-group">
-        <label class="control-label col-xs-12 col-sm-2">优先级:</label>
-        <div class="col-xs-12 col-sm-8">
-            <input id="c-level" class="form-control" name="row[level]" type="number" value="{$row.level|default=1}" min="1" max="10">
-            <span class="help-block">数值越大优先级越高</span>
-        </div>
-    </div>
-    <div class="form-group">
-        <label class="control-label col-xs-12 col-sm-2">状态:</label>
-        <div class="col-xs-12 col-sm-8">
-            <select id="c-enabled" class="form-control" name="row[enabled]">
-                <option value="1" {if $row.enabled==1}selected{/if}>启用</option>
-                <option value="0" {if $row.enabled==0}selected{/if}>禁用</option>
-            </select>
-        </div>
-    </div>
-    <div class="form-group layer-footer">
-        <label class="control-label col-xs-12 col-sm-2"></label>
-        <div class="col-xs-12 col-sm-8">
-            <button type="submit" class="btn btn-primary btn-embossed disabled">{:__('OK')}</button>
-        </div>
-    </div>
-</form>
+    </form>
+</div>
+
+<script>
+$(function() {
+    // 规则类型卡片点击
+    $('.rule-type-card').on('click', function() {
+        $('.rule-type-card').removeClass('active');
+        $(this).addClass('active');
+        $('#c-rule_type').val($(this).data('value'));
+    });
+    // 选中当前值
+    var currentType = $('#c-rule_type').val();
+    $('.rule-type-card[data-value="' + currentType + '"]').click();
+    
+    // 处理动作选项点击
+    $('.action-option').on('click', function() {
+        $('.action-option').removeClass('active');
+        $(this).addClass('active');
+        $('#c-action').val($(this).data('value'));
+    });
+    // 选中当前值
+    var currentAction = $('#c-action').val();
+    $('.action-option[data-value="' + currentAction + '"]').click();
+    
+    // 时长快捷按钮
+    $('.duration-quick-btn').on('click', function() {
+        $('.duration-quick-btn').removeClass('active');
+        $(this).addClass('active');
+        $('#c-action_duration').val($(this).data('value'));
+    });
+    // 根据当前值选中或高亮
+    var currentDuration = $('#c-action_duration').val();
+    if (currentDuration == 0 || currentDuration == 3600 || currentDuration == 86400 || currentDuration == 604800 || currentDuration == 2592000) {
+        $('.duration-quick-btn[data-value="' + currentDuration + '"]').click();
+    }
+});
+</script>
