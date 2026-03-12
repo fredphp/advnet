@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>风控数据初始化</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .container {
+            background: #fff;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 800px;
+            width: 100%;
+            overflow: hidden;
+        }
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #fff;
+            padding: 30px;
+            text-align: center;
+        }
+        .header h1 {
+            font-size: 24px;
+            margin-bottom: 10px;
+        }
+        .header p {
+            opacity: 0.9;
+            font-size: 14px;
+        }
+        .content {
+            padding: 30px;
+        }
+        .status-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 30px;
+        }
+        .status-table th, .status-table td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+        }
+        .status-table th {
+            background: #f8f9fa;
+            font-weight: 600;
+            color: #333;
+        }
+        .status-table tr:hover {
+            background: #f8f9ff;
+        }
+        .badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+        .badge-success {
+            background: #d4edda;
+            color: #155724;
+        }
+        .badge-danger {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        .badge-info {
+            background: #cce5ff;
+            color: #004085;
+        }
+        .btn {
+            display: inline-block;
+            padding: 14px 40px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #fff;
+            border: none;
+            border-radius: 30px;
+            font-size: 16px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+        }
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+        }
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+        .btn-container {
+            text-align: center;
+        }
+        .result {
+            margin-top: 20px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            display: none;
+        }
+        .result.show {
+            display: block;
+        }
+        .result.success {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+        }
+        .result.error {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+        }
+        .result h3 {
+            margin-bottom: 15px;
+            font-size: 16px;
+        }
+        .result ul {
+            margin-left: 20px;
+        }
+        .result li {
+            margin-bottom: 5px;
+        }
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+        }
+        .loading.show {
+            display: block;
+        }
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🛡️ 风控系统数据初始化</h1>
+            <p>初始化风控相关数据表和模拟数据</p>
+        </div>
+        
+        <div class="content">
+            <table class="status-table">
+                <thead>
+                    <tr>
+                        <th>数据表</th>
+                        <th>说明</th>
+                        <th>状态</th>
+                        <th>记录数</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {foreach $tables as $table => $info}
+                    <tr>
+                        <td><code>fa_{$table}</code></td>
+                        <td>{$info.name}</td>
+                        <td>
+                            {if $info.exists}
+                                <span class="badge badge-success">已存在</span>
+                            {else}
+                                <span class="badge badge-danger">未创建</span>
+                            {/if}
+                        </td>
+                        <td>
+                            {if $info.exists}
+                                <span class="badge badge-info">{$info.count} 条</span>
+                            {else}
+                                <span class="text-muted">-</span>
+                            {/if}
+                        </td>
+                    </tr>
+                    {/foreach}
+                </tbody>
+            </table>
+            
+            <div class="btn-container">
+                <button class="btn" id="installBtn" onclick="doInstall()">
+                    🚀 开始初始化
+                </button>
+                <a href="{:url('risk/userrisk/index')}" class="btn" style="background: #6c757d; margin-left: 10px;">
+                    📊 查看用户风险
+                </a>
+            </div>
+            
+            <div class="loading" id="loading">
+                <div class="spinner"></div>
+                <p>正在初始化数据，请稍候...</p>
+            </div>
+            
+            <div class="result" id="result"></div>
+        </div>
+    </div>
+    
+    <script>
+        function doInstall() {
+            var btn = document.getElementById('installBtn');
+            var loading = document.getElementById('loading');
+            var result = document.getElementById('result');
+            
+            btn.disabled = true;
+            loading.classList.add('show');
+            result.classList.remove('show', 'success', 'error');
+            
+            fetch('{:url("risk/initdata/install")}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                loading.classList.remove('show');
+                btn.disabled = false;
+                
+                if (data.code === 1) {
+                    result.classList.add('show', 'success');
+                    var html = '<h3>✅ ' + data.msg + '</h3>';
+                    
+                    if (data.data.tables && data.data.tables.length > 0) {
+                        html += '<p><strong>创建的表:</strong></p><ul>';
+                        data.data.tables.forEach(function(t) {
+                            html += '<li>' + t + '</li>';
+                        });
+                        html += '</ul>';
+                    }
+                    
+                    if (data.data.data && Object.keys(data.data.data).length > 0) {
+                        html += '<p><strong>插入的数据:</strong></p><ul>';
+                        for (var key in data.data.data) {
+                            html += '<li>' + key + ': ' + data.data.data[key] + ' 条</li>';
+                        }
+                        html += '</ul>';
+                    }
+                    
+                    if (data.data.verify) {
+                        html += '<p><strong>验证结果:</strong></p><ul>';
+                        for (var key in data.data.verify) {
+                            var info = data.data.verify[key];
+                            html += '<li>' + info.name + ' (' + key + '): ' + info.count + ' 条记录</li>';
+                        }
+                        html += '</ul>';
+                    }
+                    
+                    result.innerHTML = html;
+                    
+                    // 刷新页面
+                    setTimeout(function() {
+                        location.reload();
+                    }, 3000);
+                } else {
+                    result.classList.add('show', 'error');
+                    result.innerHTML = '<h3>❌ ' + data.msg + '</h3>';
+                }
+            })
+            .catch(error => {
+                loading.classList.remove('show');
+                btn.disabled = false;
+                result.classList.add('show', 'error');
+                result.innerHTML = '<h3>❌ 请求失败</h3><p>' + error + '</p>';
+            });
+        }
+    </script>
+</body>
+</html>
