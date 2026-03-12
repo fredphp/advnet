@@ -57,7 +57,7 @@ class Statistic extends Backend
             ->select();
 
         if ($this->request->isAjax()) {
-            $this->success('', [
+            $this->success('', null, [
                 'total_stats' => $totalStats,
                 'daily_stats' => $dailyStats,
                 'top_inviters' => $topInviters,

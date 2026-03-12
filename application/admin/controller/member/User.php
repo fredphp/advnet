@@ -91,7 +91,7 @@ class User extends Backend
             ->where('user_id', $ids)
             ->select();
 
-        $this->success('', [
+        $this->success('', null, [
             'user' => $user,
             'coin_account' => $coinAccount,
             'invite_stats' => $inviteStats,

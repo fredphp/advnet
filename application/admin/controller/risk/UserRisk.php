@@ -120,7 +120,7 @@ class UserRisk extends Backend
             $relatedAccounts = array_unique(array_diff($relatedAccounts, [$userId]));
         }
         
-        $this->success('', [
+        $this->success('', null, [
             'user' => $user,
             'risk_score' => $riskScore,
             'ban_history' => $banHistory,

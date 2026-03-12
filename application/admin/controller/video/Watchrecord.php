@@ -132,7 +132,7 @@ class Watchrecord extends Backend
                 ->limit(20)
                 ->select();
 
-            $this->success('', [
+            $this->success('', null, [
                 'total_stats' => $totalStats,
                 'daily_stats' => $dailyStats,
                 'hot_videos' => $hotVideos,

@@ -203,7 +203,7 @@ class Blacklist extends Backend
                 ->select();
         }
         
-        $this->success('', [
+        $this->success('', null, [
             'ip' => $ip,
             'in_blacklist' => $inBlacklist ? true : false,
             'blacklist_info' => $inBlacklist,

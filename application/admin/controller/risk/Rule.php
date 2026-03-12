@@ -192,7 +192,7 @@ class Rule extends Backend
         // 执行规则检查
         $result = $riskService->check($row['rule_type'], 'test', $context);
         
-        $this->success('', [
+        $this->success('', null, [
             'rule' => $row,
             'test_value' => $testValue,
             'threshold' => $row['threshold'],

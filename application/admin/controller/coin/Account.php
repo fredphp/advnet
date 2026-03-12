@@ -94,7 +94,7 @@ class Account extends Backend
             '10000+' => Db::name('coin_account')->where('balance', '>', 10000)->count(),
         ];
 
-        $this->success('', [
+        $this->success('', null, [
             'stats' => $stats,
             'distribution' => $distribution,
         ]);

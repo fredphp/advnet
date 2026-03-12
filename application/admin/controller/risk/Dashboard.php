@@ -71,7 +71,7 @@ class Dashboard extends Backend
         }
         
         if ($this->request->isAjax()) {
-            $this->success('', [
+            $this->success('', null, [
                 'today_stats' => $todayStats,
                 'risk_user_stats' => $riskUserStats,
                 'user_status_stats' => $userStatusStats,
@@ -127,7 +127,7 @@ class Dashboard extends Backend
             ->where('enabled', 1)
             ->count();
         
-        $this->success('', [
+        $this->success('', null, [
             'online_risk_users' => $onlineRiskUsers,
             'recent_requests' => $recentRequests,
             'ip_blacklist_count' => $ipBlacklistCount,
@@ -156,7 +156,7 @@ class Dashboard extends Backend
             ->order('total_count', 'desc')
             ->select();
         
-        $this->success('', [
+        $this->success('', null, [
             'rule_stats' => $ruleStats,
             'start_date' => $startDate,
             'end_date' => date('Y-m-d'),
@@ -201,7 +201,7 @@ class Dashboard extends Backend
             ->limit(30)
             ->select();
         
-        $this->success('', [
+        $this->success('', null, [
             'score_history' => $history,
             'recent_violations' => $recentViolations,
             'behavior_stats' => $behaviorStats,

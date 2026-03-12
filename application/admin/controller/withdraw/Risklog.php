@@ -157,7 +157,7 @@ class Risklog extends Backend
         }
 
         if ($this->request->isAjax()) {
-            $this->success('', [
+            $this->success('', null, [
                 'row' => $row,
                 'risk_score' => $riskScore,
                 'recent_logs' => $recentLogs

@@ -107,7 +107,7 @@ class BanRecord extends Backend
             ->order('createtime', 'desc')
             ->select();
         
-        $this->success('', [
+        $this->success('', null, [
             'record' => $record,
             'risk_score' => $riskScore,
             'all_records' => $allRecords,
@@ -202,7 +202,7 @@ class BanRecord extends Backend
             ->group('status')
             ->select();
         
-        $this->success('', [
+        $this->success('', null, [
             'stats' => $stats,
             'daily_stats' => $dailyStats,
             'status_distribution' => $statusDistribution,

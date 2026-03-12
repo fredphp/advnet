@@ -88,7 +88,7 @@ class Commission extends Backend
                 ->limit(20)
                 ->select();
 
-            $this->success('', [
+            $this->success('', null, [
                 'total_stats' => $totalStats,
                 'source_stats' => $sourceStats,
                 'daily_stats' => $dailyStats,
