@@ -34,7 +34,7 @@ class Initdata extends Backend
      */
     public function install()
     {
-        $sqlFile = ROOT_PATH . 'sql/risk_demo_data.sql';
+        $sqlFile = ROOT_PATH . 'sql/risk_demo_data_advn.sql';
         
         if (!file_exists($sqlFile)) {
             $this->error('SQL文件不存在');
@@ -55,6 +55,11 @@ class Initdata extends Backend
                 continue;
             }
             
+            // 跳过注释
+            if (strpos($statement, '--') === 0) {
+                continue;
+            }
+            
             try {
                 Db::execute($statement);
                 
@@ -68,7 +73,7 @@ class Initdata extends Backend
                     }
                 }
             } catch (\Exception $e) {
-                // 忽略已存在的错误
+                // 忽略已存在的错误和重复键错误
                 if (strpos($e->getMessage(), 'already exists') === false && 
                     strpos($e->getMessage(), 'Duplicate') === false) {
                     $results['errors'][] = substr($statement, 0, 80) . '... : ' . $e->getMessage();
@@ -96,6 +101,7 @@ class Initdata extends Backend
             'risk_whitelist' => '白名单',
             'device_fingerprint' => '设备指纹',
             'user_behavior_stat' => '用户行为统计',
+            'risk_stat' => '风控统计',
         ];
         
         $result = [];
