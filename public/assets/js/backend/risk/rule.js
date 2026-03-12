@@ -19,13 +19,13 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
             table.bootstrapTable({
                 url: $.fn.bootstrapTable.defaults.extend.index_url,
                 pk: 'id',
-                sortName: 'weigh',
+                sortName: 'id',
                 sortOrder: 'desc',
                 columns: [
                     [
                         {checkbox: true},
                         {field: 'id', title: 'ID', sortable: true},
-                        {field: 'name', title: '规则名称', operate: 'LIKE'},
+                        {field: 'rule_name', title: '规则名称', operate: 'LIKE'},
                         {field: 'rule_code', title: '规则代码', operate: 'LIKE'},
                         {field: 'rule_type', title: '规则类型', searchList: {
                             "video": "视频",
@@ -45,7 +45,7 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
                         }},
                         {field: 'action_duration', title: '处罚时长(秒)'},
                         {field: 'enabled', title: '状态', searchList: {"0": "禁用", "1": "启用"}, formatter: Table.api.formatter.status},
-                        {field: 'weigh', title: '权重', sortable: true},
+                        {field: 'level', title: '优先级', sortable: true},
                         {field: 'createtime', title: '创建时间', formatter: Table.api.formatter.datetime, operate: 'RANGE', addclass: 'datetimerange', sortable: true},
                         {field: 'operate', title: '操作', table: table, events: Table.api.events.operate, formatter: Table.api.formatter.operate}
                     ]
