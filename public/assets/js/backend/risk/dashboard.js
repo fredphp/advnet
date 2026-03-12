@@ -1,4 +1,4 @@
-define(['jquery', 'bootstrap', 'backend', 'table', 'form', 'chartjs'], function ($, undefined, Backend, Table, Form, Chart) {
+define(['jquery', 'bootstrap', 'backend', 'table', 'form', 'echarts'], function ($, undefined, Backend, Table, Form, Echarts) {
     var Controller = {
         index: function () {
             // 加载仪表盘数据
@@ -31,6 +31,8 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form', 'chartjs'], function 
                 'temporary': { label: '临时封禁', class: 'label-warning' },
                 'permanent': { label: '永久封禁', class: 'label-danger' }
             },
+            // 图表实例
+            chartInstances: {},
             
             loadDashboard: function () {
                 // 显示加载状态
@@ -131,20 +133,20 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form', 'chartjs'], function 
             
             // 渲染风险等级饼图
             renderRiskLevelChart: function(data) {
-                var ctx = document.getElementById('risk-level-chart');
-                if (!ctx) return;
+                var chartDom = document.getElementById('risk-level-chart');
+                if (!chartDom) return;
                 
-                var labels = [];
-                var values = [];
-                var colors = [];
+                var chartData = [];
                 var legendHtml = '<div class="row">';
                 
                 if (data.length > 0) {
                     data.forEach(function(item) {
                         var level = Controller.api.riskLevelMap[item.risk_level] || { label: item.risk_level, color: '#ccc' };
-                        labels.push(level.label);
-                        values.push(parseInt(item.count) || 0);
-                        colors.push(level.color);
+                        chartData.push({
+                            name: level.label,
+                            value: parseInt(item.count) || 0,
+                            itemStyle: { color: level.color }
+                        });
                         
                         legendHtml += '<div class="col-xs-6" style="margin-bottom: 8px;">' +
                             '<span style="display:inline-block;width:12px;height:12px;border-radius:2px;background:' + level.color + ';margin-right:5px;"></span>' +
@@ -152,58 +154,53 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form', 'chartjs'], function 
                             '</div>';
                     });
                 } else {
-                    labels = ['无数据'];
-                    values = [1];
-                    colors = ['#e9ecef'];
+                    chartData.push({ name: '无数据', value: 1, itemStyle: { color: '#e9ecef' } });
                 }
                 
                 legendHtml += '</div>';
                 $('#risk-level-legend').html(legendHtml);
                 
                 // 销毁旧图表
-                if (window.riskLevelChartInstance) {
-                    window.riskLevelChartInstance.destroy();
+                if (Controller.api.chartInstances.riskLevel) {
+                    Controller.api.chartInstances.riskLevel.dispose();
                 }
                 
-                window.riskLevelChartInstance = new Chart(ctx, {
-                    type: 'doughnut',
-                    data: {
-                        labels: labels,
-                        datasets: [{
-                            data: values,
-                            backgroundColor: colors,
-                            borderWidth: 0
-                        }]
+                var chart = Echarts.init(chartDom);
+                Controller.api.chartInstances.riskLevel = chart;
+                
+                var option = {
+                    tooltip: {
+                        trigger: 'item',
+                        formatter: '{b}: {c} ({d}%)'
                     },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        plugins: {
-                            legend: {
-                                display: false
-                            }
-                        },
-                        cutout: '60%'
-                    }
-                });
+                    series: [{
+                        type: 'pie',
+                        radius: ['50%', '70%'],
+                        center: ['50%', '50%'],
+                        label: { show: false },
+                        data: chartData
+                    }]
+                };
+                
+                chart.setOption(option);
             },
             
             // 渲染用户状态饼图
             renderUserStatusChart: function(data) {
-                var ctx = document.getElementById('user-status-chart');
-                if (!ctx) return;
+                var chartDom = document.getElementById('user-status-chart');
+                if (!chartDom) return;
                 
-                var labels = [];
-                var values = [];
-                var colors = [];
+                var chartData = [];
                 var legendHtml = '<div class="row">';
                 
                 if (data.length > 0) {
                     data.forEach(function(item) {
                         var status = Controller.api.statusMap[item.status] || { label: item.status, color: '#ccc' };
-                        labels.push(status.label);
-                        values.push(parseInt(item.count) || 0);
-                        colors.push(status.color);
+                        chartData.push({
+                            name: status.label,
+                            value: parseInt(item.count) || 0,
+                            itemStyle: { color: status.color }
+                        });
                         
                         legendHtml += '<div class="col-xs-6" style="margin-bottom: 8px;">' +
                             '<span style="display:inline-block;width:12px;height:12px;border-radius:2px;background:' + status.color + ';margin-right:5px;"></span>' +
@@ -211,46 +208,41 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form', 'chartjs'], function 
                             '</div>';
                     });
                 } else {
-                    labels = ['无数据'];
-                    values = [1];
-                    colors = ['#e9ecef'];
+                    chartData.push({ name: '无数据', value: 1, itemStyle: { color: '#e9ecef' } });
                 }
                 
                 legendHtml += '</div>';
                 $('#user-status-legend').html(legendHtml);
                 
                 // 销毁旧图表
-                if (window.userStatusChartInstance) {
-                    window.userStatusChartInstance.destroy();
+                if (Controller.api.chartInstances.userStatus) {
+                    Controller.api.chartInstances.userStatus.dispose();
                 }
                 
-                window.userStatusChartInstance = new Chart(ctx, {
-                    type: 'doughnut',
-                    data: {
-                        labels: labels,
-                        datasets: [{
-                            data: values,
-                            backgroundColor: colors,
-                            borderWidth: 0
-                        }]
+                var chart = Echarts.init(chartDom);
+                Controller.api.chartInstances.userStatus = chart;
+                
+                var option = {
+                    tooltip: {
+                        trigger: 'item',
+                        formatter: '{b}: {c} ({d}%)'
                     },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        plugins: {
-                            legend: {
-                                display: false
-                            }
-                        },
-                        cutout: '60%'
-                    }
-                });
+                    series: [{
+                        type: 'pie',
+                        radius: ['50%', '70%'],
+                        center: ['50%', '50%'],
+                        label: { show: false },
+                        data: chartData
+                    }]
+                };
+                
+                chart.setOption(option);
             },
             
             // 渲染24小时违规趋势图
             renderHourlyChart: function(data) {
-                var ctx = document.getElementById('hourly-chart');
-                if (!ctx) return;
+                var chartDom = document.getElementById('hourly-chart');
+                if (!chartDom) return;
                 
                 var labels = [];
                 var values = [];
@@ -282,49 +274,49 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form', 'chartjs'], function 
                 }
                 
                 // 销毁旧图表
-                if (window.hourlyChartInstance) {
-                    window.hourlyChartInstance.destroy();
+                if (Controller.api.chartInstances.hourly) {
+                    Controller.api.chartInstances.hourly.dispose();
                 }
                 
-                window.hourlyChartInstance = new Chart(ctx, {
-                    type: 'bar',
-                    data: {
-                        labels: labels,
-                        datasets: [{
-                            label: '违规次数',
-                            data: values,
-                            backgroundColor: 'rgba(238, 90, 90, 0.6)',
-                            borderColor: 'rgba(238, 90, 90, 1)',
-                            borderWidth: 1,
-                            borderRadius: 3
-                        }]
+                var chart = Echarts.init(chartDom);
+                Controller.api.chartInstances.hourly = chart;
+                
+                var option = {
+                    tooltip: {
+                        trigger: 'axis',
+                        axisPointer: { type: 'shadow' }
                     },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        plugins: {
-                            legend: {
-                                display: false
-                            }
+                    grid: {
+                        left: '3%',
+                        right: '4%',
+                        bottom: '3%',
+                        top: '3%',
+                        containLabel: true
+                    },
+                    xAxis: {
+                        type: 'category',
+                        data: labels,
+                        axisLine: { lineStyle: { color: '#ddd' } },
+                        axisLabel: { color: '#666' }
+                    },
+                    yAxis: {
+                        type: 'value',
+                        minInterval: 1,
+                        splitLine: { lineStyle: { color: '#eee' } },
+                        axisLabel: { color: '#666' }
+                    },
+                    series: [{
+                        type: 'bar',
+                        data: values,
+                        itemStyle: {
+                            color: '#ee5a5a',
+                            borderRadius: [4, 4, 0, 0]
                         },
-                        scales: {
-                            y: {
-                                beginAtZero: true,
-                                ticks: {
-                                    stepSize: Math.ceil(maxVal / 5) || 1
-                                },
-                                grid: {
-                                    color: 'rgba(0,0,0,0.05)'
-                                }
-                            },
-                            x: {
-                                grid: {
-                                    display: false
-                                }
-                            }
-                        }
-                    }
-                });
+                        barWidth: '60%'
+                    }]
+                };
+                
+                chart.setOption(option);
             },
             
             // 更新表格
