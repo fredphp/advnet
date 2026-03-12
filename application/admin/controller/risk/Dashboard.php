@@ -5,7 +5,6 @@ namespace app\admin\controller\risk;
 use app\common\controller\Backend;
 use app\common\library\RiskControlService;
 use app\common\library\AutoBanService;
-use app\common\library\DeviceFingerprintService;
 use think\Db;
 
 /**
@@ -19,9 +18,51 @@ class Dashboard extends Backend
     public function index()
     {
         $today = date('Y-m-d');
+        $yesterday = date('Y-m-d', strtotime('-1 day'));
         
         // 今日统计数据
-        $todayStats = Db::name('risk_stat')->where('stat_date', $today)->find();
+        $todayStats = [
+            'violation_count' => 0,
+            'ban_count' => 0,
+            'warn_count' => 0,
+            'blacklist_count' => 0,
+            'ip_blacklist' => 0,
+            'device_blacklist' => 0,
+            'user_blacklist' => 0,
+        ];
+        
+        // 今日违规次数
+        $todayStats['violation_count'] = Db::name('risk_log')
+            ->whereTime('createtime', 'today')
+            ->count();
+        
+        // 今日封禁人数
+        $todayStats['ban_count'] = Db::name('ban_record')
+            ->whereTime('createtime', 'today')
+            ->count();
+        
+        // 昨日违规次数（用于对比）
+        $yesterdayViolations = Db::name('risk_log')
+            ->whereTime('createtime', 'yesterday')
+            ->count();
+        
+        // 黑名单统计
+        $blacklistStats = Db::name('risk_blacklist')
+            ->field('type, COUNT(*) as count')
+            ->where('enabled', 1)
+            ->group('type')
+            ->select();
+        
+        foreach ($blacklistStats as $stat) {
+            $todayStats['blacklist_count'] += $stat['count'];
+            if ($stat['type'] === 'ip') {
+                $todayStats['ip_blacklist'] = $stat['count'];
+            } elseif ($stat['type'] === 'device') {
+                $todayStats['device_blacklist'] = $stat['count'];
+            } elseif ($stat['type'] === 'user') {
+                $todayStats['user_blacklist'] = $stat['count'];
+            }
+        }
         
         // 风险用户统计
         $riskUserStats = Db::name('user_risk_score')
@@ -37,7 +78,7 @@ class Dashboard extends Backend
         
         // 最近24小时违规统计
         $hourlyViolations = Db::name('risk_log')
-            ->field('FROM_UNIXTIME(createtime, "%Y-%m-%d %H:00") as hour, COUNT(*) as count')
+            ->field('FROM_UNIXTIME(createtime, "%H") as hour, COUNT(*) as count')
             ->where('createtime', '>', time() - 86400)
             ->group('hour')
             ->order('hour', 'asc')
@@ -45,7 +86,7 @@ class Dashboard extends Backend
         
         // 规则触发统计
         $ruleTriggerStats = Db::name('risk_log')
-            ->field('rule_code, rule_name, COUNT(*) as trigger_count')
+            ->field('rule_code, rule_name, rule_type, COUNT(*) as trigger_count')
             ->where('createtime', '>', time() - 86400)
             ->group('rule_code')
             ->order('trigger_count', 'desc')
@@ -63,21 +104,50 @@ class Dashboard extends Backend
             ->select();
         
         // 风险预警
-        $alerts = [];
+        $alerts = [
+            'high_risk' => [],
+            'dangerous' => [],
+            'recent_violators' => [],
+        ];
+        
         try {
-            $alerts = (new AutoBanService())->getRiskUserAlerts();
+            $alertData = (new AutoBanService())->getRiskUserAlerts();
+            if (isset($alertData['high_risk'])) {
+                $alerts['high_risk'] = $alertData['high_risk'];
+            }
+            if (isset($alertData['dangerous'])) {
+                $alerts['dangerous'] = $alertData['dangerous'];
+            }
+            if (isset($alertData['recent_violators'])) {
+                $alerts['recent_violators'] = $alertData['recent_violators'];
+            }
         } catch (\Exception $e) {
-            $alerts = [];
+            // 忽略错误
+        }
+        
+        // 计算变化
+        $violationsChange = '-';
+        if ($yesterdayViolations > 0) {
+            $change = $todayStats['violation_count'] - $yesterdayViolations;
+            if ($change > 0) {
+                $violationsChange = '<span class="text-danger">↑ ' . $change . '</span>';
+            } elseif ($change < 0) {
+                $violationsChange = '<span class="text-success">↓ ' . abs($change) . '</span>';
+            } else {
+                $violationsChange = '<span class="text-muted">持平</span>';
+            }
         }
         
         if ($this->request->isAjax()) {
             $this->success('', null, [
                 'today_stats' => $todayStats,
-                'risk_user_stats' => $riskUserStats,
-                'user_status_stats' => $userStatusStats,
-                'hourly_violations' => $hourlyViolations,
-                'rule_trigger_stats' => $ruleTriggerStats,
-                'recent_bans' => $recentBans,
+                'yesterday_violations' => $yesterdayViolations,
+                'violations_change' => $violationsChange,
+                'risk_user_stats' => $riskUserStats ? $riskUserStats->toArray() : [],
+                'user_status_stats' => $userStatusStats ? $userStatusStats->toArray() : [],
+                'hourly_violations' => $hourlyViolations ? $hourlyViolations->toArray() : [],
+                'rule_trigger_stats' => $ruleTriggerStats ? $ruleTriggerStats->toArray() : [],
+                'recent_bans' => $recentBans ? $recentBans->toArray() : [],
                 'alerts' => $alerts,
             ]);
         }
@@ -128,8 +198,8 @@ class Dashboard extends Backend
             ->count();
         
         $this->success('', null, [
-            'online_risk_users' => $onlineRiskUsers,
-            'recent_requests' => $recentRequests,
+            'online_risk_users' => $onlineRiskUsers ? $onlineRiskUsers->toArray() : [],
+            'recent_requests' => $recentRequests ? $recentRequests->toArray() : [],
             'ip_blacklist_count' => $ipBlacklistCount,
             'device_blacklist_count' => $deviceBlacklistCount,
         ]);
@@ -157,7 +227,7 @@ class Dashboard extends Backend
             ->select();
         
         $this->success('', null, [
-            'rule_stats' => $ruleStats,
+            'rule_stats' => $ruleStats ? $ruleStats->toArray() : [],
             'start_date' => $startDate,
             'end_date' => date('Y-m-d'),
         ]);
@@ -203,8 +273,26 @@ class Dashboard extends Backend
         
         $this->success('', null, [
             'score_history' => $history,
-            'recent_violations' => $recentViolations,
-            'behavior_stats' => $behaviorStats,
+            'recent_violations' => $recentViolations ? $recentViolations->toArray() : [],
+            'behavior_stats' => $behaviorStats ? $behaviorStats->toArray() : [],
         ]);
+    }
+    
+    /**
+     * 获取实时统计数据（用于定时刷新）
+     */
+    public function getRealtimeStats()
+    {
+        $data = [
+            'violation_count' => Db::name('risk_log')->whereTime('createtime', 'today')->count(),
+            'ban_count' => Db::name('ban_record')->whereTime('createtime', 'today')->count(),
+            'high_risk_count' => Db::name('user_risk_score')
+                ->whereIn('risk_level', ['high', 'dangerous'])
+                ->where('status', 'normal')
+                ->count(),
+            'online_users' => Db::name('user')->where('logintime', '>', time() - 300)->count(),
+        ];
+        
+        $this->success('', null, $data);
     }
 }

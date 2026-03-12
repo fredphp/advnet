@@ -1,16 +1,284 @@
-<div class="panel panel-default panel-intro">
-    {:build_heading()}
+<style>
+    .risk-dashboard .stat-card {
+        background: #fff;
+        border-radius: 8px;
+        padding: 20px;
+        margin-bottom: 20px;
+        box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+        transition: all 0.3s ease;
+    }
+    .risk-dashboard .stat-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 4px 20px rgba(0,0,0,0.12);
+    }
+    .risk-dashboard .stat-card .stat-icon {
+        width: 60px;
+        height: 60px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 28px;
+        color: #fff;
+    }
+    .risk-dashboard .stat-card .stat-icon.bg-danger { background: linear-gradient(135deg, #ff6b6b, #ee5a5a); }
+    .risk-dashboard .stat-card .stat-icon.bg-warning { background: linear-gradient(135deg, #feca57, #ff9f43); }
+    .risk-dashboard .stat-card .stat-icon.bg-info { background: linear-gradient(135deg, #54a0ff, #2e86de); }
+    .risk-dashboard .stat-card .stat-icon.bg-success { background: linear-gradient(135deg, #1dd1a1, #10ac84); }
+    .risk-dashboard .stat-card .stat-number {
+        font-size: 32px;
+        font-weight: 700;
+        color: #2d3436;
+        line-height: 1;
+    }
+    .risk-dashboard .stat-card .stat-label {
+        color: #636e72;
+        font-size: 14px;
+        margin-top: 5px;
+    }
+    .risk-dashboard .panel-header {
+        padding: 15px 20px;
+        border-bottom: 1px solid #eee;
+        background: #fafafa;
+        border-radius: 8px 8px 0 0;
+    }
+    .risk-dashboard .panel-header h4 {
+        margin: 0;
+        font-size: 16px;
+        color: #2d3436;
+    }
+    .risk-dashboard .panel-body {
+        padding: 20px;
+    }
+    .risk-dashboard .risk-badge {
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: 500;
+    }
+    .risk-dashboard .risk-badge.safe { background: #d4edda; color: #155724; }
+    .risk-dashboard .risk-badge.low { background: #d1ecf1; color: #0c5460; }
+    .risk-dashboard .risk-badge.medium { background: #fff3cd; color: #856404; }
+    .risk-dashboard .risk-badge.high { background: #ffe5d0; color: #d63031; }
+    .risk-dashboard .risk-badge.dangerous { background: #f8d7da; color: #721c24; }
+    .risk-dashboard .table tbody tr:hover {
+        background: #f8f9fa;
+    }
+    .risk-dashboard .chart-container {
+        height: 250px;
+        position: relative;
+    }
+    .risk-dashboard .alert-item {
+        padding: 12px 15px;
+        border-radius: 6px;
+        margin-bottom: 10px;
+        border-left: 4px solid;
+    }
+    .risk-dashboard .alert-item.alert-danger {
+        background: #fff5f5;
+        border-color: #dc3545;
+    }
+    .risk-dashboard .alert-item.alert-warning {
+        background: #fff9e6;
+        border-color: #ffc107;
+    }
+    .risk-dashboard .alert-item.alert-info {
+        background: #e8f4ff;
+        border-color: #17a2b8;
+    }
+    .risk-dashboard .progress {
+        height: 8px;
+        border-radius: 4px;
+        background: #e9ecef;
+    }
+    .risk-dashboard .progress-bar {
+        border-radius: 4px;
+    }
+</style>
 
-    <div class="panel-body">
-        <div id="myTabContent" class="tab-content">
-            <div class="tab-pane fade active in" id="one">
-                <div class="widget-body no-padding">
-                    <div id="toolbar" class="toolbar">
-                        {:build_toolbar('refresh')}
+<div class="risk-dashboard">
+    <!-- 统计卡片区域 -->
+    <div class="row">
+        <div class="col-xs-6 col-sm-3">
+            <div class="stat-card">
+                <div class="flex-between" style="display: flex; align-items: center; justify-content: space-between;">
+                    <div>
+                        <div class="stat-number" id="stat-violations">0</div>
+                        <div class="stat-label">今日违规次数</div>
                     </div>
-                    <table id="table" class="table table-striped table-bordered table-hover table-nowrap"
-                           width="100%">
+                    <div class="stat-icon bg-danger">
+                        <i class="fa fa-exclamation-triangle"></i>
+                    </div>
+                </div>
+                <div style="margin-top: 15px;">
+                    <small class="text-muted">较昨日 <span id="violations-change">-</span></small>
+                </div>
+            </div>
+        </div>
+        <div class="col-xs-6 col-sm-3">
+            <div class="stat-card">
+                <div class="flex-between" style="display: flex; align-items: center; justify-content: space-between;">
+                    <div>
+                        <div class="stat-number" id="stat-bans">0</div>
+                        <div class="stat-label">今日封禁人数</div>
+                    </div>
+                    <div class="stat-icon bg-warning">
+                        <i class="fa fa-ban"></i>
+                    </div>
+                </div>
+                <div style="margin-top: 15px;">
+                    <small class="text-muted">自动 <span id="auto-bans">0</span> / 手动 <span id="manual-bans">0</span></small>
+                </div>
+            </div>
+        </div>
+        <div class="col-xs-6 col-sm-3">
+            <div class="stat-card">
+                <div class="flex-between" style="display: flex; align-items: center; justify-content: space-between;">
+                    <div>
+                        <div class="stat-number" id="stat-highrisk">0</div>
+                        <div class="stat-label">高风险用户</div>
+                    </div>
+                    <div class="stat-icon bg-info">
+                        <i class="fa fa-user-shield"></i>
+                    </div>
+                </div>
+                <div style="margin-top: 15px;">
+                    <small class="text-muted">危险用户 <span id="dangerous-users">0</span></small>
+                </div>
+            </div>
+        </div>
+        <div class="col-xs-6 col-sm-3">
+            <div class="stat-card">
+                <div class="flex-between" style="display: flex; align-items: center; justify-content: space-between;">
+                    <div>
+                        <div class="stat-number" id="stat-blacklist">0</div>
+                        <div class="stat-label">黑名单数量</div>
+                    </div>
+                    <div class="stat-icon bg-success">
+                        <i class="fa fa-list-alt"></i>
+                    </div>
+                </div>
+                <div style="margin-top: 15px;">
+                    <small class="text-muted">IP <span id="ip-blacklist">0</span> / 设备 <span id="device-blacklist">0</span></small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 图表区域 -->
+    <div class="row">
+        <div class="col-md-4">
+            <div class="stat-card" style="padding: 0; overflow: hidden;">
+                <div class="panel-header">
+                    <h4><i class="fa fa-chart-pie text-info"></i> 风险等级分布</h4>
+                </div>
+                <div class="panel-body">
+                    <div class="chart-container">
+                        <canvas id="risk-level-chart"></canvas>
+                    </div>
+                    <div id="risk-level-legend" style="margin-top: 15px;"></div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="stat-card" style="padding: 0; overflow: hidden;">
+                <div class="panel-header">
+                    <h4><i class="fa fa-chart-pie text-warning"></i> 用户状态分布</h4>
+                </div>
+                <div class="panel-body">
+                    <div class="chart-container">
+                        <canvas id="user-status-chart"></canvas>
+                    </div>
+                    <div id="user-status-legend" style="margin-top: 15px;"></div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="stat-card" style="padding: 0; overflow: hidden;">
+                <div class="panel-header">
+                    <h4><i class="fa fa-chart-bar text-danger"></i> 24小时违规趋势</h4>
+                </div>
+                <div class="panel-body">
+                    <div class="chart-container">
+                        <canvas id="hourly-chart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 列表区域 -->
+    <div class="row">
+        <!-- 最近封禁记录 -->
+        <div class="col-md-6">
+            <div class="stat-card" style="padding: 0; overflow: hidden;">
+                <div class="panel-header" style="display: flex; justify-content: space-between; align-items: center;">
+                    <h4><i class="fa fa-history text-danger"></i> 最近封禁记录</h4>
+                    <a href="risk/banrecord?ref=addtabs" class="btn btn-xs btn-default">查看全部</a>
+                </div>
+                <div class="panel-body" style="padding: 0;">
+                    <table class="table table-hover" style="margin: 0;">
+                        <thead>
+                            <tr>
+                                <th>用户</th>
+                                <th>类型</th>
+                                <th>原因</th>
+                                <th>来源</th>
+                                <th>时间</th>
+                            </tr>
+                        </thead>
+                        <tbody id="recent-bans-table">
+                            <tr><td colspan="5" class="text-center text-muted" style="padding: 30px;">暂无数据</td></tr>
+                        </tbody>
                     </table>
+                </div>
+            </div>
+        </div>
+        <!-- 规则触发排行 -->
+        <div class="col-md-6">
+            <div class="stat-card" style="padding: 0; overflow: hidden;">
+                <div class="panel-header" style="display: flex; justify-content: space-between; align-items: center;">
+                    <h4><i class="fa fa-fire text-warning"></i> 规则触发排行 (24h)</h4>
+                    <a href="risk/rule?ref=addtabs" class="btn btn-xs btn-default">规则管理</a>
+                </div>
+                <div class="panel-body" style="padding: 0;">
+                    <table class="table table-hover" style="margin: 0;">
+                        <thead>
+                            <tr>
+                                <th>规则</th>
+                                <th>类型</th>
+                                <th>触发次数</th>
+                                <th>占比</th>
+                            </tr>
+                        </thead>
+                        <tbody id="rule-trigger-table">
+                            <tr><td colspan="4" class="text-center text-muted" style="padding: 30px;">暂无数据</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 风险预警区域 -->
+    <div class="row">
+        <div class="col-md-6">
+            <div class="stat-card" style="padding: 0; overflow: hidden;">
+                <div class="panel-header">
+                    <h4><i class="fa fa-exclamation-circle text-danger"></i> 高风险用户预警</h4>
+                </div>
+                <div class="panel-body" id="high-risk-alerts">
+                    <div class="text-center text-muted" style="padding: 20px;">暂无高风险用户</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="stat-card" style="padding: 0; overflow: hidden;">
+                <div class="panel-header">
+                    <h4><i class="fa fa-clock text-info"></i> 频繁违规用户 (24h)</h4>
+                </div>
+                <div class="panel-body" id="frequent-violators">
+                    <div class="text-center text-muted" style="padding: 20px;">暂无频繁违规用户</div>
                 </div>
             </div>
         </div>
