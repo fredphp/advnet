@@ -1,76 +1,7 @@
-<style>
-.stat-overview {
-    display: grid;
-    grid-template-columns: repeat(5, 1fr);
-    gap: 15px;
-    margin-bottom: 20px;
-}
-.stat-box {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    border-radius: 10px;
-    padding: 20px;
-    color: #fff;
-    text-align: center;
-    transition: transform 0.2s;
-}
-.stat-box:hover {
-    transform: translateY(-3px);
-}
-.stat-box.success {
-    background: linear-gradient(135deg, #52c41a 0%, #73d13d 100%);
-}
-.stat-box.warning {
-    background: linear-gradient(135deg, #fa8c16 0%, #ffc53d 100%);
-}
-.stat-box.danger {
-    background: linear-gradient(135deg, #f5222d 0%, #ff4d4f 100%);
-}
-.stat-box.info {
-    background: linear-gradient(135deg, #1890ff 0%, #40a9ff 100%);
-}
-.stat-box .stat-value {
-    font-size: 28px;
-    font-weight: bold;
-    margin-bottom: 5px;
-}
-.stat-box .stat-label {
-    font-size: 14px;
-    opacity: 0.9;
-}
-.stat-box .stat-unit {
-    font-size: 14px;
-    opacity: 0.8;
-}
-</style>
-
 <div class="panel panel-default panel-intro">
     {:build_heading()}
 
     <div class="panel-body">
-        <!-- 统计概览 -->
-        <div class="stat-overview" id="stat-overview">
-            <div class="stat-box">
-                <div class="stat-value"><span id="total-commission">0</span><span class="stat-unit">元</span></div>
-                <div class="stat-label">总佣金</div>
-            </div>
-            <div class="stat-box info">
-                <div class="stat-value"><span id="total-invite">0</span><span class="stat-unit">人</span></div>
-                <div class="stat-label">总邀请人数</div>
-            </div>
-            <div class="stat-box success">
-                <div class="stat-value"><span id="level1-total">0</span><span class="stat-unit">人</span></div>
-                <div class="stat-label">一级邀请</div>
-            </div>
-            <div class="stat-box warning">
-                <div class="stat-value"><span id="level2-total">0</span><span class="stat-unit">人</span></div>
-                <div class="stat-label">二级邀请</div>
-            </div>
-            <div class="stat-box danger">
-                <div class="stat-value"><span id="pending-total">0</span><span class="stat-unit">元</span></div>
-                <div class="stat-label">待结算佣金</div>
-            </div>
-        </div>
-
         <div id="myTabContent" class="tab-content">
             <div class="tab-pane fade active in" id="one">
                 <div class="widget-body no-padding">
@@ -85,23 +16,3 @@
         </div>
     </div>
 </div>
-
-<script>
-$(function() {
-    // 加载统计数据
-    $.ajax({
-        url: 'invite/commissionstat/platform',
-        type: 'GET',
-        dataType: 'json',
-        success: function(ret) {
-            if (ret.code == 1) {
-                $('#total-commission').text(parseFloat(ret.data.total_commission || 0).toFixed(2));
-                $('#total-invite').text(ret.data.total_invite_count || 0);
-                $('#level1-total').text(ret.data.level1_total_count || 0);
-                $('#level2-total').text(ret.data.level2_total_count || 0);
-                $('#pending-total').text(parseFloat(ret.data.pending_commission || 0).toFixed(2));
-            }
-        }
-    });
-});
-</script>
