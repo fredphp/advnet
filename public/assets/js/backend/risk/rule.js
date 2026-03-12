@@ -38,6 +38,7 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
                             },
                             formatter: Table.api.formatter.normal
                         },
+                        {field: 'description', title: '描述', operate: false},
                         {field: 'threshold', title: '阈值', operate: 'BETWEEN', sortable: true},
                         {field: 'score_weight', title: '风险权重', operate: 'BETWEEN', sortable: true},
                         {field: 'action', title: '处理动作', 
@@ -49,12 +50,11 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
                             },
                             formatter: Table.api.formatter.normal
                         },
-                        {field: 'action_duration', title: '处罚时长(秒)',
+                        {field: 'action_duration', title: '处罚时长',
                             formatter: function(value, row, index) {
                                 if (!value || value == 0) {
-                                    return '<span class="text-muted">-</span>';
+                                    return '<span class="text-muted">永久</span>';
                                 }
-                                // 转换为可读格式
                                 var duration = parseInt(value);
                                 if (duration < 60) {
                                     return duration + '秒';

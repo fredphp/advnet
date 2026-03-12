@@ -68,38 +68,167 @@
         height: 200px;
         position: relative;
     }
-    .risk-dashboard .alert-item {
-        padding: 12px 15px;
-        border-radius: 6px;
-        margin-bottom: 10px;
-        border-left: 4px solid;
-    }
-    .risk-dashboard .alert-item.alert-danger {
-        background: #fff5f5;
-        border-color: #dc3545;
-    }
-    .risk-dashboard .alert-item.alert-warning {
-        background: #fff9e6;
-        border-color: #ffc107;
-    }
-    .risk-dashboard .alert-item.alert-info {
-        background: #e8f4ff;
-        border-color: #17a2b8;
-    }
-    .risk-dashboard .progress {
-        height: 8px;
-        border-radius: 4px;
-        background: #e9ecef;
-    }
-    .risk-dashboard .progress-bar {
-        border-radius: 4px;
-    }
     .risk-dashboard .chart-card {
         background: #fff;
         border-radius: 8px;
         margin-bottom: 20px;
         box-shadow: 0 2px 12px rgba(0,0,0,0.08);
         overflow: hidden;
+    }
+    /* 风控逻辑样式 */
+    .risk-logic {
+        margin-top: 20px;
+    }
+    .risk-logic .logic-card {
+        background: #fff;
+        border-radius: 8px;
+        margin-bottom: 20px;
+        box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+        overflow: hidden;
+    }
+    .risk-logic .logic-card .logic-header {
+        padding: 15px 20px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: #fff;
+    }
+    .risk-logic .logic-card .logic-header h4 {
+        margin: 0;
+        font-size: 16px;
+        font-weight: 600;
+    }
+    .risk-logic .logic-card .logic-body {
+        padding: 20px;
+    }
+    .risk-logic .flow-step {
+        display: flex;
+        align-items: flex-start;
+        margin-bottom: 20px;
+        position: relative;
+    }
+    .risk-logic .flow-step:last-child {
+        margin-bottom: 0;
+    }
+    .risk-logic .flow-step .step-num {
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: #fff;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 600;
+        flex-shrink: 0;
+        margin-right: 15px;
+    }
+    .risk-logic .flow-step .step-content {
+        flex: 1;
+        padding-top: 5px;
+    }
+    .risk-logic .flow-step .step-content h5 {
+        margin: 0 0 5px 0;
+        font-size: 15px;
+        color: #2d3436;
+    }
+    .risk-logic .flow-step .step-content p {
+        margin: 0;
+        color: #636e72;
+        font-size: 13px;
+        line-height: 1.6;
+    }
+    .risk-logic .flow-step::before {
+        content: '';
+        position: absolute;
+        left: 17px;
+        top: 40px;
+        bottom: -20px;
+        width: 2px;
+        background: #e9ecef;
+    }
+    .risk-logic .flow-step:last-child::before {
+        display: none;
+    }
+    .risk-logic .score-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+    .risk-logic .score-table th,
+    .risk-logic .score-table td {
+        padding: 10px 12px;
+        text-align: left;
+        border-bottom: 1px solid #eee;
+    }
+    .risk-logic .score-table th {
+        background: #f8f9fa;
+        font-weight: 600;
+        color: #2d3436;
+    }
+    .risk-logic .score-table td {
+        color: #636e72;
+        font-size: 13px;
+    }
+    .risk-logic .action-item {
+        display: flex;
+        align-items: center;
+        padding: 12px 15px;
+        background: #f8f9fa;
+        border-radius: 8px;
+        margin-bottom: 10px;
+    }
+    .risk-logic .action-item:last-child {
+        margin-bottom: 0;
+    }
+    .risk-logic .action-item .action-icon {
+        width: 40px;
+        height: 40px;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-right: 15px;
+        font-size: 18px;
+        color: #fff;
+    }
+    .risk-logic .action-item .action-icon.warn { background: #ffc107; }
+    .risk-logic .action-item .action-icon.block { background: #fd7e14; }
+    .risk-logic .action-item .action-icon.freeze { background: #17a2b8; }
+    .risk-logic .action-item .action-icon.ban { background: #dc3545; }
+    .risk-logic .action-item .action-content h5 {
+        margin: 0 0 3px 0;
+        font-size: 14px;
+        color: #2d3436;
+    }
+    .risk-logic .action-item .action-content p {
+        margin: 0;
+        font-size: 12px;
+        color: #636e72;
+    }
+    .risk-logic .rule-category {
+        margin-bottom: 20px;
+    }
+    .risk-logic .rule-category:last-child {
+        margin-bottom: 0;
+    }
+    .risk-logic .rule-category h5 {
+        margin: 0 0 10px 0;
+        font-size: 14px;
+        color: #2d3436;
+        padding-bottom: 8px;
+        border-bottom: 2px solid #667eea;
+        display: inline-block;
+    }
+    .risk-logic .rule-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+    .risk-logic .rule-tag {
+        padding: 5px 12px;
+        background: #f0f2ff;
+        border-radius: 15px;
+        font-size: 12px;
+        color: #667eea;
+        border: 1px solid #e0e4ff;
     }
 </style>
 
@@ -130,9 +259,6 @@
                         <i class="fa fa-ban"></i>
                     </div>
                 </div>
-                <div style="margin-top: 10px;">
-                    <small class="text-muted">自动 <span id="auto-bans">0</span> / 手动 <span id="manual-bans">0</span></small>
-                </div>
             </div>
         </div>
         <div class="col-xs-6 col-sm-3">
@@ -145,9 +271,6 @@
                     <div class="stat-icon bg-info">
                         <i class="fa fa-user-shield"></i>
                     </div>
-                </div>
-                <div style="margin-top: 10px;">
-                    <small class="text-muted">危险用户 <span id="dangerous-users">0</span></small>
                 </div>
             </div>
         </div>
@@ -292,6 +415,244 @@
                 </div>
                 <div class="panel-body" id="frequent-violators">
                     <div class="text-center text-muted" style="padding: 20px;">加载中...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 风控逻辑说明 -->
+<div class="risk-logic">
+    <div class="row">
+        <!-- 风控流程 -->
+        <div class="col-md-6">
+            <div class="logic-card">
+                <div class="logic-header">
+                    <h4><i class="fa fa-sitemap"></i> 风控系统工作流程</h4>
+                </div>
+                <div class="logic-body">
+                    <div class="flow-step">
+                        <div class="step-num">1</div>
+                        <div class="step-content">
+                            <h5>用户行为采集</h5>
+                            <p>实时采集用户行为数据，包括视频观看、任务完成、提现申请、红包领取、邀请行为等，记录行为时间、频次、设备信息等。</p>
+                        </div>
+                    </div>
+                    <div class="flow-step">
+                        <div class="step-num">2</div>
+                        <div class="step-content">
+                            <h5>规则引擎检测</h5>
+                            <p>根据预设的风控规则，对用户行为进行实时检测。规则按类型分为视频、任务、提现、红包、邀请、全局六大类。</p>
+                        </div>
+                    </div>
+                    <div class="flow-step">
+                        <div class="step-num">3</div>
+                        <div class="step-content">
+                            <h5>风险评分计算</h5>
+                            <p>触发规则后，根据规则的权重分值累加用户风险分。支持分数衰减机制，长期无违规可逐步降低风险分。</p>
+                        </div>
+                    </div>
+                    <div class="flow-step">
+                        <div class="step-num">4</div>
+                        <div class="step-content">
+                            <h5>自动处罚执行</h5>
+                            <p>根据风险分阈值自动触发处罚：警告、拦截、冻结、封禁。处罚时长根据违规程度和次数动态计算。</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 风险评分规则 -->
+        <div class="col-md-6">
+            <div class="logic-card">
+                <div class="logic-header">
+                    <h4><i class="fa fa-calculator"></i> 风险评分规则</h4>
+                </div>
+                <div class="logic-body">
+                    <table class="score-table">
+                        <thead>
+                            <tr>
+                                <th>风险分范围</th>
+                                <th>风险等级</th>
+                                <th>系统响应</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>0 - 49</td>
+                                <td><span class="risk-badge safe">安全</span></td>
+                                <td>正常使用，无任何限制</td>
+                            </tr>
+                            <tr>
+                                <td>50 - 149</td>
+                                <td><span class="risk-badge low">低风险</span></td>
+                                <td>记录日志，暂不处罚</td>
+                            </tr>
+                            <tr>
+                                <td>150 - 299</td>
+                                <td><span class="risk-badge medium">中风险</span></td>
+                                <td>重点监控，触发警告</td>
+                            </tr>
+                            <tr>
+                                <td>300 - 499</td>
+                                <td><span class="risk-badge high">高风险</span></td>
+                                <td>自动冻结账户，限制提现</td>
+                            </tr>
+                            <tr>
+                                <td>500+</td>
+                                <td><span class="risk-badge dangerous">危险</span></td>
+                                <td>自动封禁账户，加入黑名单</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    <div style="margin-top: 15px; padding: 12px; background: #fff9e6; border-radius: 6px; border-left: 3px solid #ffc107;">
+                        <small><strong>分数衰减机制：</strong>用户连续7天无违规行为，风险分自动降低10%；连续30天无违规，风险分降低50%。</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- 处罚动作说明 -->
+        <div class="col-md-6">
+            <div class="logic-card">
+                <div class="logic-header">
+                    <h4><i class="fa fa-gavel"></i> 处罚动作说明</h4>
+                </div>
+                <div class="logic-body">
+                    <div class="action-item">
+                        <div class="action-icon warn"><i class="fa fa-exclamation"></i></div>
+                        <div class="action-content">
+                            <h5>警告 (warn)</h5>
+                            <p>仅记录违规日志，不限制用户操作。用于低风险行为的提醒。</p>
+                        </div>
+                    </div>
+                    <div class="action-item">
+                        <div class="action-icon block"><i class="fa fa-times-circle"></i></div>
+                        <div class="action-content">
+                            <h5>拦截 (block)</h5>
+                            <p>拦截当前操作请求，禁止该行为执行。如禁止本次提现、禁止本次任务提交等。</p>
+                        </div>
+                    </div>
+                    <div class="action-item">
+                        <div class="action-icon freeze"><i class="fa fa-snowflake"></i></div>
+                        <div class="action-content">
+                            <h5>冻结 (freeze)</h5>
+                            <p>暂时冻结账户功能，期间无法提现、无法完成任务。可设置冻结时长，到期自动解冻。</p>
+                        </div>
+                    </div>
+                    <div class="action-item">
+                        <div class="action-icon ban"><i class="fa fa-ban"></i></div>
+                        <div class="action-content">
+                            <h5>封禁 (ban)</h5>
+                            <p>永久或长期禁止用户使用平台。封禁用户自动加入黑名单，清除登录Token，冻结资产。</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 风控规则分类 -->
+        <div class="col-md-6">
+            <div class="logic-card">
+                <div class="logic-header">
+                    <h4><i class="fa fa-list-alt"></i> 风控规则分类</h4>
+                </div>
+                <div class="logic-body">
+                    <div class="rule-category">
+                        <h5>📹 视频类规则</h5>
+                        <div class="rule-list">
+                            <span class="rule-tag">观看速度异常</span>
+                            <span class="rule-tag">重复观看检测</span>
+                            <span class="rule-tag">日观看超限</span>
+                            <span class="rule-tag">金币获取异常</span>
+                            <span class="rule-tag">跳过率过高</span>
+                        </div>
+                    </div>
+                    <div class="rule-category">
+                        <h5>📋 任务类规则</h5>
+                        <div class="rule-list">
+                            <span class="rule-tag">完成速度异常</span>
+                            <span class="rule-tag">日任务超限</span>
+                            <span class="rule-tag">重复提交</span>
+                            <span class="rule-tag">虚假行为</span>
+                        </div>
+                    </div>
+                    <div class="rule-category">
+                        <h5>💰 提现类规则</h5>
+                        <div class="rule-list">
+                            <span class="rule-tag">提现频率异常</span>
+                            <span class="rule-tag">金额异常</span>
+                            <span class="rule-tag">新账户大额</span>
+                        </div>
+                    </div>
+                    <div class="rule-category">
+                        <h5>🧧 红包类规则</h5>
+                        <div class="rule-list">
+                            <span class="rule-tag">抢红包速度</span>
+                            <span class="rule-tag">日抢次数超限</span>
+                        </div>
+                    </div>
+                    <div class="rule-category">
+                        <h5>👥 邀请类规则</h5>
+                        <div class="rule-list">
+                            <span class="rule-tag">邀请速度异常</span>
+                            <span class="rule-tag">邀请虚假账户</span>
+                        </div>
+                    </div>
+                    <div class="rule-category">
+                        <h5>🌐 全局规则</h5>
+                        <div class="rule-list">
+                            <span class="rule-tag">IP多账户关联</span>
+                            <span class="rule-tag">设备多账户</span>
+                            <span class="rule-tag">行为模式异常</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 设备检测说明 -->
+    <div class="row">
+        <div class="col-md-12">
+            <div class="logic-card">
+                <div class="logic-header" style="background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);">
+                    <h4><i class="fa fa-mobile-alt"></i> 设备环境检测</h4>
+                </div>
+                <div class="logic-body">
+                    <div class="row">
+                        <div class="col-md-3 col-sm-6">
+                            <div style="text-align: center; padding: 20px; background: #f8f9fa; border-radius: 8px;">
+                                <i class="fa fa-android" style="font-size: 32px; color: #3ddc84; margin-bottom: 10px;"></i>
+                                <h5 style="margin: 0 0 5px 0;">Root/越狱检测</h5>
+                                <small class="text-muted">检测设备是否获取Root权限或越狱，风险分+30</small>
+                            </div>
+                        </div>
+                        <div class="col-md-3 col-sm-6">
+                            <div style="text-align: center; padding: 20px; background: #f8f9fa; border-radius: 8px;">
+                                <i class="fa fa-desktop" style="font-size: 32px; color: #6c5ce7; margin-bottom: 10px;"></i>
+                                <h5 style="margin: 0 0 5px 0;">模拟器检测</h5>
+                                <small class="text-muted">检测是否在模拟器环境运行，风险分+50</small>
+                            </div>
+                        </div>
+                        <div class="col-md-3 col-sm-6">
+                            <div style="text-align: center; padding: 20px; background: #f8f9fa; border-radius: 8px;">
+                                <i class="fa fa-code" style="font-size: 32px; color: #fd79a8; margin-bottom: 10px;"></i>
+                                <h5 style="margin: 0 0 5px 0;">Hook框架检测</h5>
+                                <small class="text-muted">检测Xposed、Frida等Hook框架，风险分+40</small>
+                            </div>
+                        </div>
+                        <div class="col-md-3 col-sm-6">
+                            <div style="text-align: center; padding: 20px; background: #f8f9fa; border-radius: 8px;">
+                                <i class="fa fa-network-wired" style="font-size: 32px; color: #74b9ff; margin-bottom: 10px;"></i>
+                                <h5 style="margin: 0 0 5px 0;">代理/VPN检测</h5>
+                                <small class="text-muted">检测是否使用代理或VPN，风险分+15~20</small>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
