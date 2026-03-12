@@ -91,38 +91,38 @@ INSERT INTO `advn_risk_whitelist` (`type`, `value`, `reason`, `expire_time`, `ad
 -- =====================================================
 -- 6. 设备指纹模拟数据
 -- =====================================================
-INSERT INTO `advn_device_fingerprint` (`user_id`, `device_id`, `device_type`, `os_type`, `os_version`, `app_version`, `account_ids`, `risk_level`, `last_active_time`, `createtime`, `updatetime`) VALUES
-(1, 'DEV_001_IPHONE12', 'iPhone 12', 'iOS', '14.0', '2.1.0', '[1]', 'safe', UNIX_TIMESTAMP()-300, UNIX_TIMESTAMP()-86400*30, UNIX_TIMESTAMP()),
-(2, 'DEV_002_HUAWEI_P40', 'HUAWEI P40', 'Android', '11', '2.1.0', '[2, 1001]', 'low', UNIX_TIMESTAMP()-1800, UNIX_TIMESTAMP()-86400*25, UNIX_TIMESTAMP()),
-(3, 'DEV_003_XIAOMI12', 'Xiaomi 12', 'Android', '12', '2.1.0', '[3]', 'safe', UNIX_TIMESTAMP()-600, UNIX_TIMESTAMP()-86400*20, UNIX_TIMESTAMP()),
-(4, 'DEV_004_IPHONE13', 'iPhone 13', 'iOS', '15.0', '2.1.0', '[4, 1002, 1003]', 'dangerous', UNIX_TIMESTAMP()-7200, UNIX_TIMESTAMP()-86400*15, UNIX_TIMESTAMP()),
-(5, 'DEV_005_OPPOX3', 'OPPO Find X3', 'Android', '11', '2.1.0', '[5]', 'medium', UNIX_TIMESTAMP()-1200, UNIX_TIMESTAMP()-86400*10, UNIX_TIMESTAMP()),
-(6, 'DEV_006_EMULATOR', 'Android Emulator', 'Android', '10', '2.1.0', '[6, 1004, 1005, 1006]', 'dangerous', UNIX_TIMESTAMP()-3600, UNIX_TIMESTAMP()-86400*8, UNIX_TIMESTAMP()),
-(7, 'DEV_007_VIVOX60', 'vivo X60', 'Android', '11', '2.1.0', '[7]', 'safe', UNIX_TIMESTAMP()-900, UNIX_TIMESTAMP()-86400*5, UNIX_TIMESTAMP()),
-(8, 'DEV_008_SAMSUNG_S21', 'Samsung S21', 'Android', '12', '2.1.0', '[8]', 'high', UNIX_TIMESTAMP()-2400, UNIX_TIMESTAMP()-86400*3, UNIX_TIMESTAMP()),
-(10, 'DEV_010_IPAD', 'iPad Pro', 'iOS', '15.0', '2.1.0', '[10, 1007, 1008]', 'dangerous', UNIX_TIMESTAMP()-4800, UNIX_TIMESTAMP()-86400, UNIX_TIMESTAMP()),
-(11, 'DEV_011_HONOR', 'Honor 50', 'Android', '11', '2.1.0', '[11]', 'medium', UNIX_TIMESTAMP()-1500, UNIX_TIMESTAMP()-86400*4, UNIX_TIMESTAMP()),
-(12, 'DEV_012_ONEPLUS', 'OnePlus 9', 'Android', '12', '2.1.0', '[12]', 'high', UNIX_TIMESTAMP()-2100, UNIX_TIMESTAMP()-86400*6, UNIX_TIMESTAMP()),
-(13, 'DEV_013_REALME', 'realme GT', 'Android', '11', '2.1.0', '[13]', 'high', UNIX_TIMESTAMP()-1800, UNIX_TIMESTAMP()-86400*7, UNIX_TIMESTAMP());
+INSERT INTO `advn_device_fingerprint` (`device_id`, `device_hash`, `user_id`, `device_type`, `device_brand`, `device_model`, `os_version`, `app_version`, `screen_resolution`, `network_type`, `carrier`, `root_detected`, `emulator_detected`, `hook_detected`, `proxy_detected`, `vpn_detected`, `risk_score`, `risk_level`, `account_count`, `account_ids`, `login_count`, `last_login_time`, `last_login_ip`, `ban_expire_time`, `createtime`, `updatetime`) VALUES
+('DEV_001_IPHONE12', 'hash001abc', 1, 'ios', 'Apple', 'iPhone 12', '14.0', '2.1.0', '1170x2532', 'wifi', '', 0, 0, 0, 0, 0, 0, 'safe', 1, '[1]', 150, UNIX_TIMESTAMP()-300, '192.168.1.1', NULL, UNIX_TIMESTAMP()-86400*30, UNIX_TIMESTAMP()),
+('DEV_002_HUAWEI_P40', 'hash002def', 2, 'android', 'HUAWEI', 'P40', '11', '2.1.0', '1080x2340', '4g', '中国移动', 0, 0, 0, 0, 0, 25, 'safe', 2, '[2, 1001]', 280, UNIX_TIMESTAMP()-1800, '192.168.1.100', NULL, UNIX_TIMESTAMP()-86400*25, UNIX_TIMESTAMP()),
+('DEV_003_XIAOMI12', 'hash003ghi', 3, 'android', 'Xiaomi', '12', '12', '2.1.0', '1080x2400', 'wifi', '', 0, 0, 0, 0, 0, 0, 'safe', 1, '[3]', 120, UNIX_TIMESTAMP()-600, '192.168.1.101', NULL, UNIX_TIMESTAMP()-86400*20, UNIX_TIMESTAMP()),
+('DEV_004_IPHONE13', 'hash004jkl', 4, 'ios', 'Apple', 'iPhone 13', '15.0', '2.1.0', '1170x2532', 'wifi', '', 0, 0, 1, 0, 0, 180, 'dangerous', 3, '[4, 1002, 1003]', 450, UNIX_TIMESTAMP()-7200, '10.0.0.55', NULL, UNIX_TIMESTAMP()-86400*15, UNIX_TIMESTAMP()),
+('DEV_005_OPPOX3', 'hash005mno', 5, 'android', 'OPPO', 'Find X3', '11', '2.1.0', '1080x2400', '4g', '中国联通', 0, 0, 0, 0, 0, 65, 'suspicious', 1, '[5]', 320, UNIX_TIMESTAMP()-1200, '192.168.3.50', NULL, UNIX_TIMESTAMP()-86400*10, UNIX_TIMESTAMP()),
+('DEV_006_EMULATOR', 'hash006pqr', 6, 'android', 'Google', 'Emulator', '10', '2.1.0', '1080x1920', 'wifi', '', 0, 1, 1, 1, 1, 280, 'dangerous', 4, '[6, 1004, 1005, 1006]', 680, UNIX_TIMESTAMP()-3600, '172.16.0.88', UNIX_TIMESTAMP()+86400*3, UNIX_TIMESTAMP()-86400*8, UNIX_TIMESTAMP()),
+('DEV_007_VIVOX60', 'hash007stu', 7, 'android', 'vivo', 'X60', '11', '2.1.0', '1080x2376', 'wifi', '', 0, 0, 0, 0, 0, 15, 'safe', 1, '[7]', 180, UNIX_TIMESTAMP()-900, '192.168.4.100', NULL, UNIX_TIMESTAMP()-86400*5, UNIX_TIMESTAMP()),
+('DEV_008_SAMSUNG_S21', 'hash008vwx', 8, 'android', 'Samsung', 'S21', '12', '2.1.0', '1080x2400', '5g', '中国电信', 0, 0, 0, 0, 0, 95, 'suspicious', 1, '[8]', 420, UNIX_TIMESTAMP()-2400, '192.168.2.200', NULL, UNIX_TIMESTAMP()-86400*3, UNIX_TIMESTAMP()),
+('DEV_010_IPAD', 'hash010yz1', 10, 'ios', 'Apple', 'iPad Pro', '15.0', '2.1.0', '2048x2732', 'wifi', '', 0, 0, 1, 1, 1, 320, 'blacklist', 3, '[10, 1007, 1008]', 520, UNIX_TIMESTAMP()-4800, '10.10.10.10', UNIX_TIMESTAMP()+86400*30, UNIX_TIMESTAMP()-86400, UNIX_TIMESTAMP()),
+('DEV_011_HONOR', 'hash011abc', 11, 'android', 'Honor', '50', '11', '2.1.0', '1080x2340', 'wifi', '', 0, 0, 0, 0, 0, 45, 'safe', 1, '[11]', 210, UNIX_TIMESTAMP()-1500, '192.168.5.200', NULL, UNIX_TIMESTAMP()-86400*4, UNIX_TIMESTAMP()),
+('DEV_012_ONEPLUS', 'hash012def', 12, 'android', 'OnePlus', '9', '12', '2.1.0', '1080x2400', '4g', '中国移动', 0, 0, 0, 0, 0, 85, 'suspicious', 1, '[12]', 350, UNIX_TIMESTAMP()-2100, '172.20.0.15', NULL, UNIX_TIMESTAMP()-86400*6, UNIX_TIMESTAMP()),
+('DEV_013_REALME', 'hash013ghi', 13, 'android', 'realme', 'GT', '11', '2.1.0', '1080x2400', 'wifi', '', 0, 0, 0, 0, 0, 120, 'suspicious', 1, '[13]', 280, UNIX_TIMESTAMP()-1800, '192.168.6.100', NULL, UNIX_TIMESTAMP()-86400*7, UNIX_TIMESTAMP());
 
 -- =====================================================
 -- 7. 用户行为统计模拟数据（最近7天）
 -- =====================================================
-INSERT INTO `advn_user_behavior_stat` (`user_id`, `stat_date`, `video_watch_count`, `video_watch_duration`, `video_reward_count`, `task_complete_count`, `task_complete_duration`, `withdraw_count`, `withdraw_amount`, `redpacket_count`, `redpacket_amount`, `invite_count`, `createtime`, `updatetime`) VALUES
-(1, DATE_SUB(CURDATE(), INTERVAL 6 DAY), 25, 3600, 20, 8, 2400, 1, 50.00, 5, 15.00, 0, UNIX_TIMESTAMP()-86400*6, UNIX_TIMESTAMP()-86400*6),
-(1, DATE_SUB(CURDATE(), INTERVAL 5 DAY), 30, 4200, 25, 10, 3000, 0, 0.00, 8, 25.00, 1, UNIX_TIMESTAMP()-86400*5, UNIX_TIMESTAMP()-86400*5),
-(1, DATE_SUB(CURDATE(), INTERVAL 4 DAY), 28, 4000, 22, 12, 3600, 1, 80.00, 6, 18.00, 0, UNIX_TIMESTAMP()-86400*4, UNIX_TIMESTAMP()-86400*4),
-(2, DATE_SUB(CURDATE(), INTERVAL 6 DAY), 85, 4500, 80, 45, 1800, 5, 250.00, 35, 120.00, 3, UNIX_TIMESTAMP()-86400*6, UNIX_TIMESTAMP()-86400*6),
-(2, DATE_SUB(CURDATE(), INTERVAL 5 DAY), 120, 6000, 115, 68, 2400, 8, 450.00, 52, 180.00, 5, UNIX_TIMESTAMP()-86400*5, UNIX_TIMESTAMP()-86400*5),
-(2, DATE_SUB(CURDATE(), INTERVAL 4 DAY), 95, 5000, 90, 55, 2100, 6, 320.00, 42, 150.00, 2, UNIX_TIMESTAMP()-86400*4, UNIX_TIMESTAMP()-86400*4),
-(4, DATE_SUB(CURDATE(), INTERVAL 6 DAY), 200, 3000, 195, 120, 1200, 15, 800.00, 80, 350.00, 8, UNIX_TIMESTAMP()-86400*6, UNIX_TIMESTAMP()-86400*6),
-(4, DATE_SUB(CURDATE(), INTERVAL 5 DAY), 250, 3500, 245, 150, 1500, 18, 950.00, 95, 420.00, 12, UNIX_TIMESTAMP()-86400*5, UNIX_TIMESTAMP()-86400*5),
-(6, DATE_SUB(CURDATE(), INTERVAL 6 DAY), 180, 2800, 175, 100, 1000, 12, 600.00, 65, 280.00, 15, UNIX_TIMESTAMP()-86400*6, UNIX_TIMESTAMP()-86400*6),
-(6, DATE_SUB(CURDATE(), INTERVAL 5 DAY), 220, 3200, 215, 130, 1300, 16, 750.00, 78, 350.00, 20, UNIX_TIMESTAMP()-86400*5, UNIX_TIMESTAMP()-86400*5),
-(8, DATE_SUB(CURDATE(), INTERVAL 6 DAY), 150, 4000, 140, 80, 1600, 8, 400.00, 45, 200.00, 4, UNIX_TIMESTAMP()-86400*6, UNIX_TIMESTAMP()-86400*6),
-(8, DATE_SUB(CURDATE(), INTERVAL 5 DAY), 180, 4800, 170, 95, 1900, 10, 520.00, 55, 250.00, 6, UNIX_TIMESTAMP()-86400*5, UNIX_TIMESTAMP()-86400*5),
-(10, DATE_SUB(CURDATE(), INTERVAL 6 DAY), 300, 4500, 290, 200, 2000, 25, 1200.00, 120, 500.00, 30, UNIX_TIMESTAMP()-86400*6, UNIX_TIMESTAMP()-86400*6),
-(10, DATE_SUB(CURDATE(), INTERVAL 5 DAY), 350, 5000, 340, 250, 2500, 30, 1500.00, 150, 650.00, 35, UNIX_TIMESTAMP()-86400*5, UNIX_TIMESTAMP()-86400*5);
+INSERT INTO `advn_user_behavior_stat` (`user_id`, `stat_date`, `video_watch_count`, `video_watch_duration`, `video_skip_count`, `video_coin_earned`, `task_complete_count`, `task_coin_earned`, `withdraw_count`, `withdraw_amount`, `redpacket_grab_count`, `redpacket_coin_earned`, `invite_count`, `invite_reward`, `login_count`, `active_duration`, `device_change_count`, `ip_change_count`, `violation_count`, `risk_score_add`, `createtime`, `updatetime`) VALUES
+(1, DATE_SUB(CURDATE(), INTERVAL 6 DAY), 25, 3600, 5, 500, 8, 200, 1, 50.00, 5, 15, 0, 0.00, 1, 1800, 0, 0, 0, 0, UNIX_TIMESTAMP()-86400*6, UNIX_TIMESTAMP()-86400*6),
+(1, DATE_SUB(CURDATE(), INTERVAL 5 DAY), 30, 4200, 8, 600, 10, 250, 0, 0.00, 8, 25, 1, 10.00, 1, 2100, 0, 0, 0, 0, UNIX_TIMESTAMP()-86400*5, UNIX_TIMESTAMP()-86400*5),
+(1, DATE_SUB(CURDATE(), INTERVAL 4 DAY), 28, 4000, 6, 550, 12, 300, 1, 80.00, 6, 18, 0, 0.00, 1, 2000, 0, 0, 0, 0, UNIX_TIMESTAMP()-86400*4, UNIX_TIMESTAMP()-86400*4),
+(2, DATE_SUB(CURDATE(), INTERVAL 6 DAY), 85, 4500, 45, 1500, 45, 1200, 5, 250.00, 35, 120, 3, 30.00, 2, 3600, 0, 1, 1, 25, UNIX_TIMESTAMP()-86400*6, UNIX_TIMESTAMP()-86400*6),
+(2, DATE_SUB(CURDATE(), INTERVAL 5 DAY), 120, 6000, 68, 2100, 68, 1800, 8, 450.00, 52, 180, 5, 50.00, 2, 4500, 1, 2, 2, 35, UNIX_TIMESTAMP()-86400*5, UNIX_TIMESTAMP()-86400*5),
+(2, DATE_SUB(CURDATE(), INTERVAL 4 DAY), 95, 5000, 52, 1650, 55, 1400, 6, 320.00, 42, 150, 2, 20.00, 2, 3800, 0, 1, 1, 30, UNIX_TIMESTAMP()-86400*4, UNIX_TIMESTAMP()-86400*4),
+(4, DATE_SUB(CURDATE(), INTERVAL 6 DAY), 200, 3000, 180, 3500, 120, 3000, 15, 800.00, 80, 350, 8, 80.00, 3, 2400, 2, 3, 3, 180, UNIX_TIMESTAMP()-86400*6, UNIX_TIMESTAMP()-86400*6),
+(4, DATE_SUB(CURDATE(), INTERVAL 5 DAY), 250, 3500, 230, 4200, 150, 3800, 18, 950.00, 95, 420, 12, 120.00, 3, 2800, 3, 4, 4, 220, UNIX_TIMESTAMP()-86400*5, UNIX_TIMESTAMP()-86400*5),
+(6, DATE_SUB(CURDATE(), INTERVAL 6 DAY), 180, 2800, 165, 2800, 100, 2500, 12, 600.00, 65, 280, 15, 150.00, 4, 2200, 2, 3, 3, 280, UNIX_TIMESTAMP()-86400*6, UNIX_TIMESTAMP()-86400*6),
+(6, DATE_SUB(CURDATE(), INTERVAL 5 DAY), 220, 3200, 200, 3500, 130, 3200, 16, 750.00, 78, 350, 20, 200.00, 5, 2600, 3, 4, 4, 320, UNIX_TIMESTAMP()-86400*5, UNIX_TIMESTAMP()-86400*5),
+(8, DATE_SUB(CURDATE(), INTERVAL 6 DAY), 150, 4000, 120, 2400, 80, 2000, 8, 400.00, 45, 200, 4, 40.00, 2, 3200, 0, 1, 1, 95, UNIX_TIMESTAMP()-86400*6, UNIX_TIMESTAMP()-86400*6),
+(8, DATE_SUB(CURDATE(), INTERVAL 5 DAY), 180, 4800, 150, 2900, 95, 2400, 10, 520.00, 55, 250, 6, 60.00, 2, 3800, 1, 2, 2, 120, UNIX_TIMESTAMP()-86400*5, UNIX_TIMESTAMP()-86400*5),
+(10, DATE_SUB(CURDATE(), INTERVAL 6 DAY), 300, 4500, 280, 5000, 200, 5000, 25, 1200.00, 120, 500, 30, 300.00, 5, 3600, 4, 5, 5, 320, UNIX_TIMESTAMP()-86400*6, UNIX_TIMESTAMP()-86400*6),
+(10, DATE_SUB(CURDATE(), INTERVAL 5 DAY), 350, 5000, 330, 5800, 250, 6200, 30, 1500.00, 150, 650, 35, 350.00, 6, 4200, 5, 6, 6, 380, UNIX_TIMESTAMP()-86400*5, UNIX_TIMESTAMP()-86400*5);
 
 -- =====================================================
 -- 8. 风控统计模拟数据（最近30天）
