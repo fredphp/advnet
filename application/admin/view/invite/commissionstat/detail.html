@@ -486,24 +486,3 @@
         {/if}
     </div>
 </div>
-
-<script>
-require(['jquery'], function($) {
-    $(function() {
-        // 切换邀请列表
-        $('.invite-tab').on('click', function() {
-            var level = $(this).data('level');
-            $('.invite-tab').removeClass('active');
-            $(this).addClass('active');
-            
-            if (level == 1) {
-                $('#level1-list').show();
-                $('#level2-list').hide();
-            } else {
-                $('#level1-list').hide();
-                $('#level2-list').show();
-            }
-        });
-    });
-});
-</script>

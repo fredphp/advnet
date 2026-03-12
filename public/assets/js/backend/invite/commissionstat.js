@@ -140,8 +140,20 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
             Table.api.bindevent(table);
         },
         detail: function() {
-            // 详情页面的初始化
-            Form.api.bindevent($("form[role=form]"));
+            // 详情页面的初始化 - 处理tab切换
+            $(document).on('click', '.invite-tab', function() {
+                var level = $(this).data('level');
+                $('.invite-tab').removeClass('active');
+                $(this).addClass('active');
+                
+                if (level == 1) {
+                    $('#level1-list').show();
+                    $('#level2-list').hide();
+                } else {
+                    $('#level1-list').hide();
+                    $('#level2-list').show();
+                }
+            });
         },
         api: {
             bindevent: function () {
