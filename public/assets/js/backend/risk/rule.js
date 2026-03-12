@@ -199,14 +199,6 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
                             }
                         },
                         {
-                            field: 'createtime', 
-                            title: '创建时间', 
-                            formatter: Table.api.formatter.datetime, 
-                            operate: 'RANGE', 
-                            addclass: 'datetimerange', 
-                            sortable: true
-                        },
-                        {
                             field: 'operate', 
                             title: '操作', 
                             table: table, 

@@ -627,7 +627,8 @@ class Relation extends Backend
             ]);
 
             Db::commit();
-            $this->success('绑定上级成功');
+            // $this->success('绑定上级成功');
+            return json(['code' => 1, 'msg' => '绑定上级成功']);
         } catch (\Exception $e) {
             Db::rollback();
             $this->error('绑定失败：' . $e->getMessage());
