@@ -1,0 +1,507 @@
+<style>
+.detail-container {
+    padding: 20px;
+}
+.user-info-card {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 12px;
+    padding: 25px;
+    color: #fff;
+    margin-bottom: 20px;
+}
+.user-info-card .avatar {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    border: 3px solid rgba(255,255,255,0.3);
+    margin-right: 20px;
+}
+.user-info-card .user-basic {
+    flex: 1;
+}
+.user-info-card .user-name {
+    font-size: 22px;
+    font-weight: bold;
+    margin-bottom: 8px;
+}
+.user-info-card .user-id {
+    opacity: 0.8;
+    font-size: 14px;
+}
+.user-info-card .user-mobile {
+    opacity: 0.8;
+    font-size: 14px;
+    margin-top: 5px;
+}
+.stat-cards {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 15px;
+    margin-bottom: 20px;
+}
+.stat-card {
+    background: #fff;
+    border-radius: 10px;
+    padding: 20px;
+    text-align: center;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    transition: transform 0.2s;
+}
+.stat-card:hover {
+    transform: translateY(-3px);
+}
+.stat-card .stat-value {
+    font-size: 28px;
+    font-weight: bold;
+    color: #333;
+    margin-bottom: 5px;
+}
+.stat-card .stat-label {
+    color: #666;
+    font-size: 13px;
+}
+.stat-card.primary .stat-value {
+    color: #667eea;
+}
+.stat-card.success .stat-value {
+    color: #52c41a;
+}
+.stat-card.warning .stat-value {
+    color: #faad14;
+}
+.stat-card.danger .stat-value {
+    color: #f5222d;
+}
+.commission-breakdown {
+    background: #fff;
+    border-radius: 10px;
+    padding: 20px;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+.commission-breakdown .section-title {
+    font-size: 16px;
+    font-weight: bold;
+    color: #333;
+    margin-bottom: 15px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #eee;
+}
+.commission-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 10px 0;
+    border-bottom: 1px dashed #eee;
+}
+.commission-row:last-child {
+    border-bottom: none;
+}
+.commission-row .label {
+    color: #666;
+}
+.commission-row .value {
+    font-weight: bold;
+    color: #333;
+}
+.commission-row .value.money {
+    color: #f5222d;
+}
+.invite-section {
+    background: #fff;
+    border-radius: 10px;
+    padding: 20px;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+.invite-tabs {
+    display: flex;
+    border-bottom: 2px solid #eee;
+    margin-bottom: 15px;
+}
+.invite-tab {
+    padding: 10px 25px;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -2px;
+    font-weight: 500;
+    color: #666;
+    transition: all 0.3s;
+}
+.invite-tab:hover {
+    color: #667eea;
+}
+.invite-tab.active {
+    color: #667eea;
+    border-bottom-color: #667eea;
+}
+.invite-tab .count {
+    background: #667eea;
+    color: #fff;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 12px;
+    margin-left: 5px;
+}
+.invite-list {
+    max-height: 400px;
+    overflow-y: auto;
+}
+.invite-item {
+    display: flex;
+    align-items: center;
+    padding: 12px;
+    border-bottom: 1px solid #f0f0f0;
+    transition: background 0.2s;
+}
+.invite-item:hover {
+    background: #fafafa;
+}
+.invite-item:last-child {
+    border-bottom: none;
+}
+.invite-item .avatar {
+    width: 45px;
+    height: 45px;
+    border-radius: 50%;
+    margin-right: 12px;
+}
+.invite-item .user-info {
+    flex: 1;
+}
+.invite-item .user-name {
+    font-weight: 500;
+    color: #333;
+}
+.invite-item .user-time {
+    font-size: 12px;
+    color: #999;
+    margin-top: 3px;
+}
+.invite-item .contribution {
+    text-align: right;
+}
+.invite-item .contribution-amount {
+    color: #f5222d;
+    font-weight: bold;
+}
+.invite-item .contribution-label {
+    font-size: 12px;
+    color: #999;
+}
+.invite-item .via-user {
+    font-size: 12px;
+    color: #999;
+    margin-top: 3px;
+}
+.invite-item .via-user a {
+    color: #667eea;
+}
+.recent-logs {
+    background: #fff;
+    border-radius: 10px;
+    padding: 20px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+.log-item {
+    display: flex;
+    align-items: center;
+    padding: 12px 0;
+    border-bottom: 1px solid #f0f0f0;
+}
+.log-item:last-child {
+    border-bottom: none;
+}
+.log-item .log-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 12px;
+    font-size: 16px;
+}
+.log-item .log-icon.withdraw {
+    background: #e6f7ff;
+    color: #1890ff;
+}
+.log-item .log-icon.video {
+    background: #fff7e6;
+    color: #fa8c16;
+}
+.log-item .log-icon.red_packet {
+    background: #fff1f0;
+    color: #f5222d;
+}
+.log-item .log-icon.game {
+    background: #f6ffed;
+    color: #52c41a;
+}
+.log-item .log-info {
+    flex: 1;
+}
+.log-item .log-title {
+    color: #333;
+    margin-bottom: 3px;
+}
+.log-item .log-time {
+    font-size: 12px;
+    color: #999;
+}
+.log-item .log-amount {
+    font-weight: bold;
+    color: #f5222d;
+}
+.empty-state {
+    text-align: center;
+    padding: 40px;
+    color: #999;
+}
+.empty-state i {
+    font-size: 48px;
+    margin-bottom: 10px;
+    opacity: 0.5;
+}
+</style>
+
+<div class="detail-container">
+    <!-- 用户信息卡片 -->
+    <div class="user-info-card">
+        <div style="display: flex; align-items: center;">
+            <img src="{$row.user.avatar|default='/assets/img/avatar.png'}" class="avatar" alt="头像">
+            <div class="user-basic">
+                <div class="user-name">{$row.user.nickname|default='未知用户'}</div>
+                <div class="user-id">用户ID: {$row.user_id}</div>
+                {if condition="$row.user.mobile"}
+                <div class="user-mobile"><i class="fa fa-phone"></i> {$row.user.mobile}</div>
+                {/if}
+            </div>
+        </div>
+    </div>
+    
+    <!-- 统计卡片 -->
+    <div class="stat-cards">
+        <div class="stat-card primary">
+            <div class="stat-value">{$total_invite_count}</div>
+            <div class="stat-label">总邀请人数</div>
+        </div>
+        <div class="stat-card success">
+            <div class="stat-value">{$level1_count}</div>
+            <div class="stat-label">一级邀请</div>
+        </div>
+        <div class="stat-card warning">
+            <div class="stat-value">{$level2_count}</div>
+            <div class="stat-label">二级邀请</div>
+        </div>
+        <div class="stat-card danger">
+            <div class="stat-value">{$row.total_commission|sprintf='%.2f'}</div>
+            <div class="stat-label">累计佣金(元)</div>
+        </div>
+    </div>
+    
+    <!-- 佣金明细 -->
+    <div class="commission-breakdown">
+        <div class="section-title"><i class="fa fa-money"></i> 佣金明细</div>
+        <div class="commission-row">
+            <span class="label">累计佣金</span>
+            <span class="value money">¥{$row.total_commission|sprintf='%.2f'}</span>
+        </div>
+        <div class="commission-row">
+            <span class="label">一级佣金</span>
+            <span class="value">¥{$row.level1_commission|sprintf='%.2f'}</span>
+        </div>
+        <div class="commission-row">
+            <span class="label">二级佣金</span>
+            <span class="value">¥{$row.level2_commission|sprintf='%.2f'}</span>
+        </div>
+        <div class="commission-row">
+            <span class="label">已提现佣金</span>
+            <span class="value">¥{$withdrawn_commission|sprintf='%.2f'}</span>
+        </div>
+        <div class="commission-row">
+            <span class="label">待结算佣金</span>
+            <span class="value" style="color: #faad14;">¥{$row.pending_commission|sprintf='%.2f'}</span>
+        </div>
+        <div class="commission-row">
+            <span class="label">冻结佣金</span>
+            <span class="value" style="color: #999;">¥{$row.frozen_commission|sprintf='%.2f'}</span>
+        </div>
+        <div class="commission-row">
+            <span class="label">今日佣金</span>
+            <span class="value" style="color: #52c41a;">¥{$row.today_commission|sprintf='%.2f'}</span>
+        </div>
+        <div class="commission-row">
+            <span class="label">昨日佣金</span>
+            <span class="value">¥{$row.yesterday_commission|sprintf='%.2f'}</span>
+        </div>
+        <div class="commission-row">
+            <span class="label">本周佣金</span>
+            <span class="value">¥{$row.week_commission|sprintf='%.2f'}</span>
+        </div>
+        <div class="commission-row">
+            <span class="label">本月佣金</span>
+            <span class="value">¥{$row.month_commission|sprintf='%.2f'}</span>
+        </div>
+    </div>
+    
+    <!-- 佣金来源 -->
+    <div class="commission-breakdown">
+        <div class="section-title"><i class="fa fa-pie-chart"></i> 佣金来源</div>
+        <div class="commission-row">
+            <span class="label"><i class="fa fa-bank" style="color: #1890ff; margin-right: 5px;"></i> 提现分佣</span>
+            <span class="value">¥{$row.withdraw_commission|sprintf='%.2f'} <small style="color: #999;">({$row.withdraw_count}次)</small></span>
+        </div>
+        <div class="commission-row">
+            <span class="label"><i class="fa fa-video-camera" style="color: #fa8c16; margin-right: 5px;"></i> 视频分佣</span>
+            <span class="value">¥{$row.video_commission|sprintf='%.2f'} <small style="color: #999;">({$row.video_count}次)</small></span>
+        </div>
+        <div class="commission-row">
+            <span class="label"><i class="fa fa-envelope" style="color: #f5222d; margin-right: 5px;"></i> 红包分佣</span>
+            <span class="value">¥{$row.red_packet_commission|sprintf='%.2f'} <small style="color: #999;">({$row.red_packet_count}次)</small></span>
+        </div>
+        <div class="commission-row">
+            <span class="label"><i class="fa fa-gamepad" style="color: #52c41a; margin-right: 5px;"></i> 游戏分佣</span>
+            <span class="value">¥{$row.game_commission|sprintf='%.2f'} <small style="color: #999;">({$row.game_count}次)</small></span>
+        </div>
+    </div>
+    
+    <!-- 邀请列表 -->
+    <div class="invite-section">
+        <div class="section-title"><i class="fa fa-users"></i> 邀请明细</div>
+        <div class="invite-tabs">
+            <div class="invite-tab active" data-level="1">
+                一级邀请 <span class="count">{$level1_count}</span>
+            </div>
+            <div class="invite-tab" data-level="2">
+                二级邀请 <span class="count">{$level2_count}</span>
+            </div>
+        </div>
+        
+        <div id="invite-list-container">
+            <div id="level1-list" class="invite-list">
+                {if condition="empty($level1_users)"}
+                <div class="empty-state">
+                    <i class="fa fa-users"></i>
+                    <p>暂无一级邀请用户</p>
+                </div>
+                {else}
+                {volist name="level1_users" id="user"}
+                <div class="invite-item">
+                    <img src="{$user.avatar|default='/assets/img/avatar.png'}" class="avatar" alt="头像">
+                    <div class="user-info">
+                        <div class="user-name">{$user.nickname|default='未知用户'}</div>
+                        <div class="user-time">邀请时间: {$user.invite_time|date='Y-m-d H:i',###}</div>
+                    </div>
+                    <div class="contribution">
+                        <div class="contribution-amount">+¥<?php 
+                            $commission = \think\Db::name('invite_commission_log')
+                                ->where('user_id', $user['user_id'])
+                                ->where('parent_id', $row['user_id'])
+                                ->where('level', 1)
+                                ->sum('commission_amount');
+                            echo sprintf('%.2f', $commission ?: 0);
+                        ?></div>
+                        <div class="contribution-label">贡献佣金</div>
+                    </div>
+                </div>
+                {/volist}
+                {/if}
+            </div>
+            <div id="level2-list" class="invite-list" style="display: none;">
+                {if condition="empty($level2_users)"}
+                <div class="empty-state">
+                    <i class="fa fa-users"></i>
+                    <p>暂无二级邀请用户</p>
+                </div>
+                {else}
+                {volist name="level2_users" id="user"}
+                <div class="invite-item">
+                    <img src="{$user.avatar|default='/assets/img/avatar.png'}" class="avatar" alt="头像">
+                    <div class="user-info">
+                        <div class="user-name">{$user.nickname|default='未知用户'}</div>
+                        <div class="user-time">邀请时间: {$user.invite_time|date='Y-m-d H:i',###}</div>
+                        <div class="via-user">来自: {$user.parent_nickname|default='未知'}</div>
+                    </div>
+                    <div class="contribution">
+                        <div class="contribution-amount">+¥<?php 
+                            $commission = \think\Db::name('invite_commission_log')
+                                ->where('user_id', $user['user_id'])
+                                ->where('parent_id', $row['user_id'])
+                                ->where('level', 2)
+                                ->sum('commission_amount');
+                            echo sprintf('%.2f', $commission ?: 0);
+                        ?></div>
+                        <div class="contribution-label">贡献佣金</div>
+                    </div>
+                </div>
+                {/volist}
+                {/if}
+            </div>
+        </div>
+    </div>
+    
+    <!-- 近期分佣记录 -->
+    <div class="recent-logs">
+        <div class="section-title"><i class="fa fa-history"></i> 近期分佣记录</div>
+        {if condition="empty($recent_logs)"}
+        <div class="empty-state">
+            <i class="fa fa-list-alt"></i>
+            <p>暂无分佣记录</p>
+        </div>
+        {else}
+        {volist name="recent_logs" id="log"}
+        <div class="log-item">
+            <div class="log-icon {$log.source_type}">
+                {switch name="log.source_type"}
+                    {case value="withdraw"}<i class="fa fa-bank"></i>{/case}
+                    {case value="video"}<i class="fa fa-video-camera"></i>{/case}
+                    {case value="red_packet"}<i class="fa fa-envelope"></i>{/case}
+                    {case value="game"}<i class="fa fa-gamepad"></i>{/case}
+                    {default /}<i class="fa fa-money"></i>
+                {/switch}
+            </div>
+            <div class="log-info">
+                <div class="log-title">
+                    {switch name="log.source_type"}
+                        {case value="withdraw"}提现分佣{/case}
+                        {case value="video"}视频分佣{/case}
+                        {case value="red_packet"}红包分佣{/case}
+                        {case value="game"}游戏分佣{/case}
+                        {default /}其他分佣
+                    {/switch}
+                    {if condition="$log.level == 1"}
+                    <span style="color: #52c41a; font-size: 12px; margin-left: 5px;">一级</span>
+                    {else}
+                    <span style="color: #faad14; font-size: 12px; margin-left: 5px;">二级</span>
+                    {/if}
+                    {if condition="$log.from_user_nickname"}
+                    <span style="color: #999; font-size: 12px; margin-left: 10px;">来自: {$log.from_user_nickname}</span>
+                    {/if}
+                </div>
+                <div class="log-time">{$log.createtime|date='Y-m-d H:i:s',###}</div>
+            </div>
+            <div class="log-amount">+¥{$log.commission_amount|sprintf='%.2f'}</div>
+        </div>
+        {/volist}
+        {/if}
+    </div>
+</div>
+
+<script>
+$(function() {
+    // 切换邀请列表
+    $('.invite-tab').on('click', function() {
+        var level = $(this).data('level');
+        $('.invite-tab').removeClass('active');
+        $(this).addClass('active');
+        
+        if (level == 1) {
+            $('#level1-list').show();
+            $('#level2-list').hide();
+        } else {
+            $('#level1-list').hide();
+            $('#level2-list').show();
+        }
+    });
+});
+</script>

@@ -36,9 +36,51 @@ class Commissionstat extends Backend
                 ->limit($offset, $limit)
                 ->select();
             
+            // 获取所有用户ID
+            $userIds = [];
+            foreach ($list as $item) {
+                $userIds[] = $item->user_id;
+            }
+            
+            // 批量获取邀请统计数据
+            $inviteStats = [];
+            if (!empty($userIds)) {
+                $inviteStatsData = Db::name('user_invite_stat')
+                    ->where('user_id', 'in', $userIds)
+                    ->select();
+                foreach ($inviteStatsData as $stat) {
+                    $inviteStats[$stat['user_id']] = $stat;
+                }
+            }
+            
+            // 批量获取已提现佣金（从提现订单表统计）
+            $withdrawnStats = [];
+            if (!empty($userIds)) {
+                $withdrawnData = Db::name('withdraw_order')
+                    ->where('user_id', 'in', $userIds)
+                    ->where('status', 'in', [3]) // 3=提现成功
+                    ->field('user_id, SUM(actual_amount) as total_withdrawn')
+                    ->group('user_id')
+                    ->select();
+                foreach ($withdrawnData as $wd) {
+                    $withdrawnStats[$wd['user_id']] = $wd['total_withdrawn'];
+                }
+            }
+            
             foreach ($list as $item) {
                 $item->user_nickname = $item->user ? $item->user->nickname : '';
                 $item->user_avatar = $item->user ? $item->user->avatar : '';
+                $item->user_mobile = $item->user ? $item->user->mobile : '';
+                
+                // 邀请统计数据
+                $inviteStat = isset($inviteStats[$item->user_id]) ? $inviteStats[$item->user_id] : null;
+                $item->total_invite_count = $inviteStat ? $inviteStat['total_invite_count'] : 0;
+                $item->level1_count = $inviteStat ? $inviteStat['level1_count'] : 0;
+                $item->level2_count = $inviteStat ? $inviteStat['level2_count'] : 0;
+                $item->valid_invite_count = $inviteStat ? $inviteStat['valid_invite_count'] : 0;
+                
+                // 已提现佣金
+                $item->withdrawn_commission = isset($withdrawnStats[$item->user_id]) ? $withdrawnStats[$item->user_id] : 0;
             }
             
             $result = ['total' => $total, 'rows' => $list];
@@ -105,6 +147,11 @@ class Commissionstat extends Backend
         // 获得佣金用户数
         $userCount = $this->model->where('total_commission', '>', 0)->count();
         
+        // 总邀请人数统计
+        $totalInviteCount = Db::name('user_invite_stat')->sum('total_invite_count');
+        $level1TotalCount = Db::name('user_invite_stat')->sum('level1_count');
+        $level2TotalCount = Db::name('user_invite_stat')->sum('level2_count');
+        
         $this->success('', null, [
             'total_commission' => $totalCommission,
             'total_coin' => $totalCoin,
@@ -121,6 +168,9 @@ class Commissionstat extends Backend
             'pending_commission' => $pendingCommission,
             'frozen_commission' => $frozenCommission,
             'user_count' => $userCount,
+            'total_invite_count' => $totalInviteCount,
+            'level1_total_count' => $level1TotalCount,
+            'level2_total_count' => $level2TotalCount,
         ]);
     }
     
@@ -187,16 +237,151 @@ class Commissionstat extends Backend
             $this->error(__('No Results were found'));
         }
         
-        // 获取近期分佣记录
-        $recentLogs = Db::name('invite_commission_log')
-            ->where('parent_id', $row->user_id)
-            ->order('id', 'desc')
-            ->limit(20)
+        $userId = $row->user_id;
+        
+        // 获取邀请统计
+        $inviteStat = Db::name('user_invite_stat')
+            ->where('user_id', $userId)
+            ->find();
+        
+        // 获取一级邀请列表
+        $level1Users = Db::name('invite_relation')
+            ->alias('ir')
+            ->join('user u', 'ir.user_id = u.id', 'LEFT')
+            ->where('ir.parent_id', $userId)
+            ->field('ir.user_id, ir.createtime as invite_time, u.nickname, u.avatar, u.mobile')
+            ->order('ir.createtime', 'desc')
+            ->limit(50)
             ->select();
         
+        // 获取二级邀请列表
+        $level2Users = Db::name('invite_relation')
+            ->alias('ir')
+            ->join('user u', 'ir.user_id = u.id', 'LEFT')
+            ->where('ir.grandparent_id', $userId)
+            ->field('ir.user_id, ir.createtime as invite_time, ir.parent_id, u.nickname, u.avatar, u.mobile')
+            ->order('ir.createtime', 'desc')
+            ->limit(50)
+            ->select();
+        
+        // 为二级邀请获取直接上级信息
+        foreach ($level2Users as &$user) {
+            $parent = Db::name('user')->where('id', $user['parent_id'])->field('nickname')->find();
+            $user['parent_nickname'] = $parent ? $parent['nickname'] : '';
+        }
+        
+        // 获取近期分佣记录
+        $recentLogs = Db::name('invite_commission_log')
+            ->alias('cl')
+            ->join('user u', 'cl.user_id = u.id', 'LEFT')
+            ->where('cl.parent_id', $userId)
+            ->field('cl.*, u.nickname as from_user_nickname')
+            ->order('cl.id', 'desc')
+            ->limit(30)
+            ->select();
+        
+        // 统计数据
+        $level1Count = count($level1Users);
+        $level2Count = count($level2Users);
+        $totalInviteCount = $level1Count + $level2Count;
+        
+        // 已提现佣金
+        $withdrawnCommission = Db::name('withdraw_order')
+            ->where('user_id', $userId)
+            ->where('status', 3)
+            ->sum('actual_amount');
+        
         $this->view->assign('row', $row);
+        $this->view->assign('invite_stat', $inviteStat);
+        $this->view->assign('level1_users', $level1Users);
+        $this->view->assign('level2_users', $level2Users);
         $this->view->assign('recent_logs', $recentLogs);
+        $this->view->assign('level1_count', $level1Count);
+        $this->view->assign('level2_count', $level2Count);
+        $this->view->assign('total_invite_count', $totalInviteCount);
+        $this->view->assign('withdrawn_commission', $withdrawnCommission);
         
         return $this->view->fetch();
+    }
+    
+    /**
+     * 获取一级邀请列表(AJAX)
+     */
+    public function getLevel1List()
+    {
+        $userId = $this->request->get('user_id');
+        $page = $this->request->get('page', 1);
+        $limit = $this->request->get('limit', 20);
+        
+        if (!$userId) {
+            $this->error('参数错误');
+        }
+        
+        $offset = ($page - 1) * $limit;
+        
+        $total = Db::name('invite_relation')
+            ->where('parent_id', $userId)
+            ->count();
+        
+        $list = Db::name('invite_relation')
+            ->alias('ir')
+            ->join('user u', 'ir.user_id = u.id', 'LEFT')
+            ->where('ir.parent_id', $userId)
+            ->field('ir.user_id, ir.createtime as invite_time, u.nickname, u.avatar, u.mobile')
+            ->order('ir.createtime', 'desc')
+            ->limit($offset, $limit)
+            ->select();
+        
+        // 获取每个用户的贡献佣金
+        foreach ($list as &$user) {
+            $user['contribute_commission'] = Db::name('invite_commission_log')
+                ->where('user_id', $user['user_id'])
+                ->where('parent_id', $userId)
+                ->where('level', 1)
+                ->sum('commission_amount');
+        }
+        
+        $this->success('', null, ['total' => $total, 'rows' => $list]);
+    }
+    
+    /**
+     * 获取二级邀请列表(AJAX)
+     */
+    public function getLevel2List()
+    {
+        $userId = $this->request->get('user_id');
+        $page = $this->request->get('page', 1);
+        $limit = $this->request->get('limit', 20);
+        
+        if (!$userId) {
+            $this->error('参数错误');
+        }
+        
+        $offset = ($page - 1) * $limit;
+        
+        $total = Db::name('invite_relation')
+            ->where('grandparent_id', $userId)
+            ->count();
+        
+        $list = Db::name('invite_relation')
+            ->alias('ir')
+            ->join('user u', 'ir.user_id = u.id', 'LEFT')
+            ->join('user pu', 'ir.parent_id = pu.id', 'LEFT')
+            ->where('ir.grandparent_id', $userId)
+            ->field('ir.user_id, ir.createtime as invite_time, ir.parent_id, u.nickname, u.avatar, u.mobile, pu.nickname as parent_nickname')
+            ->order('ir.createtime', 'desc')
+            ->limit($offset, $limit)
+            ->select();
+        
+        // 获取每个用户的贡献佣金
+        foreach ($list as &$user) {
+            $user['contribute_commission'] = Db::name('invite_commission_log')
+                ->where('user_id', $user['user_id'])
+                ->where('parent_id', $userId)
+                ->where('level', 2)
+                ->sum('commission_amount');
+        }
+        
+        $this->success('', null, ['total' => $total, 'rows' => $list]);
     }
 }
