@@ -84,6 +84,31 @@ class UserRisk extends Backend
             // 确保返回数组格式
             $rows = is_array($list) ? $list : ($list ? $list->toArray() : []);
             
+            // 检查每个用户是否有最近的撤销记录（最近7天内的撤销操作）
+            $userIds = array_column($rows, 'user_id');
+            if (!empty($userIds)) {
+                $revokeRecords = Db::name('risk_log')
+                    ->where('user_id', 'in', $userIds)
+                    ->where('rule_code', 'like', 'REVOKE_%')
+                    ->where('createtime', '>', time() - 7 * 86400)
+                    ->field('user_id, MAX(createtime) as last_revoke_time')
+                    ->group('user_id')
+                    ->select();
+                
+                $revokeMap = [];
+                if ($revokeRecords) {
+                    foreach ($revokeRecords as $record) {
+                        $revokeMap[$record['user_id']] = $record['last_revoke_time'];
+                    }
+                }
+                
+                // 为每行添加是否已撤销标记
+                foreach ($rows as &$row) {
+                    $row['is_revoked'] = isset($revokeMap[$row['user_id']]) ? 1 : 0;
+                    $row['last_revoke_time'] = $revokeMap[$row['user_id']] ?? null;
+                }
+            }
+            
             return json(['total' => $total, 'rows' => $rows]);
         }
         
@@ -411,9 +436,10 @@ class UserRisk extends Backend
             ];
         }
         
-        // 最近风控记录
+        // 最近风控记录（排除撤销类型的记录）
         $riskLogs = Db::name('risk_log')
             ->where('user_id', $userId)
+            ->where('rule_code', 'not like', 'REVOKE_%')  // 排除撤销记录
             ->order('createtime', 'desc')
             ->limit(20)
             ->select();
@@ -427,10 +453,21 @@ class UserRisk extends Backend
             }
         }
         
+        // 检查用户是否已在白名单中
+        $inWhitelist = Db::name('risk_whitelist')
+            ->where('type', 'user')
+            ->where('value', $userId)
+            ->where(function($query) {
+                $query->whereNull('expire_time')
+                      ->whereOr('expire_time', '>', time());
+            })
+            ->find();
+        
         $this->success('', null, [
             'user' => $user,
             'risk_score' => $riskScore,
             'risk_logs' => $logsData,
+            'in_whitelist' => $inWhitelist ? 1 : 0,
         ]);
     }
     

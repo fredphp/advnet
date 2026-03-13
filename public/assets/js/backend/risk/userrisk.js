@@ -105,11 +105,20 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
                     var that = $.extend({}, this);
                     var table = $(that.table).clone(true);
                     
-                    // 基础操作按钮
                     var buttons = [];
                     
-                    // 撤销风控按钮
-                    buttons.push('<a href="javascript:;" class="btn btn-success btn-xs btn-revoke" data-user-id="' + row.user_id + '"><i class="fa fa-undo"></i> 撤销风控</a>');
+                    // 判断是否已撤销（最近7天内有撤销记录）
+                    if (row.is_revoked == 1) {
+                        // 已撤销，显示已撤销标签
+                        var revokeTime = row.last_revoke_time ? '撤销于 ' + (new Date(row.last_revoke_time * 1000).toLocaleString()) : '已撤销';
+                        buttons.push('<span class="label label-default" title="' + revokeTime + '"><i class="fa fa-check"></i> 已撤销</span>');
+                        
+                        // 如果在白名单中，显示移出白名单按钮
+                        buttons.push('<a href="javascript:;" class="btn btn-danger btn-xs btn-remove-whitelist" data-user-id="' + row.user_id + '"><i class="fa fa-times"></i> 移出白名单</a>');
+                    } else {
+                        // 未撤销，显示撤销风控按钮
+                        buttons.push('<a href="javascript:;" class="btn btn-success btn-xs btn-revoke" data-user-id="' + row.user_id + '"><i class="fa fa-undo"></i> 撤销风控</a>');
+                    }
                     
                     // 如果是封禁状态，显示解封按钮
                     if (row.status === 'banned' || row.status === 'frozen') {
@@ -165,6 +174,39 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
         });
     });
 
+    // 移出白名单事件
+    $(document).on('click', '.btn-remove-whitelist', function () {
+        var userId = $(this).attr('data-user-id');
+        if (!userId) {
+            Layer.alert('无法获取用户ID', {icon: 2});
+            return;
+        }
+        var that = this;
+        Layer.confirm('确定要将该用户移出白名单吗？移出后将恢复风控检查。', {
+            title: '移出白名单确认',
+            btn: ['确定', '取消']
+        }, function (layerIndex) {
+            $.ajax({
+                url: 'risk/userrisk/removeWhitelist',
+                type: 'POST',
+                dataType: 'json',
+                data: {user_id: userId},
+                success: function (ret) {
+                    Layer.close(layerIndex);
+                    if (ret.code === 1) {
+                        Layer.alert('已移出白名单', {icon: 1});
+                        $(that).closest('table').bootstrapTable('refresh');
+                    } else {
+                        Layer.alert(ret.msg || '操作失败', {icon: 2});
+                    }
+                },
+                error: function () {
+                    Layer.alert('请求失败', {icon: 2});
+                }
+            });
+        });
+    });
+
     // 撤销风控弹窗
     Controller.api.showRevokeModal = function (userId) {
         // 显示加载中
@@ -202,6 +244,10 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
                 html += '<div class="col-md-4"><p><strong>风险等级：</strong>' + Controller.api.formatter.riskLevel(info.risk_score.risk_level) + '</p></div>';
                 html += '<div class="col-md-4"><p><strong>违规次数：</strong>' + (info.risk_score.violation_count || 0) + '</p></div>';
                 html += '</div>';
+                // 白名单状态
+                if (info.in_whitelist == 1) {
+                    html += '<div class="row"><div class="col-md-12"><p><span class="label label-success"><i class="fa fa-shield"></i> 当前在白名单中</span></p></div></div>';
+                }
                 html += '</div></div>';
                 
                 // 最近风控记录
