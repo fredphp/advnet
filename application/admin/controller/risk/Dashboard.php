@@ -347,6 +347,62 @@ class Dashboard extends Backend
     }
     
     /**
+     * 获取用户信息（用于冻结/封禁前展示）
+     */
+    public function getUserInfo()
+    {
+        $userId = $this->request->get('user_id');
+        
+        if (!$userId) {
+            $this->error('请指定用户ID');
+        }
+        
+        // 用户基本信息
+        $user = Db::name('user')->where('id', $userId)->find();
+        if (!$user) {
+            $this->error('用户不存在');
+        }
+        
+        // 风险评分详情
+        $riskScore = Db::name('user_risk_score')->where('user_id', $userId)->find();
+        if (!$riskScore) {
+            $riskScore = [
+                'total_score' => 0,
+                'risk_level' => 'safe',
+                'violation_count' => 0,
+                'status' => 'normal',
+            ];
+        }
+        
+        // 最近违规记录（排除撤销类型）
+        $riskLogs = Db::name('risk_log')
+            ->where('user_id', $userId)
+            ->where('rule_code', 'not like', 'REVOKE_%')
+            ->order('createtime', 'desc')
+            ->limit(10)
+            ->select();
+        
+        $logsData = [];
+        if ($riskLogs) {
+            foreach ($riskLogs as $log) {
+                $log['createtime_text'] = date('Y-m-d H:i:s', $log['createtime']);
+                $logsData[] = $log;
+            }
+        }
+        
+        $this->success('', null, [
+            'user' => [
+                'id' => $user['id'],
+                'username' => $user['username'] ?? '-',
+                'nickname' => $user['nickname'] ?? '-',
+                'mobile' => $user['mobile'] ?? '-',
+            ],
+            'risk_score' => $riskScore,
+            'risk_logs' => $logsData,
+        ]);
+    }
+    
+    /**
      * 冻结用户
      */
     public function freeze()
@@ -357,6 +413,15 @@ class Dashboard extends Backend
         
         if (!$userId) {
             $this->error('请指定用户ID');
+        }
+        
+        // 检查用户当前状态
+        $currentStatus = Db::name('user_risk_score')->where('user_id', $userId)->value('status');
+        if ($currentStatus === 'frozen') {
+            $this->error('用户已处于冻结状态');
+        }
+        if ($currentStatus === 'banned') {
+            $this->error('用户已被封禁，无法冻结');
         }
         
         // 更新用户状态
@@ -373,8 +438,11 @@ class Dashboard extends Backend
             'ban_type' => 'temporary',
             'ban_reason' => $reason,
             'ban_source' => 'manual',
+            'risk_score' => Db::name('user_risk_score')->where('user_id', $userId)->value('total_score') ?? 0,
+            'start_time' => time(),
+            'end_time' => $freezeExpireTime,
             'duration' => $duration * 86400,
-            'expire_time' => $freezeExpireTime,
+            'status' => 'active',
             'admin_id' => $this->auth->id,
             'admin_name' => $this->auth->username,
             'createtime' => time(),
@@ -395,6 +463,12 @@ class Dashboard extends Backend
             $this->error('请指定用户ID');
         }
         
+        // 检查用户当前状态
+        $currentStatus = Db::name('user_risk_score')->where('user_id', $userId)->value('status');
+        if ($currentStatus === 'banned') {
+            $this->error('用户已被封禁');
+        }
+        
         // 更新用户状态
         Db::name('user_risk_score')->where('user_id', $userId)->update([
             'status' => 'banned',
@@ -408,8 +482,11 @@ class Dashboard extends Backend
             'ban_type' => 'permanent',
             'ban_reason' => $reason,
             'ban_source' => 'manual',
+            'risk_score' => Db::name('user_risk_score')->where('user_id', $userId)->value('total_score') ?? 0,
+            'start_time' => time(),
+            'end_time' => null,
             'duration' => 0,
-            'expire_time' => null,
+            'status' => 'active',
             'admin_id' => $this->auth->id,
             'admin_name' => $this->auth->username,
             'createtime' => time(),

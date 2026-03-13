@@ -476,57 +476,157 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form', 'echarts'], function 
                 // 绑定冻结按钮事件
                 $(document).off('click', '.btn-freeze-user').on('click', '.btn-freeze-user', function() {
                     var userId = $(this).data('user-id');
-                    Layer.confirm('确定要冻结该用户吗？默认冻结7天。', {
-                        title: '冻结确认',
-                        btn: ['确定', '取消']
-                    }, function(index) {
-                        $.ajax({
-                            url: 'risk/dashboard/freeze',
-                            type: 'POST',
-                            dataType: 'json',
-                            data: { user_id: userId, duration: 7, reason: '仪表盘手动冻结' },
-                            success: function(ret) {
-                                Layer.close(index);
-                                if (ret.code === 1) {
-                                    Layer.alert('冻结成功', { icon: 1 });
-                                    Controller.api.loadDashboard();
-                                } else {
-                                    Layer.alert(ret.msg || '冻结失败', { icon: 2 });
-                                }
-                            },
-                            error: function() {
-                                Layer.alert('请求失败', { icon: 2 });
-                            }
-                        });
-                    });
+                    Controller.api.showActionModal(userId, 'freeze');
                 });
                 
                 // 绑定封禁按钮事件
                 $(document).off('click', '.btn-ban-user').on('click', '.btn-ban-user', function() {
                     var userId = $(this).data('user-id');
-                    Layer.confirm('确定要永久封禁该用户吗？此操作不可撤销！', {
-                        title: '封禁确认',
-                        btn: ['确定', '取消']
-                    }, function(index) {
-                        $.ajax({
-                            url: 'risk/dashboard/ban',
-                            type: 'POST',
-                            dataType: 'json',
-                            data: { user_id: userId, reason: '仪表盘手动封禁' },
-                            success: function(ret) {
-                                Layer.close(index);
-                                if (ret.code === 1) {
-                                    Layer.alert('封禁成功', { icon: 1 });
-                                    Controller.api.loadDashboard();
-                                } else {
-                                    Layer.alert(ret.msg || '封禁失败', { icon: 2 });
-                                }
-                            },
-                            error: function() {
-                                Layer.alert('请求失败', { icon: 2 });
+                    Controller.api.showActionModal(userId, 'ban');
+                });
+            },
+            
+            // 显示操作弹窗
+            showActionModal: function(userId, actionType) {
+                var loadIndex = Layer.load(1);
+                
+                $.ajax({
+                    url: 'risk/dashboard/getUserInfo',
+                    type: 'GET',
+                    dataType: 'json',
+                    data: { user_id: userId },
+                    success: function(ret) {
+                        Layer.close(loadIndex);
+                        
+                        if (ret.code !== 1) {
+                            Layer.alert(ret.msg || '获取用户信息失败', { icon: 2 });
+                            return;
+                        }
+                        
+                        var info = ret.data;
+                        var currentStatus = info.risk_score.status || 'normal';
+                        
+                        // 如果已冻结或已封禁，直接显示状态
+                        if (currentStatus === 'frozen') {
+                            Layer.alert('该用户已被冻结，无需重复操作', { icon: 0 });
+                            return;
+                        }
+                        if (currentStatus === 'banned') {
+                            Layer.alert('该用户已被封禁', { icon: 0 });
+                            return;
+                        }
+                        
+                        // 构建弹窗内容
+                        var statusClass = actionType === 'freeze' ? 'alert-warning' : 'alert-danger';
+                        var statusIcon = actionType === 'freeze' ? 'fa-snowflake' : 'fa-ban';
+                        var statusTitle = actionType === 'freeze' ? '冻结用户' : '封禁用户';
+                        var statusColor = actionType === 'freeze' ? '#ff9f43' : '#ee5a5a';
+                        
+                        var html = '<div style="padding: 15px;">';
+                        
+                        // 用户信息
+                        html += '<div class="alert-item ' + statusClass + '" style="margin-bottom: 15px; border-left: 4px solid ' + statusColor + ';">';
+                        html += '<div class="user-info">';
+                        html += '<div class="user-avatar" style="background: linear-gradient(135deg, ' + statusColor + ', ' + statusColor + ');"><i class="fa fa-user"></i></div>';
+                        html += '<div class="user-details">';
+                        html += '<div class="user-name">用户 ID: ' + info.user.id + '</div>';
+                        html += '<div class="user-meta">';
+                        html += '<span>用户名: <strong>' + (info.user.username || '-') + '</strong></span>';
+                        html += '<span>手机号: <strong>' + (info.user.mobile || '-') + '</strong></span>';
+                        html += '</div>';
+                        html += '<div class="user-meta">';
+                        html += '<span>风险分: <strong class="text-danger">' + (info.risk_score.total_score || 0) + '</strong></span>';
+                        html += '<span>违规次数: <strong>' + (info.risk_score.violation_count || 0) + '</strong></span>';
+                        html += '</div>';
+                        html += '</div>';
+                        html += '</div>';
+                        html += '</div>';
+                        
+                        // 违规记录
+                        html += '<div style="margin-bottom: 15px;"><strong><i class="fa fa-history"></i> 近期违规记录</strong></div>';
+                        if (info.risk_logs && info.risk_logs.length > 0) {
+                            html += '<table class="table table-striped table-condensed" style="font-size: 12px;">';
+                            html += '<thead><tr><th>时间</th><th>规则</th><th>加分</th><th>动作</th></tr></thead>';
+                            html += '<tbody>';
+                            info.risk_logs.forEach(function(log) {
+                                html += '<tr>';
+                                html += '<td>' + (log.createtime_text || '-') + '</td>';
+                                html += '<td>' + (log.rule_name || '-') + '</td>';
+                                html += '<td><span class="text-danger">+' + (log.score_add || 0) + '</span></td>';
+                                html += '<td>' + (log.action || '-') + '</td>';
+                                html += '</tr>';
+                            });
+                            html += '</tbody></table>';
+                        } else {
+                            html += '<p class="text-muted text-center" style="padding: 20px;">暂无违规记录</p>';
+                        }
+                        
+                        // 操作表单
+                        html += '<div style="margin-top: 15px; padding-top: 15px; border-top: 1px dashed #e9ecef;">';
+                        html += '<form id="action-form">';
+                        if (actionType === 'freeze') {
+                            html += '<div class="form-group">';
+                            html += '<label>冻结时长（天）</label>';
+                            html += '<select name="duration" class="form-control">';
+                            html += '<option value="1">1天</option>';
+                            html += '<option value="3">3天</option>';
+                            html += '<option value="7" selected>7天</option>';
+                            html += '<option value="15">15天</option>';
+                            html += '<option value="30">30天</option>';
+                            html += '</select>';
+                            html += '</div>';
+                        }
+                        html += '<div class="form-group">';
+                        html += '<label>原因</label>';
+                        html += '<textarea name="reason" class="form-control" rows="2" placeholder="请填写' + statusTitle + '原因">' + (actionType === 'freeze' ? '仪表盘手动冻结' : '仪表盘手动封禁') + '</textarea>';
+                        html += '</div>';
+                        html += '<input type="hidden" name="user_id" value="' + userId + '">';
+                        html += '</form>';
+                        html += '</div>';
+                        
+                        html += '</div>';
+                        
+                        // 显示弹窗
+                        Layer.open({
+                            type: 1,
+                            title: '<i class="fa ' + statusIcon + '" style="color: ' + statusColor + ';"></i> ' + statusTitle,
+                            area: ['550px', 'auto'],
+                            maxHeight: 500,
+                            content: html,
+                            btn: ['确认' + statusTitle, '取消'],
+                            yes: function(layerIndex, layero) {
+                                var form = $('#action-form');
+                                var data = {
+                                    user_id: userId,
+                                    duration: form.find('select[name="duration"]').val() || 7,
+                                    reason: form.find('textarea[name="reason"]').val()
+                                };
+                                
+                                $.ajax({
+                                    url: 'risk/dashboard/' + actionType,
+                                    type: 'POST',
+                                    dataType: 'json',
+                                    data: data,
+                                    success: function(ret) {
+                                        if (ret.code === 1) {
+                                            Layer.close(layerIndex);
+                                            Layer.alert((actionType === 'freeze' ? '冻结' : '封禁') + '成功', { icon: 1 });
+                                            Controller.api.loadDashboard();
+                                        } else {
+                                            Layer.alert(ret.msg || '操作失败', { icon: 2 });
+                                        }
+                                    },
+                                    error: function() {
+                                        Layer.alert('请求失败', { icon: 2 });
+                                    }
+                                });
                             }
                         });
-                    });
+                    },
+                    error: function() {
+                        Layer.close(loadIndex);
+                        Layer.alert('获取用户信息失败', { icon: 2 });
+                    }
                 });
             },
             
