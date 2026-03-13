@@ -145,19 +145,24 @@ class BanRecord extends Backend
      */
     public function release($ids = null)
     {
-        $record = $this->model->get($ids);
-        if (!$record) {
+        // 使用原生SQL获取记录，避免模型字段缓存问题
+        $prefix = config('database.prefix');
+        $ids = intval($ids);
+        
+        $record = Db::query("SELECT * FROM {$prefix}ban_record WHERE id = ? LIMIT 1", [$ids]);
+        if (empty($record)) {
             $this->error('记录不存在');
         }
+        $record = $record[0];
         
-        if ($record->status != 'active') {
+        if ($record['status'] != 'active') {
             $this->error('该记录已处理');
         }
         
         $reason = $this->request->post('reason', '管理员手动解封');
         
         $autoBanService = new AutoBanService();
-        $result = $autoBanService->releaseBan($record->user_id, $reason, $this->auth->id);
+        $result = $autoBanService->releaseBan($record['user_id'], $reason, $this->auth->id);
         
         if ($result['success']) {
             $this->success();
@@ -179,13 +184,17 @@ class BanRecord extends Backend
         }
         
         $autoBanService = new AutoBanService();
+        $prefix = config('database.prefix');
         $success = 0;
         $failed = 0;
         
         foreach ($ids as $id) {
-            $record = $this->model->get($id);
-            if ($record && $record->status == 'active') {
-                $result = $autoBanService->releaseBan($record->user_id, $reason, $this->auth->id);
+            // 使用原生SQL获取记录
+            $id = intval($id);
+            $record = Db::query("SELECT * FROM {$prefix}ban_record WHERE id = ? LIMIT 1", [$id]);
+            
+            if (!empty($record) && $record[0]['status'] == 'active') {
+                $result = $autoBanService->releaseBan($record[0]['user_id'], $reason, $this->auth->id);
                 if ($result['success']) {
                     $success++;
                 } else {
@@ -202,21 +211,27 @@ class BanRecord extends Backend
      */
     public function releaseDialog($ids = null)
     {
+        $prefix = config('database.prefix');
+        
         if ($this->request->isPost()) {
             $ids = $ids ?: $this->request->post('ids');
             $reason = $this->request->post('reason', '管理员手动解封');
 
-            $record = $this->model->get($ids);
-            if (!$record) {
+            // 使用原生SQL获取记录
+            $ids = intval($ids);
+            $record = Db::query("SELECT * FROM {$prefix}ban_record WHERE id = ? LIMIT 1", [$ids]);
+            
+            if (empty($record)) {
                 $this->error('记录不存在');
             }
+            $record = $record[0];
 
-            if ($record->status != 'active') {
+            if ($record['status'] != 'active') {
                 $this->error('该记录已处理，无法解封');
             }
 
             $autoBanService = new AutoBanService();
-            $result = $autoBanService->releaseBan($record->user_id, $reason, $this->auth->id);
+            $result = $autoBanService->releaseBan($record['user_id'], $reason, $this->auth->id);
 
             if ($result['success']) {
                 $this->success('解封成功');
@@ -226,7 +241,6 @@ class BanRecord extends Backend
         }
 
         // GET请求返回解封表单 - 使用原生SQL确保字段正确
-        $prefix = config('database.prefix');
         $ids = intval($ids);
         $record = Db::query("
             SELECT br.*, u.username, u.nickname, u.mobile
