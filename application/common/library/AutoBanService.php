@@ -433,7 +433,7 @@ class AutoBanService
             ->order('createtime', 'desc')
             ->select();
         
-        return $records ? $records->toArray() : [];
+        return $records ? (is_array($records) ? $records : $records->toArray()) : [];
     }
     
     /**
@@ -644,7 +644,7 @@ class AutoBanService
             'permanent_bans' => $permanentBans,
             'temporary_bans' => $temporaryBans,
             'total_releases' => $totalReleases,
-            'reason_stats' => $reasonStats ? $reasonStats->toArray() : [],
+            'reason_stats' => $reasonStats ? (is_array($reasonStats) ? $reasonStats : $reasonStats->toArray()) : [],
         ];
     }
     
@@ -665,7 +665,7 @@ class AutoBanService
             ->select();
         
         if ($highRiskUsers) {
-            $alerts['high_risk'] = $highRiskUsers->toArray();
+            $alerts['high_risk'] = is_array($highRiskUsers) ? $highRiskUsers : $highRiskUsers->toArray();
         }
         
         // 危险用户
@@ -676,7 +676,7 @@ class AutoBanService
             ->select();
         
         if ($dangerousUsers) {
-            $alerts['dangerous'] = $dangerousUsers->toArray();
+            $alerts['dangerous'] = is_array($dangerousUsers) ? $dangerousUsers : $dangerousUsers->toArray();
         }
         
         // 近期频繁违规用户
@@ -689,7 +689,7 @@ class AutoBanService
             ->select();
         
         if ($recentViolators) {
-            $alerts['recent_violators'] = $recentViolators->toArray();
+            $alerts['recent_violators'] = is_array($recentViolators) ? $recentViolators : $recentViolators->toArray();
         }
         
         return $alerts;
