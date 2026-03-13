@@ -18,27 +18,30 @@ class Config extends Backend
         if ($this->request->isPost()) {
             $params = $this->request->post('row/a');
             
-            foreach ($params as $name => $value) {
-                $exists = Db::name('migration_config')->where('name', $name)->find();
+            $prefix = config('database.prefix');
+            $now = time();
+            
+            foreach ($params as $key => $value) {
+                // 使用原生SQL，检查是否存在
+                $exists = Db::query("SELECT id FROM {$prefix}migration_config WHERE config_key = ? LIMIT 1", [$key]);
+                
                 if ($exists) {
-                    Db::name('migration_config')->where('name', $name)->update([
-                        'value' => $value,
-                        'updatetime' => time(),
-                    ]);
+                    Db::execute("UPDATE {$prefix}migration_config SET config_value = ?, updated_at = ? WHERE config_key = ?", [$value, $now, $key]);
                 } else {
-                    Db::name('migration_config')->insert([
-                        'name' => $name,
-                        'value' => $value,
-                        'createtime' => time(),
-                        'updatetime' => time(),
-                    ]);
+                    Db::execute("INSERT INTO {$prefix}migration_config (config_key, config_value, created_at, updated_at) VALUES (?, ?, ?, ?)", [$key, $value, $now, $now]);
                 }
             }
             
             $this->success();
         }
 
-        $configs = Db::name('migration_config')->column('value', 'name');
+        $prefix = config('database.prefix');
+        $configs = [];
+        
+        $rows = Db::query("SELECT config_key, config_value FROM {$prefix}migration_config");
+        foreach ($rows as $row) {
+            $configs[$row['config_key']] = $row['config_value'];
+        }
         
         $this->view->assign('configs', $configs);
         return $this->view->fetch();
