@@ -350,7 +350,7 @@
             <div class="chart-card">
                 <div class="panel-header" style="display: flex; justify-content: space-between; align-items: center;">
                     <h4><i class="fa fa-history text-danger"></i> 最近封禁记录</h4>
-                    <a href="risk/banrecord?ref=addtabs" class="btn btn-xs btn-default">查看全部</a>
+                    <a href="javascript:;" onclick="Backend.api.addtabs('risk/banrecord', '封禁记录');" class="btn btn-xs btn-default">查看全部</a>
                 </div>
                 <div class="panel-body" style="padding: 0;">
                     <table class="table table-hover" style="margin: 0;">
@@ -375,7 +375,7 @@
             <div class="chart-card">
                 <div class="panel-header" style="display: flex; justify-content: space-between; align-items: center;">
                     <h4><i class="fa fa-fire text-warning"></i> 规则触发排行 (24h)</h4>
-                    <a href="risk/rule?ref=addtabs" class="btn btn-xs btn-default">规则管理</a>
+                    <a href="javascript:;" onclick="Backend.api.addtabs('risk/rule', '规则管理');" class="btn btn-xs btn-default">规则管理</a>
                 </div>
                 <div class="panel-body" style="padding: 0;">
                     <table class="table table-hover" style="margin: 0;">
