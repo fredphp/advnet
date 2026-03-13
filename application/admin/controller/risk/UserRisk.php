@@ -545,16 +545,18 @@ class UserRisk extends Backend
                 break;
                 
             case 'reduce':
-                // 降低风险分
+                // 降低风险分 + 同步解封
                 Db::name('user_risk_score')
                     ->where('user_id', $userId)
                     ->dec('total_score', $reduceScore)
                     ->update();
                 
-                // 重新计算风险等级
+                // 重新计算风险等级，并解除封禁/冻结
                 $newScore = Db::name('user_risk_score')
                     ->where('user_id', $userId)
                     ->value('total_score');
+                
+                $newScore = max(0, $newScore); // 确保不为负数
                 
                 $newLevel = 'safe';
                 if ($newScore >= 200) $newLevel = 'dangerous';
@@ -564,7 +566,13 @@ class UserRisk extends Backend
                 
                 Db::name('user_risk_score')
                     ->where('user_id', $userId)
-                    ->update(['risk_level' => $newLevel, 'updatetime' => time()]);
+                    ->update([
+                        'risk_level' => $newLevel, 
+                        'status' => 'normal',
+                        'ban_expire_time' => null,
+                        'freeze_expire_time' => null,
+                        'updatetime' => time()
+                    ]);
                 
                 // 记录操作日志
                 Db::name('risk_log')->insert([
@@ -586,7 +594,7 @@ class UserRisk extends Backend
                 break;
                 
             case 'whitelist':
-                // 加入白名单
+                // 加入白名单 + 同步解封
                 $expireTime = $whitelistDays > 0 ? time() + $whitelistDays * 86400 : null;
                 
                 // 检查是否已在白名单
@@ -618,6 +626,16 @@ class UserRisk extends Backend
                         'createtime' => time(),
                     ]);
                 }
+                
+                // 同步解除封禁/冻结状态
+                Db::name('user_risk_score')
+                    ->where('user_id', $userId)
+                    ->update([
+                        'status' => 'normal',
+                        'ban_expire_time' => null,
+                        'freeze_expire_time' => null,
+                        'updatetime' => time()
+                    ]);
                 
                 // 记录操作日志
                 Db::name('risk_log')->insert([

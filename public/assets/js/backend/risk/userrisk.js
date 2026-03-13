@@ -110,19 +110,10 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
                     // 判断是否已撤销（最近7天内有撤销记录）
                     if (row.is_revoked == 1) {
                         // 已撤销，显示已撤销标签
-                        var revokeTime = row.last_revoke_time ? '撤销于 ' + (new Date(row.last_revoke_time * 1000).toLocaleString()) : '已撤销';
-                        buttons.push('<span class="label label-default" title="' + revokeTime + '"><i class="fa fa-check"></i> 已撤销</span>');
-                        
-                        // 如果在白名单中，显示移出白名单按钮
-                        buttons.push('<a href="javascript:;" class="btn btn-danger btn-xs btn-remove-whitelist" data-user-id="' + row.user_id + '"><i class="fa fa-times"></i> 移出白名单</a>');
+                        buttons.push('<span class="label label-default"><i class="fa fa-check"></i> 已撤销</span>');
                     } else {
-                        // 未撤销，显示撤销风控按钮
+                        // 未撤销，显示撤销风控按钮（撤销风控会同时解封）
                         buttons.push('<a href="javascript:;" class="btn btn-success btn-xs btn-revoke" data-user-id="' + row.user_id + '"><i class="fa fa-undo"></i> 撤销风控</a>');
-                    }
-                    
-                    // 如果是封禁状态，显示解封按钮
-                    if (row.status === 'banned' || row.status === 'frozen') {
-                        buttons.push('<a href="javascript:;" class="btn btn-warning btn-xs btn-release" data-user-id="' + row.user_id + '"><i class="fa fa-unlock"></i> 解封</a>');
                     }
                     
                     return buttons.join(' ');
@@ -139,72 +130,6 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
             return;
         }
         Controller.api.showRevokeModal(userId);
-    });
-
-    // 解封事件
-    $(document).on('click', '.btn-release', function () {
-        var userId = $(this).attr('data-user-id');
-        if (!userId) {
-            Layer.alert('无法获取用户ID', {icon: 2});
-            return;
-        }
-        var that = this;
-        Layer.confirm('确定要解封该用户吗？', {
-            title: '解封确认',
-            btn: ['确定', '取消']
-        }, function (layerIndex) {
-            $.ajax({
-                url: 'risk/userrisk/release',
-                type: 'POST',
-                dataType: 'json',
-                data: {user_id: userId, reason: '管理员手动解封'},
-                success: function (ret) {
-                    Layer.close(layerIndex);
-                    if (ret.code === 1) {
-                        Layer.alert('解封成功', {icon: 1});
-                        $(that).closest('table').bootstrapTable('refresh');
-                    } else {
-                        Layer.alert(ret.msg || '解封失败', {icon: 2});
-                    }
-                },
-                error: function () {
-                    Layer.alert('请求失败', {icon: 2});
-                }
-            });
-        });
-    });
-
-    // 移出白名单事件
-    $(document).on('click', '.btn-remove-whitelist', function () {
-        var userId = $(this).attr('data-user-id');
-        if (!userId) {
-            Layer.alert('无法获取用户ID', {icon: 2});
-            return;
-        }
-        var that = this;
-        Layer.confirm('确定要将该用户移出白名单吗？移出后将恢复风控检查。', {
-            title: '移出白名单确认',
-            btn: ['确定', '取消']
-        }, function (layerIndex) {
-            $.ajax({
-                url: 'risk/userrisk/removeWhitelist',
-                type: 'POST',
-                dataType: 'json',
-                data: {user_id: userId},
-                success: function (ret) {
-                    Layer.close(layerIndex);
-                    if (ret.code === 1) {
-                        Layer.alert('已移出白名单', {icon: 1});
-                        $(that).closest('table').bootstrapTable('refresh');
-                    } else {
-                        Layer.alert(ret.msg || '操作失败', {icon: 2});
-                    }
-                },
-                error: function () {
-                    Layer.alert('请求失败', {icon: 2});
-                }
-            });
-        });
     });
 
     // 撤销风控弹窗
@@ -244,6 +169,9 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
                 html += '<div class="col-md-4"><p><strong>风险等级：</strong>' + Controller.api.formatter.riskLevel(info.risk_score.risk_level) + '</p></div>';
                 html += '<div class="col-md-4"><p><strong>违规次数：</strong>' + (info.risk_score.violation_count || 0) + '</p></div>';
                 html += '</div>';
+                html += '<div class="row">';
+                html += '<div class="col-md-4"><p><strong>当前状态：</strong>' + Controller.api.formatter.statusText(info.risk_score.status) + '</p></div>';
+                html += '</div>';
                 // 白名单状态
                 if (info.in_whitelist == 1) {
                     html += '<div class="row"><div class="col-md-12"><p><span class="label label-success"><i class="fa fa-shield"></i> 当前在白名单中</span></p></div></div>';
@@ -277,11 +205,12 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
                 html += '<div class="panel panel-default" style="margin-top: 15px;">';
                 html += '<div class="panel-heading"><i class="fa fa-cog"></i> 撤销选项</div>';
                 html += '<div class="panel-body">';
+                html += '<div class="alert alert-info"><i class="fa fa-info-circle"></i> 撤销风控将同时：重置风险分、解除封禁/冻结状态</div>';
                 html += '<form id="revoke-form">';
                 html += '<div class="form-group">';
                 html += '<label>撤销方式</label>';
                 html += '<select name="revoke_type" class="form-control">';
-                html += '<option value="reset">重置风险分（清零所有风险分）</option>';
+                html += '<option value="reset">重置风险分（清零所有风险分，解除封禁/冻结）</option>';
                 html += '<option value="reduce">降低风险分（减少指定分数）</option>';
                 html += '<option value="whitelist">加入白名单（豁免风控检查）</option>';
                 html += '</select>';
@@ -333,7 +262,7 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
                             success: function (ret) {
                                 if (ret.code === 1) {
                                     Layer.close(layerIndex);
-                                    Layer.alert('撤销成功', {icon: 1});
+                                    Layer.alert('撤销成功，已同步解除封禁/冻结状态', {icon: 1});
                                     $('#table').bootstrapTable('refresh');
                                 } else {
                                     Layer.alert(ret.msg || '撤销失败', {icon: 2});
