@@ -306,6 +306,118 @@ class UserRisk extends Backend
     }
     
     /**
+     * 冻结用户
+     */
+    public function freeze()
+    {
+        $userId = $this->request->post('user_id');
+        $duration = $this->request->post('duration', 7);
+        $reason = $this->request->post('reason', '管理员冻结');
+        
+        if (!$userId) {
+            $this->error('请指定用户ID');
+        }
+        
+        // 检查用户是否存在
+        $user = Db::name('user')->where('id', $userId)->find();
+        if (!$user) {
+            $this->error('用户不存在');
+        }
+        
+        $freezeExpireTime = time() + $duration * 86400;
+        
+        // 更新或创建风险评分记录
+        $riskScore = Db::name('user_risk_score')->where('user_id', $userId)->find();
+        if ($riskScore) {
+            Db::name('user_risk_score')->where('user_id', $userId)->update([
+                'status' => 'frozen',
+                'freeze_expire_time' => $freezeExpireTime,
+                'updatetime' => time(),
+            ]);
+        } else {
+            Db::name('user_risk_score')->insert([
+                'user_id' => $userId,
+                'total_score' => 0,
+                'risk_level' => 'low',
+                'status' => 'frozen',
+                'freeze_expire_time' => $freezeExpireTime,
+                'violation_count' => 0,
+                'createtime' => time(),
+                'updatetime' => time(),
+            ]);
+        }
+        
+        // 记录日志
+        Db::name('risk_log')->insert([
+            'user_id' => $userId,
+            'rule_code' => 'MANUAL_FREEZE',
+            'rule_name' => '管理员冻结',
+            'rule_type' => 'global',
+            'risk_level' => 2,
+            'trigger_value' => 0,
+            'threshold' => 0,
+            'score_add' => 0,
+            'action' => 'freeze',
+            'action_duration' => $duration * 86400,
+            'ip' => request()->ip(),
+            'user_agent' => request()->header('user-agent'),
+            'request_data' => json_encode([
+                'reason' => $reason,
+                'duration' => $duration,
+                'admin_id' => $this->auth->id
+            ]),
+            'createtime' => time(),
+        ]);
+        
+        $this->success('冻结成功');
+    }
+    
+    /**
+     * 解冻用户
+     */
+    public function unfreeze()
+    {
+        $userId = $this->request->post('user_id');
+        $reason = $this->request->post('reason', '管理员解冻');
+        
+        if (!$userId) {
+            $this->error('请指定用户ID');
+        }
+        
+        // 更新风险评分状态
+        Db::name('user_risk_score')
+            ->where('user_id', $userId)
+            ->update([
+                'status' => 'normal',
+                'freeze_expire_time' => null,
+                'updatetime' => time(),
+            ]);
+        
+        // 记录日志
+        Db::name('risk_log')->insert([
+            'user_id' => $userId,
+            'rule_code' => 'MANUAL_UNFREEZE',
+            'rule_name' => '管理员解冻',
+            'rule_type' => 'global',
+            'risk_level' => 1,
+            'trigger_value' => 0,
+            'threshold' => 0,
+            'score_add' => 0,
+            'action' => 'unfreeze',
+            'action_duration' => 0,
+            'ip' => request()->ip(),
+            'user_agent' => request()->header('user-agent'),
+            'request_data' => json_encode([
+                'reason' => $reason,
+                'admin_id' => $this->auth->id
+            ]),
+            'createtime' => time(),
+        ]);
+        
+        $this->success('解冻成功');
+    }
+    
+    /**
      * 加入白名单
      */
     public function addWhitelist()

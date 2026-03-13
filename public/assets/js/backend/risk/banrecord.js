@@ -5,7 +5,7 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
             Table.api.init({
                 extend: {
                     index_url: 'risk/banrecord/index',
-                    detail_url: 'risk/banrecord/detail',
+                    detail_url: 'risk/banrecord/viewDetail',
                     del_url: 'risk/banrecord/del',
                     multi_url: 'risk/banrecord/multi',
                     table: '',
@@ -25,29 +25,84 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
                         {checkbox: true},
                         {field: 'id', title: 'ID', sortable: true},
                         {field: 'user_id', title: '用户ID', sortable: true},
-                        {field: 'username', title: '用户名', operate: 'LIKE'},
+                        {field: 'username', title: '用户名', operate: 'LIKE', formatter: Controller.api.formatter.userLink},
                         {field: 'nickname', title: '昵称', operate: 'LIKE'},
                         {field: 'mobile', title: '手机号', operate: 'LIKE'},
-                        {field: 'reason', title: '封禁原因', operate: 'LIKE'},
+                        {field: 'ban_reason', title: '封禁原因', operate: 'LIKE', formatter: Controller.api.formatter.reason},
                         {field: 'ban_type', title: '封禁类型', searchList: {
                             "temporary": "临时封禁",
                             "permanent": "永久封禁"
-                        }},
+                        }, formatter: Controller.api.formatter.banType},
                         {field: 'ban_source', title: '封禁来源', searchList: {
-                            "auto": "自动封禁",
+                            "auto": "系统自动",
                             "manual": "手动封禁"
-                        }},
-                        {field: 'duration', title: '封禁时长(秒)'},
-                        {field: 'expire_time', title: '解封时间', formatter: Table.api.formatter.datetime, operate: 'RANGE', addclass: 'datetimerange'},
-                        {field: 'admin_id', title: '操作人ID'},
+                        }, formatter: Controller.api.formatter.banSource},
+                        {field: 'duration', title: '封禁时长', formatter: Controller.api.formatter.duration},
+                        {field: 'end_time', title: '解封时间', formatter: Table.api.formatter.datetime, operate: 'RANGE', addclass: 'datetimerange'},
                         {field: 'admin_name', title: '操作人'},
                         {field: 'status', title: '状态', searchList: {
                             "active": "封禁中",
                             "released": "已解封",
                             "expired": "已过期"
-                        }, formatter: Table.api.formatter.status},
+                        }, formatter: Controller.api.formatter.status},
                         {field: 'createtime', title: '封禁时间', formatter: Table.api.formatter.datetime, operate: 'RANGE', addclass: 'datetimerange', sortable: true},
-                        {field: 'operate', title: '操作', table: table, events: Table.api.events.operate, formatter: Table.api.formatter.operate}
+                        {field: 'operate', title: '操作', table: table, events: Table.api.events.operate, formatter: Controller.api.formatter.operate, buttons: [
+                            {
+                                name: 'viewdetail',
+                                text: '查看详情',
+                                title: '封禁详情',
+                                classname: 'btn btn-xs btn-info btn-dialog',
+                                icon: 'fa fa-eye',
+                                url: 'risk/banrecord/viewDetail',
+                                extend: 'data-area=\'["800px","600px"]\''
+                            },
+                            {
+                                name: 'userinfo',
+                                text: '用户信息',
+                                title: '用户详情',
+                                classname: 'btn btn-xs btn-primary btn-dialog',
+                                icon: 'fa fa-user',
+                                url: 'risk/banrecord/userInfo',
+                                callback: function (data) {
+                                    Layer.alert("接收到回传数据：" + JSON.stringify(data));
+                                },
+                                extend: 'data-area=\'["700px","550px"]\''
+                            },
+                            {
+                                name: 'release',
+                                text: '解封',
+                                title: '解封用户',
+                                classname: 'btn btn-xs btn-success btn-ajax',
+                                icon: 'fa fa-unlock',
+                                url: 'risk/banrecord/release',
+                                confirm: '确认要解封该用户吗？',
+                                success: function (data, ret) {
+                                    table.bootstrapTable('refresh');
+                                    Layer.alert(ret.msg);
+                                },
+                                error: function (data, ret) {
+                                    Layer.alert(ret.msg);
+                                },
+                                visible: function (row) {
+                                    return row.status === 'active';
+                                }
+                            },
+                            {
+                                name: 'releasedialog',
+                                text: '解封',
+                                title: '解封确认',
+                                classname: 'btn btn-xs btn-success btn-dialog',
+                                icon: 'fa fa-unlock-alt',
+                                url: 'risk/banrecord/releaseDialog',
+                                extend: 'data-area=\'["500px","350px"]\'',
+                                callback: function (data) {
+                                    table.bootstrapTable('refresh');
+                                },
+                                visible: function (row) {
+                                    return row.status === 'active';
+                                }
+                            }
+                        ]}
                     ]
                 ]
             });
@@ -58,6 +113,116 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
         api: {
             bindevent: function () {
                 Form.api.bindevent($("form[role=form]"));
+            },
+            formatter: {
+                // 用户名链接
+                userLink: function (value, row, index) {
+                    if (!value) return '-';
+                    return '<a href="javascript:;" class="btn-dialog" data-url="risk/banrecord/userInfo?user_id=' + row.user_id + '" data-title="用户详情">' + value + '</a>';
+                },
+                // 封禁原因
+                reason: function (value, row, index) {
+                    if (!value) return '-';
+                    // 显示完整原因，鼠标悬停显示详情
+                    return '<span title="' + value + '">' + (value.length > 20 ? value.substr(0, 20) + '...' : value) + '</span>';
+                },
+                // 封禁类型
+                banType: function (value, row, index) {
+                    var types = {
+                        'temporary': '<span class="label label-warning">临时封禁</span>',
+                        'permanent': '<span class="label label-danger">永久封禁</span>'
+                    };
+                    return types[value] || '<span class="label label-default">' + value + '</span>';
+                },
+                // 封禁来源
+                banSource: function (value, row, index) {
+                    var sources = {
+                        'auto': '<span class="label label-info">系统自动</span>',
+                        'manual': '<span class="label label-primary">手动封禁</span>'
+                    };
+                    return sources[value] || '<span class="label label-default">' + value + '</span>';
+                },
+                // 封禁时长
+                duration: function (value, row, index) {
+                    if (!value || value == 0) {
+                        if (row.ban_type === 'permanent') {
+                            return '<span class="text-danger">永久</span>';
+                        }
+                        return '-';
+                    }
+                    // 转换为可读格式
+                    var days = Math.floor(value / 86400);
+                    var hours = Math.floor((value % 86400) / 3600);
+                    var minutes = Math.floor((value % 3600) / 60);
+
+                    var result = [];
+                    if (days > 0) result.push(days + '天');
+                    if (hours > 0) result.push(hours + '小时');
+                    if (minutes > 0) result.push(minutes + '分钟');
+
+                    return result.join('') || value + '秒';
+                },
+                // 状态
+                status: function (value, row, index) {
+                    var statuses = {
+                        'active': '<span class="label label-danger">封禁中</span>',
+                        'released': '<span class="label label-success">已解封</span>',
+                        'expired': '<span class="label label-default">已过期</span>'
+                    };
+                    return statuses[value] || '<span class="label label-default">' + value + '</span>';
+                },
+                // 操作按钮
+                operate: function (value, row, index) {
+                    var table = this.table;
+                    // 获取默认操作按钮
+                    var buttons = [];
+
+                    // 查看详情按钮
+                    buttons.push({
+                        name: 'viewdetail',
+                        text: '查看详情',
+                        title: '封禁详情',
+                        classname: 'btn btn-xs btn-info btn-dialog',
+                        icon: 'fa fa-eye',
+                        url: 'risk/banrecord/viewDetail?ids=' + row.id,
+                        extend: 'data-area=\'["800px","600px"]\''
+                    });
+
+                    // 用户信息按钮
+                    buttons.push({
+                        name: 'userinfo',
+                        text: '用户信息',
+                        title: '用户详情',
+                        classname: 'btn btn-xs btn-primary btn-dialog',
+                        icon: 'fa fa-user',
+                        url: 'risk/banrecord/userInfo?user_id=' + row.user_id,
+                        extend: 'data-area=\'["700px","550px"]\''
+                    });
+
+                    // 只有封禁中的记录才显示解封按钮
+                    if (row.status === 'active') {
+                        buttons.push({
+                            name: 'release',
+                            text: '解封',
+                            title: '解封确认',
+                            classname: 'btn btn-xs btn-success btn-dialog',
+                            icon: 'fa fa-unlock',
+                            url: 'risk/banrecord/releaseDialog?ids=' + row.id,
+                            extend: 'data-area=\'["500px","350px"]\''
+                        });
+                    }
+
+                    // 生成按钮HTML
+                    var html = [];
+                    $.each(buttons, function (i, btn) {
+                        var icon = btn.icon ? '<i class="fa ' + btn.icon + '"></i> ' : '';
+                        var className = btn.classname || 'btn btn-xs btn-default';
+                        var extend = btn.extend || '';
+                        html.push('<a href="javascript:;" class="' + className + '" data-url="' + btn.url + '" data-title="' + btn.title + '" ' + extend + '>' + icon + btn.text + '</a>');
+                    });
+
+                    return html.join(' ');
+                }
             }
         }
     };

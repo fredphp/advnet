@@ -1,0 +1,292 @@
+<style>
+.detail-card {
+    padding: 15px;
+    background: #f8f9fa;
+    border-radius: 8px;
+    margin-bottom: 15px;
+}
+.detail-row {
+    margin-bottom: 10px;
+    padding-bottom: 10px;
+    border-bottom: 1px dashed #e9ecef;
+}
+.detail-row:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+    padding-bottom: 0;
+}
+.detail-label {
+    color: #6c757d;
+    font-weight: 500;
+    width: 100px;
+    display: inline-block;
+}
+.status-badge {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-weight: bold;
+    font-size: 12px;
+}
+.status-active { background: #dc3545; color: #fff; }
+.status-released { background: #28a745; color: #fff; }
+.status-expired { background: #6c757d; color: #fff; }
+.type-temporary { background: #ffc107; color: #212529; }
+.type-permanent { background: #dc3545; color: #fff; }
+.source-auto { background: #17a2b8; color: #fff; }
+.source-manual { background: #6f42c1; color: #fff; }
+.history-item {
+    padding: 10px;
+    background: #fff;
+    border-radius: 4px;
+    margin-bottom: 8px;
+    border-left: 3px solid #e9ecef;
+}
+.history-item.active { border-left-color: #dc3545; }
+.history-item.released { border-left-color: #28a745; }
+.history-item.expired { border-left-color: #6c757d; }
+</style>
+
+<div class="panel-body">
+    <!-- 封禁基本信息 -->
+    <div class="detail-card">
+        <h4 style="margin-top: 0; margin-bottom: 15px; color: #495057;">
+            <i class="fa fa-ban text-danger"></i> 封禁详情
+        </h4>
+
+        <div class="detail-row">
+            <span class="detail-label">记录ID:</span>
+            <span>{$record.id}</span>
+        </div>
+
+        <div class="detail-row">
+            <span class="detail-label">用户信息:</span>
+            <span>
+                <strong>{$record.username|default='-'}</strong>
+                {if $record.nickname}
+                <small class="text-muted">({$record.nickname})</small>
+                {/if}
+                {if $record.mobile}
+                <small class="text-muted">| {$record.mobile}</small>
+                {/if}
+                <small class="text-muted">(ID: {$record.user_id})</small>
+            </span>
+        </div>
+
+        <div class="detail-row">
+            <span class="detail-label">封禁状态:</span>
+            <span class="status-badge status-{$record.status}">{$record.status_text}</span>
+        </div>
+
+        <div class="detail-row">
+            <span class="detail-label">封禁类型:</span>
+            <span class="status-badge type-{$record.ban_type}">{$record.ban_type_text}</span>
+        </div>
+
+        <div class="detail-row">
+            <span class="detail-label">封禁来源:</span>
+            <span class="status-badge source-{$record.ban_source}">{$record.ban_source_text}</span>
+        </div>
+
+        <div class="detail-row">
+            <span class="detail-label">封禁原因:</span>
+            <span class="text-danger">{$record.ban_reason|default='-'}</span>
+        </div>
+
+        <div class="detail-row">
+            <span class="detail-label">封禁时间:</span>
+            <span>{$record.createtime|date='Y-m-d H:i:s',###}</span>
+        </div>
+
+        {if $record.ban_type == 'temporary'}
+        <div class="detail-row">
+            <span class="detail-label">封禁时长:</span>
+            <span>
+                {php}
+                $duration = $record['duration'];
+                $days = floor($duration / 86400);
+                $hours = floor(($duration % 86400) / 3600);
+                $result = [];
+                if ($days > 0) $result[] = $days . '天';
+                if ($hours > 0) $result[] = $hours . '小时';
+                echo implode('', $result);
+                {/php}
+            </span>
+        </div>
+
+        {if $record.end_time}
+        <div class="detail-row">
+            <span class="detail-label">解封时间:</span>
+            <span>{$record.end_time|date='Y-m-d H:i:s',###}</span>
+            {php}
+            $remaining = $record['end_time'] - time();
+            if ($record['status'] == 'active' && $remaining > 0) {
+                $days = floor($remaining / 86400);
+                $hours = floor(($remaining % 86400) / 3600);
+                echo '<span class="label label-info" style="margin-left: 10px;">剩余 ' . $days . '天' . $hours . '小时</span>';
+            }
+            {/php}
+        </div>
+        {/if}
+        {/if}
+
+        {if $record.admin_name}
+        <div class="detail-row">
+            <span class="detail-label">操作人:</span>
+            <span>{$record.admin_name}</span>
+        </div>
+        {/if}
+
+        {if $record.status == 'released'}
+        <div class="detail-row">
+            <span class="detail-label">解封时间:</span>
+            <span>{$record.release_time|date='Y-m-d H:i:s',###}</span>
+        </div>
+        <div class="detail-row">
+            <span class="detail-label">解封原因:</span>
+            <span class="text-success">{$record.release_reason|default='-'}</span>
+        </div>
+        {/if}
+    </div>
+
+    <!-- 用户风险评分 -->
+    {if $risk_score}
+    <div class="detail-card">
+        <h4 style="margin-top: 0; margin-bottom: 15px; color: #495057;">
+            <i class="fa fa-exclamation-triangle text-warning"></i> 风险评分
+        </h4>
+
+        <div class="row text-center">
+            <div class="col-md-3">
+                <div style="font-size: 24px; font-weight: bold; color: {$risk_score.risk_level == 'low' ? '#28a745' : ($risk_score.risk_level == 'medium' ? '#ffc107' : '#dc3545')};">
+                    {$risk_score.total_score}
+                </div>
+                <small class="text-muted">风险评分</small>
+            </div>
+            <div class="col-md-3">
+                <div>
+                    <span class="label label-{$risk_score.risk_level == 'low' ? 'success' : ($risk_score.risk_level == 'medium' ? 'warning' : 'danger')}">
+                        {switch $risk_score.risk_level}
+                            {case low}低风险{/case}
+                            {case medium}中风险{/case}
+                            {case high}高风险{/case}
+                            {case dangerous}危险{/case}
+                        {/switch}
+                    </span>
+                </div>
+                <small class="text-muted">风险等级</small>
+            </div>
+            <div class="col-md-3">
+                <div style="font-size: 18px; font-weight: bold;">
+                    {$risk_score.violation_count}
+                </div>
+                <small class="text-muted">违规次数</small>
+            </div>
+            <div class="col-md-3">
+                <div>
+                    <span class="status-badge status-{$risk_score.status}">
+                        {switch $risk_score.status}
+                            {case normal}正常{/case}
+                            {case frozen}冻结中{/case}
+                            {case banned}已封禁{/case}
+                        {/switch}
+                    </span>
+                </div>
+                <small class="text-muted">当前状态</small>
+            </div>
+        </div>
+    </div>
+    {/if}
+
+    <!-- 封禁历史 -->
+    {if $ban_history && count($ban_history) > 0}
+    <div class="detail-card">
+        <h4 style="margin-top: 0; margin-bottom: 15px; color: #495057;">
+            <i class="fa fa-history"></i> 封禁历史 (共 {count($ban_history)} 次)
+        </h4>
+
+        <div style="max-height: 250px; overflow-y: auto;">
+            {volist name="ban_history" id="h"}
+            <div class="history-item {$h.status}">
+                <div class="row">
+                    <div class="col-md-6">
+                        <span class="label label-{$h.ban_type == 'permanent' ? 'danger' : 'warning'}">
+                            {switch $h.ban_type}
+                                {case temporary}临时封禁{/case}
+                                {case permanent}永久封禁{/case}
+                            {/switch}
+                        </span>
+                        <span class="label label-{$h.status == 'active' ? 'danger' : 'success'}">
+                            {switch $h.status}
+                                {case active}封禁中{/case}
+                                {case released}已解封{/case}
+                                {case expired}已过期{/case}
+                            {/switch}
+                        </span>
+                    </div>
+                    <div class="col-md-6 text-right">
+                        <small class="text-muted">{$h.createtime|date='Y-m-d H:i',###}</small>
+                    </div>
+                </div>
+                <div style="margin-top: 8px;">
+                    <span class="text-danger">{$h.ban_reason}</span>
+                </div>
+            </div>
+            {/volist}
+        </div>
+    </div>
+    {/if}
+
+    <!-- 操作按钮 -->
+    {if $record.status == 'active'}
+    <div class="text-center" style="margin-top: 20px;">
+        <button type="button" class="btn btn-success" onclick="releaseBan({$record.id})">
+            <i class="fa fa-unlock"></i> 解除封禁
+        </button>
+        <button type="button" class="btn btn-primary" onclick="viewUser({$record.user_id})">
+            <i class="fa fa-user"></i> 查看用户详情
+        </button>
+    </div>
+    {else}
+    <div class="text-center" style="margin-top: 20px;">
+        <button type="button" class="btn btn-primary" onclick="viewUser({$record.user_id})">
+            <i class="fa fa-user"></i> 查看用户详情
+        </button>
+    </div>
+    {/if}
+</div>
+
+<script>
+function releaseBan(id) {
+    Layer.confirm('确认要解除该封禁吗？', {icon: 3, title:'提示'}, function(index){
+        Layer.close(index);
+        Layer.prompt({title: '请输入解封原因', formType: 2, value: '管理员手动解封'}, function(pass, index2){
+            $.ajax({
+                url: 'risk/banrecord/release',
+                type: 'POST',
+                data: {ids: id, reason: pass},
+                dataType: 'json',
+                success: function(ret) {
+                    if (ret.code == 1) {
+                        Layer.msg(ret.msg || '解封成功');
+                        setTimeout(function() {
+                            parent.$(".btn-refresh").trigger("click");
+                            var index3 = parent.layer.getFrameIndex(window.name);
+                            parent.layer.close(index3);
+                        }, 1000);
+                    } else {
+                        Layer.msg(ret.msg || '解封失败');
+                    }
+                }
+            });
+            Layer.close(index2);
+        });
+    });
+}
+
+function viewUser(userId) {
+    Fast.api.open('risk/banrecord/userInfo?user_id=' + userId, '用户详情', {
+        area: ['700px', '550px']
+    });
+}
+</script>
