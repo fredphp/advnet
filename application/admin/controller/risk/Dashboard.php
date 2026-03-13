@@ -143,11 +143,11 @@ class Dashboard extends Backend
                 'today_stats' => $todayStats,
                 'yesterday_violations' => $yesterdayViolations,
                 'violations_change' => $violationsChange,
-                'risk_user_stats' => $riskUserStats ? $riskUserStats->toArray() : [],
-                'user_status_stats' => $userStatusStats ? $userStatusStats->toArray() : [],
-                'hourly_violations' => $hourlyViolations ? $hourlyViolations->toArray() : [],
-                'rule_trigger_stats' => $ruleTriggerStats ? $ruleTriggerStats->toArray() : [],
-                'recent_bans' => $recentBans ? $recentBans->toArray() : [],
+                'risk_user_stats' => $riskUserStats ? (is_array($riskUserStats) ? $riskUserStats : $riskUserStats->toArray()) : [],
+                'user_status_stats' => $userStatusStats ? (is_array($userStatusStats) ? $userStatusStats : $userStatusStats->toArray()) : [],
+                'hourly_violations' => $hourlyViolations ? (is_array($hourlyViolations) ? $hourlyViolations : $hourlyViolations->toArray()) : [],
+                'rule_trigger_stats' => $ruleTriggerStats ? (is_array($ruleTriggerStats) ? $ruleTriggerStats : $ruleTriggerStats->toArray()) : [],
+                'recent_bans' => $recentBans ? (is_array($recentBans) ? $recentBans : $recentBans->toArray()) : [],
                 'alerts' => $alerts,
             ]);
         }
@@ -198,8 +198,8 @@ class Dashboard extends Backend
             ->count();
         
         $this->success('', null, [
-            'online_risk_users' => $onlineRiskUsers ? $onlineRiskUsers->toArray() : [],
-            'recent_requests' => $recentRequests ? $recentRequests->toArray() : [],
+            'online_risk_users' => $onlineRiskUsers ? (is_array($onlineRiskUsers) ? $onlineRiskUsers : $onlineRiskUsers->toArray()) : [],
+            'recent_requests' => $recentRequests ? (is_array($recentRequests) ? $recentRequests : $recentRequests->toArray()) : [],
             'ip_blacklist_count' => $ipBlacklistCount,
             'device_blacklist_count' => $deviceBlacklistCount,
         ]);
@@ -227,7 +227,7 @@ class Dashboard extends Backend
             ->select();
         
         $this->success('', null, [
-            'rule_stats' => $ruleStats ? $ruleStats->toArray() : [],
+            'rule_stats' => $ruleStats ? (is_array($ruleStats) ? $ruleStats : $ruleStats->toArray()) : [],
             'start_date' => $startDate,
             'end_date' => date('Y-m-d'),
         ]);
@@ -273,8 +273,8 @@ class Dashboard extends Backend
         
         $this->success('', null, [
             'score_history' => $history,
-            'recent_violations' => $recentViolations ? $recentViolations->toArray() : [],
-            'behavior_stats' => $behaviorStats ? $behaviorStats->toArray() : [],
+            'recent_violations' => $recentViolations ? (is_array($recentViolations) ? $recentViolations : $recentViolations->toArray()) : [],
+            'behavior_stats' => $behaviorStats ? (is_array($behaviorStats) ? $behaviorStats : $behaviorStats->toArray()) : [],
         ]);
     }
     
