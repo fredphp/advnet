@@ -139,7 +139,7 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
                     var table = this.table;
                     var buttons = [];
 
-                    // 查看详情按钮（包含用户信息）
+                    // 查看详情按钮（包含用户信息和解封功能）
                     buttons.push({
                         name: 'viewdetail',
                         text: '查看详情',
@@ -149,19 +149,6 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
                         url: 'risk/banrecord/viewDetail?ids=' + row.id,
                         extend: 'data-area=\'["900px","700px"]\''
                     });
-
-                    // 只有封禁中的记录才显示解封按钮
-                    if (row.status === 'active') {
-                        buttons.push({
-                            name: 'release',
-                            text: '解封',
-                            title: '解封确认',
-                            classname: 'btn btn-xs btn-success btn-dialog',
-                            icon: 'fa fa-unlock',
-                            url: 'risk/banrecord/releaseDialog?ids=' + row.id,
-                            extend: 'data-area=\'["500px","350px"]\''
-                        });
-                    }
 
                     // 生成按钮HTML
                     var html = [];
