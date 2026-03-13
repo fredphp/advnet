@@ -23,12 +23,12 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
                 columns: [
                     [
                         {checkbox: true},
-                        {field: 'id', title: 'ID', sortable: true},
-                        {field: 'user_id', title: '用户ID', sortable: true},
-                        {field: 'username', title: '用户名', operate: 'LIKE'},
-                        {field: 'nickname', title: '昵称', operate: 'LIKE'},
+                        {field: 'id', title: 'ID', sortable: true, visible: false},
+                        {field: 'user_id', title: '用户ID', sortable: true, visible: false},
+                        {field: 'username', title: '用户名', operate: 'LIKE', formatter: Controller.api.formatter.username},
+                        {field: 'nickname', title: '昵称', operate: 'LIKE', formatter: Controller.api.formatter.nickname},
                         {field: 'mobile', title: '手机号', operate: 'LIKE'},
-                        {field: 'total_score', title: '风险总分', sortable: true, operate: 'BETWEEN'},
+                        {field: 'total_score', title: '风险总分', sortable: true, operate: 'BETWEEN', formatter: Controller.api.formatter.score},
                         {field: 'video_score', title: '视频风险分', visible: false},
                         {field: 'task_score', title: '任务风险分', visible: false},
                         {field: 'withdraw_score', title: '提现风险分', visible: false},
@@ -46,11 +46,11 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
                             "normal": "正常",
                             "frozen": "冻结",
                             "banned": "封禁"
-                        }, formatter: Table.api.formatter.status},
+                        }, formatter: Controller.api.formatter.statusText},
                         {field: 'violation_count', title: '违规次数', sortable: true},
                         {field: 'last_violation_time', title: '最后违规时间', formatter: Table.api.formatter.datetime, operate: 'RANGE', addclass: 'datetimerange'},
-                        {field: 'updatetime', title: '更新时间', formatter: Table.api.formatter.datetime, operate: 'RANGE', addclass: 'datetimerange', sortable: true},
-                        {field: 'operate', title: '操作', table: table, events: Table.api.events.operate, formatter: Table.api.formatter.operate}
+                        {field: 'updatetime', title: '更新时间', formatter: Table.api.formatter.datetime, operate: 'RANGE', addclass: 'datetimerange', sortable: true, visible: false},
+                        {field: 'operate', title: '操作', table: table, events: Table.api.events.operate, formatter: Controller.api.formatter.operate}
                     ]
                 ]
             });
@@ -63,6 +63,22 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
                 Form.api.bindevent($("form[role=form]"));
             },
             formatter: {
+                username: function (value, row, index) {
+                    if (!value) return '<span class="text-muted">-</span>';
+                    return '<span class="text-primary">' + value + '</span>';
+                },
+                nickname: function (value, row, index) {
+                    if (!value) return '<span class="text-muted">-</span>';
+                    return '<span>' + value + '</span>';
+                },
+                score: function (value, row, index) {
+                    var score = parseFloat(value) || 0;
+                    var color = 'success';
+                    if (score >= 200) color = 'danger';
+                    else if (score >= 100) color = 'warning';
+                    else if (score >= 50) color = 'info';
+                    return '<span class="badge bg-' + color + '">' + score.toFixed(0) + '</span>';
+                },
                 riskLevel: function (value, row, index) {
                     var colorMap = {
                         'safe': 'success',
@@ -79,9 +95,196 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
                         'dangerous': '危险'
                     };
                     return '<span class="label label-' + colorMap[value] + '">' + textMap[value] + '</span>';
+                },
+                statusText: function (value, row, index) {
+                    var colorMap = {
+                        'normal': 'success',
+                        'frozen': 'warning',
+                        'banned': 'danger'
+                    };
+                    var textMap = {
+                        'normal': '正常',
+                        'frozen': '冻结',
+                        'banned': '封禁'
+                    };
+                    return '<span class="label label-' + colorMap[value] + '">' + textMap[value] + '</span>';
+                },
+                operate: function (value, row, index) {
+                    var that = $.extend({}, this);
+                    var table = $(that.table).clone(true);
+                    
+                    // 基础操作按钮
+                    var buttons = [];
+                    
+                    // 撤销风控按钮
+                    buttons.push('<a href="javascript:;" class="btn btn-success btn-xs btn-revoke" data-id="' + row.user_id + '"><i class="fa fa-undo"></i> 撤销风控</a>');
+                    
+                    // 查看详情按钮
+                    buttons.push('<a href="javascript:;" class="btn btn-info btn-xs btn-detail" data-id="' + row.user_id + '"><i class="fa fa-eye"></i> 详情</a>');
+                    
+                    // 如果是封禁状态，显示解封按钮
+                    if (row.status === 'banned' || row.status === 'frozen') {
+                        buttons.push('<a href="javascript:;" class="btn btn-warning btn-xs btn-release" data-id="' + row.user_id + '"><i class="fa fa-unlock"></i> 解封</a>');
+                    }
+                    
+                    return buttons.join(' ');
                 }
             }
         }
     };
+
+    // 撤销风控事件
+    $(document).on('click', '.btn-revoke', function () {
+        var userId = $(this).data('id');
+        Controller.api.showRevokeModal(userId);
+    });
+
+    // 查看详情事件
+    $(document).on('click', '.btn-detail', function () {
+        var userId = $(this).data('id');
+        Fast.api.open('risk/userrisk/detail/user_id/' + userId, '用户风险详情', {
+            area: ['900px', '600px']
+        });
+    });
+
+    // 解封事件
+    $(document).on('click', '.btn-release', function () {
+        var userId = $(this).data('id');
+        var that = this;
+        Layer.confirm('确定要解封该用户吗？', {
+            title: '解封确认',
+            btn: ['确定', '取消']
+        }, function (index) {
+            Fast.api.ajax({
+                url: 'risk/userrisk/release',
+                data: {user_id: userId, reason: '管理员手动解封'}
+            }, function (data, ret) {
+                Layer.close(index);
+                Layer.alert('解封成功', {icon: 1});
+                $(that).closest('table').bootstrapTable('refresh');
+            }, function (data, ret) {
+                Layer.alert(ret.msg || '解封失败', {icon: 2});
+            });
+        });
+    });
+
+    // 撤销风控弹窗
+    Controller.api.showRevokeModal = function (userId) {
+        // 获取用户信息
+        Fast.api.ajax({
+            url: 'risk/userrisk/revokeInfo',
+            data: {user_id: userId}
+        }, function (data, ret) {
+            var info = ret.data;
+            
+            // 构建弹窗内容
+            var html = '<div class="revoke-modal-content" style="padding: 15px;">';
+            
+            // 用户基本信息
+            html += '<div class="panel panel-default">';
+            html += '<div class="panel-heading"><strong>用户基本信息</strong></div>';
+            html += '<div class="panel-body">';
+            html += '<div class="row">';
+            html += '<div class="col-md-4"><p><strong>用户名：</strong>' + (info.user.username || '-') + '</p></div>';
+            html += '<div class="col-md-4"><p><strong>昵称：</strong>' + (info.user.nickname || '-') + '</p></div>';
+            html += '<div class="col-md-4"><p><strong>手机号：</strong>' + (info.user.mobile || '-') + '</p></div>';
+            html += '</div>';
+            html += '<div class="row">';
+            html += '<div class="col-md-4"><p><strong>风险总分：</strong><span class="badge bg-danger">' + (info.risk_score.total_score || 0) + '</span></p></div>';
+            html += '<div class="col-md-4"><p><strong>风险等级：</strong>' + Controller.api.formatter.riskLevel(info.risk_score.risk_level) + '</p></div>';
+            html += '<div class="col-md-4"><p><strong>违规次数：</strong>' + (info.risk_score.violation_count || 0) + '</p></div>';
+            html += '</div>';
+            html += '</div></div>';
+            
+            // 最近风控记录
+            html += '<div class="panel panel-default" style="margin-top: 15px;">';
+            html += '<div class="panel-heading"><strong>最近风控记录</strong></div>';
+            html += '<div class="panel-body" style="max-height: 300px; overflow-y: auto;">';
+            if (info.risk_logs && info.risk_logs.length > 0) {
+                html += '<table class="table table-striped table-condensed">';
+                html += '<thead><tr><th>时间</th><th>规则</th><th>类型</th><th>加分</th><th>动作</th></tr></thead>';
+                html += '<tbody>';
+                info.risk_logs.forEach(function(log) {
+                    html += '<tr>';
+                    html += '<td>' + (log.createtime_text || '-') + '</td>';
+                    html += '<td>' + (log.rule_name || '-') + '</td>';
+                    html += '<td>' + (log.rule_type || '-') + '</td>';
+                    html += '<td><span class="text-danger">+' + (log.score_add || 0) + '</span></td>';
+                    html += '<td>' + (log.action || '-') + '</td>';
+                    html += '</tr>';
+                });
+                html += '</tbody></table>';
+            } else {
+                html += '<p class="text-muted text-center">暂无风控记录</p>';
+            }
+            html += '</div></div>';
+            
+            // 撤销选项
+            html += '<div class="panel panel-default" style="margin-top: 15px;">';
+            html += '<div class="panel-heading"><strong>撤销选项</strong></div>';
+            html += '<div class="panel-body">';
+            html += '<form id="revoke-form">';
+            html += '<div class="form-group">';
+            html += '<label>撤销方式</label>';
+            html += '<select name="revoke_type" class="form-control">';
+            html += '<option value="reset">重置风险分（清零所有风险分）</option>';
+            html += '<option value="reduce">降低风险分（减少指定分数）</option>';
+            html += '<option value="whitelist">加入白名单（豁免风控检查）</option>';
+            html += '</select>';
+            html += '</div>';
+            html += '<div class="form-group reduce-score-group" style="display:none;">';
+            html += '<label>减少分数</label>';
+            html += '<input type="number" name="reduce_score" class="form-control" value="50" min="1">';
+            html += '</div>';
+            html += '<div class="form-group whitelist-days-group" style="display:none;">';
+            html += '<label>白名单有效期（天，0为永久）</label>';
+            html += '<input type="number" name="whitelist_days" class="form-control" value="30" min="0">';
+            html += '</div>';
+            html += '<div class="form-group">';
+            html += '<label>撤销原因</label>';
+            html += '<textarea name="reason" class="form-control" rows="2" placeholder="请填写撤销原因"></textarea>';
+            html += '</div>';
+            html += '<input type="hidden" name="user_id" value="' + userId + '">';
+            html += '</form>';
+            html += '</div></div>';
+            
+            html += '</div>';
+            
+            // 显示弹窗
+            Layer.open({
+                type: 1,
+                title: '撤销风控',
+                area: ['700px', 'auto'],
+                content: html,
+                btn: ['确认撤销', '取消'],
+                yes: function (index, layero) {
+                    var form = $('#revoke-form');
+                    var data = form.serialize();
+                    
+                    Fast.api.ajax({
+                        url: 'risk/userrisk/revoke',
+                        data: data
+                    }, function (data, ret) {
+                        Layer.close(index);
+                        Layer.alert('撤销成功', {icon: 1});
+                        $('#table').bootstrapTable('refresh');
+                    }, function (data, ret) {
+                        Layer.alert(ret.msg || '撤销失败', {icon: 2});
+                    });
+                }
+            });
+            
+            // 撤销方式切换
+            $('select[name="revoke_type"]').on('change', function() {
+                var val = $(this).val();
+                $('.reduce-score-group').toggle(val === 'reduce');
+                $('.whitelist-days-group').toggle(val === 'whitelist');
+            });
+            
+        }, function (data, ret) {
+            Layer.alert(ret.msg || '获取用户信息失败', {icon: 2});
+        });
+    };
+
     return Controller;
 });

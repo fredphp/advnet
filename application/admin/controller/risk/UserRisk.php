@@ -30,36 +30,61 @@ class UserRisk extends Backend
             $minScore = $this->request->get('min_score');
             $search = $this->request->get('search');
             
-            $query = Db::name('user_risk_score rs')
-                ->join('user u', 'u.id = rs.user_id', 'LEFT')
-                ->field('rs.*, u.username, u.nickname, u.mobile, u.avatar');
-            
+            // 构建查询条件
+            $where = [];
             if ($riskLevel) {
-                $query->where('rs.risk_level', $riskLevel);
+                $where['rs.risk_level'] = $riskLevel;
             }
             
             if ($status) {
-                $query->where('rs.status', $status);
+                $where['rs.status'] = $status;
             }
             
+            // 总数查询
+            $totalQuery = Db::name('user_risk_score rs')
+                ->join('user u', 'u.id = rs.user_id', 'LEFT')
+                ->where($where);
+            
             if ($minScore !== null && $minScore !== '') {
-                $query->where('rs.total_score', '>=', $minScore);
+                $totalQuery->where('rs.total_score', '>=', $minScore);
             }
             
             if ($search) {
-                $query->where(function ($q) use ($search) {
+                $totalQuery->where(function ($q) use ($search) {
                     $q->whereLike('u.username', "%{$search}%")
                       ->whereOr('u.nickname', 'like', "%{$search}%")
                       ->whereOr('u.mobile', 'like', "%{$search}%");
                 });
             }
             
-            $total = $query->count();
-            $list = $query->order("rs.{$sort}", $order)
+            $total = $totalQuery->count();
+            
+            // 列表查询
+            $listQuery = Db::name('user_risk_score rs')
+                ->join('user u', 'u.id = rs.user_id', 'LEFT')
+                ->field('rs.*, u.username, u.nickname, u.mobile, u.avatar')
+                ->where($where);
+            
+            if ($minScore !== null && $minScore !== '') {
+                $listQuery->where('rs.total_score', '>=', $minScore);
+            }
+            
+            if ($search) {
+                $listQuery->where(function ($q) use ($search) {
+                    $q->whereLike('u.username', "%{$search}%")
+                      ->whereOr('u.nickname', 'like', "%{$search}%")
+                      ->whereOr('u.mobile', 'like', "%{$search}%");
+                });
+            }
+            
+            $list = $listQuery->order("rs.{$sort}", $order)
                 ->limit($offset, $limit)
                 ->select();
             
-            return json(['total' => $total, 'rows' => $list]);
+            // 确保返回数组格式
+            $rows = is_array($list) ? $list : ($list ? $list->toArray() : []);
+            
+            return json(['total' => $total, 'rows' => $rows]);
         }
         
         return $this->view->fetch();
@@ -349,5 +374,213 @@ class UserRisk extends Backend
         
         fclose($output);
         exit;
+    }
+    
+    /**
+     * 获取撤销风控所需信息
+     */
+    public function revokeInfo()
+    {
+        $userId = $this->request->get('user_id');
+        
+        if (!$userId) {
+            $this->error('请指定用户ID');
+        }
+        
+        // 用户基本信息
+        $user = Db::name('user')->where('id', $userId)->find();
+        if (!$user) {
+            $this->error('用户不存在');
+        }
+        
+        // 风险评分详情
+        $riskScore = Db::name('user_risk_score')->where('user_id', $userId)->find();
+        if (!$riskScore) {
+            $riskScore = [
+                'total_score' => 0,
+                'risk_level' => 'safe',
+                'violation_count' => 0,
+            ];
+        }
+        
+        // 最近风控记录
+        $riskLogs = Db::name('risk_log')
+            ->where('user_id', $userId)
+            ->order('createtime', 'desc')
+            ->limit(20)
+            ->select();
+        
+        // 处理时间格式
+        $logsData = [];
+        if ($riskLogs) {
+            foreach ($riskLogs as $log) {
+                $log['createtime_text'] = date('Y-m-d H:i:s', $log['createtime']);
+                $logsData[] = $log;
+            }
+        }
+        
+        $this->success('', null, [
+            'user' => $user,
+            'risk_score' => $riskScore,
+            'risk_logs' => $logsData,
+        ]);
+    }
+    
+    /**
+     * 撤销风控
+     */
+    public function revoke()
+    {
+        $userId = $this->request->post('user_id');
+        $revokeType = $this->request->post('revoke_type', 'reset');
+        $reduceScore = $this->request->post('reduce_score', 50);
+        $whitelistDays = $this->request->post('whitelist_days', 30);
+        $reason = $this->request->post('reason', '管理员撤销风控');
+        
+        if (!$userId) {
+            $this->error('请指定用户ID');
+        }
+        
+        // 检查用户是否存在
+        $user = Db::name('user')->where('id', $userId)->find();
+        if (!$user) {
+            $this->error('用户不存在');
+        }
+        
+        switch ($revokeType) {
+            case 'reset':
+                // 重置风险分
+                Db::name('user_risk_score')->where('user_id', $userId)->update([
+                    'total_score' => 0,
+                    'video_score' => 0,
+                    'task_score' => 0,
+                    'withdraw_score' => 0,
+                    'redpacket_score' => 0,
+                    'invite_score' => 0,
+                    'global_score' => 0,
+                    'violation_count' => 0,
+                    'risk_level' => 'safe',
+                    'status' => 'normal',
+                    'ban_expire_time' => null,
+                    'freeze_expire_time' => null,
+                    'score_history' => '[]',
+                    'updatetime' => time(),
+                ]);
+                
+                // 记录操作日志
+                Db::name('risk_log')->insert([
+                    'user_id' => $userId,
+                    'rule_code' => 'REVOKE_RESET',
+                    'rule_name' => '撤销风控-重置',
+                    'rule_type' => 'global',
+                    'risk_level' => 1,
+                    'trigger_value' => 0,
+                    'threshold' => 0,
+                    'score_add' => 0,
+                    'action' => 'revoke',
+                    'action_duration' => 0,
+                    'ip' => request()->ip(),
+                    'user_agent' => request()->header('user-agent'),
+                    'request_data' => json_encode(['reason' => $reason, 'admin_id' => $this->auth->id]),
+                    'createtime' => time(),
+                ]);
+                break;
+                
+            case 'reduce':
+                // 降低风险分
+                Db::name('user_risk_score')
+                    ->where('user_id', $userId)
+                    ->dec('total_score', $reduceScore)
+                    ->update();
+                
+                // 重新计算风险等级
+                $newScore = Db::name('user_risk_score')
+                    ->where('user_id', $userId)
+                    ->value('total_score');
+                
+                $newLevel = 'safe';
+                if ($newScore >= 200) $newLevel = 'dangerous';
+                elseif ($newScore >= 100) $newLevel = 'high';
+                elseif ($newScore >= 50) $newLevel = 'medium';
+                elseif ($newScore >= 20) $newLevel = 'low';
+                
+                Db::name('user_risk_score')
+                    ->where('user_id', $userId)
+                    ->update(['risk_level' => $newLevel, 'updatetime' => time()]);
+                
+                // 记录操作日志
+                Db::name('risk_log')->insert([
+                    'user_id' => $userId,
+                    'rule_code' => 'REVOKE_REDUCE',
+                    'rule_name' => '撤销风控-降分',
+                    'rule_type' => 'global',
+                    'risk_level' => 1,
+                    'trigger_value' => 0,
+                    'threshold' => 0,
+                    'score_add' => -$reduceScore,
+                    'action' => 'revoke',
+                    'action_duration' => 0,
+                    'ip' => request()->ip(),
+                    'user_agent' => request()->header('user-agent'),
+                    'request_data' => json_encode(['reason' => $reason, 'reduce_score' => $reduceScore, 'admin_id' => $this->auth->id]),
+                    'createtime' => time(),
+                ]);
+                break;
+                
+            case 'whitelist':
+                // 加入白名单
+                $expireTime = $whitelistDays > 0 ? time() + $whitelistDays * 86400 : null;
+                
+                // 检查是否已在白名单
+                $exists = Db::name('risk_whitelist')
+                    ->where('type', 'user')
+                    ->where('value', $userId)
+                    ->find();
+                
+                if ($exists) {
+                    // 更新
+                    Db::name('risk_whitelist')
+                        ->where('id', $exists['id'])
+                        ->update([
+                            'reason' => $reason,
+                            'expire_time' => $expireTime,
+                            'admin_id' => $this->auth->id,
+                            'admin_name' => $this->auth->username,
+                            'updatetime' => time(),
+                        ]);
+                } else {
+                    // 新增
+                    Db::name('risk_whitelist')->insert([
+                        'type' => 'user',
+                        'value' => $userId,
+                        'reason' => $reason,
+                        'expire_time' => $expireTime,
+                        'admin_id' => $this->auth->id,
+                        'admin_name' => $this->auth->username,
+                        'createtime' => time(),
+                    ]);
+                }
+                
+                // 记录操作日志
+                Db::name('risk_log')->insert([
+                    'user_id' => $userId,
+                    'rule_code' => 'REVOKE_WHITELIST',
+                    'rule_name' => '撤销风控-白名单',
+                    'rule_type' => 'global',
+                    'risk_level' => 1,
+                    'trigger_value' => 0,
+                    'threshold' => 0,
+                    'score_add' => 0,
+                    'action' => 'whitelist',
+                    'action_duration' => 0,
+                    'ip' => request()->ip(),
+                    'user_agent' => request()->header('user-agent'),
+                    'request_data' => json_encode(['reason' => $reason, 'whitelist_days' => $whitelistDays, 'admin_id' => $this->auth->id]),
+                    'createtime' => time(),
+                ]);
+                break;
+        }
+        
+        $this->success('撤销成功');
     }
 }
