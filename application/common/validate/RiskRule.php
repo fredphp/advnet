@@ -14,7 +14,7 @@ class RiskRule extends Validate
      */
     protected $rule = [
         'rule_name' => 'require|max:100',
-        'rule_code' => 'require|max:50|alphaNum',
+        'rule_code' => 'require|max:50|regex:[A-Za-z0-9_]+',
         'rule_type' => 'require|in:register,login,withdraw,recharge,transfer,behavior,device,ip,custom',
         'description' => 'max:500',
         'threshold' => 'float|egt:0',
@@ -49,7 +49,7 @@ class RiskRule extends Validate
         'rule_name.max' => '规则名称最多100个字符',
         'rule_code.require' => '规则代码不能为空',
         'rule_code.max' => '规则代码最多50个字符',
-        'rule_code.alphaNum' => '规则代码只能包含字母和数字',
+        'rule_code.regex' => '规则代码只能包含字母、数字和下划线',
         'rule_type.require' => '规则类型不能为空',
         'rule_type.in' => '规则类型不正确',
         'description.max' => '规则描述最多500个字符',
