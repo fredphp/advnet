@@ -194,8 +194,8 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
                     // 详情按钮
                     html += '<button type="button" class="btn btn-primary btn-xs" onclick="UserAPI.showDetail(' + userId + ')" title="详情"><i class="fa fa-eye"></i></button>';
                     
-                    // 编辑按钮
-                    html += '<a href="member/user/edit/ids/' + userId + '" class="btn btn-info btn-xs" data-area=\'["800px","600px"]\' data-toggle="tooltip" title="编辑"><i class="fa fa-edit"></i></a>';
+                    // 编辑按钮 - 使用 btn-dialog 类打开弹窗
+                    html += '<a href="member/user/edit?ids=' + userId + '" class="btn btn-info btn-xs btn-dialog" data-area=\'["800px","600px"]\' title="编辑"><i class="fa fa-edit"></i></a>';
                     
                     // 金币操作下拉
                     html += '<div class="btn-group">';
@@ -205,7 +205,7 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
                     html += '<li><a href="javascript:;" onclick="UserAPI.recharge(' + userId + ',\'' + userName + '\')"><i class="fa fa-plus-circle text-success"></i> 充值金币</a></li>';
                     html += '<li><a href="javascript:;" onclick="UserAPI.deduct(' + userId + ',\'' + userName + '\',' + (row.coin_balance || 0) + ')"><i class="fa fa-minus-circle text-danger"></i> 扣除金币</a></li>';
                     html += '<li class="divider"></li>';
-                    html += '<li><a href="coin/log?user_id=' + userId + '" data-toggle="tooltip"><i class="fa fa-list-alt text-info"></i> 金币流水</a></li>';
+                    html += '<li><a href="coin/log?user_id=' + userId + '" class="btn-dialog"><i class="fa fa-list-alt text-info"></i> 金币流水</a></li>';
                     html += '</ul></div>';
                     
                     // 风控操作下拉
@@ -232,14 +232,14 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
                     html += '<button type="button" class="btn btn-default btn-xs dropdown-toggle" data-toggle="dropdown" title="更多"><i class="fa fa-ellipsis-h"></i> <span class="caret"></span></button>';
                     html += '<ul class="dropdown-menu dropdown-menu-right">';
                     html += '<li class="dropdown-header">信息查看</li>';
-                    html += '<li><a href="member/user/behaviors?user_id=' + userId + '"><i class="fa fa-history text-info"></i> 行为记录</a></li>';
-                    html += '<li><a href="invite/relation?user_id=' + userId + '"><i class="fa fa-users text-success"></i> 邀请关系</a></li>';
-                    html += '<li><a href="video/watchrecord?user_id=' + userId + '"><i class="fa fa-play-circle text-danger"></i> 观看记录</a></li>';
-                    html += '<li><a href="withdraw/order?user_id=' + userId + '"><i class="fa fa-money-bill text-warning"></i> 提现记录</a></li>';
-                    html += '<li><a href="redpacket/record?user_id=' + userId + '"><i class="fa fa-gift text-danger"></i> 红包记录</a></li>';
+                    html += '<li><a href="member/user/behaviors?user_id=' + userId + '" class="btn-dialog"><i class="fa fa-history text-info"></i> 行为记录</a></li>';
+                    html += '<li><a href="invite/relation?user_id=' + userId + '" class="btn-dialog"><i class="fa fa-users text-success"></i> 邀请关系</a></li>';
+                    html += '<li><a href="video/watchrecord?user_id=' + userId + '" class="btn-dialog"><i class="fa fa-play-circle text-danger"></i> 观看记录</a></li>';
+                    html += '<li><a href="withdraw/order?user_id=' + userId + '" class="btn-dialog"><i class="fa fa-money-bill text-warning"></i> 提现记录</a></li>';
+                    html += '<li><a href="redpacket/record?user_id=' + userId + '" class="btn-dialog"><i class="fa fa-gift text-danger"></i> 红包记录</a></li>';
                     html += '<li class="divider"></li>';
-                    html += '<li><a href="member/user/devices?user_id=' + userId + '"><i class="fa fa-mobile-alt text-secondary"></i> 设备信息</a></li>';
-                    html += '<li><a href="risk/user_risk/detail?user_id=' + userId + '"><i class="fa fa-chart-line text-info"></i> 风控详情</a></li>';
+                    html += '<li><a href="member/user/devices?user_id=' + userId + '" class="btn-dialog"><i class="fa fa-mobile-alt text-secondary"></i> 设备信息</a></li>';
+                    html += '<li><a href="risk/user_risk/detail?user_id=' + userId + '" class="btn-dialog"><i class="fa fa-chart-line text-info"></i> 风控详情</a></li>';
                     html += '</ul></div>';
                     
                     html += '</div>';
