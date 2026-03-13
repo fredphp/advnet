@@ -43,6 +43,16 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
 
             // 绑定操作按钮事件
             Controller.api.bindOperateEvents(table);
+            
+            // 快捷金额按钮
+            $(document).off('click', '.btn-quick-amount').on('click', '.btn-quick-amount', function(e) {
+                e.preventDefault();
+                var amount = parseInt($(this).data('amount')) || 0;
+                var $input = $('#recharge-form input[name="amount"]');
+                var current = parseInt($input.val()) || 0;
+                $input.val(current + amount);
+                return false;
+            });
         },
         add: function () {
             Controller.api.bindevent();

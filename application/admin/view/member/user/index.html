@@ -134,26 +134,6 @@
     background: linear-gradient(135deg, #17a673 0%, #0f6d48 100%);
 }
 
-.btn-purple {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    border: none;
-    color: #fff;
-}
-.btn-purple:hover {
-    background: linear-gradient(135deg, #5a6fd6 0%, #6a4190 100%);
-    color: #fff;
-}
-
-.btn-teal {
-    background: linear-gradient(135deg, #20c9a6 0%, #1a9d82 100%);
-    border: none;
-    color: #fff;
-}
-.btn-teal:hover {
-    background: linear-gradient(135deg, #1ab394 0%, #14876a 100%);
-    color: #fff;
-}
-
 /* 弹窗样式优化 */
 .modal-content {
     border: none;
@@ -273,10 +253,10 @@
                     <div class="form-group">
                         <label>快捷金额</label>
                         <div class="quick-amounts">
-                            <button type="button" class="btn btn-default btn-sm quick-amount" data-amount="100">+100</button>
-                            <button type="button" class="btn btn-default btn-sm quick-amount" data-amount="500">+500</button>
-                            <button type="button" class="btn btn-default btn-sm quick-amount" data-amount="1000">+1000</button>
-                            <button type="button" class="btn btn-default btn-sm quick-amount" data-amount="5000">+5000</button>
+                            <button type="button" class="btn btn-default btn-sm btn-quick-amount" data-amount="100">+100</button>
+                            <button type="button" class="btn btn-default btn-sm btn-quick-amount" data-amount="500">+500</button>
+                            <button type="button" class="btn btn-default btn-sm btn-quick-amount" data-amount="1000">+1000</button>
+                            <button type="button" class="btn btn-default btn-sm btn-quick-amount" data-amount="5000">+5000</button>
                         </div>
                     </div>
                     <div class="form-group">
@@ -436,10 +416,13 @@
 </div>
 
 <script>
-// 快捷金额按钮
-$(document).on('click', '.quick-amount', function() {
-    var amount = $(this).data('amount');
-    var current = parseInt($('#recharge-form input[name="amount"]').val()) || 0;
-    $('#recharge-form input[name="amount"]').val(current + amount);
+// 快捷金额按钮 - 阻止表单提交
+$(document).on('click', '.btn-quick-amount', function(e) {
+    e.preventDefault();
+    var amount = parseInt($(this).data('amount'));
+    var $input = $('#recharge-form input[name="amount"]');
+    var current = parseInt($input.val()) || 0;
+    $input.val(current + amount);
+    return false;
 });
 </script>
