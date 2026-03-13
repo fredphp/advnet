@@ -348,11 +348,18 @@ class User extends Backend
      */
     public function export()
     {
+        $ids = $this->request->get('ids');
         $status = $this->request->get('status');
         $startDate = $this->request->get('start_date');
         $endDate = $this->request->get('end_date');
 
         $query = $this->model;
+
+        // 导出选中用户
+        if ($ids) {
+            $idsArr = explode(',', $ids);
+            $query->whereIn('id', $idsArr);
+        }
 
         if ($status) {
             $query->where('status', $status);
@@ -375,15 +382,17 @@ class User extends Backend
         $output = fopen('php://output', 'w');
         fprintf($output, chr(0xEF) . chr(0xBB) . chr(0xBF));
 
-        fputcsv($output, ['用户ID', '用户名', '昵称', '手机号', '状态', '注册时间', '最后登录']);
+        fputcsv($output, ['用户ID', '用户名', '昵称', '手机号', '状态', '金币余额', '注册时间', '最后登录']);
 
         foreach ($list as $row) {
+            $account = Db::name('coin_account')->where('user_id', $row['id'])->find();
             fputcsv($output, [
                 $row['id'],
                 $row['username'],
                 $row['nickname'],
                 $row['mobile'],
                 $row['status'],
+                $account ? $account['balance'] : 0,
                 date('Y-m-d H:i:s', $row['createtime']),
                 $row['logintime'] ? date('Y-m-d H:i:s', $row['logintime']) : '',
             ]);
@@ -391,5 +400,256 @@ class User extends Backend
 
         fclose($output);
         exit;
+    }
+
+    /**
+     * 封禁用户
+     */
+    public function ban()
+    {
+        $userId = $this->request->post('user_id');
+        $banType = $this->request->post('ban_type', 'temporary');
+        $duration = $this->request->post('duration', 24);
+        $reason = $this->request->post('reason', '管理员封禁');
+
+        if (!$userId) {
+            $this->error('请选择要封禁的用户');
+        }
+
+        $prefix = config('database.prefix');
+
+        // 检查用户是否存在
+        $user = Db::query("SELECT * FROM {$prefix}user WHERE id = ? LIMIT 1", [$userId]);
+        if (empty($user)) {
+            $this->error('用户不存在');
+        }
+        $user = $user[0];
+
+        // 检查是否已有封禁记录
+        $existingBan = Db::query("SELECT * FROM {$prefix}ban_record WHERE user_id = ? AND status = 'active' LIMIT 1", [$userId]);
+        if (!empty($existingBan)) {
+            $this->error('该用户已被封禁');
+        }
+
+        Db::startTrans();
+        try {
+            $now = time();
+            $expireTime = $banType === 'permanent' ? 0 : $now + ($duration * 3600);
+
+            // 创建封禁记录
+            Db::execute("
+                INSERT INTO {$prefix}ban_record 
+                (user_id, ban_type, ban_source, reason, admin_id, createtime, expire_time, status)
+                VALUES (?, ?, 'manual', ?, ?, ?, ?, 'active')
+            ", [$userId, $banType, $reason, $this->auth->id, $now, $expireTime]);
+
+            // 更新用户状态
+            Db::execute("UPDATE {$prefix}user SET status = 'banned', updatetime = ? WHERE id = ?", [$now, $userId]);
+
+            // 更新风险评分
+            Db::execute("
+                INSERT INTO {$prefix}user_risk_score (user_id, score, ban_count, updatetime)
+                VALUES (?, 100, 1, ?)
+                ON DUPLICATE KEY UPDATE score = score + 20, ban_count = ban_count + 1, updatetime = ?
+            ", [$userId, $now, $now]);
+
+            Db::commit();
+            $this->success('封禁成功');
+        } catch (\Exception $e) {
+            Db::rollback();
+            $this->error('封禁失败：' . $e->getMessage());
+        }
+    }
+
+    /**
+     * 冻结用户
+     */
+    public function freeze()
+    {
+        $userId = $this->request->post('user_id');
+        $duration = $this->request->post('duration', 24);
+        $reason = $this->request->post('reason', '管理员冻结');
+
+        if (!$userId) {
+            $this->error('请选择要冻结的用户');
+        }
+
+        $prefix = config('database.prefix');
+
+        $user = Db::query("SELECT * FROM {$prefix}user WHERE id = ? LIMIT 1", [$userId]);
+        if (empty($user)) {
+            $this->error('用户不存在');
+        }
+        $user = $user[0];
+
+        if ($user['status'] === 'banned') {
+            $this->error('该用户已被封禁，无法冻结');
+        }
+
+        Db::startTrans();
+        try {
+            $now = time();
+            $expireTime = $duration > 0 ? $now + ($duration * 3600) : 0;
+
+            // 创建冻结记录
+            Db::execute("
+                INSERT INTO {$prefix}user_freeze_log 
+                (user_id, reason, admin_id, createtime, expire_time, status)
+                VALUES (?, ?, ?, ?, ?, 'active')
+            ", [$userId, $reason, $this->auth->id, $now, $expireTime]);
+
+            // 更新用户状态
+            Db::execute("UPDATE {$prefix}user SET status = 'frozen', updatetime = ? WHERE id = ?", [$now, $userId]);
+
+            Db::commit();
+            $this->success('冻结成功');
+        } catch (\Exception $e) {
+            Db::rollback();
+            $this->error('冻结失败：' . $e->getMessage());
+        }
+    }
+
+    /**
+     * 解冻用户
+     */
+    public function unfreeze()
+    {
+        $userId = $this->request->post('user_id');
+
+        if (!$userId) {
+            $this->error('请选择要解冻的用户');
+        }
+
+        $prefix = config('database.prefix');
+
+        $user = Db::query("SELECT * FROM {$prefix}user WHERE id = ? LIMIT 1", [$userId]);
+        if (empty($user)) {
+            $this->error('用户不存在');
+        }
+        $user = $user[0];
+
+        if ($user['status'] !== 'frozen') {
+            $this->error('该用户状态不是冻结状态');
+        }
+
+        Db::startTrans();
+        try {
+            $now = time();
+
+            // 更新冻结记录
+            Db::execute("
+                UPDATE {$prefix}user_freeze_log 
+                SET status = 'released', release_time = ?, release_reason = '管理员手动解冻'
+                WHERE user_id = ? AND status = 'active'
+            ", [$now, $userId]);
+
+            // 更新用户状态
+            Db::execute("UPDATE {$prefix}user SET status = 'normal', updatetime = ? WHERE id = ?", [$now, $userId]);
+
+            Db::commit();
+            $this->success('解冻成功');
+        } catch (\Exception $e) {
+            Db::rollback();
+            $this->error('解冻失败：' . $e->getMessage());
+        }
+    }
+
+    /**
+     * 批量操作
+     */
+    public function batch()
+    {
+        $ids = $this->request->post('ids/a');
+        $action = $this->request->post('action');
+        $amount = $this->request->post('amount', 0);
+        $remark = $this->request->post('remark', '');
+
+        if (!$ids || !is_array($ids)) {
+            $this->error('请选择要操作的用户');
+        }
+
+        if (!$action) {
+            $this->error('请选择操作类型');
+        }
+
+        $prefix = config('database.prefix');
+        $success = 0;
+        $failed = 0;
+
+        foreach ($ids as $userId) {
+            try {
+                switch ($action) {
+                    case 'batch_normal':
+                        Db::execute("UPDATE {$prefix}user SET status = 'normal', updatetime = ? WHERE id = ?", [time(), $userId]);
+                        break;
+                    case 'batch_freeze':
+                        Db::execute("UPDATE {$prefix}user SET status = 'frozen', updatetime = ? WHERE id = ?", [time(), $userId]);
+                        break;
+                    case 'batch_ban':
+                        Db::execute("UPDATE {$prefix}user SET status = 'banned', updatetime = ? WHERE id = ?", [time(), $userId]);
+                        Db::execute("
+                            INSERT INTO {$prefix}ban_record (user_id, ban_type, ban_source, reason, admin_id, createtime, status)
+                            VALUES (?, 'temporary', 'manual', ?, ?, ?, 'active')
+                        ", [$userId, $remark ?: '批量封禁', $this->auth->id, time()]);
+                        break;
+                    case 'batch_recharge':
+                        if ($amount > 0) {
+                            $coinService = new CoinService();
+                            $coinService->addCoin($userId, $amount, 'admin_batch_recharge', 0, $remark ?: '批量充值');
+                        }
+                        break;
+                    case 'batch_deduct':
+                        if ($amount > 0) {
+                            $coinService = new CoinService();
+                            $coinService->deductCoin($userId, $amount, 'admin_batch_deduct', 0, $remark ?: '批量扣除');
+                        }
+                        break;
+                    case 'batch_blacklist':
+                        Db::execute("
+                            INSERT INTO {$prefix}blacklist (type, value, reason, source, admin_id, createtime, enabled)
+                            VALUES ('user', ?, ?, 'manual', ?, ?, 1)
+                            ON DUPLICATE KEY UPDATE enabled = 1
+                        ", [$userId, $remark ?: '批量加入黑名单', $this->auth->id, time()]);
+                        break;
+                    case 'batch_whitelist':
+                        Db::execute("
+                            INSERT INTO {$prefix}whitelist (type, value, reason, admin_id, createtime, status)
+                            VALUES ('user', ?, ?, ?, ?, 1)
+                            ON DUPLICATE KEY UPDATE status = 1
+                        ", [$userId, $remark ?: '批量加入白名单', $this->auth->id, time()]);
+                        break;
+                }
+                $success++;
+            } catch (\Exception $e) {
+                $failed++;
+            }
+        }
+
+        $this->success("操作完成：成功 {$success} 个，失败 {$failed} 个");
+    }
+
+    /**
+     * 设备信息
+     */
+    public function devices()
+    {
+        $userId = $this->request->get('user_id');
+        if (!$userId) {
+            $this->error('请指定用户ID');
+        }
+
+        if ($this->request->isAjax()) {
+            $prefix = config('database.prefix');
+            $devices = Db::query("
+                SELECT * FROM {$prefix}device_fingerprint 
+                WHERE user_id = ? 
+                ORDER BY last_seen DESC
+            ", [$userId]);
+
+            return json(['total' => count($devices), 'rows' => $devices]);
+        }
+
+        $this->view->assign('user_id', $userId);
+        return $this->view->fetch();
     }
 }
