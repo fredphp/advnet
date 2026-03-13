@@ -89,18 +89,17 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
                     dataType: 'json',
                     success: function(ret) {
                         if (ret.code == 1) {
-                            var data = ret.data;
-                            var user = data.user;
+                            var data = ret.data || {};
+                            var user = data.user || {};
                             var coinAccount = data.coin_account || {};
                             var inviteStats = data.invite_stats || {};
-                            var todayStats = data.today_stats || {};
                             var riskInfo = data.risk_info || {};
 
                             var html = '<div class="row">' +
                                 '<div class="col-md-6">' +
                                     '<div class="detail-section">' +
                                         '<h5 style="margin-bottom:15px;color:#667eea;"><i class="fa fa-user"></i> 基本信息</h5>' +
-                                        '<div class="detail-row"><span class="detail-label">用户ID</span><span class="detail-value">' + user.id + '</span></div>' +
+                                        '<div class="detail-row"><span class="detail-label">用户ID</span><span class="detail-value">' + (user.id || '-') + '</span></div>' +
                                         '<div class="detail-row"><span class="detail-label">用户名</span><span class="detail-value">' + (user.username || '-') + '</span></div>' +
                                         '<div class="detail-row"><span class="detail-label">昵称</span><span class="detail-value">' + (user.nickname || '-') + '</span></div>' +
                                         '<div class="detail-row"><span class="detail-label">手机号</span><span class="detail-value">' + (user.mobile || '-') + '</span></div>' +
@@ -145,6 +144,7 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
                 });
             },
             formatStatus: function(status) {
+                if (!status) return '<span class="status-badge normal"><i class="fa fa-check-circle"></i> 正常</span>';
                 var statusMap = {
                     'normal': '<span class="status-badge normal"><i class="fa fa-check-circle"></i> 正常</span>',
                     'frozen': '<span class="status-badge frozen"><i class="fa fa-snowflake"></i> 冻结</span>',
@@ -153,6 +153,7 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
                 return statusMap[status] || status;
             },
             formatRiskLevel: function(level) {
+                if (!level) return '<span class="badge" style="background:#d1fae5;color:#047857;">低风险</span>';
                 var levelMap = {
                     'low': '<span class="badge" style="background:#d1fae5;color:#047857;">低风险</span>',
                     'medium': '<span class="badge" style="background:#fef3c7;color:#b45309;">中风险</span>',
@@ -172,6 +173,7 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
                     return '<span style="color:#f6c23e;font-weight:600;">' + value + '</span>';
                 },
                 status: function(value, row, index) {
+                    if (!value) return '<span class="status-badge normal"><i class="fa fa-check-circle"></i> 正常</span>';
                     var statusMap = {
                         'normal': '<span class="status-badge normal"><i class="fa fa-check-circle"></i> 正常</span>',
                         'frozen': '<span class="status-badge frozen"><i class="fa fa-snowflake"></i> 冻结</span>',
