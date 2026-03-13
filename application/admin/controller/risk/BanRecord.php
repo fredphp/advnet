@@ -35,55 +35,66 @@ class BanRecord extends Backend
             $status = $this->request->get('filter.status');
             $banSource = $this->request->get('filter.ban_source');
             $search = $this->request->get('search');
-            $startDate = $this->request->get('filter.createtime');
-            $endDate = $this->request->get('filter.createtime');
 
-            $query = Db::name('ban_record br')
-                ->join('user u', 'u.id = br.user_id', 'LEFT')
-                ->join('admin a', 'a.id = br.admin_id', 'LEFT')
-                ->field('br.*, u.username, u.nickname, u.mobile, a.username as admin_name');
+            $list = [];
+            $total = 0;
 
-            if ($banType) {
-                $query->where('br.ban_type', $banType);
+            try {
+                // 构建查询 - 使用原生SQL确保字段正确
+                $prefix = config('database.prefix');
+                
+                // 安全处理参数
+                $banType = $banType ? addslashes($banType) : '';
+                $status = $status ? addslashes($status) : '';
+                $banSource = $banSource ? addslashes($banSource) : '';
+                $search = $search ? addslashes($search) : '';
+                $sort = preg_replace('/[^a-zA-Z0-9_]/', '', $sort);
+                $order = strtolower($order) === 'asc' ? 'ASC' : 'DESC';
+                $offset = intval($offset);
+                $limit = intval($limit);
+                
+                $whereSql = "1=1";
+                if ($banType) $whereSql .= " AND br.ban_type = '{$banType}'";
+                if ($status) $whereSql .= " AND br.status = '{$status}'";
+                if ($banSource) $whereSql .= " AND br.ban_source = '{$banSource}'";
+                if ($search) $whereSql .= " AND (u.username LIKE '%{$search}%' OR u.nickname LIKE '%{$search}%' OR u.mobile LIKE '%{$search}%')";
+                
+                $list = Db::query("
+                    SELECT br.*, 
+                           u.username, 
+                           u.nickname, 
+                           u.mobile,
+                           a.username as admin_name
+                    FROM {$prefix}ban_record br
+                    LEFT JOIN {$prefix}user u ON u.id = br.user_id
+                    LEFT JOIN {$prefix}admin a ON a.id = br.admin_id
+                    WHERE {$whereSql}
+                    ORDER BY br.{$sort} {$order}
+                    LIMIT {$offset}, {$limit}
+                ");
+
+                $countResult = Db::query("
+                    SELECT COUNT(*) as total
+                    FROM {$prefix}ban_record br
+                    LEFT JOIN {$prefix}user u ON u.id = br.user_id
+                    WHERE {$whereSql}
+                ");
+
+                $total = $countResult[0]['total'] ?? 0;
+            } catch (\Exception $e) {
+                \think\Log::error('BanRecord index error: ' . $e->getMessage());
             }
-
-            if ($status) {
-                $query->where('br.status', $status);
-            }
-
-            if ($banSource) {
-                $query->where('br.ban_source', $banSource);
-            }
-
-            if ($search) {
-                $query->where(function ($q) use ($search) {
-                    $q->whereLike('u.username', "%{$search}%")
-                      ->whereOr('u.nickname', 'like', "%{$search}%")
-                      ->whereOr('u.mobile', 'like', "%{$search}%");
-                });
-            }
-
-            // 处理日期范围筛选
-            $createtimeRange = $this->request->get('filter.createtime');
-            if ($createtimeRange && strpos($createtimeRange, ' - ') !== false) {
-                list($startDt, $endDt) = explode(' - ', $createtimeRange);
-                $query->where('br.createtime', '>=', strtotime($startDt));
-                $query->where('br.createtime', '<=', strtotime($endDt . ' 23:59:59'));
-            }
-
-            $total = $query->count();
-            $list = $query->order("br.{$sort}", $order)
-                ->limit($offset, $limit)
-                ->select();
 
             // 格式化数据
             foreach ($list as &$row) {
                 $row['ban_type_text'] = $this->getBanTypeText($row['ban_type']);
                 $row['ban_source_text'] = $this->getBanSourceText($row['ban_source']);
                 $row['status_text'] = $this->getStatusText($row['status']);
-                // 为前端兼容性添加reason字段
-                $row['reason'] = $row['ban_reason'];
-                $row['expire_time'] = $row['end_time'];
+                // 处理可能的null值
+                $row['username'] = $row['username'] ?? '';
+                $row['nickname'] = $row['nickname'] ?? '';
+                $row['mobile'] = $row['mobile'] ?? '';
+                $row['admin_name'] = $row['admin_name'] ?? '';
             }
 
             return json(['total' => $total, 'rows' => $list]);
@@ -127,39 +138,6 @@ class BanRecord extends Backend
             'expired' => '已过期',
         ];
         return $statuses[$status] ?? $status;
-    }
-    
-    /**
-     * 封禁详情
-     */
-    public function detail($ids = null)
-    {
-        $record = Db::name('ban_record br')
-            ->join('user u', 'u.id = br.user_id', 'LEFT')
-            ->field('br.*, u.username, u.nickname, u.mobile, u.avatar')
-            ->where('br.id', $ids)
-            ->find();
-        
-        if (!$record) {
-            $this->error('记录不存在');
-        }
-        
-        // 获取用户当前风险状态
-        $riskScore = Db::name('user_risk_score')
-            ->where('user_id', $record['user_id'])
-            ->find();
-        
-        // 获取该用户所有封禁记录
-        $allRecords = Db::name('ban_record')
-            ->where('user_id', $record['user_id'])
-            ->order('createtime', 'desc')
-            ->select();
-        
-        $this->success('', null, [
-            'record' => $record,
-            'risk_score' => $riskScore,
-            'all_records' => $allRecords,
-        ]);
     }
     
     /**
@@ -220,72 +198,6 @@ class BanRecord extends Backend
     }
     
     /**
-     * 获取用户详情（用于弹窗显示）
-     */
-    public function userInfo()
-    {
-        $userId = $this->request->get('user_id');
-        if (!$userId) {
-            $this->error('缺少用户ID');
-        }
-
-        // 获取用户基本信息
-        $user = Db::name('user')
-            ->where('id', $userId)
-            ->field('id, username, nickname, mobile, avatar, email, status, createtime, logintime')
-            ->find();
-
-        if (!$user) {
-            $this->error('用户不存在');
-        }
-
-        // 获取用户风险评分
-        $riskScore = Db::name('user_risk_score')
-            ->where('user_id', $userId)
-            ->find();
-
-        // 获取近期违规记录（最近10条）
-        $recentViolations = Db::name('risk_log rl')
-            ->join('risk_rule rr', 'rr.id = rl.rule_id', 'LEFT')
-            ->where('rl.user_id', $userId)
-            ->field('rl.*, rr.name as rule_name')
-            ->order('rl.createtime', 'desc')
-            ->limit(10)
-            ->select();
-
-        // 获取封禁记录
-        $banRecords = Db::name('ban_record')
-            ->where('user_id', $userId)
-            ->order('createtime', 'desc')
-            ->limit(10)
-            ->select();
-
-        // 格式化数据
-        $user['status_text'] = $this->getUserStatusText($user['status']);
-        $user['createtime_text'] = date('Y-m-d H:i:s', $user['createtime']);
-        $user['logintime_text'] = $user['logintime'] ? date('Y-m-d H:i:s', $user['logintime']) : '从未登录';
-
-        if ($riskScore) {
-            $riskScore['risk_level_text'] = $this->getRiskLevelText($riskScore['risk_level']);
-            $riskScore['status_text'] = $this->getRiskStatusText($riskScore['status']);
-        }
-
-        foreach ($banRecords as &$record) {
-            $record['ban_type_text'] = $this->getBanTypeText($record['ban_type']);
-            $record['ban_source_text'] = $this->getBanSourceText($record['ban_source']);
-            $record['status_text'] = $this->getStatusText($record['status']);
-            $record['createtime_text'] = date('Y-m-d H:i:s', $record['createtime']);
-        }
-
-        $this->success('', null, [
-            'user' => $user,
-            'risk_score' => $riskScore,
-            'recent_violations' => $recentViolations,
-            'ban_records' => $banRecords,
-        ]);
-    }
-
-    /**
      * 解封操作（带弹窗确认）
      */
     public function releaseDialog($ids = null)
@@ -313,16 +225,21 @@ class BanRecord extends Backend
             }
         }
 
-        // GET请求返回解封表单
-        $record = Db::name('ban_record br')
-            ->join('user u', 'u.id = br.user_id', 'LEFT')
-            ->field('br.*, u.username, u.nickname, u.mobile')
-            ->where('br.id', $ids)
-            ->find();
+        // GET请求返回解封表单 - 使用原生SQL确保字段正确
+        $prefix = config('database.prefix');
+        $ids = intval($ids);
+        $record = Db::query("
+            SELECT br.*, u.username, u.nickname, u.mobile
+            FROM {$prefix}ban_record br
+            LEFT JOIN {$prefix}user u ON u.id = br.user_id
+            WHERE br.id = {$ids}
+        ");
 
-        if (!$record) {
+        if (empty($record)) {
             $this->error('记录不存在');
         }
+
+        $record = $record[0];
 
         $this->view->assign('record', $record);
         return $this->view->fetch();
@@ -333,16 +250,23 @@ class BanRecord extends Backend
      */
     public function viewDetail($ids = null)
     {
-        $record = Db::name('ban_record br')
-            ->join('user u', 'u.id = br.user_id', 'LEFT')
-            ->join('admin a', 'a.id = br.admin_id', 'LEFT')
-            ->field('br.*, u.username, u.nickname, u.mobile, u.avatar, a.username as admin_name')
-            ->where('br.id', $ids)
-            ->find();
+        // 使用原生SQL确保字段正确获取
+        $prefix = config('database.prefix');
+        $ids = intval($ids);
+        
+        $record = Db::query("
+            SELECT br.*, u.username, u.nickname, u.mobile, u.avatar, a.username as admin_name
+            FROM {$prefix}ban_record br
+            LEFT JOIN {$prefix}user u ON u.id = br.user_id
+            LEFT JOIN {$prefix}admin a ON a.id = br.admin_id
+            WHERE br.id = {$ids}
+        ");
 
-        if (!$record) {
+        if (empty($record)) {
             $this->error('记录不存在');
         }
+
+        $record = $record[0];
 
         // 获取用户风险评分
         $riskScore = Db::name('user_risk_score')
@@ -350,10 +274,11 @@ class BanRecord extends Backend
             ->find();
 
         // 获取该用户所有封禁历史
-        $banHistory = Db::name('ban_record')
-            ->where('user_id', $record['user_id'])
-            ->order('createtime', 'desc')
-            ->select();
+        $banHistory = Db::query("
+            SELECT * FROM {$prefix}ban_record 
+            WHERE user_id = {$record['user_id']} 
+            ORDER BY createtime DESC
+        ");
 
         $this->view->assign([
             'record' => $record,
