@@ -121,19 +121,29 @@ class AutoBanService
         try {
             $now = time();
             $banType = $duration > 0 ? self::BAN_TYPE_TEMPORARY : self::BAN_TYPE_PERMANENT;
+            $prefix = config('database.prefix');
             
-            // 1. 更新用户风控状态
-            $userScore = UserRiskScore::where('user_id', $userId)->lock(true)->find();
+            // 1. 获取用户风控数据
+            $userScore = Db::query("SELECT * FROM {$prefix}user_risk_score WHERE user_id = ? LIMIT 1 FOR UPDATE", [$userId]);
+            $userScore = $userScore ? $userScore[0] : null;
+            $totalScore = $userScore ? $userScore['total_score'] : 0;
+            
+            // 使用原生SQL更新或插入用户风控状态
+            $banExpireTime = $duration > 0 ? $now + $duration : null;
             if ($userScore) {
-                $userScore->status = 'banned';
-                $userScore->ban_expire_time = $duration > 0 ? $now + $duration : null;
-                $userScore->save();
+                Db::execute("
+                    UPDATE {$prefix}user_risk_score 
+                    SET status = 'banned', 
+                        ban_expire_time = ?,
+                        updatetime = ?
+                    WHERE user_id = ?
+                ", [$banExpireTime, $now, $userId]);
             } else {
-                $userScore = new UserRiskScore();
-                $userScore->user_id = $userId;
-                $userScore->status = 'banned';
-                $userScore->ban_expire_time = $duration > 0 ? $now + $duration : null;
-                $userScore->save();
+                Db::execute("
+                    INSERT INTO {$prefix}user_risk_score 
+                    (user_id, status, ban_expire_time, total_score, risk_level, createtime, updatetime)
+                    VALUES (?, 'banned', ?, ?, 'safe', ?, ?)
+                ", [$userId, $banExpireTime, 0, $now, $now]);
             }
             
             // 2. 更新用户表状态
@@ -148,7 +158,7 @@ class AutoBanService
             $banRecord->ban_type = $banType;
             $banRecord->ban_reason = $reason;
             $banRecord->ban_source = $source;
-            $banRecord->risk_score = $userScore ? $userScore['total_score'] : 0;
+            $banRecord->risk_score = $totalScore;
             $banRecord->start_time = $now;
             $banRecord->end_time = $duration > 0 ? $now + $duration : null;
             $banRecord->duration = $duration;
@@ -202,16 +212,27 @@ class AutoBanService
         Db::startTrans();
         try {
             $now = time();
+            $prefix = config('database.prefix');
             
-            // 1. 更新用户风控状态
-            $userScore = UserRiskScore::where('user_id', $userId)->lock(true)->find();
+            // 1. 获取用户风控数据
+            $userScore = Db::query("SELECT * FROM {$prefix}user_risk_score WHERE user_id = ? LIMIT 1 FOR UPDATE", [$userId]);
+            $userScore = $userScore ? $userScore[0] : null;
+            
             if ($userScore) {
-                $userScore->status = 'normal';
-                $userScore->ban_expire_time = null;
-                // 解封时降低风险分
-                $userScore->total_score = intval($userScore['total_score'] * 0.5);
-                $userScore->risk_level = (new RiskControlService())->getRiskLevel($userScore['total_score']);
-                $userScore->save();
+                // 计算新的风险分和等级
+                $newTotalScore = intval($userScore['total_score'] * 0.5);
+                $newRiskLevel = (new RiskControlService())->getRiskLevel($newTotalScore);
+                
+                // 使用原生SQL更新，避免字段缓存问题
+                Db::execute("
+                    UPDATE {$prefix}user_risk_score 
+                    SET status = 'normal', 
+                        ban_expire_time = NULL, 
+                        total_score = ?, 
+                        risk_level = ?,
+                        updatetime = ?
+                    WHERE user_id = ?
+                ", [$newTotalScore, $newRiskLevel, $now, $userId]);
             }
             
             // 2. 更新用户表状态
@@ -220,15 +241,15 @@ class AutoBanService
                 'updatetime' => $now,
             ]);
             
-            // 3. 更新封禁记录状态
-            BanRecord::where('user_id', $userId)
-                ->where('status', 'active')
-                ->update([
-                    'status' => 'released',
-                    'release_time' => $now,
-                    'release_reason' => $reason,
-                    'release_admin_id' => $adminId,
-                ]);
+            // 3. 更新封禁记录状态 - 使用原生SQL
+            Db::execute("
+                UPDATE {$prefix}ban_record 
+                SET status = 'released', 
+                    release_time = ?, 
+                    release_reason = ?, 
+                    release_admin_id = ?
+                WHERE user_id = ? AND status = 'active'
+            ", [$now, $reason, $adminId, $userId]);
             
             // 4. 从黑名单移除
             $this->removeFromBlacklist('user', $userId);
@@ -265,6 +286,7 @@ class AutoBanService
         Db::startTrans();
         try {
             $now = time();
+            $prefix = config('database.prefix');
             
             // 临时解封用户
             Db::name('user')->where('id', $userId)->update([
@@ -272,11 +294,14 @@ class AutoBanService
                 'updatetime' => $now,
             ]);
             
-            // 更新风控状态
-            UserRiskScore::where('user_id', $userId)->update([
-                'status' => 'normal',
-                'freeze_expire_time' => $now + $duration,
-            ]);
+            // 更新风控状态 - 使用原生SQL避免字段缓存问题
+            Db::execute("
+                UPDATE {$prefix}user_risk_score 
+                SET status = 'normal', 
+                    freeze_expire_time = ?,
+                    updatetime = ?
+                WHERE user_id = ?
+            ", [$now + $duration, $now, $userId]);
             
             // 记录临时解封
             Db::name('appeal_temporary_release')->insert([
@@ -388,22 +413,31 @@ class AutoBanService
     public function processExpiredFreezes()
     {
         $now = time();
+        $prefix = config('database.prefix');
         $results = [
             'released' => 0,
             'errors' => 0,
         ];
         
-        $expiredFreezes = UserRiskScore::where('status', 'frozen')
-            ->whereNotNull('freeze_expire_time')
-            ->where('freeze_expire_time', '<=', $now)
-            ->select();
+        // 使用原生SQL查询
+        $expiredFreezes = Db::query("
+            SELECT * FROM {$prefix}user_risk_score 
+            WHERE status = 'frozen' 
+            AND freeze_expire_time IS NOT NULL 
+            AND freeze_expire_time <= ?
+        ", [$now]);
         
         foreach ($expiredFreezes as $userScore) {
             Db::startTrans();
             try {
-                $userScore->status = 'normal';
-                $userScore->freeze_expire_time = null;
-                $userScore->save();
+                // 使用原生SQL更新
+                Db::execute("
+                    UPDATE {$prefix}user_risk_score 
+                    SET status = 'normal', 
+                        freeze_expire_time = NULL,
+                        updatetime = ?
+                    WHERE id = ?
+                ", [$now, $userScore['id']]);
                 
                 Db::name('user')->where('id', $userScore['user_id'])->update([
                     'status' => 'normal',
