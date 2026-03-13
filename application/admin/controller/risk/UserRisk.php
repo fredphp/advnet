@@ -383,6 +383,14 @@ class UserRisk extends Backend
     {
         $userId = $this->request->get('user_id');
         
+        // 尝试多种方式获取user_id
+        if (!$userId) {
+            $userId = $this->request->param('user_id');
+        }
+        if (!$userId) {
+            $userId = $this->request->request('user_id');
+        }
+        
         if (!$userId) {
             $this->error('请指定用户ID');
         }
@@ -432,7 +440,20 @@ class UserRisk extends Backend
     public function revoke()
     {
         $userId = $this->request->post('user_id');
+        
+        // 尝试多种方式获取user_id
+        if (!$userId) {
+            $userId = $this->request->param('user_id');
+        }
+        if (!$userId) {
+            $userId = $this->request->request('user_id');
+        }
+        
         $revokeType = $this->request->post('revoke_type', 'reset');
+        if (!$revokeType) {
+            $revokeType = $this->request->param('revoke_type', 'reset');
+        }
+        
         $reduceScore = $this->request->post('reduce_score', 50);
         $whitelistDays = $this->request->post('whitelist_days', 30);
         $reason = $this->request->post('reason', '管理员撤销风控');
