@@ -307,10 +307,13 @@
     </div>
 
     <!-- 封禁历史 -->
-    {if $ban_history && $ban_history|count() > 0}
+    {php}
+    $ban_history_count = is_array($ban_history) ? count($ban_history) : 0;
+    {/php}
+    {if $ban_history_count > 0}
     <div class="info-card">
         <div class="info-card-header">
-            <i class="fa fa-history"></i> 封禁历史 (共 {$ban_history|count()} 次)
+            <i class="fa fa-history"></i> 封禁历史 (共 {$ban_history_count} 次)
         </div>
         <div class="info-card-body" style="max-height: 200px; overflow-y: auto;">
             {volist name="ban_history" id="h"}
