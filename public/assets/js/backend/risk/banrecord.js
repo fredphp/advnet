@@ -39,7 +39,7 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
                             "manual": "手动封禁"
                         }, formatter: Controller.api.formatter.banSource},
                         {field: 'duration', title: '封禁时长', formatter: Controller.api.formatter.duration},
-                        {field: 'end_time', title: '解封时间', formatter: Table.api.formatter.datetime, operate: 'RANGE', addclass: 'datetimerange'},
+                        // {field: 'end_time', title: '解封时间', formatter: Table.api.formatter.datetime, operate: 'RANGE', addclass: 'datetimerange'},
                         {field: 'admin_name', title: '操作人'},
                         {field: 'status', title: '状态', searchList: {
                             "active": "封禁中",
