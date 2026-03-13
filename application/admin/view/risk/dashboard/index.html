@@ -61,6 +61,158 @@
     .risk-dashboard .risk-badge.medium { background: #fff3cd; color: #856404; }
     .risk-dashboard .risk-badge.high { background: #ffe5d0; color: #d63031; }
     .risk-dashboard .risk-badge.dangerous { background: #f8d7da; color: #721c24; }
+    
+    /* 风险预警卡片样式 */
+    .risk-dashboard .alert-item {
+        background: #fff;
+        border-radius: 12px;
+        padding: 16px;
+        margin-bottom: 12px;
+        border: 1px solid #e9ecef;
+        transition: all 0.3s ease;
+        position: relative;
+        overflow: hidden;
+    }
+    .risk-dashboard .alert-item::before {
+        content: '';
+        position: absolute;
+        left: 0;
+        top: 0;
+        bottom: 0;
+        width: 4px;
+    }
+    .risk-dashboard .alert-item.alert-danger::before { background: linear-gradient(180deg, #ff6b6b, #ee5a5a); }
+    .risk-dashboard .alert-item.alert-warning::before { background: linear-gradient(180deg, #feca57, #ff9f43); }
+    .risk-dashboard .alert-item.alert-info::before { background: linear-gradient(180deg, #54a0ff, #2e86de); }
+    
+    .risk-dashboard .alert-item:hover {
+        transform: translateX(4px);
+        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    }
+    .risk-dashboard .alert-item .user-info {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+    .risk-dashboard .alert-item .user-avatar {
+        width: 42px;
+        height: 42px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 18px;
+        color: #fff;
+        font-weight: 600;
+    }
+    .risk-dashboard .alert-item.alert-danger .user-avatar { background: linear-gradient(135deg, #ff6b6b, #ee5a5a); }
+    .risk-dashboard .alert-item.alert-warning .user-avatar { background: linear-gradient(135deg, #feca57, #ff9f43); }
+    .risk-dashboard .alert-item.alert-info .user-avatar { background: linear-gradient(135deg, #54a0ff, #2e86de); }
+    
+    .risk-dashboard .alert-item .user-details {
+        flex: 1;
+    }
+    .risk-dashboard .alert-item .user-name {
+        font-weight: 600;
+        color: #2d3436;
+        font-size: 14px;
+    }
+    .risk-dashboard .alert-item .user-meta {
+        display: flex;
+        gap: 16px;
+        margin-top: 4px;
+    }
+    .risk-dashboard .alert-item .user-meta span {
+        font-size: 12px;
+        color: #636e72;
+    }
+    .risk-dashboard .alert-item .user-meta strong {
+        color: #2d3436;
+    }
+    .risk-dashboard .alert-item .score-display {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 4px 10px;
+        background: #fff5f5;
+        border-radius: 20px;
+        font-size: 13px;
+        font-weight: 600;
+        color: #e74c3c;
+    }
+    .risk-dashboard .alert-item .action-buttons {
+        display: flex;
+        gap: 8px;
+        margin-top: 12px;
+        padding-top: 12px;
+        border-top: 1px dashed #e9ecef;
+    }
+    .risk-dashboard .alert-item .action-buttons .btn {
+        flex: 1;
+        padding: 6px 12px;
+        font-size: 12px;
+        border-radius: 6px;
+        transition: all 0.2s ease;
+    }
+    .risk-dashboard .alert-item .action-buttons .btn-freeze {
+        background: linear-gradient(135deg, #feca57, #ff9f43);
+        border: none;
+        color: #fff;
+    }
+    .risk-dashboard .alert-item .action-buttons .btn-freeze:hover {
+        background: linear-gradient(135deg, #ff9f43, #feca57);
+        transform: translateY(-1px);
+    }
+    .risk-dashboard .alert-item .action-buttons .btn-ban {
+        background: linear-gradient(135deg, #ff6b6b, #ee5a5a);
+        border: none;
+        color: #fff;
+    }
+    .risk-dashboard .alert-item .action-buttons .btn-ban:hover {
+        background: linear-gradient(135deg, #ee5a5a, #ff6b6b);
+        transform: translateY(-1px);
+    }
+    .risk-dashboard .status-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 4px 10px;
+        border-radius: 20px;
+        font-size: 11px;
+        font-weight: 500;
+    }
+    .risk-dashboard .status-badge.status-frozen {
+        background: #fff3cd;
+        color: #856404;
+    }
+    .risk-dashboard .status-badge.status-banned {
+        background: #f8d7da;
+        color: #721c24;
+    }
+    .risk-dashboard .risk-level-badge {
+        padding: 6px 14px;
+        border-radius: 20px;
+        font-size: 11px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    .risk-dashboard .risk-level-badge.dangerous {
+        background: linear-gradient(135deg, #ff6b6b, #ee5a5a);
+        color: #fff;
+        box-shadow: 0 2px 8px rgba(238, 90, 90, 0.4);
+    }
+    .risk-dashboard .risk-level-badge.high {
+        background: linear-gradient(135deg, #feca57, #ff9f43);
+        color: #fff;
+        box-shadow: 0 2px 8px rgba(255, 159, 67, 0.4);
+    }
+    .risk-dashboard .risk-level-badge.medium {
+        background: linear-gradient(135deg, #54a0ff, #2e86de);
+        color: #fff;
+        box-shadow: 0 2px 8px rgba(46, 134, 222, 0.4);
+    }
+    
     .risk-dashboard .table tbody tr:hover {
         background: #f8f9fa;
     }

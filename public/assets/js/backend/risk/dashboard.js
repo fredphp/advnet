@@ -383,60 +383,68 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form', 'echarts'], function 
                         
                         // 只有正常状态才显示冻结和封禁按钮
                         if (currentStatus === 'normal') {
-                            actionButtons = '<div style="margin-top: 8px;">' +
-                                '<button class="btn btn-warning btn-xs btn-freeze-user" data-user-id="' + item.user_id + '"><i class="fa fa-snowflake"></i> 冻结</button> ' +
-                                '<button class="btn btn-danger btn-xs btn-ban-user" data-user-id="' + item.user_id + '"><i class="fa fa-ban"></i> 封禁</button>' +
+                            actionButtons = '<div class="action-buttons">' +
+                                '<button class="btn btn-freeze btn-freeze-user" data-user-id="' + item.user_id + '"><i class="fa fa-snowflake"></i> 冻结</button>' +
+                                '<button class="btn btn-ban btn-ban-user" data-user-id="' + item.user_id + '"><i class="fa fa-ban"></i> 封禁</button>' +
                                 '</div>';
+                        } else if (currentStatus === 'frozen') {
+                            actionButtons = '<div style="margin-top: 12px;"><span class="status-badge status-frozen"><i class="fa fa-snowflake"></i> 已冻结</span></div>';
                         } else {
-                            actionButtons = '<div style="margin-top: 8px;"><span class="label label-' + 
-                                (currentStatus === 'frozen' ? 'warning' : 'danger') + '">' + 
-                                (currentStatus === 'frozen' ? '已冻结' : '已封禁') + '</span></div>';
+                            actionButtons = '<div style="margin-top: 12px;"><span class="status-badge status-banned"><i class="fa fa-ban"></i> 已封禁</span></div>';
                         }
                         
                         highRiskHtml += '<div class="alert-item alert-warning">' +
-                            '<div style="display: flex; justify-content: space-between; align-items: flex-start;">' +
-                                '<div>' +
-                                    '<strong><a href="javascript:;" onclick="Backend.api.addtabs(\'risk/userrisk\', \'用户风险\')")>用户ID: ' + item.user_id + '</a></strong>' +
-                                    '<br><small>风险分: <span class="text-danger">' + (item.total_score || 0) + '</span></small>' +
+                            '<div class="user-info">' +
+                                '<div class="user-avatar"><i class="fa fa-user"></i></div>' +
+                                '<div class="user-details">' +
+                                    '<div class="user-name"><a href="javascript:;" onclick="Backend.api.addtabs(\'risk/userrisk\', \'用户风险\')">用户 ID: ' + item.user_id + '</a></div>' +
+                                    '<div class="user-meta">' +
+                                        '<span>风险分: <strong class="text-danger">' + (item.total_score || 0) + '</strong></span>' +
+                                        '<span>违规: <strong>' + (item.violation_count || 0) + '</strong> 次</span>' +
+                                    '</div>' +
                                     actionButtons +
                                 '</div>' +
-                                '<span class="risk-badge high">高风险</span>' +
+                                '<span class="risk-level-badge high">高风险</span>' +
                             '</div>' +
                             '</div>';
                     });
                 } else {
-                    highRiskHtml = '<div class="text-center text-muted" style="padding: 20px;">暂无高风险用户</div>';
+                    highRiskHtml = '<div class="text-center text-muted" style="padding: 40px;"><i class="fa fa-check-circle" style="font-size: 48px; color: #10ac84; margin-bottom: 15px;"></i><br>暂无高风险用户</div>';
                 }
                 $('#high-risk-alerts').html(highRiskHtml);
                 
                 // 危险用户预警
                 var dangerousHtml = '';
                 if (data.alerts && data.alerts.dangerous && data.alerts.dangerous.length > 0) {
-                    dangerousHtml = '<div style="margin-bottom: 10px;"><strong class="text-danger">危险用户</strong></div>';
+                    dangerousHtml = '<div style="margin-bottom: 15px; padding-bottom: 10px; border-bottom: 1px solid #f8d7da;"><i class="fa fa-skull-crossbones text-danger"></i> <strong class="text-danger">危险用户</strong></div>';
                     data.alerts.dangerous.forEach(function(item) {
                         var currentStatus = item.current_status || 'normal';
                         var actionButtons = '';
                         
                         // 只有正常状态才显示冻结和封禁按钮
                         if (currentStatus === 'normal') {
-                            actionButtons = '<div style="margin-top: 8px;">' +
-                                '<button class="btn btn-warning btn-xs btn-freeze-user" data-user-id="' + item.user_id + '"><i class="fa fa-snowflake"></i> 冻结</button> ' +
-                                '<button class="btn btn-danger btn-xs btn-ban-user" data-user-id="' + item.user_id + '"><i class="fa fa-ban"></i> 封禁</button>' +
+                            actionButtons = '<div class="action-buttons">' +
+                                '<button class="btn btn-freeze btn-freeze-user" data-user-id="' + item.user_id + '"><i class="fa fa-snowflake"></i> 冻结</button>' +
+                                '<button class="btn btn-ban btn-ban-user" data-user-id="' + item.user_id + '"><i class="fa fa-ban"></i> 封禁</button>' +
                                 '</div>';
+                        } else if (currentStatus === 'frozen') {
+                            actionButtons = '<div style="margin-top: 12px;"><span class="status-badge status-frozen"><i class="fa fa-snowflake"></i> 已冻结</span></div>';
                         } else {
-                            actionButtons = '<div style="margin-top: 8px;"><span class="label label-' + 
-                                (currentStatus === 'frozen' ? 'warning' : 'danger') + '">' + 
-                                (currentStatus === 'frozen' ? '已冻结' : '已封禁') + '</span></div>';
+                            actionButtons = '<div style="margin-top: 12px;"><span class="status-badge status-banned"><i class="fa fa-ban"></i> 已封禁</span></div>';
                         }
                         
                         dangerousHtml += '<div class="alert-item alert-danger">' +
-                            '<div style="display: flex; justify-content: space-between; align-items: flex-start;">' +
-                                '<div>' +
-                                    '<strong><a href="javascript:;" onclick="Backend.api.addtabs(\'risk/userrisk\', \'用户风险\')">用户ID: ' + item.user_id + '</a></strong>' +
-                                    '<br><small>风险分: <span class="text-danger">' + (item.total_score || 0) + '</span></small>' +
+                            '<div class="user-info">' +
+                                '<div class="user-avatar"><i class="fa fa-exclamation-triangle"></i></div>' +
+                                '<div class="user-details">' +
+                                    '<div class="user-name"><a href="javascript:;" onclick="Backend.api.addtabs(\'risk/userrisk\', \'用户风险\')">用户 ID: ' + item.user_id + '</a></div>' +
+                                    '<div class="user-meta">' +
+                                        '<span>风险分: <strong class="text-danger">' + (item.total_score || 0) + '</strong></span>' +
+                                        '<span>违规: <strong>' + (item.violation_count || 0) + '</strong> 次</span>' +
+                                    '</div>' +
                                     actionButtons +
                                 '</div>' +
-                                '<span class="risk-badge dangerous">危险</span>' +
+                                '<span class="risk-level-badge dangerous">危险</span>' +
                             '</div>' +
                             '</div>';
                     });
@@ -448,17 +456,20 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form', 'echarts'], function 
                 if (data.alerts && data.alerts.recent_violators && data.alerts.recent_violators.length > 0) {
                     data.alerts.recent_violators.forEach(function(item) {
                         frequentHtml += '<div class="alert-item alert-info">' +
-                            '<div style="display: flex; justify-content: space-between; align-items: center;">' +
-                                '<div>' +
-                                    '<strong><a href="javascript:;" onclick="Backend.api.addtabs(\'risk/userrisk\', \'用户风险\')">用户ID: ' + item.user_id + '</a></strong>' +
-                                    '<br><small>24小时内违规 <span class="text-danger">' + (item.violation_count || 0) + '</span> 次</small>' +
+                            '<div class="user-info">' +
+                                '<div class="user-avatar"><i class="fa fa-clock"></i></div>' +
+                                '<div class="user-details">' +
+                                    '<div class="user-name"><a href="javascript:;" onclick="Backend.api.addtabs(\'risk/userrisk\', \'用户风险\')">用户 ID: ' + item.user_id + '</a></div>' +
+                                    '<div class="user-meta">' +
+                                        '<span>24h违规: <strong class="text-warning">' + (item.violation_count || 0) + '</strong> 次</span>' +
+                                    '</div>' +
                                 '</div>' +
-                                '<span class="risk-badge medium">频繁</span>' +
+                                '<span class="risk-level-badge medium">频繁</span>' +
                             '</div>' +
                             '</div>';
                     });
                 } else {
-                    frequentHtml = '<div class="text-center text-muted" style="padding: 20px;">暂无频繁违规用户</div>';
+                    frequentHtml = '<div class="text-center text-muted" style="padding: 40px;"><i class="fa fa-check-circle" style="font-size: 48px; color: #10ac84; margin-bottom: 15px;"></i><br>暂无频繁违规用户</div>';
                 }
                 $('#frequent-violators').html(frequentHtml);
                 
