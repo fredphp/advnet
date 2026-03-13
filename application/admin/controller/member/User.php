@@ -58,38 +58,101 @@ class User extends Backend
             $this->error('用户不存在');
         }
 
-        $coinAccount = Db::name('coin_account')
-            ->where('user_id', $ids)
-            ->find();
+        $prefix = config('database.prefix');
 
-        $inviteStats = Db::name('user_invite_stat')
-            ->where('user_id', $ids)
-            ->find();
+        // 金币账户信息
+        $coinAccount = null;
+        try {
+            $coinAccount = Db::name('coin_account')
+                ->where('user_id', $ids)
+                ->find();
+        } catch (\Exception $e) {
+            $coinAccount = null;
+        }
 
-        $todayStats = Db::name('user_behavior_stat')
-            ->where('user_id', $ids)
-            ->where('stat_date', date('Y-m-d'))
-            ->find();
+        // 邀请统计
+        $inviteStats = null;
+        try {
+            $inviteStats = Db::name('user_invite_stat')
+                ->where('user_id', $ids)
+                ->find();
+        } catch (\Exception $e) {
+            $inviteStats = null;
+        }
 
-        $withdrawStats = Db::name('withdraw_order')
-            ->where('user_id', $ids)
-            ->field('COUNT(*) as total_count, SUM(CASE WHEN status = "completed" THEN amount ELSE 0 END) as total_amount')
-            ->find();
+        // 今日统计
+        $todayStats = null;
+        try {
+            $todayStats = Db::name('user_behavior_stat')
+                ->where('user_id', $ids)
+                ->where('stat_date', date('Y-m-d'))
+                ->find();
+        } catch (\Exception $e) {
+            $todayStats = null;
+        }
 
-        $riskInfo = Db::name('user_risk_score')
-            ->where('user_id', $ids)
-            ->find();
+        // 提现统计 - 使用原生SQL避免字段问题
+        $withdrawStats = ['total_count' => 0, 'total_amount' => 0];
+        try {
+            // 先检查表是否存在
+            $tableExists = Db::query("SHOW TABLES LIKE '{$prefix}withdraw_order'");
+            if (!empty($tableExists)) {
+                // 检查是否有 amount 字段
+                $columns = Db::query("SHOW COLUMNS FROM {$prefix}withdraw_order LIKE 'amount'");
+                if (!empty($columns)) {
+                    $result = Db::query("
+                        SELECT COUNT(*) as total_count, 
+                               SUM(CASE WHEN status = 'completed' THEN amount ELSE 0 END) as total_amount 
+                        FROM {$prefix}withdraw_order 
+                        WHERE user_id = ?
+                    ", [$ids]);
+                    if (!empty($result)) {
+                        $withdrawStats = $result[0];
+                    }
+                } else {
+                    // 没有 amount 字段，只统计数量
+                    $result = Db::query("SELECT COUNT(*) as total_count FROM {$prefix}withdraw_order WHERE user_id = ?", [$ids]);
+                    if (!empty($result)) {
+                        $withdrawStats['total_count'] = $result[0]['total_count'];
+                    }
+                }
+            }
+        } catch (\Exception $e) {
+            $withdrawStats = ['total_count' => 0, 'total_amount' => 0];
+        }
 
-        $recentLogins = Db::name('user_behavior')
-            ->where('user_id', $ids)
-            ->where('behavior_type', 'login')
-            ->order('createtime', 'desc')
-            ->limit(10)
-            ->select();
+        // 风险信息
+        $riskInfo = null;
+        try {
+            $riskInfo = Db::name('user_risk_score')
+                ->where('user_id', $ids)
+                ->find();
+        } catch (\Exception $e) {
+            $riskInfo = null;
+        }
 
-        $devices = Db::name('device_fingerprint')
-            ->where('user_id', $ids)
-            ->select();
+        // 最近登录记录
+        $recentLogins = [];
+        try {
+            $recentLogins = Db::name('user_behavior')
+                ->where('user_id', $ids)
+                ->where('behavior_type', 'login')
+                ->order('createtime', 'desc')
+                ->limit(10)
+                ->select();
+        } catch (\Exception $e) {
+            $recentLogins = [];
+        }
+
+        // 设备信息
+        $devices = [];
+        try {
+            $devices = Db::name('device_fingerprint')
+                ->where('user_id', $ids)
+                ->select();
+        } catch (\Exception $e) {
+            $devices = [];
+        }
 
         $this->success('', null, [
             'user' => $user,
