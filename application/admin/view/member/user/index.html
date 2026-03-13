@@ -1,47 +1,52 @@
 <style>
-/* 操作按钮区域样式 */
-.action-toolbar {
-    display: flex;
-    gap: 8px;
-    flex-wrap: wrap;
-    margin-bottom: 15px;
-    padding: 12px;
-    background: linear-gradient(135deg, #f8f9fa 0%, #fff 100%);
-    border-radius: 8px;
-    border: 1px solid #e9ecef;
-}
-
-.action-toolbar .btn-group {
-    display: flex;
-    gap: 0;
-}
-
-.action-toolbar .btn {
-    border-radius: 6px;
+/* 状态标签样式 */
+.status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 12px;
     font-weight: 500;
+}
+
+.status-badge.normal {
+    background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
+    color: #047857;
+}
+
+.status-badge.frozen {
+    background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+    color: #b45309;
+}
+
+.status-badge.banned {
+    background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
+    color: #b91c1c;
+}
+
+/* 操作按钮组样式 */
+.btn-group-operate {
+    display: inline-flex;
+    gap: 3px;
+}
+
+.btn-group-operate .btn {
+    padding: 4px 8px;
+    font-size: 12px;
+    border-radius: 4px;
+    border: none;
     transition: all 0.2s;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.08);
 }
 
-.action-toolbar .btn:hover {
+.btn-group-operate .btn:hover {
     transform: translateY(-1px);
-    box-shadow: 0 4px 8px rgba(0,0,0,0.12);
+    box-shadow: 0 2px 6px rgba(0,0,0,0.15);
 }
 
-/* 分组按钮样式 */
-.btn-group-actions {
-    position: relative;
-}
-
-.btn-group-actions .dropdown-toggle {
-    padding-right: 28px;
-}
-
-.btn-group-actions .dropdown-toggle::after {
-    position: absolute;
-    right: 10px;
-    top: 50%;
-    transform: translateY(-50%);
+.btn-group-operate .btn-xs {
+    padding: 3px 6px;
+    font-size: 11px;
 }
 
 /* 下拉菜单美化 */
@@ -49,15 +54,16 @@
     border: none;
     box-shadow: 0 4px 20px rgba(0,0,0,0.15);
     border-radius: 8px;
-    padding: 8px 0;
-    min-width: 180px;
+    padding: 6px 0;
+    min-width: 160px;
 }
 
 .dropdown-menu > li > a {
-    padding: 10px 20px;
+    padding: 8px 16px;
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 8px;
+    font-size: 13px;
     transition: all 0.2s;
 }
 
@@ -67,18 +73,18 @@
 }
 
 .dropdown-menu > li > a i {
-    width: 18px;
+    width: 16px;
     text-align: center;
 }
 
 .dropdown-menu .divider {
-    margin: 8px 0;
+    margin: 5px 0;
     background: #e9ecef;
 }
 
 .dropdown-menu .dropdown-header {
-    padding: 8px 20px;
-    font-size: 11px;
+    padding: 6px 16px;
+    font-size: 10px;
     font-weight: 600;
     color: #6c757d;
     text-transform: uppercase;
@@ -86,6 +92,14 @@
 }
 
 /* 按钮颜色 */
+.btn-primary {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border: none;
+}
+.btn-primary:hover {
+    background: linear-gradient(135deg, #5a6fd6 0%, #6a4190 100%);
+}
+
 .btn-info {
     background: linear-gradient(135deg, #36b9cc 0%, #258396 100%);
     border: none;
@@ -138,75 +152,6 @@
 .btn-teal:hover {
     background: linear-gradient(135deg, #1ab394 0%, #14876a 100%);
     color: #fff;
-}
-
-/* 快捷操作标签 */
-.quick-actions {
-    display: inline-flex;
-    gap: 4px;
-    margin-left: 8px;
-}
-
-.quick-action-btn {
-    padding: 2px 8px;
-    font-size: 11px;
-    border-radius: 4px;
-    cursor: pointer;
-    transition: all 0.2s;
-    border: 1px solid transparent;
-}
-
-.quick-action-btn.ban {
-    background: #fee2e2;
-    color: #dc2626;
-    border-color: #fecaca;
-}
-.quick-action-btn.ban:hover {
-    background: #fecaca;
-}
-
-.quick-action-btn.freeze {
-    background: #fef3c7;
-    color: #d97706;
-    border-color: #fde68a;
-}
-.quick-action-btn.freeze:hover {
-    background: #fde68a;
-}
-
-.quick-action-btn.risk {
-    background: #ede9fe;
-    color: #7c3aed;
-    border-color: #ddd6fe;
-}
-.quick-action-btn.risk:hover {
-    background: #ddd6fe;
-}
-
-/* 状态标签样式 */
-.status-badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    padding: 4px 10px;
-    border-radius: 20px;
-    font-size: 12px;
-    font-weight: 500;
-}
-
-.status-badge.normal {
-    background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
-    color: #047857;
-}
-
-.status-badge.frozen {
-    background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
-    color: #b45309;
-}
-
-.status-badge.banned {
-    background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
-    color: #b91c1c;
 }
 
 /* 弹窗样式优化 */
@@ -275,6 +220,17 @@
 .table > tbody > tr:hover {
     background: #f8f9fa;
 }
+
+/* 快捷金额按钮 */
+.quick-amounts {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.quick-amounts .btn {
+    border-radius: 20px;
+}
 </style>
 
 <div class="panel panel-default panel-intro">
@@ -284,78 +240,9 @@
         <div id="myTabContent" class="tab-content">
             <div class="tab-pane fade active in" id="one">
                 <div class="widget-body no-padding">
-                    <!-- 工具栏 -->
                     <div id="toolbar" class="toolbar">
                         {:build_toolbar('refresh,add,edit,del')}
-                        
-                        <!-- 金币操作 -->
-                        <div class="btn-group btn-group-actions">
-                            <button type="button" class="btn btn-warning dropdown-toggle" data-toggle="dropdown">
-                                <i class="fa fa-coins"></i> 金币操作 <span class="caret"></span>
-                            </button>
-                            <ul class="dropdown-menu">
-                                <li class="dropdown-header">金币管理</li>
-                                <li><a href="javascript:;" class="btn-recharge"><i class="fa fa-plus-circle text-success"></i> 充值金币</a></li>
-                                <li><a href="javascript:;" class="btn-deduct"><i class="fa fa-minus-circle text-danger"></i> 扣除金币</a></li>
-                                <li class="divider"></li>
-                                <li><a href="javascript:;" class="btn-coin-log"><i class="fa fa-list-alt text-info"></i> 金币流水</a></li>
-                                <li><a href="javascript:;" class="btn-frozen-coin"><i class="fa fa-snowflake text-primary"></i> 冻结金币</a></li>
-                            </ul>
-                        </div>
-                        
-                        <!-- 风控操作 -->
-                        <div class="btn-group btn-group-actions">
-                            <button type="button" class="btn btn-danger dropdown-toggle" data-toggle="dropdown">
-                                <i class="fa fa-shield-alt"></i> 风控操作 <span class="caret"></span>
-                            </button>
-                            <ul class="dropdown-menu">
-                                <li class="dropdown-header">风控管理</li>
-                                <li><a href="javascript:;" class="btn-ban-user"><i class="fa fa-ban text-danger"></i> 封禁用户</a></li>
-                                <li><a href="javascript:;" class="btn-freeze-user"><i class="fa fa-snowflake text-warning"></i> 冻结账户</a></li>
-                                <li><a href="javascript:;" class="btn-unfreeze-user"><i class="fa fa-unlock text-success"></i> 解冻账户</a></li>
-                                <li class="divider"></li>
-                                <li><a href="javascript:;" class="btn-add-blacklist"><i class="fa fa-user-slash text-dark"></i> 加入黑名单</a></li>
-                                <li><a href="javascript:;" class="btn-add-whitelist"><i class="fa fa-user-check text-success"></i> 加入白名单</a></li>
-                                <li class="divider"></li>
-                                <li><a href="javascript:;" class="btn-view-risk"><i class="fa fa-chart-line text-info"></i> 风控详情</a></li>
-                                <li><a href="javascript:;" class="btn-view-devices"><i class="fa fa-mobile-alt text-secondary"></i> 设备信息</a></li>
-                            </ul>
-                        </div>
-                        
-                        <!-- 用户信息 -->
-                        <div class="btn-group btn-group-actions">
-                            <button type="button" class="btn btn-info dropdown-toggle" data-toggle="dropdown">
-                                <i class="fa fa-user-circle"></i> 用户信息 <span class="caret"></span>
-                            </button>
-                            <ul class="dropdown-menu">
-                                <li class="dropdown-header">信息查看</li>
-                                <li><a href="javascript:;" class="btn-user-detail"><i class="fa fa-id-card text-primary"></i> 用户详情</a></li>
-                                <li><a href="javascript:;" class="btn-view-behaviors"><i class="fa fa-history text-info"></i> 行为记录</a></li>
-                                <li><a href="javascript:;" class="btn-view-invite"><i class="fa fa-users text-success"></i> 邀请关系</a></li>
-                                <li class="divider"></li>
-                                <li><a href="javascript:;" class="btn-view-watch"><i class="fa fa-play-circle text-danger"></i> 观看记录</a></li>
-                                <li><a href="javascript:;" class="btn-view-withdraw"><i class="fa fa-money-bill text-warning"></i> 提现记录</a></li>
-                                <li><a href="javascript:;" class="btn-view-redpacket"><i class="fa fa-gift text-danger"></i> 红包记录</a></li>
-                            </ul>
-                        </div>
-                        
-                        <!-- 导出操作 -->
-                        <div class="btn-group btn-group-actions">
-                            <button type="button" class="btn btn-purple dropdown-toggle" data-toggle="dropdown">
-                                <i class="fa fa-download"></i> 导出 <span class="caret"></span>
-                            </button>
-                            <ul class="dropdown-menu">
-                                <li><a href="javascript:;" class="btn-export"><i class="fa fa-file-excel text-success"></i> 导出选中用户</a></li>
-                                <li><a href="javascript:;" class="btn-export-all"><i class="fa fa-file-export text-info"></i> 导出全部用户</a></li>
-                            </ul>
-                        </div>
-                        
-                        <!-- 批量操作 -->
-                        <button type="button" class="btn btn-teal btn-batch-status" title="批量修改状态">
-                            <i class="fa fa-tasks"></i> 批量操作
-                        </button>
                     </div>
-                    
                     <table id="table" class="table table-striped table-bordered table-hover table-nowrap"
                            data-operate-edit="{:$auth->check('member/user/edit')}"
                            data-operate-del="{:$auth->check('member/user/del')}"
@@ -378,6 +265,7 @@
             <div class="modal-body">
                 <div class="alert alert-info" id="recharge-user-info"></div>
                 <form id="recharge-form">
+                    <input type="hidden" name="user_id" value="">
                     <div class="form-group">
                         <label>充值金币数量 <span class="text-danger">*</span></label>
                         <input type="number" name="amount" class="form-control" placeholder="请输入充值金币数量" required min="1">
@@ -416,6 +304,7 @@
             <div class="modal-body">
                 <div class="alert alert-warning" id="deduct-user-info"></div>
                 <form id="deduct-form">
+                    <input type="hidden" name="user_id" value="">
                     <div class="form-group">
                         <label>扣除金币数量 <span class="text-danger">*</span></label>
                         <input type="number" name="amount" class="form-control" placeholder="请输入扣除金币数量" required min="1">
@@ -455,6 +344,7 @@
             <div class="modal-body">
                 <div class="alert alert-danger" id="ban-user-info"></div>
                 <form id="ban-form">
+                    <input type="hidden" name="user_id" value="">
                     <div class="form-group">
                         <label>封禁类型 <span class="text-danger">*</span></label>
                         <select name="ban_type" class="form-control" required>
@@ -502,6 +392,7 @@
             <div class="modal-body">
                 <div class="alert alert-warning" id="freeze-user-info"></div>
                 <form id="freeze-form">
+                    <input type="hidden" name="user_id" value="">
                     <div class="form-group">
                         <label>冻结时长 <span class="text-danger">*</span></label>
                         <select name="duration" class="form-control" required>
@@ -521,54 +412,6 @@
             <div class="modal-footer">
                 <button type="button" class="btn btn-default" data-dismiss="modal">取消</button>
                 <button type="button" class="btn btn-warning" id="btn-freeze-confirm"><i class="fa fa-snowflake"></i> 确认冻结</button>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- 批量操作弹窗 -->
-<div id="batch-modal" class="modal fade" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header" style="background: linear-gradient(135deg, #20c9a6 0%, #1a9d82 100%);">
-                <button type="button" class="close" data-dismiss="modal">&times;</button>
-                <h4 class="modal-title"><i class="fa fa-tasks"></i> 批量操作</h4>
-            </div>
-            <div class="modal-body">
-                <div class="alert alert-info" id="batch-user-count">已选择 <strong>0</strong> 个用户</div>
-                <form id="batch-form">
-                    <div class="form-group">
-                        <label>操作类型 <span class="text-danger">*</span></label>
-                        <select name="batch_action" class="form-control" required>
-                            <option value="">请选择操作</option>
-                            <optgroup label="状态操作">
-                                <option value="batch_normal">批量恢复正常</option>
-                                <option value="batch_freeze">批量冻结</option>
-                                <option value="batch_ban">批量封禁</option>
-                            </optgroup>
-                            <optgroup label="金币操作">
-                                <option value="batch_recharge">批量充值金币</option>
-                                <option value="batch_deduct">批量扣除金币</option>
-                            </optgroup>
-                            <optgroup label="风控操作">
-                                <option value="batch_blacklist">批量加入黑名单</option>
-                                <option value="batch_whitelist">批量加入白名单</option>
-                            </optgroup>
-                        </select>
-                    </div>
-                    <div class="form-group batch-amount-group" style="display:none;">
-                        <label>金币数量</label>
-                        <input type="number" name="batch_amount" class="form-control" placeholder="请输入金币数量">
-                    </div>
-                    <div class="form-group">
-                        <label>备注说明</label>
-                        <textarea name="batch_remark" class="form-control" placeholder="操作备注" rows="2"></textarea>
-                    </div>
-                </form>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-default" data-dismiss="modal">取消</button>
-                <button type="button" class="btn btn-success" id="btn-batch-confirm"><i class="fa fa-check"></i> 确认执行</button>
             </div>
         </div>
     </div>
@@ -594,7 +437,7 @@
 
 <script>
 // 快捷金额按钮
-$('.quick-amount').on('click', function() {
+$(document).on('click', '.quick-amount', function() {
     var amount = $(this).data('amount');
     var current = parseInt($('#recharge-form input[name="amount"]').val()) || 0;
     $('#recharge-form input[name="amount"]').val(current + amount);

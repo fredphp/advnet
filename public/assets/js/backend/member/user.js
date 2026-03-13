@@ -33,7 +33,7 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
                         {field: 'level', title: '等级', width: 60},
                         {field: 'status', title: '状态', searchList: {"normal":"正常","frozen":"冻结","banned":"封禁"}, formatter: Controller.api.formatter.status},
                         {field: 'createtime', title: '注册时间', operate: 'RANGE', addclass: 'datetimerange', formatter: Table.api.formatter.datetime, sortable: true},
-                        {field: 'operate', title: '操作', table: table, events: Table.api.events.operate, formatter: Controller.api.formatter.operate, width: 150}
+                        {field: 'operate', title: '操作', table: table, events: Table.api.events.operate, formatter: Controller.api.formatter.operate, width: 200, align: 'left'}
                     ]
                 ]
             });
@@ -41,422 +41,8 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
             // 为表格绑定事件
             Table.api.bindevent(table);
 
-            // ==================== 金币操作 ====================
-            
-            // 充值金币
-            $(document).on('click', '.btn-recharge', function () {
-                var ids = Table.api.selectedids(table);
-                if (ids.length !== 1) {
-                    Toastr.warning('请选择一个用户');
-                    return;
-                }
-                var row = table.bootstrapTable('getRowByUniqueId', ids[0]);
-                $('#recharge-user-info').html('<i class="fa fa-user"></i> 用户：' + (row.nickname || row.username) + ' (ID: ' + row.id + ')');
-                $('#recharge-modal').modal('show');
-                $('#recharge-form')[0].reset();
-            });
-
-            // 确认充值
-            $(document).on('click', '#btn-recharge-confirm', function () {
-                var ids = Table.api.selectedids(table);
-                var amount = $('#recharge-form input[name="amount"]').val();
-                var remark = $('#recharge-form textarea[name="remark"]').val();
-                
-                if (!amount || amount <= 0) {
-                    Toastr.error('请输入有效的充值金额');
-                    return;
-                }
-
-                Fast.api.ajax({
-                    url: 'member/user/recharge',
-                    data: {user_id: ids[0], amount: amount, remark: remark}
-                }, function (ret) {
-                    $('#recharge-modal').modal('hide');
-                    Toastr.success('充值成功');
-                    table.bootstrapTable('refresh');
-                });
-            });
-
-            // 扣除金币
-            $(document).on('click', '.btn-deduct', function () {
-                var ids = Table.api.selectedids(table);
-                if (ids.length !== 1) {
-                    Toastr.warning('请选择一个用户');
-                    return;
-                }
-                var row = table.bootstrapTable('getRowByUniqueId', ids[0]);
-                $('#deduct-user-info').html('<i class="fa fa-user"></i> 用户：' + (row.nickname || row.username) + ' | 当前余额：' + (row.coin_balance || 0) + ' 金币');
-                $('#deduct-modal').modal('show');
-                $('#deduct-form')[0].reset();
-            });
-
-            // 确认扣除
-            $(document).on('click', '#btn-deduct-confirm', function () {
-                var ids = Table.api.selectedids(table);
-                var amount = $('#deduct-form input[name="amount"]').val();
-                var reasonType = $('#deduct-form select[name="reason_type"]').val();
-                var remark = $('#deduct-form textarea[name="remark"]').val();
-                
-                if (!amount || amount <= 0) {
-                    Toastr.error('请输入有效的扣除金额');
-                    return;
-                }
-
-                if (!reasonType) {
-                    Toastr.error('请选择扣除原因');
-                    return;
-                }
-
-                Fast.api.ajax({
-                    url: 'member/user/deduct',
-                    data: {user_id: ids[0], amount: amount, remark: reasonType + (remark ? ' - ' + remark : '')}
-                }, function (ret) {
-                    $('#deduct-modal').modal('hide');
-                    Toastr.success('扣除成功');
-                    table.bootstrapTable('refresh');
-                });
-            });
-
-            // 金币流水
-            $(document).on('click', '.btn-coin-log', function () {
-                var ids = Table.api.selectedids(table);
-                if (ids.length !== 1) {
-                    Toastr.warning('请选择一个用户');
-                    return;
-                }
-                Fast.api.open('coin/log?user_id=' + ids[0], '金币流水记录');
-            });
-
-            // 冻结金币
-            $(document).on('click', '.btn-frozen-coin', function () {
-                var ids = Table.api.selectedids(table);
-                if (ids.length !== 1) {
-                    Toastr.warning('请选择一个用户');
-                    return;
-                }
-                var row = table.bootstrapTable('getRowByUniqueId', ids[0]);
-                Layer.prompt({
-                    title: '冻结金币 - 用户：' + (row.nickname || row.username),
-                    formType: 0,
-                    value: row.coin_balance || 0
-                }, function(value, index){
-                    Fast.api.ajax({
-                        url: 'coin/account/freeze',
-                        data: {user_id: ids[0], amount: value}
-                    }, function(ret){
-                        Layer.close(index);
-                        Toastr.success('冻结成功');
-                        table.bootstrapTable('refresh');
-                    });
-                });
-            });
-
-            // ==================== 风控操作 ====================
-
-            // 封禁用户
-            $(document).on('click', '.btn-ban-user', function () {
-                var ids = Table.api.selectedids(table);
-                if (ids.length !== 1) {
-                    Toastr.warning('请选择一个用户');
-                    return;
-                }
-                var row = table.bootstrapTable('getRowByUniqueId', ids[0]);
-                $('#ban-user-info').html('<i class="fa fa-exclamation-triangle"></i> 即将封禁用户：' + (row.nickname || row.username) + ' (ID: ' + row.id + ')');
-                $('#ban-modal').modal('show');
-                $('#ban-form')[0].reset();
-            });
-
-            // 封禁类型切换
-            $(document).on('change', 'select[name="ban_type"]', function () {
-                if ($(this).val() === 'permanent') {
-                    $('.ban-duration-group').hide();
-                } else {
-                    $('.ban-duration-group').show();
-                }
-            });
-
-            // 确认封禁
-            $(document).on('click', '#btn-ban-confirm', function () {
-                var ids = Table.api.selectedids(table);
-                var banType = $('#ban-form select[name="ban_type"]').val();
-                var duration = $('#ban-form input[name="duration"]').val();
-                var reasonType = $('#ban-form select[name="reason_type"]').val();
-                var remark = $('#ban-form textarea[name="remark"]').val();
-
-                if (!reasonType) {
-                    Toastr.error('请选择封禁原因');
-                    return;
-                }
-
-                Fast.api.ajax({
-                    url: 'member/user/ban',
-                    data: {
-                        user_id: ids[0], 
-                        ban_type: banType, 
-                        duration: duration, 
-                        reason: reasonType + (remark ? ' - ' + remark : '')
-                    }
-                }, function (ret) {
-                    $('#ban-modal').modal('hide');
-                    Toastr.success('封禁成功');
-                    table.bootstrapTable('refresh');
-                });
-            });
-
-            // 冻结账户
-            $(document).on('click', '.btn-freeze-user', function () {
-                var ids = Table.api.selectedids(table);
-                if (ids.length !== 1) {
-                    Toastr.warning('请选择一个用户');
-                    return;
-                }
-                var row = table.bootstrapTable('getRowByUniqueId', ids[0]);
-                $('#freeze-user-info').html('<i class="fa fa-user"></i> 用户：' + (row.nickname || row.username) + ' | 当前状态：' + row.status);
-                $('#freeze-modal').modal('show');
-                $('#freeze-form')[0].reset();
-            });
-
-            // 确认冻结
-            $(document).on('click', '#btn-freeze-confirm', function () {
-                var ids = Table.api.selectedids(table);
-                var duration = $('#freeze-form select[name="duration"]').val();
-                var reason = $('#freeze-form textarea[name="reason"]').val();
-
-                if (!reason) {
-                    Toastr.error('请输入冻结原因');
-                    return;
-                }
-
-                Fast.api.ajax({
-                    url: 'member/user/freeze',
-                    data: {user_id: ids[0], duration: duration, reason: reason}
-                }, function (ret) {
-                    $('#freeze-modal').modal('hide');
-                    Toastr.success('冻结成功');
-                    table.bootstrapTable('refresh');
-                });
-            });
-
-            // 解冻账户
-            $(document).on('click', '.btn-unfreeze-user', function () {
-                var ids = Table.api.selectedids(table);
-                if (ids.length !== 1) {
-                    Toastr.warning('请选择一个用户');
-                    return;
-                }
-                var row = table.bootstrapTable('getRowByUniqueId', ids[0]);
-                if (row.status === 'normal') {
-                    Toastr.warning('该用户状态正常，无需解冻');
-                    return;
-                }
-                Layer.confirm('确定要解冻用户 ' + (row.nickname || row.username) + ' 吗？', function(index){
-                    Fast.api.ajax({
-                        url: 'member/user/unfreeze',
-                        data: {user_id: ids[0]}
-                    }, function(ret){
-                        Layer.close(index);
-                        Toastr.success('解冻成功');
-                        table.bootstrapTable('refresh');
-                    });
-                });
-            });
-
-            // 加入黑名单
-            $(document).on('click', '.btn-add-blacklist', function () {
-                var ids = Table.api.selectedids(table);
-                if (ids.length !== 1) {
-                    Toastr.warning('请选择一个用户');
-                    return;
-                }
-                var row = table.bootstrapTable('getRowByUniqueId', ids[0]);
-                Layer.prompt({
-                    title: '加入黑名单 - ' + (row.nickname || row.username),
-                    formType: 2,
-                    value: '违规操作'
-                }, function(value, index){
-                    Fast.api.ajax({
-                        url: 'risk/blacklist/add',
-                        data: {user_id: ids[0], type: 'user', reason: value}
-                    }, function(ret){
-                        Layer.close(index);
-                        Toastr.success('已加入黑名单');
-                    });
-                });
-            });
-
-            // 加入白名单
-            $(document).on('click', '.btn-add-whitelist', function () {
-                var ids = Table.api.selectedids(table);
-                if (ids.length !== 1) {
-                    Toastr.warning('请选择一个用户');
-                    return;
-                }
-                var row = table.bootstrapTable('getRowByUniqueId', ids[0]);
-                Layer.confirm('确定要将用户 ' + (row.nickname || row.username) + ' 加入白名单吗？', function(index){
-                    Fast.api.ajax({
-                        url: 'risk/whitelist/add',
-                        data: {user_id: ids[0]}
-                    }, function(ret){
-                        Layer.close(index);
-                        Toastr.success('已加入白名单');
-                    });
-                });
-            });
-
-            // 查看风控详情
-            $(document).on('click', '.btn-view-risk', function () {
-                var ids = Table.api.selectedids(table);
-                if (ids.length !== 1) {
-                    Toastr.warning('请选择一个用户');
-                    return;
-                }
-                Fast.api.open('risk/user_risk/detail?user_id=' + ids[0], '风控详情');
-            });
-
-            // 查看设备信息
-            $(document).on('click', '.btn-view-devices', function () {
-                var ids = Table.api.selectedids(table);
-                if (ids.length !== 1) {
-                    Toastr.warning('请选择一个用户');
-                    return;
-                }
-                Fast.api.open('member/user/devices?user_id=' + ids[0], '设备信息');
-            });
-
-            // ==================== 用户信息 ====================
-
-            // 用户详情
-            $(document).on('click', '.btn-user-detail', function () {
-                var ids = Table.api.selectedids(table);
-                if (ids.length !== 1) {
-                    Toastr.warning('请选择一个用户');
-                    return;
-                }
-                Controller.api.showUserDetail(ids[0]);
-            });
-
-            // 查看行为记录
-            $(document).on('click', '.btn-view-behaviors', function () {
-                var ids = Table.api.selectedids(table);
-                if (ids.length !== 1) {
-                    Toastr.warning('请选择一个用户');
-                    return;
-                }
-                Fast.api.open('member/user/behaviors?user_id=' + ids[0], '行为记录');
-            });
-
-            // 查看邀请关系
-            $(document).on('click', '.btn-view-invite', function () {
-                var ids = Table.api.selectedids(table);
-                if (ids.length !== 1) {
-                    Toastr.warning('请选择一个用户');
-                    return;
-                }
-                Fast.api.open('invite/relation?user_id=' + ids[0], '邀请关系');
-            });
-
-            // 查看观看记录
-            $(document).on('click', '.btn-view-watch', function () {
-                var ids = Table.api.selectedids(table);
-                if (ids.length !== 1) {
-                    Toastr.warning('请选择一个用户');
-                    return;
-                }
-                Fast.api.open('video/watchrecord?user_id=' + ids[0], '观看记录');
-            });
-
-            // 查看提现记录
-            $(document).on('click', '.btn-view-withdraw', function () {
-                var ids = Table.api.selectedids(table);
-                if (ids.length !== 1) {
-                    Toastr.warning('请选择一个用户');
-                    return;
-                }
-                Fast.api.open('withdraw/order?user_id=' + ids[0], '提现记录');
-            });
-
-            // 查看红包记录
-            $(document).on('click', '.btn-view-redpacket', function () {
-                var ids = Table.api.selectedids(table);
-                if (ids.length !== 1) {
-                    Toastr.warning('请选择一个用户');
-                    return;
-                }
-                Fast.api.open('redpacket/record?user_id=' + ids[0], '红包记录');
-            });
-
-            // ==================== 导出操作 ====================
-
-            // 导出选中用户
-            $(document).on('click', '.btn-export', function () {
-                var ids = Table.api.selectedids(table);
-                if (ids.length === 0) {
-                    Toastr.warning('请选择要导出的用户');
-                    return;
-                }
-                window.location.href = 'member/user/export?ids=' + ids.join(',');
-            });
-
-            // 导出全部用户
-            $(document).on('click', '.btn-export-all', function () {
-                var search = table.bootstrapTable('getOptions').searchText;
-                var filter = table.bootstrapTable('getOptions').filter;
-                window.location.href = 'member/user/export?' + $.param({search: search, filter: JSON.stringify(filter)});
-            });
-
-            // ==================== 批量操作 ====================
-
-            // 批量操作按钮
-            $(document).on('click', '.btn-batch-status', function () {
-                var ids = Table.api.selectedids(table);
-                if (ids.length === 0) {
-                    Toastr.warning('请选择要操作的用户');
-                    return;
-                }
-                $('#batch-user-count strong').text(ids.length);
-                $('#batch-modal').modal('show');
-                $('#batch-form')[0].reset();
-            });
-
-            // 批量操作类型切换
-            $(document).on('change', 'select[name="batch_action"]', function () {
-                var val = $(this).val();
-                if (val === 'batch_recharge' || val === 'batch_deduct') {
-                    $('.batch-amount-group').show();
-                } else {
-                    $('.batch-amount-group').hide();
-                }
-            });
-
-            // 确认批量操作
-            $(document).on('click', '#btn-batch-confirm', function () {
-                var ids = Table.api.selectedids(table);
-                var action = $('#batch-form select[name="batch_action"]').val();
-                var amount = $('#batch-form input[name="batch_amount"]').val();
-                var remark = $('#batch-form textarea[name="batch_remark"]').val();
-
-                if (!action) {
-                    Toastr.error('请选择操作类型');
-                    return;
-                }
-
-                if ((action === 'batch_recharge' || action === 'batch_deduct') && (!amount || amount <= 0)) {
-                    Toastr.error('请输入有效的金币数量');
-                    return;
-                }
-
-                Layer.confirm('确定要对 ' + ids.length + ' 个用户执行此操作吗？', function(index){
-                    Fast.api.ajax({
-                        url: 'member/user/batch',
-                        data: {ids: ids, action: action, amount: amount, remark: remark}
-                    }, function(ret){
-                        Layer.close(index);
-                        $('#batch-modal').modal('hide');
-                        Toastr.success('批量操作成功');
-                        table.bootstrapTable('refresh');
-                    });
-                });
-            });
+            // 绑定操作按钮事件
+            Controller.api.bindOperateEvents(table);
         },
         add: function () {
             Controller.api.bindevent();
@@ -578,7 +164,7 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
             // 表格格式化器
             formatter: {
                 username: function(value, row, index) {
-                    var avatar = row.avatar ? '<img src="' + row.avatar + '" style="width:24px;height:24px;border-radius:50%;margin-right:6px;">' : '<i class="fa fa-user-circle" style="font-size:24px;color:#ddd;margin-right:6px;"></i>';
+                    var avatar = row.avatar ? '<img src="' + row.avatar + '" style="width:24px;height:24px;border-radius:50%;margin-right:6px;vertical-align:middle;">' : '<i class="fa fa-user-circle" style="font-size:24px;color:#ddd;margin-right:6px;vertical-align:middle;"></i>';
                     return avatar + '<span>' + value + '</span>';
                 },
                 coin: function(value, row, index) {
@@ -594,20 +180,252 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
                     return statusMap[value] || value;
                 },
                 operate: function(value, row, index) {
-                    var that = $.extend({}, this);
+                    var that = this;
                     var table = $(that.table).clone(true);
-                    // 添加快捷操作按钮
-                    var quickActions = '<div class="quick-actions">' +
-                        '<span class="quick-action-btn ban" title="封禁" data-id="' + row.id + '"><i class="fa fa-ban"></i></span>' +
-                        '<span class="quick-action-btn freeze" title="冻结" data-id="' + row.id + '"><i class="fa fa-snowflake"></i></span>' +
-                        '<span class="quick-action-btn risk" title="风控" data-id="' + row.id + '"><i class="fa fa-shield-alt"></i></span>' +
-                    '</div>';
+                    var userId = row.id;
+                    var userName = row.nickname || row.username || row.id;
+                    var status = row.status;
                     
-                    // 使用默认的操作按钮
-                    return Table.api.formatter.operate.call(that, value, row, index);
+                    // 操作按钮HTML
+                    var html = '<div class="btn-group-operate">';
+                    
+                    // 详情按钮
+                    html += '<button type="button" class="btn btn-primary btn-xs" onclick="UserAPI.showDetail(' + userId + ')" title="详情"><i class="fa fa-eye"></i></button>';
+                    
+                    // 编辑按钮
+                    html += '<a href="member/user/edit/ids/' + userId + '" class="btn btn-info btn-xs" data-area=\'["800px","600px"]\' data-toggle="tooltip" title="编辑"><i class="fa fa-edit"></i></a>';
+                    
+                    // 金币操作下拉
+                    html += '<div class="btn-group">';
+                    html += '<button type="button" class="btn btn-warning btn-xs dropdown-toggle" data-toggle="dropdown" title="金币"><i class="fa fa-coins"></i> <span class="caret"></span></button>';
+                    html += '<ul class="dropdown-menu dropdown-menu-right">';
+                    html += '<li class="dropdown-header">金币操作</li>';
+                    html += '<li><a href="javascript:;" onclick="UserAPI.recharge(' + userId + ',\'' + userName + '\')"><i class="fa fa-plus-circle text-success"></i> 充值金币</a></li>';
+                    html += '<li><a href="javascript:;" onclick="UserAPI.deduct(' + userId + ',\'' + userName + '\',' + (row.coin_balance || 0) + ')"><i class="fa fa-minus-circle text-danger"></i> 扣除金币</a></li>';
+                    html += '<li class="divider"></li>';
+                    html += '<li><a href="coin/log?user_id=' + userId + '" data-toggle="tooltip"><i class="fa fa-list-alt text-info"></i> 金币流水</a></li>';
+                    html += '</ul></div>';
+                    
+                    // 风控操作下拉
+                    html += '<div class="btn-group">';
+                    html += '<button type="button" class="btn btn-danger btn-xs dropdown-toggle" data-toggle="dropdown" title="风控"><i class="fa fa-shield-alt"></i> <span class="caret"></span></button>';
+                    html += '<ul class="dropdown-menu dropdown-menu-right">';
+                    html += '<li class="dropdown-header">风控操作</li>';
+                    if (status !== 'banned') {
+                        html += '<li><a href="javascript:;" onclick="UserAPI.ban(' + userId + ',\'' + userName + '\')"><i class="fa fa-ban text-danger"></i> 封禁用户</a></li>';
+                    }
+                    if (status === 'normal') {
+                        html += '<li><a href="javascript:;" onclick="UserAPI.freeze(' + userId + ',\'' + userName + '\')"><i class="fa fa-snowflake text-warning"></i> 冻结账户</a></li>';
+                    }
+                    if (status === 'frozen') {
+                        html += '<li><a href="javascript:;" onclick="UserAPI.unfreeze(' + userId + ',\'' + userName + '\')"><i class="fa fa-unlock text-success"></i> 解冻账户</a></li>';
+                    }
+                    html += '<li class="divider"></li>';
+                    html += '<li><a href="javascript:;" onclick="UserAPI.addBlacklist(' + userId + ',\'' + userName + '\')"><i class="fa fa-user-slash text-dark"></i> 加入黑名单</a></li>';
+                    html += '<li><a href="javascript:;" onclick="UserAPI.addWhitelist(' + userId + ',\'' + userName + '\')"><i class="fa fa-user-check text-success"></i> 加入白名单</a></li>';
+                    html += '</ul></div>';
+                    
+                    // 更多操作下拉
+                    html += '<div class="btn-group">';
+                    html += '<button type="button" class="btn btn-default btn-xs dropdown-toggle" data-toggle="dropdown" title="更多"><i class="fa fa-ellipsis-h"></i> <span class="caret"></span></button>';
+                    html += '<ul class="dropdown-menu dropdown-menu-right">';
+                    html += '<li class="dropdown-header">信息查看</li>';
+                    html += '<li><a href="member/user/behaviors?user_id=' + userId + '"><i class="fa fa-history text-info"></i> 行为记录</a></li>';
+                    html += '<li><a href="invite/relation?user_id=' + userId + '"><i class="fa fa-users text-success"></i> 邀请关系</a></li>';
+                    html += '<li><a href="video/watchrecord?user_id=' + userId + '"><i class="fa fa-play-circle text-danger"></i> 观看记录</a></li>';
+                    html += '<li><a href="withdraw/order?user_id=' + userId + '"><i class="fa fa-money-bill text-warning"></i> 提现记录</a></li>';
+                    html += '<li><a href="redpacket/record?user_id=' + userId + '"><i class="fa fa-gift text-danger"></i> 红包记录</a></li>';
+                    html += '<li class="divider"></li>';
+                    html += '<li><a href="member/user/devices?user_id=' + userId + '"><i class="fa fa-mobile-alt text-secondary"></i> 设备信息</a></li>';
+                    html += '<li><a href="risk/user_risk/detail?user_id=' + userId + '"><i class="fa fa-chart-line text-info"></i> 风控详情</a></li>';
+                    html += '</ul></div>';
+                    
+                    html += '</div>';
+                    
+                    return html;
                 }
+            },
+            // 绑定操作按钮事件
+            bindOperateEvents: function(table) {
+                // 充值确认
+                $(document).on('click', '#btn-recharge-confirm', function () {
+                    var userId = $('#recharge-form input[name="user_id"]').val();
+                    var amount = $('#recharge-form input[name="amount"]').val();
+                    var remark = $('#recharge-form textarea[name="remark"]').val();
+                    
+                    if (!amount || amount <= 0) {
+                        Toastr.error('请输入有效的充值金额');
+                        return;
+                    }
+
+                    Fast.api.ajax({
+                        url: 'member/user/recharge',
+                        data: {user_id: userId, amount: amount, remark: remark}
+                    }, function (ret) {
+                        $('#recharge-modal').modal('hide');
+                        Toastr.success('充值成功');
+                        table.bootstrapTable('refresh');
+                    });
+                });
+
+                // 扣除确认
+                $(document).on('click', '#btn-deduct-confirm', function () {
+                    var userId = $('#deduct-form input[name="user_id"]').val();
+                    var amount = $('#deduct-form input[name="amount"]').val();
+                    var reasonType = $('#deduct-form select[name="reason_type"]').val();
+                    var remark = $('#deduct-form textarea[name="remark"]').val();
+                    
+                    if (!amount || amount <= 0) {
+                        Toastr.error('请输入有效的扣除金额');
+                        return;
+                    }
+
+                    if (!reasonType) {
+                        Toastr.error('请选择扣除原因');
+                        return;
+                    }
+
+                    Fast.api.ajax({
+                        url: 'member/user/deduct',
+                        data: {user_id: userId, amount: amount, remark: reasonType + (remark ? ' - ' + remark : '')}
+                    }, function (ret) {
+                        $('#deduct-modal').modal('hide');
+                        Toastr.success('扣除成功');
+                        table.bootstrapTable('refresh');
+                    });
+                });
+
+                // 封禁类型切换
+                $(document).on('change', 'select[name="ban_type"]', function () {
+                    if ($(this).val() === 'permanent') {
+                        $('.ban-duration-group').hide();
+                    } else {
+                        $('.ban-duration-group').show();
+                    }
+                });
+
+                // 封禁确认
+                $(document).on('click', '#btn-ban-confirm', function () {
+                    var userId = $('#ban-form input[name="user_id"]').val();
+                    var banType = $('#ban-form select[name="ban_type"]').val();
+                    var duration = $('#ban-form input[name="duration"]').val();
+                    var reasonType = $('#ban-form select[name="reason_type"]').val();
+                    var remark = $('#ban-form textarea[name="remark"]').val();
+
+                    if (!reasonType) {
+                        Toastr.error('请选择封禁原因');
+                        return;
+                    }
+
+                    Fast.api.ajax({
+                        url: 'member/user/ban',
+                        data: {
+                            user_id: userId, 
+                            ban_type: banType, 
+                            duration: duration, 
+                            reason: reasonType + (remark ? ' - ' + remark : '')
+                        }
+                    }, function (ret) {
+                        $('#ban-modal').modal('hide');
+                        Toastr.success('封禁成功');
+                        table.bootstrapTable('refresh');
+                    });
+                });
+
+                // 冻结确认
+                $(document).on('click', '#btn-freeze-confirm', function () {
+                    var userId = $('#freeze-form input[name="user_id"]').val();
+                    var duration = $('#freeze-form select[name="duration"]').val();
+                    var reason = $('#freeze-form textarea[name="reason"]').val();
+
+                    if (!reason) {
+                        Toastr.error('请输入冻结原因');
+                        return;
+                    }
+
+                    Fast.api.ajax({
+                        url: 'member/user/freeze',
+                        data: {user_id: userId, duration: duration, reason: reason}
+                    }, function (ret) {
+                        $('#freeze-modal').modal('hide');
+                        Toastr.success('冻结成功');
+                        table.bootstrapTable('refresh');
+                    });
+                });
             }
         }
     };
+    
+    // 全局API，供onclick调用
+    window.UserAPI = {
+        showDetail: function(userId) {
+            Controller.api.showUserDetail(userId);
+        },
+        recharge: function(userId, userName) {
+            $('#recharge-user-info').html('<i class="fa fa-user"></i> 用户：' + userName + ' (ID: ' + userId + ')');
+            $('#recharge-form input[name="user_id"]').val(userId);
+            $('#recharge-form input[name="amount"]').val('');
+            $('#recharge-form textarea[name="remark"]').val('');
+            $('#recharge-modal').modal('show');
+        },
+        deduct: function(userId, userName, balance) {
+            $('#deduct-user-info').html('<i class="fa fa-user"></i> 用户：' + userName + ' | 当前余额：' + (balance || 0) + ' 金币');
+            $('#deduct-form input[name="user_id"]').val(userId);
+            $('#deduct-form')[0].reset();
+            $('#deduct-modal').modal('show');
+        },
+        ban: function(userId, userName) {
+            $('#ban-user-info').html('<i class="fa fa-exclamation-triangle"></i> 即将封禁用户：' + userName + ' (ID: ' + userId + ')');
+            $('#ban-form input[name="user_id"]').val(userId);
+            $('#ban-form')[0].reset();
+            $('.ban-duration-group').show();
+            $('#ban-modal').modal('show');
+        },
+        freeze: function(userId, userName) {
+            $('#freeze-user-info').html('<i class="fa fa-user"></i> 用户：' + userName);
+            $('#freeze-form input[name="user_id"]').val(userId);
+            $('#freeze-form')[0].reset();
+            $('#freeze-modal').modal('show');
+        },
+        unfreeze: function(userId, userName) {
+            Layer.confirm('确定要解冻用户 ' + userName + ' 吗？', function(index){
+                Fast.api.ajax({
+                    url: 'member/user/unfreeze',
+                    data: {user_id: userId}
+                }, function(ret){
+                    Layer.close(index);
+                    Toastr.success('解冻成功');
+                    $("#table").bootstrapTable('refresh');
+                });
+            });
+        },
+        addBlacklist: function(userId, userName) {
+            Layer.prompt({
+                title: '加入黑名单 - ' + userName,
+                formType: 2,
+                value: '违规操作'
+            }, function(value, index){
+                Fast.api.ajax({
+                    url: 'risk/blacklist/add',
+                    data: {user_id: userId, type: 'user', reason: value}
+                }, function(ret){
+                    Layer.close(index);
+                    Toastr.success('已加入黑名单');
+                });
+            });
+        },
+        addWhitelist: function(userId, userName) {
+            Layer.confirm('确定要将用户 ' + userName + ' 加入白名单吗？', function(index){
+                Fast.api.ajax({
+                    url: 'risk/whitelist/add',
+                    data: {user_id: userId}
+                }, function(ret){
+                    Layer.close(index);
+                    Toastr.success('已加入白名单');
+                });
+            });
+        }
+    };
+    
     return Controller;
 });
