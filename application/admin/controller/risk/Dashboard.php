@@ -93,13 +93,25 @@ class Dashboard extends Backend
             ->limit(10)
             ->select();
         
-        // 最近封禁记录
-        $recentBans = Db::name('ban_record')
+        // 最近封禁记录 - 排除已撤销风控的用户
+        // 获取最近7天内有撤销记录的用户
+        $revokedUserIds = Db::name('risk_log')
+            ->where('rule_code', 'like', 'REVOKE_%')
+            ->where('createtime', '>', time() - 7 * 86400)
+            ->column('user_id');
+        
+        $recentBansQuery = Db::name('ban_record')
             ->alias('br')
             ->join('user u', 'u.id = br.user_id', 'LEFT')
             ->field('br.*, u.username, u.nickname')
-            ->where('br.createtime', '>', time() - 86400)
-            ->order('br.createtime', 'desc')
+            ->where('br.createtime', '>', time() - 86400);
+        
+        // 排除已撤销的用户
+        if (!empty($revokedUserIds)) {
+            $recentBansQuery->whereNotIn('br.user_id', $revokedUserIds);
+        }
+        
+        $recentBans = $recentBansQuery->order('br.createtime', 'desc')
             ->limit(10)
             ->select();
         
@@ -121,6 +133,44 @@ class Dashboard extends Backend
             if (isset($alertData['recent_violators'])) {
                 $alerts['recent_violators'] = $alertData['recent_violators'];
             }
+            
+            // 过滤已撤销的用户
+            if (!empty($revokedUserIds)) {
+                $alerts['high_risk'] = array_filter($alerts['high_risk'], function($item) use ($revokedUserIds) {
+                    return !in_array($item['user_id'], $revokedUserIds);
+                });
+                $alerts['dangerous'] = array_filter($alerts['dangerous'], function($item) use ($revokedUserIds) {
+                    return !in_array($item['user_id'], $revokedUserIds);
+                });
+                $alerts['recent_violators'] = array_filter($alerts['recent_violators'], function($item) use ($revokedUserIds) {
+                    return !in_array($item['user_id'], $revokedUserIds);
+                });
+            }
+            
+            // 为每个预警用户添加当前状态信息
+            $alertUserIds = [];
+            foreach ($alerts['high_risk'] as $item) {
+                $alertUserIds[] = $item['user_id'];
+            }
+            foreach ($alerts['dangerous'] as $item) {
+                $alertUserIds[] = $item['user_id'];
+            }
+            
+            if (!empty($alertUserIds)) {
+                $userStatuses = Db::name('user_risk_score')
+                    ->where('user_id', 'in', $alertUserIds)
+                    ->column('status', 'user_id');
+                
+                // 为high_risk添加状态
+                foreach ($alerts['high_risk'] as &$item) {
+                    $item['current_status'] = $userStatuses[$item['user_id']] ?? 'normal';
+                }
+                // 为dangerous添加状态
+                foreach ($alerts['dangerous'] as &$item) {
+                    $item['current_status'] = $userStatuses[$item['user_id']] ?? 'normal';
+                }
+            }
+            
         } catch (\Exception $e) {
             // 忽略错误
         }
@@ -294,5 +344,88 @@ class Dashboard extends Backend
         ];
         
         $this->success('', null, $data);
+    }
+    
+    /**
+     * 冻结用户
+     */
+    public function freeze()
+    {
+        $userId = $this->request->post('user_id');
+        $duration = $this->request->post('duration', 7); // 默认冻结7天
+        $reason = $this->request->post('reason', '管理员手动冻结');
+        
+        if (!$userId) {
+            $this->error('请指定用户ID');
+        }
+        
+        // 更新用户状态
+        $freezeExpireTime = time() + $duration * 86400;
+        Db::name('user_risk_score')->where('user_id', $userId)->update([
+            'status' => 'frozen',
+            'freeze_expire_time' => $freezeExpireTime,
+            'updatetime' => time(),
+        ]);
+        
+        // 记录封禁记录
+        Db::name('ban_record')->insert([
+            'user_id' => $userId,
+            'ban_type' => 'temporary',
+            'ban_reason' => $reason,
+            'ban_source' => 'manual',
+            'duration' => $duration * 86400,
+            'expire_time' => $freezeExpireTime,
+            'admin_id' => $this->auth->id,
+            'admin_name' => $this->auth->username,
+            'createtime' => time(),
+        ]);
+        
+        $this->success('冻结成功');
+    }
+    
+    /**
+     * 封禁用户
+     */
+    public function ban()
+    {
+        $userId = $this->request->post('user_id');
+        $reason = $this->request->post('reason', '管理员手动封禁');
+        
+        if (!$userId) {
+            $this->error('请指定用户ID');
+        }
+        
+        // 更新用户状态
+        Db::name('user_risk_score')->where('user_id', $userId)->update([
+            'status' => 'banned',
+            'ban_expire_time' => null, // 永久封禁
+            'updatetime' => time(),
+        ]);
+        
+        // 记录封禁记录
+        Db::name('ban_record')->insert([
+            'user_id' => $userId,
+            'ban_type' => 'permanent',
+            'ban_reason' => $reason,
+            'ban_source' => 'manual',
+            'duration' => 0,
+            'expire_time' => null,
+            'admin_id' => $this->auth->id,
+            'admin_name' => $this->auth->username,
+            'createtime' => time(),
+        ]);
+        
+        // 加入黑名单
+        Db::name('risk_blacklist')->insert([
+            'type' => 'user',
+            'value' => $userId,
+            'reason' => $reason,
+            'enabled' => 1,
+            'admin_id' => $this->auth->id,
+            'admin_name' => $this->auth->username,
+            'createtime' => time(),
+        ]);
+        
+        $this->success('封禁成功');
     }
 }

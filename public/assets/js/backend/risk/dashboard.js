@@ -378,11 +378,27 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form', 'echarts'], function 
                 var highRiskHtml = '';
                 if (data.alerts && data.alerts.high_risk && data.alerts.high_risk.length > 0) {
                     data.alerts.high_risk.forEach(function(item) {
+                        var currentStatus = item.current_status || 'normal';
+                        var actionButtons = '';
+                        
+                        // 只有正常状态才显示冻结和封禁按钮
+                        if (currentStatus === 'normal') {
+                            actionButtons = '<div style="margin-top: 8px;">' +
+                                '<button class="btn btn-warning btn-xs btn-freeze-user" data-user-id="' + item.user_id + '"><i class="fa fa-snowflake"></i> 冻结</button> ' +
+                                '<button class="btn btn-danger btn-xs btn-ban-user" data-user-id="' + item.user_id + '"><i class="fa fa-ban"></i> 封禁</button>' +
+                                '</div>';
+                        } else {
+                            actionButtons = '<div style="margin-top: 8px;"><span class="label label-' + 
+                                (currentStatus === 'frozen' ? 'warning' : 'danger') + '">' + 
+                                (currentStatus === 'frozen' ? '已冻结' : '已封禁') + '</span></div>';
+                        }
+                        
                         highRiskHtml += '<div class="alert-item alert-warning">' +
-                            '<div style="display: flex; justify-content: space-between; align-items: center;">' +
+                            '<div style="display: flex; justify-content: space-between; align-items: flex-start;">' +
                                 '<div>' +
-                                    '<strong><a href="risk/userrisk/detail/ids/' + item.id + '?ref=addtabs">用户ID: ' + item.user_id + '</a></strong>' +
+                                    '<strong><a href="javascript:;" onclick="Backend.api.addtabs(\'risk/userrisk\', \'用户风险\')")>用户ID: ' + item.user_id + '</a></strong>' +
                                     '<br><small>风险分: <span class="text-danger">' + (item.total_score || 0) + '</span></small>' +
+                                    actionButtons +
                                 '</div>' +
                                 '<span class="risk-badge high">高风险</span>' +
                             '</div>' +
@@ -398,11 +414,27 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form', 'echarts'], function 
                 if (data.alerts && data.alerts.dangerous && data.alerts.dangerous.length > 0) {
                     dangerousHtml = '<div style="margin-bottom: 10px;"><strong class="text-danger">危险用户</strong></div>';
                     data.alerts.dangerous.forEach(function(item) {
+                        var currentStatus = item.current_status || 'normal';
+                        var actionButtons = '';
+                        
+                        // 只有正常状态才显示冻结和封禁按钮
+                        if (currentStatus === 'normal') {
+                            actionButtons = '<div style="margin-top: 8px;">' +
+                                '<button class="btn btn-warning btn-xs btn-freeze-user" data-user-id="' + item.user_id + '"><i class="fa fa-snowflake"></i> 冻结</button> ' +
+                                '<button class="btn btn-danger btn-xs btn-ban-user" data-user-id="' + item.user_id + '"><i class="fa fa-ban"></i> 封禁</button>' +
+                                '</div>';
+                        } else {
+                            actionButtons = '<div style="margin-top: 8px;"><span class="label label-' + 
+                                (currentStatus === 'frozen' ? 'warning' : 'danger') + '">' + 
+                                (currentStatus === 'frozen' ? '已冻结' : '已封禁') + '</span></div>';
+                        }
+                        
                         dangerousHtml += '<div class="alert-item alert-danger">' +
-                            '<div style="display: flex; justify-content: space-between; align-items: center;">' +
+                            '<div style="display: flex; justify-content: space-between; align-items: flex-start;">' +
                                 '<div>' +
-                                    '<strong><a href="risk/userrisk/detail/ids/' + item.id + '?ref=addtabs">用户ID: ' + item.user_id + '</a></strong>' +
+                                    '<strong><a href="javascript:;" onclick="Backend.api.addtabs(\'risk/userrisk\', \'用户风险\')">用户ID: ' + item.user_id + '</a></strong>' +
                                     '<br><small>风险分: <span class="text-danger">' + (item.total_score || 0) + '</span></small>' +
+                                    actionButtons +
                                 '</div>' +
                                 '<span class="risk-badge dangerous">危险</span>' +
                             '</div>' +
@@ -418,7 +450,7 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form', 'echarts'], function 
                         frequentHtml += '<div class="alert-item alert-info">' +
                             '<div style="display: flex; justify-content: space-between; align-items: center;">' +
                                 '<div>' +
-                                    '<strong><a href="risk/userrisk/detail/ids/' + item.id + '?ref=addtabs">用户ID: ' + item.user_id + '</a></strong>' +
+                                    '<strong><a href="javascript:;" onclick="Backend.api.addtabs(\'risk/userrisk\', \'用户风险\')">用户ID: ' + item.user_id + '</a></strong>' +
                                     '<br><small>24小时内违规 <span class="text-danger">' + (item.violation_count || 0) + '</span> 次</small>' +
                                 '</div>' +
                                 '<span class="risk-badge medium">频繁</span>' +
@@ -429,6 +461,62 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form', 'echarts'], function 
                     frequentHtml = '<div class="text-center text-muted" style="padding: 20px;">暂无频繁违规用户</div>';
                 }
                 $('#frequent-violators').html(frequentHtml);
+                
+                // 绑定冻结按钮事件
+                $(document).off('click', '.btn-freeze-user').on('click', '.btn-freeze-user', function() {
+                    var userId = $(this).data('user-id');
+                    Layer.confirm('确定要冻结该用户吗？默认冻结7天。', {
+                        title: '冻结确认',
+                        btn: ['确定', '取消']
+                    }, function(index) {
+                        $.ajax({
+                            url: 'risk/dashboard/freeze',
+                            type: 'POST',
+                            dataType: 'json',
+                            data: { user_id: userId, duration: 7, reason: '仪表盘手动冻结' },
+                            success: function(ret) {
+                                Layer.close(index);
+                                if (ret.code === 1) {
+                                    Layer.alert('冻结成功', { icon: 1 });
+                                    Controller.api.loadDashboard();
+                                } else {
+                                    Layer.alert(ret.msg || '冻结失败', { icon: 2 });
+                                }
+                            },
+                            error: function() {
+                                Layer.alert('请求失败', { icon: 2 });
+                            }
+                        });
+                    });
+                });
+                
+                // 绑定封禁按钮事件
+                $(document).off('click', '.btn-ban-user').on('click', '.btn-ban-user', function() {
+                    var userId = $(this).data('user-id');
+                    Layer.confirm('确定要永久封禁该用户吗？此操作不可撤销！', {
+                        title: '封禁确认',
+                        btn: ['确定', '取消']
+                    }, function(index) {
+                        $.ajax({
+                            url: 'risk/dashboard/ban',
+                            type: 'POST',
+                            dataType: 'json',
+                            data: { user_id: userId, reason: '仪表盘手动封禁' },
+                            success: function(ret) {
+                                Layer.close(index);
+                                if (ret.code === 1) {
+                                    Layer.alert('封禁成功', { icon: 1 });
+                                    Controller.api.loadDashboard();
+                                } else {
+                                    Layer.alert(ret.msg || '封禁失败', { icon: 2 });
+                                }
+                            },
+                            error: function() {
+                                Layer.alert('请求失败', { icon: 2 });
+                            }
+                        });
+                    });
+                });
             },
             
             // 截断文本
