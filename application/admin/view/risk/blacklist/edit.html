@@ -1,53 +1,263 @@
-<form id="edit-form" class="form-horizontal" role="form" data-toggle="validator" method="POST" action="">
-    <div class="form-group">
-        <label class="control-label col-xs-12 col-sm-2">{:__('类型')}:</label>
-        <div class="col-xs-12 col-sm-8">
-            <select id="c-type" class="form-control" name="row[type]" data-rule="required">
-                <option value="user" {if $row['type']=='user'}selected{/if}>用户</option>
-                <option value="ip" {if $row['type']=='ip'}selected{/if}>IP地址</option>
-                <option value="device" {if $row['type']=='device'}selected{/if}>设备ID</option>
-                <option value="phone" {if $row['type']=='phone'}selected{/if}>手机号</option>
-            </select>
+<style>
+.edit-blacklist-container {
+    padding: 15px;
+}
+.info-card {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 10px;
+    padding: 20px;
+    color: #fff;
+    margin-bottom: 20px;
+}
+.info-card .type-icon {
+    width: 50px;
+    height: 50px;
+    background: rgba(255,255,255,0.2);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+}
+.info-card .info-text {
+    margin-left: 15px;
+}
+.info-card .info-text h4 {
+    margin: 0 0 5px 0;
+    font-size: 16px;
+}
+.info-card .info-text p {
+    margin: 0;
+    opacity: 0.9;
+    font-size: 13px;
+}
+.form-section {
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    margin-bottom: 15px;
+}
+.form-section-header {
+    padding: 12px 15px;
+    border-bottom: 1px solid #f0f0f0;
+    font-weight: bold;
+    color: #333;
+}
+.form-section-header i {
+    margin-right: 8px;
+    color: #667eea;
+}
+.form-section-body {
+    padding: 15px;
+}
+.form-group {
+    margin-bottom: 15px;
+}
+.control-label {
+    font-weight: 500;
+    color: #555;
+}
+.form-control {
+    border-radius: 6px;
+    border: 1px solid #e0e0e0;
+    transition: all 0.3s;
+}
+.form-control:focus {
+    border-color: #667eea;
+    box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+}
+.select-type .form-control {
+    height: 42px;
+}
+.value-input .form-control {
+    font-family: 'Courier New', monospace;
+    font-size: 14px;
+}
+.reason-textarea textarea {
+    min-height: 80px;
+    resize: vertical;
+}
+.status-switch {
+    padding: 10px 0;
+}
+.status-switch .radio-inline {
+    margin-right: 20px;
+}
+.status-switch .radio-inline label {
+    cursor: pointer;
+    padding: 8px 15px;
+    border-radius: 20px;
+    transition: all 0.3s;
+    border: 2px solid transparent;
+}
+.status-switch .radio-inline input[type="radio"]:checked + label {
+    background: #667eea;
+    color: #fff;
+    border-color: #667eea;
+}
+.status-switch .radio-inline label:hover {
+    background: #f5f5f5;
+}
+.btn-save {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border: none;
+    padding: 10px 30px;
+    border-radius: 25px;
+    font-weight: bold;
+    transition: all 0.3s;
+}
+.btn-save:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+}
+.help-text {
+    font-size: 12px;
+    color: #888;
+    margin-top: 5px;
+}
+.datetime-picker-wrapper {
+    position: relative;
+}
+.datetime-picker-wrapper .input-group-addon {
+    background: #667eea;
+    color: #fff;
+    border: none;
+    border-radius: 0 6px 6px 0;
+}
+</style>
+
+<div class="edit-blacklist-container">
+    <!-- 信息卡片 -->
+    <div class="info-card">
+        <div class="flex">
+            <div class="type-icon">
+                <i class="fa fa-shield"></i>
+            </div>
+            <div class="info-text">
+                <h4>编辑黑名单记录</h4>
+                <p>ID: {$row.id} | 创建时间: {$row.createtime|date='Y-m-d H:i',###}</p>
+            </div>
         </div>
     </div>
-    <div class="form-group">
-        <label class="control-label col-xs-12 col-sm-2">{:__('值')}:</label>
-        <div class="col-xs-12 col-sm-8">
-            <input id="c-value" class="form-control" name="row[value]" type="text" value="{$row.value}" data-rule="required">
+
+    <form id="edit-form" class="form-horizontal" role="form" data-toggle="validator" method="POST" action="">
+        <!-- 基本信息 -->
+        <div class="form-section">
+            <div class="form-section-header">
+                <i class="fa fa-info-circle"></i> 基本信息
+            </div>
+            <div class="form-section-body">
+                <div class="row">
+                    <div class="col-sm-6">
+                        <div class="form-group select-type">
+                            <label class="control-label col-xs-12">{:__('类型')} <span class="text-danger">*</span></label>
+                            <div class="col-xs-12">
+                                <select id="c-type" class="form-control" name="row[type]" data-rule="required">
+                                    <option value="user" {if $row['type']=='user'}selected{/if}>👤 用户</option>
+                                    <option value="ip" {if $row['type']=='ip'}selected{/if}>🌐 IP地址</option>
+                                    <option value="device" {if $row['type']=='device'}selected{/if}>📱 设备ID</option>
+                                    <option value="phone" {if $row['type']=='phone'}selected{/if}>📞 手机号</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-sm-6">
+                        <div class="form-group value-input">
+                            <label class="control-label col-xs-12">{:__('值')} <span class="text-danger">*</span></label>
+                            <div class="col-xs-12">
+                                <input id="c-value" class="form-control" name="row[value]" type="text" value="{$row.value}" data-rule="required" placeholder="请输入用户ID/IP/设备ID/手机号">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="form-group reason-textarea">
+                    <label class="control-label col-xs-12">{:__('加入原因')}</label>
+                    <div class="col-xs-12">
+                        <textarea id="c-reason" class="form-control" name="row[reason]" rows="3" placeholder="请输入加入黑名单的原因">{$row.reason}</textarea>
+                    </div>
+                </div>
+            </div>
         </div>
-    </div>
-    <div class="form-group">
-        <label class="control-label col-xs-12 col-sm-2">{:__('原因')}:</label>
-        <div class="col-xs-12 col-sm-8">
-            <textarea id="c-reason" class="form-control" name="row[reason]" rows="3">{$row.reason}</textarea>
+
+        <!-- 风险设置 -->
+        <div class="form-section">
+            <div class="form-section-header">
+                <i class="fa fa-exclamation-triangle"></i> 风险设置
+            </div>
+            <div class="form-section-body">
+                <div class="row">
+                    <div class="col-sm-6">
+                        <div class="form-group">
+                            <label class="control-label col-xs-12">{:__('风险评分')}</label>
+                            <div class="col-xs-12">
+                                <div class="input-group">
+                                    <input id="c-risk_score" class="form-control" name="row[risk_score]" type="number" value="{$row.risk_score|default=0}" min="0" max="1000">
+                                    <span class="input-group-addon">分</span>
+                                </div>
+                                <p class="help-text">风险评分越高，表示该记录风险越大</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-sm-6">
+                        <div class="form-group">
+                            <label class="control-label col-xs-12">{:__('过期时间')}</label>
+                            <div class="col-xs-12">
+                                <div class="datetime-picker-wrapper">
+                                    <input id="c-expire_time" class="form-control datetimepicker" name="row[expire_time]" type="text" value="{if $row.expire_time}{$row.expire_time|date='Y-m-d H:i:s',###}{/if}" data-date-format="YYYY-MM-DD HH:mm:ss" data-use-current="true" placeholder="留空表示永久有效">
+                                </div>
+                                <p class="help-text"><i class="fa fa-info-circle"></i> 留空表示永久有效，不会自动过期</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
-    </div>
-    <div class="form-group">
-        <label class="control-label col-xs-12 col-sm-2">{:__('风险分')}:</label>
-        <div class="col-xs-12 col-sm-8">
-            <input id="c-risk_score" class="form-control" name="row[risk_score]" type="number" value="{$row.risk_score|default=0}">
+
+        <!-- 状态设置 -->
+        <div class="form-section">
+            <div class="form-section-header">
+                <i class="fa fa-toggle-on"></i> 状态设置
+            </div>
+            <div class="form-section-body">
+                <div class="form-group">
+                    <label class="control-label col-xs-12">{:__('启用状态')}</label>
+                    <div class="col-xs-12 status-switch">
+                        <label class="radio-inline">
+                            <input type="radio" name="row[enabled]" value="1" {if $row['enabled']==1 || !isset($row['enabled'])}checked{/if}>
+                            <label><i class="fa fa-check-circle"></i> 启用</label>
+                        </label>
+                        <label class="radio-inline">
+                            <input type="radio" name="row[enabled]" value="0" {if $row['enabled']==0}checked{/if}>
+                            <label><i class="fa fa-ban"></i> 禁用</label>
+                        </label>
+                    </div>
+                </div>
+            </div>
         </div>
-    </div>
-    <div class="form-group">
-        <label class="control-label col-xs-12 col-sm-2">{:__('过期时间')}:</label>
-        <div class="col-xs-12 col-sm-8">
-            <input id="c-expire_time" class="form-control datetimepicker" name="row[expire_time]" type="text" value="{if $row.expire_time}{$row.expire_time|date='Y-m-d H:i:s',###}{/if}" data-date-format="YYYY-MM-DD HH:mm:ss" data-use-current="true">
-            <span class="help-block">留空表示永久有效</span>
+
+        <!-- 底部按钮 -->
+        <div class="form-group layer-footer">
+            <div class="col-xs-12 text-center">
+                <button type="submit" class="btn btn-primary btn-save">
+                    <i class="fa fa-save"></i> {:__('保存修改')}
+                </button>
+            </div>
         </div>
-    </div>
-    <div class="form-group">
-        <label class="control-label col-xs-12 col-sm-2">{:__('状态')}:</label>
-        <div class="col-xs-12 col-sm-8">
-            <select id="c-enabled" class="form-control" name="row[enabled]">
-                <option value="1" {if $row['enabled']==1}selected{/if}>启用</option>
-                <option value="0" {if $row['enabled']==0}selected{/if}>禁用</option>
-            </select>
-        </div>
-    </div>
-    <div class="form-group layer-footer">
-        <label class="control-label col-xs-12 col-sm-2"></label>
-        <div class="col-xs-12 col-sm-8">
-            <button type="submit" class="btn btn-primary btn-embossed">{:__('OK')}</button>
-        </div>
-    </div>
-</form>
+    </form>
+</div>
+
+<script>
+$(function() {
+    // 类型选择变化时更新图标
+    $('#c-type').on('change', function() {
+        var type = $(this).val();
+        var iconMap = {
+            'user': '👤',
+            'ip': '🌐',
+            'device': '📱',
+            'phone': '📞'
+        };
+    });
+});
+</script>
