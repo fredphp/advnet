@@ -1,45 +1,53 @@
 <form id="edit-form" class="form-horizontal" role="form" data-toggle="validator" method="POST" action="">
     <div class="form-group">
-        <label class="control-label col-xs-12 col-sm-2">类型:</label>
+        <label class="control-label col-xs-12 col-sm-2">{:__('类型')}:</label>
         <div class="col-xs-12 col-sm-8">
             <select id="c-type" class="form-control" name="row[type]" data-rule="required">
-                <option value="ip" {if $row.type=='ip'}selected{/if}>IP</option>
-                <option value="device" {if $row.type=='device'}selected{/if}>设备ID</option>
-                <option value="phone" {if $row.type=='phone'}selected{/if}>手机号</option>
+                <option value="user" {if $row['type']=='user'}selected{/if}>用户</option>
+                <option value="ip" {if $row['type']=='ip'}selected{/if}>IP地址</option>
+                <option value="device" {if $row['type']=='device'}selected{/if}>设备ID</option>
+                <option value="phone" {if $row['type']=='phone'}selected{/if}>手机号</option>
             </select>
         </div>
     </div>
     <div class="form-group">
-        <label class="control-label col-xs-12 col-sm-2">值:</label>
+        <label class="control-label col-xs-12 col-sm-2">{:__('值')}:</label>
         <div class="col-xs-12 col-sm-8">
             <input id="c-value" class="form-control" name="row[value]" type="text" value="{$row.value}" data-rule="required">
         </div>
     </div>
     <div class="form-group">
-        <label class="control-label col-xs-12 col-sm-2">原因:</label>
+        <label class="control-label col-xs-12 col-sm-2">{:__('原因')}:</label>
         <div class="col-xs-12 col-sm-8">
             <textarea id="c-reason" class="form-control" name="row[reason]" rows="3">{$row.reason}</textarea>
         </div>
     </div>
     <div class="form-group">
-        <label class="control-label col-xs-12 col-sm-2">过期时间:</label>
+        <label class="control-label col-xs-12 col-sm-2">{:__('风险分')}:</label>
         <div class="col-xs-12 col-sm-8">
-            <input id="c-expire_time" class="form-control datetimepicker" name="row[expire_time]" type="text" value="{$row.expire_time}" data-date-format="YYYY-MM-DD HH:mm:ss">
+            <input id="c-risk_score" class="form-control" name="row[risk_score]" type="number" value="{$row.risk_score|default=0}">
         </div>
     </div>
     <div class="form-group">
-        <label class="control-label col-xs-12 col-sm-2">状态:</label>
+        <label class="control-label col-xs-12 col-sm-2">{:__('过期时间')}:</label>
         <div class="col-xs-12 col-sm-8">
-            <select id="c-status" class="form-control" name="row[status]">
-                <option value="1" {if $row.status==1}selected{/if}>启用</option>
-                <option value="0" {if $row.status==0}selected{/if}>禁用</option>
+            <input id="c-expire_time" class="form-control datetimepicker" name="row[expire_time]" type="text" value="{if $row.expire_time}{$row.expire_time|date='Y-m-d H:i:s',###}{/if}" data-date-format="YYYY-MM-DD HH:mm:ss" data-use-current="true">
+            <span class="help-block">留空表示永久有效</span>
+        </div>
+    </div>
+    <div class="form-group">
+        <label class="control-label col-xs-12 col-sm-2">{:__('状态')}:</label>
+        <div class="col-xs-12 col-sm-8">
+            <select id="c-enabled" class="form-control" name="row[enabled]">
+                <option value="1" {if $row['enabled']==1}selected{/if}>启用</option>
+                <option value="0" {if $row['enabled']==0}selected{/if}>禁用</option>
             </select>
         </div>
     </div>
     <div class="form-group layer-footer">
         <label class="control-label col-xs-12 col-sm-2"></label>
         <div class="col-xs-12 col-sm-8">
-            <button type="submit" class="btn btn-primary btn-embossed disabled">{:__('OK')}</button>
+            <button type="submit" class="btn btn-primary btn-embossed">{:__('OK')}</button>
         </div>
     </div>
 </form>
