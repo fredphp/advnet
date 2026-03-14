@@ -114,8 +114,8 @@ class CoinService
                 'user_id' => $userId,
                 'balance' => 0,
                 'frozen' => 0,
-                'total_income' => 0,
-                'total_expense' => 0,
+                'total_earn' => 0,
+                'total_spend' => 0,
                 'version' => 1,
                 'createtime' => time(),
                 'updatetime' => time(),
@@ -212,7 +212,7 @@ class CoinService
                 ->where('version', $account['version'])
                 ->update([
                     'balance' => $balanceAfter,
-                    'total_income' => (int)$account['total_income'] + $amount,
+                    'total_earn' => (int)$account['total_earn'] + $amount,
                     'version' => (int)$account['version'] + 1,
                     'updatetime' => time(),
                 ]);
@@ -311,7 +311,7 @@ class CoinService
                 ->where('version', $account['version'])
                 ->update([
                     'balance' => $balanceAfter,
-                    'total_expense' => (int)$account['total_expense'] + $amount,
+                    'total_spend' => (int)$account['total_spend'] + $amount,
                     'version' => (int)$account['version'] + 1,
                     'updatetime' => time(),
                 ]);
@@ -567,7 +567,7 @@ class CoinService
                 ->where('version', $fromAccount['version'])
                 ->update([
                     'balance' => $fromBalance - $amount,
-                    'total_expense' => (int)$fromAccount['total_expense'] + $amount,
+                    'total_spend' => (int)$fromAccount['total_spend'] + $amount,
                     'version' => (int)$fromAccount['version'] + 1,
                     'updatetime' => time(),
                 ]);
@@ -578,7 +578,7 @@ class CoinService
                 ->where('version', $toAccount['version'])
                 ->update([
                     'balance' => $toBalance + $amount,
-                    'total_income' => (int)$toAccount['total_income'] + $amount,
+                    'total_earn' => (int)$toAccount['total_earn'] + $amount,
                     'version' => (int)$toAccount['version'] + 1,
                     'updatetime' => time(),
                 ]);
