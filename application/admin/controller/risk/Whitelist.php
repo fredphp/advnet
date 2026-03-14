@@ -34,9 +34,6 @@ class Whitelist extends Backend
 
             $prefix = config('database.prefix');
 
-            // 确保表存在
-            $this->createTableIfNotExists();
-
             // 安全处理参数
             $sort = preg_replace('/[^a-zA-Z0-9_]/', '', $sort);
             $order = strtolower($order) === 'asc' ? 'ASC' : 'DESC';
@@ -109,9 +106,6 @@ class Whitelist extends Backend
 
             $prefix = config('database.prefix');
 
-            // 确保表存在
-            $this->createTableIfNotExists();
-
             // 检查是否已存在
             $exists = Db::query("
                 SELECT id FROM {$prefix}risk_whitelist
@@ -124,10 +118,11 @@ class Whitelist extends Backend
 
             $now = time();
 
+            // 使用实际表结构的字段名：enabled 而不是 status
             Db::execute("
                 INSERT INTO {$prefix}risk_whitelist
-                (type, value, reason, admin_id, admin_name, status, createtime, updatetime)
-                VALUES (?, ?, ?, ?, ?, 1, ?, ?)
+                (type, value, reason, expire_time, admin_id, admin_name, enabled, createtime, updatetime)
+                VALUES (?, ?, ?, NULL, ?, ?, 1, ?, ?)
             ", [
                 $params['type'],
                 $params['value'],
@@ -152,9 +147,6 @@ class Whitelist extends Backend
         $prefix = config('database.prefix');
         $ids = intval($ids);
 
-        // 确保表存在
-        $this->createTableIfNotExists();
-
         // 使用原生SQL获取记录
         $row = Db::query("SELECT * FROM {$prefix}risk_whitelist WHERE id = ? LIMIT 1", [$ids]);
 
@@ -172,15 +164,16 @@ class Whitelist extends Backend
 
             $now = time();
 
+            // 使用实际表结构的字段名：enabled 而不是 status
             Db::execute("
                 UPDATE {$prefix}risk_whitelist
-                SET type = ?, value = ?, reason = ?, status = ?, updatetime = ?
+                SET type = ?, value = ?, reason = ?, enabled = ?, updatetime = ?
                 WHERE id = ?
             ", [
                 $params['type'],
                 $params['value'],
                 $params['reason'] ?? '',
-                isset($params['status']) ? intval($params['status']) : 1,
+                isset($params['enabled']) ? intval($params['enabled']) : 1,
                 $now,
                 $ids
             ]);
@@ -204,7 +197,6 @@ class Whitelist extends Backend
         }
 
         $prefix = config('database.prefix');
-        $this->createTableIfNotExists();
 
         $ids = array_map('intval', explode(',', $ids));
         $idList = implode(',', $ids);
@@ -225,7 +217,6 @@ class Whitelist extends Backend
         $ids = $ids ? $ids : $this->request->post("ids");
         if ($ids) {
             $prefix = config('database.prefix');
-            $this->createTableIfNotExists();
 
             $ids = array_map('intval', is_array($ids) ? $ids : explode(',', $ids));
             $idList = implode(',', $ids);
@@ -233,40 +224,5 @@ class Whitelist extends Backend
             $this->success();
         }
         $this->error(__('Parameter %s can not be empty', 'ids'));
-    }
-
-    /**
-     * 创建表（如果不存在）
-     */
-    protected function createTableIfNotExists()
-    {
-        $prefix = config('database.prefix');
-        $tableName = $prefix . 'risk_whitelist';
-
-        // 检查表是否存在
-        $exists = Db::query("SHOW TABLES LIKE '{$tableName}'");
-        if (!empty($exists)) {
-            return;
-        }
-
-        // 创建表
-        $sql = "CREATE TABLE `{$tableName}` (
-            `id` int(10) unsigned NOT NULL AUTO_INCREMENT COMMENT 'ID',
-            `type` varchar(20) NOT NULL DEFAULT '' COMMENT '类型:user-用户,ip-IP地址,device-设备ID,phone-手机号',
-            `value` varchar(255) NOT NULL DEFAULT '' COMMENT '值',
-            `reason` varchar(500) NOT NULL DEFAULT '' COMMENT '原因',
-            `admin_id` int(10) unsigned NOT NULL DEFAULT '0' COMMENT '管理员ID',
-            `admin_name` varchar(50) NOT NULL DEFAULT '' COMMENT '管理员用户名',
-            `status` tinyint(1) NOT NULL DEFAULT '1' COMMENT '状态:0-禁用,1-启用',
-            `createtime` int(10) unsigned NOT NULL DEFAULT '0' COMMENT '创建时间',
-            `updatetime` int(10) unsigned NOT NULL DEFAULT '0' COMMENT '更新时间',
-            PRIMARY KEY (`id`),
-            UNIQUE KEY `uk_type_value` (`type`, `value`),
-            KEY `idx_type` (`type`),
-            KEY `idx_status` (`status`),
-            KEY `idx_createtime` (`createtime`)
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='风险白名单表'";
-
-        Db::execute($sql);
     }
 }
