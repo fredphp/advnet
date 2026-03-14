@@ -236,8 +236,8 @@ class User extends Backend
             $coinService = new CoinService();
             $result = $coinService->addCoin($userId, $amount, 'admin_recharge', 0, $remark);
 
-            if (!$result) {
-                throw new Exception('充值失败');
+            if (!$result['success']) {
+                throw new Exception($result['message'] ?: '充值失败');
             }
 
             // 记录后台操作日志（表不存在时自动创建）
@@ -282,8 +282,8 @@ class User extends Backend
             $coinService = new CoinService();
             $result = $coinService->deductCoin($userId, $amount, 'admin_deduct', 0, $remark);
 
-            if (!$result) {
-                throw new Exception('扣除失败');
+            if (!$result['success']) {
+                throw new Exception($result['message'] ?: '扣除失败');
             }
 
             // 记录后台操作日志（表不存在时自动创建）
