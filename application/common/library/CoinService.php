@@ -741,15 +741,69 @@ class CoinService
     
     /**
      * 获取分布式锁
+     * 优先使用 Redis，如果不可用则使用文件锁
      */
     protected function getLock($key, $expire = 5)
     {
         try {
-            $redis = Cache::store('redis')->handler();
-            return $redis->set($key, 1, ['NX', 'EX' => $expire]);
+            // 尝试使用 Redis 锁
+            $cacheConfig = config('cache');
+            if (isset($cacheConfig['type']) && strtolower($cacheConfig['type']) === 'redis') {
+                $redis = Cache::store('redis')->handler();
+                if ($redis) {
+                    return $redis->set($key, 1, ['NX', 'EX' => $expire]);
+                }
+            }
+            
+            // Redis 不可用时，使用文件锁作为备用方案
+            return $this->getFileLock($key, $expire);
         } catch (\Exception $e) {
+            // 发生异常时，使用文件锁
+            return $this->getFileLock($key, $expire);
+        }
+    }
+    
+    /**
+     * 获取文件锁（Redis 不可用时的备用方案）
+     */
+    protected function getFileLock($key, $expire = 5)
+    {
+        $lockDir = RUNTIME_PATH . 'lock' . DS;
+        if (!is_dir($lockDir)) {
+            mkdir($lockDir, 0755, true);
+        }
+        
+        $lockFile = $lockDir . md5($key) . '.lock';
+        $lockHandle = fopen($lockFile, 'w+');
+        
+        if (!$lockHandle) {
             return false;
         }
+        
+        // 尝试获取非阻塞锁
+        if (flock($lockHandle, LOCK_EX | LOCK_NB)) {
+            // 写入过期时间
+            fwrite($lockHandle, time() + $expire);
+            
+            // 保存句柄到静态变量，以便后续释放
+            self::$lockHandles[$key] = $lockHandle;
+            
+            return true;
+        }
+        
+        // 检查锁是否已过期
+        $expireTime = (int)fread($lockHandle, 20);
+        if (time() > $expireTime) {
+            // 锁已过期，强制获取
+            flock($lockHandle, LOCK_EX);
+            ftruncate($lockHandle, 0);
+            fwrite($lockHandle, time() + $expire);
+            self::$lockHandles[$key] = $lockHandle;
+            return true;
+        }
+        
+        fclose($lockHandle);
+        return false;
     }
     
     /**
@@ -758,10 +812,41 @@ class CoinService
     protected function releaseLock($key)
     {
         try {
-            Cache::store('redis')->handler()->del($key);
+            // 尝试释放 Redis 锁
+            $cacheConfig = config('cache');
+            if (isset($cacheConfig['type']) && strtolower($cacheConfig['type']) === 'redis') {
+                $redis = Cache::store('redis')->handler();
+                if ($redis) {
+                    $redis->del($key);
+                    return;
+                }
+            }
+            
+            // 释放文件锁
+            $this->releaseFileLock($key);
         } catch (\Exception $e) {
+            // 发生异常时，释放文件锁
+            $this->releaseFileLock($key);
         }
     }
+    
+    /**
+     * 释放文件锁
+     */
+    protected function releaseFileLock($key)
+    {
+        if (isset(self::$lockHandles[$key])) {
+            $lockHandle = self::$lockHandles[$key];
+            flock($lockHandle, LOCK_UN);
+            fclose($lockHandle);
+            unset(self::$lockHandles[$key]);
+        }
+    }
+    
+    /**
+     * @var array 文件锁句柄存储
+     */
+    private static $lockHandles = [];
     
     /**
      * 清除账户缓存

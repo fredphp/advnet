@@ -415,14 +415,4 @@
     </div>
 </div>
 
-<script>
-// 快捷金额按钮 - 阻止表单提交
-$(document).on('click', '.btn-quick-amount', function(e) {
-    e.preventDefault();
-    var amount = parseInt($(this).data('amount'));
-    var $input = $('#recharge-form input[name="amount"]');
-    var current = parseInt($input.val()) || 0;
-    $input.val(current + amount);
-    return false;
-});
-</script>
+<!-- 快捷金额按钮的事件绑定已移至 backend/member/user.js 中 -->
