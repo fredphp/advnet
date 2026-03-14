@@ -93,6 +93,16 @@ class Whitelist extends Backend
         if ($this->request->isPost()) {
             $params = $this->request->post('row/a');
 
+            // 支持直接传 user_id 参数（从用户管理页面调用）
+            $userId = $this->request->post('user_id');
+            if ($userId && !$params) {
+                $params = [
+                    'type' => 'user',
+                    'value' => $userId,
+                    'reason' => $this->request->post('reason', '信任用户')
+                ];
+            }
+
             if (!$params || empty($params['type']) || empty($params['value'])) {
                 $this->error('参数不能为空');
             }

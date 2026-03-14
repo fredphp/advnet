@@ -114,28 +114,38 @@ class Blacklist extends Backend
     {
         if ($this->request->isPost()) {
             $params = $this->request->post('row/a');
-            
-            if (!$params) {
+
+            // 支持直接传 user_id 参数（从用户管理页面调用）
+            $userId = $this->request->post('user_id');
+            if ($userId && !$params) {
+                $params = [
+                    'type' => 'user',
+                    'value' => $userId,
+                    'reason' => $this->request->post('reason', '违规用户')
+                ];
+            }
+
+            if (!$params || empty($params['type']) || empty($params['value'])) {
                 $this->error('参数不能为空');
             }
-            
+
             $prefix = config('database.prefix');
-            
+
             // 检查是否已存在
             $exists = Db::query("
-                SELECT id FROM {$prefix}risk_blacklist 
+                SELECT id FROM {$prefix}risk_blacklist
                 WHERE type = ? AND value = ? LIMIT 1
             ", [$params['type'], $params['value']]);
-            
+
             if ($exists) {
                 $this->error('该记录已存在');
             }
-            
+
             $now = time();
             $expireTime = !empty($params['expire_time']) ? strtotime($params['expire_time']) : null;
-            
+
             Db::execute("
-                INSERT INTO {$prefix}risk_blacklist 
+                INSERT INTO {$prefix}risk_blacklist
                 (type, value, reason, source, risk_score, expire_time, admin_id, admin_name, enabled, createtime, updatetime)
                 VALUES (?, ?, ?, 'manual', ?, ?, ?, ?, 1, ?, ?)
             ", [
@@ -149,10 +159,10 @@ class Blacklist extends Backend
                 $now,
                 $now
             ]);
-            
+
             $this->success();
         }
-        
+
         return $this->view->fetch();
     }
     

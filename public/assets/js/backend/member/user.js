@@ -419,7 +419,7 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
             }, function(value, index){
                 Fast.api.ajax({
                     url: 'risk/blacklist/add',
-                    data: {'row[type]': 'user', 'row[value]': userId, 'row[reason]': value}
+                    data: {user_id: userId, reason: value}
                 }, function(ret){
                     Layer.close(index);
                     Toastr.success('已加入黑名单');
@@ -434,7 +434,7 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
             }, function(value, index){
                 Fast.api.ajax({
                     url: 'risk/whitelist/add',
-                    data: {'row[type]': 'user', 'row[value]': userId, 'row[reason]': value}
+                    data: {user_id: userId, reason: value}
                 }, function(ret){
                     Layer.close(index);
                     Toastr.success('已加入白名单');
