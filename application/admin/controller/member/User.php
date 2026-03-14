@@ -509,24 +509,30 @@ class User extends Backend
         Db::startTrans();
         try {
             $now = time();
-            $expireTime = $banType === 'permanent' ? 0 : $now + ($duration * 3600);
+            $durationSeconds = $duration * 3600;
+            $endTime = $banType === 'permanent' ? null : $now + $durationSeconds;
 
-            // 创建封禁记录
+            // 创建封禁记录（使用正确的字段名）
             Db::execute("
                 INSERT INTO {$prefix}ban_record 
-                (user_id, ban_type, ban_source, reason, admin_id, createtime, expire_time, status)
-                VALUES (?, ?, 'manual', ?, ?, ?, ?, 'active')
-            ", [$userId, $banType, $reason, $this->auth->id, $now, $expireTime]);
+                (user_id, ban_type, ban_reason, ban_source, admin_id, admin_name, start_time, end_time, duration, status, createtime, updatetime)
+                VALUES (?, ?, ?, 'manual', ?, ?, ?, ?, ?, 'active', ?, ?)
+            ", [$userId, $banType, $reason, $this->auth->id, $this->auth->username, $now, $endTime, $banType === 'permanent' ? 0 : $durationSeconds, $now, $now]);
 
             // 更新用户状态
             Db::execute("UPDATE {$prefix}user SET status = 'banned', updatetime = ? WHERE id = ?", [$now, $userId]);
 
             // 更新风险评分
             Db::execute("
-                INSERT INTO {$prefix}user_risk_score (user_id, score, ban_count, updatetime)
-                VALUES (?, 100, 1, ?)
-                ON DUPLICATE KEY UPDATE score = score + 20, ban_count = ban_count + 1, updatetime = ?
-            ", [$userId, $now, $now]);
+                INSERT INTO {$prefix}user_risk_score (user_id, total_score, violation_count, status, updatetime)
+                VALUES (?, 100, 1, 'banned', ?)
+                ON DUPLICATE KEY UPDATE 
+                    total_score = LEAST(total_score + 20, 1000),
+                    violation_count = violation_count + 1,
+                    status = 'banned',
+                    last_violation_time = ?,
+                    updatetime = ?
+            ", [$userId, $now, $now, $now]);
 
             Db::commit();
             $this->success('封禁成功');
