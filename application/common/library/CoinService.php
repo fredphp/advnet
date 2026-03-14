@@ -853,7 +853,8 @@ class CoinService
      */
     protected function clearAccountCache($userId)
     {
-        Cache::delete(self::CACHE_PREFIX . 'balance:' . $userId);
+        // ThinkPHP 5.0 使用 Cache::rm() 删除缓存
+        Cache::rm(self::CACHE_PREFIX . 'balance:' . $userId);
     }
     
     /**
