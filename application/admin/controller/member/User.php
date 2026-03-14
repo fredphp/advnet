@@ -257,11 +257,15 @@ class User extends Backend
             }
 
             Db::commit();
-            $this->success('充值成功');
+        } catch (\think\exception\HttpResponseException $e) {
+            // 重新抛出 HttpResponseException，这是 success/error 方法抛出的
+            throw $e;
         } catch (Exception $e) {
             Db::rollback();
             $this->error($e->getMessage());
         }
+        
+        $this->success('充值成功');
     }
 
     /**
@@ -303,11 +307,15 @@ class User extends Backend
             }
 
             Db::commit();
-            $this->success('扣除成功');
+        } catch (\think\exception\HttpResponseException $e) {
+            // 重新抛出 HttpResponseException，这是 success/error 方法抛出的
+            throw $e;
         } catch (Exception $e) {
             Db::rollback();
             $this->error($e->getMessage());
         }
+        
+        $this->success('扣除成功');
     }
 
     /**

@@ -419,7 +419,7 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
             }, function(value, index){
                 Fast.api.ajax({
                     url: 'risk/blacklist/add',
-                    data: {user_id: userId, type: 'user', reason: value}
+                    data: {'row[type]': 'user', 'row[value]': userId, 'row[reason]': value}
                 }, function(ret){
                     Layer.close(index);
                     Toastr.success('已加入黑名单');
@@ -427,10 +427,14 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
             });
         },
         addWhitelist: function(userId, userName) {
-            Layer.confirm('确定要将用户 ' + userName + ' 加入白名单吗？', function(index){
+            Layer.prompt({
+                title: '加入白名单 - ' + userName,
+                formType: 2,
+                value: '信任用户'
+            }, function(value, index){
                 Fast.api.ajax({
                     url: 'risk/whitelist/add',
-                    data: {user_id: userId}
+                    data: {'row[type]': 'user', 'row[value]': userId, 'row[reason]': value}
                 }, function(ret){
                     Layer.close(index);
                     Toastr.success('已加入白名单');
