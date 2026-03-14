@@ -1,0 +1,245 @@
+<style>
+.edit-whitelist-container {
+    padding: 15px;
+}
+.info-card {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 10px;
+    padding: 20px;
+    color: #fff;
+    margin-bottom: 20px;
+}
+.info-card .type-icon {
+    width: 50px;
+    height: 50px;
+    background: rgba(255,255,255,0.2);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+}
+.info-card .info-text {
+    margin-left: 15px;
+}
+.info-card .info-text h4 {
+    margin: 0 0 5px 0;
+    font-size: 16px;
+}
+.info-card .info-text p {
+    margin: 0;
+    opacity: 0.9;
+    font-size: 13px;
+}
+.form-section {
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    margin-bottom: 15px;
+}
+.form-section-header {
+    padding: 12px 15px;
+    border-bottom: 1px solid #f0f0f0;
+    font-weight: bold;
+    color: #333;
+}
+.form-section-header i {
+    margin-right: 8px;
+    color: #667eea;
+}
+.form-section-body {
+    padding: 15px;
+}
+.form-group {
+    margin-bottom: 15px;
+}
+.control-label {
+    font-weight: 500;
+    color: #555;
+}
+.form-control {
+    border-radius: 6px;
+    border: 1px solid #e0e0e0;
+    transition: all 0.3s;
+}
+.form-control:focus {
+    border-color: #667eea;
+    box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+}
+.type-card {
+    border: 2px solid #e0e0e0;
+    border-radius: 10px;
+    padding: 15px;
+    cursor: pointer;
+    transition: all 0.3s;
+    text-align: center;
+}
+.type-card:hover {
+    border-color: #667eea;
+    background: #f8f9ff;
+}
+.type-card.active {
+    border-color: #667eea;
+    background: #f0f2ff;
+}
+.type-card .icon {
+    font-size: 30px;
+    margin-bottom: 8px;
+}
+.type-card .title {
+    font-weight: bold;
+    color: #333;
+}
+.type-card .desc {
+    font-size: 12px;
+    color: #888;
+}
+.btn-save {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border: none;
+    padding: 10px 30px;
+    border-radius: 25px;
+    font-weight: bold;
+    transition: all 0.3s;
+    color: #fff;
+}
+.btn-save:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+    color: #fff;
+}
+.help-text {
+    font-size: 12px;
+    color: #888;
+    margin-top: 5px;
+}
+</style>
+
+<div class="edit-whitelist-container">
+    <!-- 信息卡片 -->
+    <div class="info-card">
+        <div class="flex">
+            <div class="type-icon">
+                <i class="fa fa-edit"></i>
+            </div>
+            <div class="info-text">
+                <h4>编辑白名单记录</h4>
+                <p>修改白名单信息</p>
+            </div>
+        </div>
+    </div>
+
+    <form id="add-form" class="form-horizontal" role="form" data-toggle="validator" method="POST" action="">
+        <!-- 类型选择 -->
+        <div class="form-section">
+            <div class="form-section-header">
+                <i class="fa fa-tags"></i> 选择类型
+            </div>
+            <div class="form-section-body">
+                <div class="row" id="type-selector">
+                    <div class="col-xs-6 col-sm-3">
+                        <div class="type-card {:$row.type=='user'?'active':''}" data-type="user">
+                            <div class="icon">👤</div>
+                            <div class="title">用户</div>
+                            <div class="desc">用户ID</div>
+                        </div>
+                    </div>
+                    <div class="col-xs-6 col-sm-3">
+                        <div class="type-card {:$row.type=='ip'?'active':''}" data-type="ip">
+                            <div class="icon">🌐</div>
+                            <div class="title">IP地址</div>
+                            <div class="desc">如: 192.168.1.1</div>
+                        </div>
+                    </div>
+                    <div class="col-xs-6 col-sm-3">
+                        <div class="type-card {:$row.type=='device'?'active':''}" data-type="device">
+                            <div class="icon">📱</div>
+                            <div class="title">设备ID</div>
+                            <div class="desc">设备唯一标识</div>
+                        </div>
+                    </div>
+                    <div class="col-xs-6 col-sm-3">
+                        <div class="type-card {:$row.type=='phone'?'active':''}" data-type="phone">
+                            <div class="icon">📞</div>
+                            <div class="title">手机号</div>
+                            <div class="desc">如: 13800138000</div>
+                        </div>
+                    </div>
+                </div>
+                <input type="hidden" id="c-type" name="row[type]" value="{$row.type}" data-rule="required">
+            </div>
+        </div>
+
+        <!-- 基本信息 -->
+        <div class="form-section">
+            <div class="form-section-header">
+                <i class="fa fa-info-circle"></i> 基本信息
+            </div>
+            <div class="form-section-body">
+                <div class="form-group">
+                    <label class="control-label col-xs-12">{:__('值')} <span class="text-danger">*</span></label>
+                    <div class="col-xs-12">
+                        <input id="c-value" class="form-control" name="row[value]" type="text" value="{$row.value}" placeholder="请输入IP地址、用户ID、设备ID或手机号" data-rule="required">
+                        <p class="help-text" id="value-hint">请输入要加入白名单的值</p>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="control-label col-xs-12">{:__('加入原因')}</label>
+                    <div class="col-xs-12">
+                        <textarea id="c-reason" class="form-control" name="row[reason]" rows="3" placeholder="请输入加入白名单的原因（可选）">{$row.reason}</textarea>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="control-label col-xs-12">{:__('状态')}</label>
+                    <div class="col-xs-12">
+                        <select id="c-status" class="form-control" name="row[status]">
+                            <option value="1" {:$row.status==1?'selected':''}>启用</option>
+                            <option value="0" {:$row.status==0?'selected':''}>禁用</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 底部按钮 -->
+        <div class="form-group layer-footer">
+            <div class="col-xs-12 text-center">
+                <button type="submit" class="btn btn-primary btn-save">
+                    <i class="fa fa-save"></i> {:__('保存')}
+                </button>
+            </div>
+        </div>
+    </form>
+</div>
+
+<script>
+$(function() {
+    // 类型选择
+    $('.type-card').on('click', function() {
+        $('.type-card').removeClass('active');
+        $(this).addClass('active');
+        var type = $(this).data('type');
+        $('#c-type').val(type);
+
+        // 更新提示文字
+        var hints = {
+            'user': '请输入要加入白名单的用户ID',
+            'ip': '请输入要加入白名单的IP地址，如: 192.168.1.1',
+            'device': '请输入要加入白名单的设备ID',
+            'phone': '请输入要加入白名单的手机号，如: 13800138000'
+        };
+        $('#value-hint').text(hints[type] || '');
+
+        // 更新placeholder
+        var placeholders = {
+            'user': '请输入用户ID',
+            'ip': '如: 192.168.1.1',
+            'device': '请输入设备ID',
+            'phone': '如: 13800138000'
+        };
+        $('#c-value').attr('placeholder', placeholders[type] || '');
+    });
+});
+</script>
