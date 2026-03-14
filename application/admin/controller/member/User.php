@@ -512,11 +512,11 @@ class User extends Backend
             $durationSeconds = $duration * 3600;
             $endTime = $banType === 'permanent' ? null : $now + $durationSeconds;
 
-            // 创建封禁记录（使用正确的字段名）
+            // 创建封禁记录（使用正确的字段名和完整字段）
             Db::execute("
                 INSERT INTO {$prefix}ban_record 
-                (user_id, ban_type, ban_reason, ban_source, admin_id, admin_name, start_time, end_time, duration, status, createtime, updatetime)
-                VALUES (?, ?, ?, 'manual', ?, ?, ?, ?, ?, 'active', ?, ?)
+                (user_id, ban_type, ban_reason, ban_source, risk_score, admin_id, admin_name, start_time, end_time, duration, status, createtime, updatetime)
+                VALUES (?, ?, ?, 'manual', 0, ?, ?, ?, ?, ?, 'active', ?, ?)
             ", [$userId, $banType, $reason, $this->auth->id, $this->auth->username, $now, $endTime, $banType === 'permanent' ? 0 : $durationSeconds, $now, $now]);
 
             // 更新用户状态
@@ -669,9 +669,9 @@ class User extends Backend
                     case 'batch_ban':
                         Db::execute("UPDATE {$prefix}user SET status = 'banned', updatetime = ? WHERE id = ?", [time(), $userId]);
                         Db::execute("
-                            INSERT INTO {$prefix}ban_record (user_id, ban_type, ban_source, reason, admin_id, createtime, status)
-                            VALUES (?, 'temporary', 'manual', ?, ?, ?, 'active')
-                        ", [$userId, $remark ?: '批量封禁', $this->auth->id, time()]);
+                            INSERT INTO {$prefix}ban_record (user_id, ban_type, ban_reason, ban_source, admin_id, admin_name, start_time, duration, status, createtime, updatetime)
+                            VALUES (?, 'temporary', ?, 'manual', ?, ?, ?, 0, 'active', ?, ?)
+                        ", [$userId, $remark ?: '批量封禁', $this->auth->id, $this->auth->username, time(), time(), time()]);
                         break;
                     case 'batch_recharge':
                         if ($amount > 0) {
