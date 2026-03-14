@@ -522,24 +522,32 @@ class User extends Backend
             // 更新用户状态
             Db::execute("UPDATE {$prefix}user SET status = 'banned', updatetime = ? WHERE id = ?", [$now, $userId]);
 
-            // 更新风险评分
-            Db::execute("
-                INSERT INTO {$prefix}user_risk_score (user_id, total_score, violation_count, status, updatetime)
-                VALUES (?, 100, 1, 'banned', ?)
-                ON DUPLICATE KEY UPDATE 
-                    total_score = LEAST(total_score + 20, 1000),
-                    violation_count = violation_count + 1,
-                    status = 'banned',
-                    last_violation_time = ?,
-                    updatetime = ?
-            ", [$userId, $now, $now, $now]);
+            // 更新风险评分（如果表存在）
+            try {
+                Db::execute("
+                    INSERT INTO {$prefix}user_risk_score (user_id, total_score, violation_count, status, updatetime)
+                    VALUES (?, 100, 1, 'banned', ?)
+                    ON DUPLICATE KEY UPDATE 
+                        total_score = LEAST(total_score + 20, 1000),
+                        violation_count = violation_count + 1,
+                        status = 'banned',
+                        last_violation_time = ?,
+                        updatetime = ?
+                ", [$userId, $now, $now, $now]);
+            } catch (\Exception $e) {
+                // 风险评分表可能不存在或字段不匹配，忽略错误
+            }
 
             Db::commit();
-            $this->success('封禁成功');
+        } catch (\think\exception\HttpResponseException $e) {
+            // 重新抛出 HttpResponseException，这是 success/error 方法抛出的
+            throw $e;
         } catch (\Exception $e) {
             Db::rollback();
             $this->error('封禁失败：' . $e->getMessage());
         }
+        
+        $this->success('封禁成功');
     }
 
     /**
