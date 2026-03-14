@@ -774,7 +774,9 @@ class CoinService
         }
         
         $lockFile = $lockDir . md5($key) . '.lock';
-        $lockHandle = fopen($lockFile, 'w+');
+        
+        // 使用 'c+' 模式：文件不存在则创建，存在则打开，不清空内容
+        $lockHandle = fopen($lockFile, 'c+');
         
         if (!$lockHandle) {
             return false;
@@ -782,8 +784,12 @@ class CoinService
         
         // 尝试获取非阻塞锁
         if (flock($lockHandle, LOCK_EX | LOCK_NB)) {
+            // 获取锁成功，移动指针到开头并清空文件
+            ftruncate($lockHandle, 0);
+            rewind($lockHandle);
             // 写入过期时间
             fwrite($lockHandle, time() + $expire);
+            fflush($lockHandle);
             
             // 保存句柄到静态变量，以便后续释放
             self::$lockHandles[$key] = $lockHandle;
@@ -791,17 +797,23 @@ class CoinService
             return true;
         }
         
-        // 检查锁是否已过期
+        // 无法立即获取锁，检查锁是否已过期
+        // 先读取文件内容
+        rewind($lockHandle);
         $expireTime = (int)fread($lockHandle, 20);
-        if (time() > $expireTime) {
+        
+        if (time() > $expireTime && $expireTime > 0) {
             // 锁已过期，强制获取
             flock($lockHandle, LOCK_EX);
             ftruncate($lockHandle, 0);
+            rewind($lockHandle);
             fwrite($lockHandle, time() + $expire);
+            fflush($lockHandle);
             self::$lockHandles[$key] = $lockHandle;
             return true;
         }
         
+        // 锁未过期，关闭句柄返回失败
         fclose($lockHandle);
         return false;
     }
