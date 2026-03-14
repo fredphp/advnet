@@ -240,15 +240,21 @@ class User extends Backend
                 throw new Exception('充值失败');
             }
 
-            Db::name('admin_coin_log')->insert([
-                'admin_id' => $this->auth->id,
-                'admin_name' => $this->auth->username,
-                'user_id' => $userId,
-                'amount' => $amount,
-                'type' => 'recharge',
-                'remark' => $remark,
-                'createtime' => time(),
-            ]);
+            // 记录后台操作日志（表不存在时自动创建）
+            try {
+                $this->createAdminCoinLogTableIfNotExists();
+                Db::name('admin_coin_log')->insert([
+                    'admin_id' => $this->auth->id,
+                    'admin_name' => $this->auth->username,
+                    'user_id' => $userId,
+                    'amount' => $amount,
+                    'type' => 'recharge',
+                    'remark' => $remark,
+                    'createtime' => time(),
+                ]);
+            } catch (\Exception $e) {
+                // 日志记录失败不影响充值结果
+            }
 
             Db::commit();
             $this->success('充值成功');
@@ -280,15 +286,21 @@ class User extends Backend
                 throw new Exception('扣除失败');
             }
 
-            Db::name('admin_coin_log')->insert([
-                'admin_id' => $this->auth->id,
-                'admin_name' => $this->auth->username,
-                'user_id' => $userId,
-                'amount' => -$amount,
-                'type' => 'deduct',
-                'remark' => $remark,
-                'createtime' => time(),
-            ]);
+            // 记录后台操作日志（表不存在时自动创建）
+            try {
+                $this->createAdminCoinLogTableIfNotExists();
+                Db::name('admin_coin_log')->insert([
+                    'admin_id' => $this->auth->id,
+                    'admin_name' => $this->auth->username,
+                    'user_id' => $userId,
+                    'amount' => -$amount,
+                    'type' => 'deduct',
+                    'remark' => $remark,
+                    'createtime' => time(),
+                ]);
+            } catch (\Exception $e) {
+                // 日志记录失败不影响扣除结果
+            }
 
             Db::commit();
             $this->success('扣除成功');
@@ -714,5 +726,38 @@ class User extends Backend
 
         $this->view->assign('user_id', $userId);
         return $this->view->fetch();
+    }
+
+    /**
+     * 创建后台金币日志表（如果不存在）
+     */
+    protected function createAdminCoinLogTableIfNotExists()
+    {
+        $prefix = config('database.prefix');
+        $tableName = $prefix . 'admin_coin_log';
+        
+        // 检查表是否存在
+        $exists = Db::query("SHOW TABLES LIKE '{$tableName}'");
+        if (!empty($exists)) {
+            return;
+        }
+        
+        // 创建表
+        $sql = "CREATE TABLE `{$tableName}` (
+            `id` int(10) unsigned NOT NULL AUTO_INCREMENT COMMENT 'ID',
+            `admin_id` int(10) unsigned NOT NULL DEFAULT '0' COMMENT '管理员ID',
+            `admin_name` varchar(50) NOT NULL DEFAULT '' COMMENT '管理员用户名',
+            `user_id` int(10) unsigned NOT NULL DEFAULT '0' COMMENT '用户ID',
+            `amount` int(11) NOT NULL DEFAULT '0' COMMENT '金币数量',
+            `type` varchar(20) NOT NULL DEFAULT '' COMMENT '操作类型',
+            `remark` varchar(500) NOT NULL DEFAULT '' COMMENT '备注',
+            `createtime` int(10) unsigned NOT NULL DEFAULT '0' COMMENT '创建时间',
+            PRIMARY KEY (`id`),
+            KEY `idx_admin_id` (`admin_id`),
+            KEY `idx_user_id` (`user_id`),
+            KEY `idx_createtime` (`createtime`)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='后台金币操作日志表'";
+        
+        Db::execute($sql);
     }
 }
