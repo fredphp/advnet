@@ -580,7 +580,8 @@ class User extends Backend
             $now = time();
             $expireTime = $duration > 0 ? $now + ($duration * 3600) : 0;
 
-            // 创建冻结记录
+            // 创建冻结记录（表不存在时自动创建）
+            $this->createUserFreezeLogTableIfNotExists();
             Db::execute("
                 INSERT INTO {$prefix}user_freeze_log 
                 (user_id, reason, admin_id, createtime, expire_time, status)
@@ -626,6 +627,7 @@ class User extends Backend
             $now = time();
 
             // 更新冻结记录
+            $this->createUserFreezeLogTableIfNotExists();
             Db::execute("
                 UPDATE {$prefix}user_freeze_log 
                 SET status = 'released', release_time = ?, release_reason = '管理员手动解冻'
@@ -740,6 +742,40 @@ class User extends Backend
 
         $this->view->assign('user_id', $userId);
         return $this->view->fetch();
+    }
+
+    /**
+     * 创建用户冻结日志表（如果不存在）
+     */
+    protected function createUserFreezeLogTableIfNotExists()
+    {
+        $prefix = config('database.prefix');
+        $tableName = $prefix . 'user_freeze_log';
+        
+        // 检查表是否存在
+        $exists = Db::query("SHOW TABLES LIKE '{$tableName}'");
+        if (!empty($exists)) {
+            return;
+        }
+        
+        // 创建表
+        $sql = "CREATE TABLE `{$tableName}` (
+            `id` int(10) unsigned NOT NULL AUTO_INCREMENT COMMENT 'ID',
+            `user_id` int(10) unsigned NOT NULL DEFAULT '0' COMMENT '用户ID',
+            `reason` varchar(500) NOT NULL DEFAULT '' COMMENT '冻结原因',
+            `admin_id` int(10) unsigned NOT NULL DEFAULT '0' COMMENT '操作管理员ID',
+            `createtime` int(10) unsigned NOT NULL DEFAULT '0' COMMENT '创建时间',
+            `expire_time` int(10) unsigned NOT NULL DEFAULT '0' COMMENT '过期时间',
+            `status` varchar(20) NOT NULL DEFAULT 'active' COMMENT '状态:active-生效中,released-已释放',
+            `release_time` int(10) unsigned DEFAULT NULL COMMENT '解冻时间',
+            `release_reason` varchar(500) DEFAULT '' COMMENT '解冻原因',
+            PRIMARY KEY (`id`),
+            KEY `idx_user_id` (`user_id`),
+            KEY `idx_status` (`status`),
+            KEY `idx_createtime` (`createtime`)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户冻结日志表'";
+        
+        Db::execute($sql);
     }
 
     /**
