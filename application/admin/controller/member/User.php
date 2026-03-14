@@ -592,11 +592,15 @@ class User extends Backend
             Db::execute("UPDATE {$prefix}user SET status = 'frozen', updatetime = ? WHERE id = ?", [$now, $userId]);
 
             Db::commit();
-            $this->success('冻结成功');
+        } catch (\think\exception\HttpResponseException $e) {
+            // 重新抛出 HttpResponseException，这是 success/error 方法抛出的
+            throw $e;
         } catch (\Exception $e) {
             Db::rollback();
             $this->error('冻结失败：' . $e->getMessage());
         }
+        
+        $this->success('冻结成功');
     }
 
     /**
@@ -638,11 +642,15 @@ class User extends Backend
             Db::execute("UPDATE {$prefix}user SET status = 'normal', updatetime = ? WHERE id = ?", [$now, $userId]);
 
             Db::commit();
-            $this->success('解冻成功');
+        } catch (\think\exception\HttpResponseException $e) {
+            // 重新抛出 HttpResponseException，这是 success/error 方法抛出的
+            throw $e;
         } catch (\Exception $e) {
             Db::rollback();
             $this->error('解冻失败：' . $e->getMessage());
         }
+        
+        $this->success('解冻成功');
     }
 
     /**
