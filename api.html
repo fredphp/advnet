@@ -1,0 +1,1707 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>广告网络管理系统 - API接口文档</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: #fff;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+            overflow: hidden;
+        }
+        .header {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            color: #fff;
+            padding: 40px;
+            text-align: center;
+        }
+        .header h1 {
+            font-size: 32px;
+            margin-bottom: 10px;
+        }
+        .header p {
+            opacity: 0.8;
+            font-size: 16px;
+        }
+        .header .version {
+            display: inline-block;
+            background: rgba(255,255,255,0.2);
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            margin-top: 10px;
+        }
+        .nav {
+            background: #f8f9fa;
+            padding: 15px 30px;
+            border-bottom: 1px solid #e9ecef;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        .nav-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            list-style: none;
+        }
+        .nav-list a {
+            display: inline-block;
+            padding: 8px 16px;
+            background: #fff;
+            border: 1px solid #dee2e6;
+            border-radius: 20px;
+            color: #495057;
+            text-decoration: none;
+            font-size: 13px;
+            transition: all 0.2s;
+        }
+        .nav-list a:hover, .nav-list a.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #fff;
+            border-color: transparent;
+        }
+        .content {
+            display: flex;
+            min-height: calc(100vh - 200px);
+        }
+        .sidebar {
+            width: 280px;
+            background: #f8f9fa;
+            border-right: 1px solid #e9ecef;
+            padding: 20px;
+            overflow-y: auto;
+            max-height: calc(100vh - 200px);
+            position: sticky;
+            top: 70px;
+        }
+        .sidebar-section {
+            margin-bottom: 20px;
+        }
+        .sidebar-title {
+            font-size: 12px;
+            font-weight: 600;
+            color: #6c757d;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 10px;
+            padding-bottom: 5px;
+            border-bottom: 2px solid #dee2e6;
+        }
+        .sidebar-link {
+            display: block;
+            padding: 8px 12px;
+            color: #495057;
+            text-decoration: none;
+            border-radius: 6px;
+            font-size: 13px;
+            margin-bottom: 2px;
+            transition: all 0.2s;
+        }
+        .sidebar-link:hover {
+            background: #e9ecef;
+            color: #667eea;
+        }
+        .sidebar-link .method {
+            display: inline-block;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 10px;
+            font-weight: 600;
+            margin-right: 8px;
+        }
+        .method-get { background: #d1ecf1; color: #0c5460; }
+        .method-post { background: #d4edda; color: #155724; }
+        .main {
+            flex: 1;
+            padding: 30px;
+            overflow-y: auto;
+        }
+        .api-section {
+            margin-bottom: 50px;
+        }
+        .api-section-title {
+            font-size: 24px;
+            font-weight: 600;
+            color: #1a1a2e;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 3px solid #667eea;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .api-section-title .icon {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
+            font-size: 18px;
+        }
+        .api-item {
+            background: #fff;
+            border: 1px solid #e9ecef;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            overflow: hidden;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        }
+        .api-item:hover {
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        }
+        .api-header {
+            padding: 15px 20px;
+            background: #f8f9fa;
+            border-bottom: 1px solid #e9ecef;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        .api-method {
+            padding: 5px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+        .api-method.get { background: #d1ecf1; color: #0c5460; }
+        .api-method.post { background: #d4edda; color: #155724; }
+        .api-url {
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 14px;
+            color: #495057;
+            flex: 1;
+        }
+        .api-title {
+            font-size: 14px;
+            font-weight: 500;
+            color: #1a1a2e;
+        }
+        .api-body {
+            padding: 20px;
+        }
+        .api-desc {
+            color: #6c757d;
+            font-size: 14px;
+            margin-bottom: 15px;
+        }
+        .api-params {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 15px;
+        }
+        .api-params-title {
+            font-size: 13px;
+            font-weight: 600;
+            color: #495057;
+            margin-bottom: 10px;
+        }
+        .param-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+        .param-table th {
+            text-align: left;
+            padding: 8px 10px;
+            background: #e9ecef;
+            font-weight: 500;
+            color: #495057;
+        }
+        .param-table td {
+            padding: 8px 10px;
+            border-bottom: 1px solid #dee2e6;
+        }
+        .param-table tr:last-child td {
+            border-bottom: none;
+        }
+        .param-name {
+            font-family: 'Monaco', 'Menlo', monospace;
+            color: #667eea;
+        }
+        .param-type {
+            color: #6c757d;
+            font-size: 12px;
+        }
+        .param-required {
+            color: #dc3545;
+            font-size: 11px;
+        }
+        .param-optional {
+            color: #28a745;
+            font-size: 11px;
+        }
+        .api-response {
+            margin-top: 15px;
+            background: #1a1a2e;
+            border-radius: 8px;
+            padding: 15px;
+            overflow-x: auto;
+        }
+        .api-response-title {
+            font-size: 13px;
+            font-weight: 600;
+            color: #fff;
+            margin-bottom: 10px;
+        }
+        .api-response pre {
+            color: #a8dadc;
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 12px;
+            line-height: 1.6;
+            white-space: pre-wrap;
+        }
+        .api-note {
+            margin-top: 15px;
+            padding: 12px 15px;
+            background: #fff3cd;
+            border-radius: 8px;
+            font-size: 13px;
+            color: #856404;
+            border-left: 4px solid #ffc107;
+        }
+        .tag {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 500;
+        }
+        .tag-auth { background: #cce5ff; color: #004085; }
+        .tag-public { background: #d4edda; color: #155724; }
+        .footer {
+            background: #1a1a2e;
+            color: #fff;
+            padding: 30px;
+            text-align: center;
+            font-size: 14px;
+        }
+        .footer a {
+            color: #667eea;
+        }
+        @media (max-width: 1024px) {
+            .sidebar {
+                display: none;
+            }
+            .content {
+                flex-direction: column;
+            }
+        }
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 24px;
+            }
+            .main {
+                padding: 20px;
+            }
+            .nav-list {
+                justify-content: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>API 接口文档</h1>
+            <p>广告网络管理系统 - 前端应用接口文档</p>
+            <span class="version">Version 1.0.0</span>
+        </div>
+        
+        <div class="nav">
+            <ul class="nav-list">
+                <li><a href="#user">用户模块</a></li>
+                <li><a href="#coin">金币模块</a></li>
+                <li><a href="#withdraw">提现模块</a></li>
+                <li><a href="#redpacket">红包模块</a></li>
+                <li><a href="#video">视频收益</a></li>
+                <li><a href="#invite">邀请分佣</a></li>
+                <li><a href="#message">消息模块</a></li>
+                <li><a href="#common">公共接口</a></li>
+                <li><a href="#sms">短信验证</a></li>
+            </ul>
+        </div>
+        
+        <div class="content">
+            <div class="sidebar">
+                <div class="sidebar-section">
+                    <div class="sidebar-title">用户模块</div>
+                    <a href="#user-login" class="sidebar-link"><span class="method method-post">POST</span>会员登录</a>
+                    <a href="#user-register" class="sidebar-link"><span class="method method-post">POST</span>会员注册</a>
+                    <a href="#user-logout" class="sidebar-link"><span class="method method-post">POST</span>退出登录</a>
+                    <a href="#user-profile" class="sidebar-link"><span class="method method-post">POST</span>修改资料</a>
+                    <a href="#user-resetpwd" class="sidebar-link"><span class="method method-post">POST</span>重置密码</a>
+                </div>
+                <div class="sidebar-section">
+                    <div class="sidebar-title">金币模块</div>
+                    <a href="#coin-balance" class="sidebar-link"><span class="method method-get">GET</span>获取余额</a>
+                    <a href="#coin-account" class="sidebar-link"><span class="method method-get">GET</span>账户详情</a>
+                    <a href="#coin-logs" class="sidebar-link"><span class="method method-get">GET</span>金币流水</a>
+                </div>
+                <div class="sidebar-section">
+                    <div class="sidebar-title">提现模块</div>
+                    <a href="#withdraw-config" class="sidebar-link"><span class="method method-get">GET</span>提现配置</a>
+                    <a href="#withdraw-apply" class="sidebar-link"><span class="method method-post">POST</span>申请提现</a>
+                    <a href="#withdraw-list" class="sidebar-link"><span class="method method-get">GET</span>提现记录</a>
+                </div>
+                <div class="sidebar-section">
+                    <div class="sidebar-title">红包模块</div>
+                    <a href="#redpacket-click" class="sidebar-link"><span class="method method-post">POST</span>点击红包</a>
+                    <a href="#redpacket-claim" class="sidebar-link"><span class="method method-post">POST</span>领取红包</a>
+                </div>
+                <div class="sidebar-section">
+                    <div class="sidebar-title">视频收益</div>
+                    <a href="#video-watch" class="sidebar-link"><span class="method method-post">POST</span>上报观看</a>
+                    <a href="#video-claim" class="sidebar-link"><span class="method method-post">POST</span>领取奖励</a>
+                </div>
+                <div class="sidebar-section">
+                    <div class="sidebar-title">邀请分佣</div>
+                    <a href="#invite-bind" class="sidebar-link"><span class="method method-post">POST</span>绑定邀请</a>
+                    <a href="#invite-overview" class="sidebar-link"><span class="method method-get">GET</span>邀请统计</a>
+                    <a href="#invite-list" class="sidebar-link"><span class="method method-get">GET</span>邀请列表</a>
+                </div>
+            </div>
+            
+            <div class="main">
+                <!-- 用户模块 -->
+                <div class="api-section" id="user">
+                    <h2 class="api-section-title">
+                        <span class="icon">👤</span>
+                        用户模块
+                    </h2>
+                    
+                    <div class="api-item" id="user-login">
+                        <div class="api-header">
+                            <span class="api-method post">POST</span>
+                            <span class="api-url">/api/user/login</span>
+                            <span class="api-title">会员登录</span>
+                            <span class="tag tag-public">公开</span>
+                        </div>
+                        <div class="api-body">
+                            <p class="api-desc">用户通过账号密码登录系统，成功后返回用户信息和Token。</p>
+                            <div class="api-params">
+                                <div class="api-params-title">请求参数</div>
+                                <table class="param-table">
+                                    <thead>
+                                        <tr>
+                                            <th>参数名</th>
+                                            <th>类型</th>
+                                            <th>必填</th>
+                                            <th>说明</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td class="param-name">account</td>
+                                            <td class="param-type">string</td>
+                                            <td><span class="param-required">必填</span></td>
+                                            <td>账号（用户名/手机号/邮箱）</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="param-name">password</td>
+                                            <td class="param-type">string</td>
+                                            <td><span class="param-required">必填</span></td>
+                                            <td>密码</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div class="api-response">
+                                <div class="api-response-title">响应示例</div>
+                                <pre>{
+    "code": 1,
+    "msg": "登录成功",
+    "data": {
+        "userinfo": {
+            "id": 1,
+            "username": "testuser",
+            "nickname": "测试用户",
+            "mobile": "13800138000",
+            "avatar": "/uploads/avatar.png",
+            "token": "xxxx-xxxx-xxxx-xxxx"
+        }
+    }
+}</pre>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="api-item" id="user-register">
+                        <div class="api-header">
+                            <span class="api-method post">POST</span>
+                            <span class="api-url">/api/user/register</span>
+                            <span class="api-title">会员注册</span>
+                            <span class="tag tag-public">公开</span>
+                        </div>
+                        <div class="api-body">
+                            <p class="api-desc">新用户注册账号，需要手机验证码验证。</p>
+                            <div class="api-params">
+                                <div class="api-params-title">请求参数</div>
+                                <table class="param-table">
+                                    <thead>
+                                        <tr>
+                                            <th>参数名</th>
+                                            <th>类型</th>
+                                            <th>必填</th>
+                                            <th>说明</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td class="param-name">username</td>
+                                            <td class="param-type">string</td>
+                                            <td><span class="param-required">必填</span></td>
+                                            <td>用户名</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="param-name">password</td>
+                                            <td class="param-type">string</td>
+                                            <td><span class="param-required">必填</span></td>
+                                            <td>密码（6-30位）</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="param-name">mobile</td>
+                                            <td class="param-type">string</td>
+                                            <td><span class="param-required">必填</span></td>
+                                            <td>手机号</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="param-name">code</td>
+                                            <td class="param-type">string</td>
+                                            <td><span class="param-required">必填</span></td>
+                                            <td>短信验证码</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="param-name">email</td>
+                                            <td class="param-type">string</td>
+                                            <td><span class="param-optional">可选</span></td>
+                                            <td>邮箱地址</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div class="api-response">
+                                <div class="api-response-title">响应示例</div>
+                                <pre>{
+    "code": 1,
+    "msg": "注册成功",
+    "data": {
+        "userinfo": {
+            "id": 100,
+            "username": "newuser",
+            "token": "xxxx-xxxx-xxxx-xxxx"
+        }
+    }
+}</pre>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="api-item" id="user-logout">
+                        <div class="api-header">
+                            <span class="api-method post">POST</span>
+                            <span class="api-url">/api/user/logout</span>
+                            <span class="api-title">退出登录</span>
+                            <span class="tag tag-auth">需登录</span>
+                        </div>
+                        <div class="api-body">
+                            <p class="api-desc">用户退出登录，清除Token。</p>
+                            <div class="api-response">
+                                <div class="api-response-title">响应示例</div>
+                                <pre>{
+    "code": 1,
+    "msg": "退出成功"
+}</pre>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="api-item" id="user-profile">
+                        <div class="api-header">
+                            <span class="api-method post">POST</span>
+                            <span class="api-url">/api/user/profile</span>
+                            <span class="api-title">修改个人资料</span>
+                            <span class="tag tag-auth">需登录</span>
+                        </div>
+                        <div class="api-body">
+                            <p class="api-desc">修改用户个人资料信息。</p>
+                            <div class="api-params">
+                                <div class="api-params-title">请求参数</div>
+                                <table class="param-table">
+                                    <thead>
+                                        <tr>
+                                            <th>参数名</th>
+                                            <th>类型</th>
+                                            <th>必填</th>
+                                            <th>说明</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td class="param-name">username</td>
+                                            <td class="param-type">string</td>
+                                            <td><span class="param-optional">可选</span></td>
+                                            <td>用户名</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="param-name">nickname</td>
+                                            <td class="param-type">string</td>
+                                            <td><span class="param-optional">可选</span></td>
+                                            <td>昵称</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="param-name">avatar</td>
+                                            <td class="param-type">string</td>
+                                            <td><span class="param-optional">可选</span></td>
+                                            <td>头像URL</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="param-name">bio</td>
+                                            <td class="param-type">string</td>
+                                            <td><span class="param-optional">可选</span></td>
+                                            <td>个人简介</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="api-item" id="user-resetpwd">
+                        <div class="api-header">
+                            <span class="api-method post">POST</span>
+                            <span class="api-url">/api/user/resetpwd</span>
+                            <span class="api-title">重置密码</span>
+                            <span class="tag tag-public">公开</span>
+                        </div>
+                        <div class="api-body">
+                            <p class="api-desc">通过手机验证码重置密码。</p>
+                            <div class="api-params">
+                                <div class="api-params-title">请求参数</div>
+                                <table class="param-table">
+                                    <thead>
+                                        <tr>
+                                            <th>参数名</th>
+                                            <th>类型</th>
+                                            <th>必填</th>
+                                            <th>说明</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td class="param-name">mobile</td>
+                                            <td class="param-type">string</td>
+                                            <td><span class="param-required">必填</span></td>
+                                            <td>手机号</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="param-name">newpassword</td>
+                                            <td class="param-type">string</td>
+                                            <td><span class="param-required">必填</span></td>
+                                            <td>新密码（6-30位）</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="param-name">captcha</td>
+                                            <td class="param-type">string</td>
+                                            <td><span class="param-required">必填</span></td>
+                                            <td>短信验证码</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="param-name">type</td>
+                                            <td class="param-type">string</td>
+                                            <td><span class="param-optional">可选</span></td>
+                                            <td>类型：mobile/email，默认mobile</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 金币模块 -->
+                <div class="api-section" id="coin">
+                    <h2 class="api-section-title">
+                        <span class="icon">💰</span>
+                        金币模块
+                    </h2>
+                    
+                    <div class="api-item" id="coin-balance">
+                        <div class="api-header">
+                            <span class="api-method get">GET</span>
+                            <span class="api-url">/api/coin/balance</span>
+                            <span class="api-title">获取金币余额</span>
+                            <span class="tag tag-auth">需登录</span>
+                        </div>
+                        <div class="api-body">
+                            <p class="api-desc">获取当前用户的金币余额。</p>
+                            <div class="api-response">
+                                <div class="api-response-title">响应示例</div>
+                                <pre>{
+    "code": 1,
+    "msg": "获取成功",
+    "data": {
+        "balance": 10000
+    }
+}</pre>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="api-item" id="coin-account">
+                        <div class="api-header">
+                            <span class="api-method get">GET</span>
+                            <span class="api-url">/api/coin/account</span>
+                            <span class="api-title">获取账户详情</span>
+                            <span class="tag tag-auth">需登录</span>
+                        </div>
+                        <div class="api-body">
+                            <p class="api-desc">获取用户金币账户详细信息，包括余额、冻结金额、累计收支等。</p>
+                            <div class="api-response">
+                                <div class="api-response-title">响应示例</div>
+                                <pre>{
+    "code": 1,
+    "msg": "获取成功",
+    "data": {
+        "balance": 10000,
+        "frozen": 500,
+        "total_income": 50000,
+        "total_expense": 40500
+    }
+}</pre>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="api-item" id="coin-logs">
+                        <div class="api-header">
+                            <span class="api-method get">GET</span>
+                            <span class="api-url">/api/coin/logs</span>
+                            <span class="api-title">金币流水</span>
+                            <span class="tag tag-auth">需登录</span>
+                        </div>
+                        <div class="api-body">
+                            <p class="api-desc">获取用户金币流水记录，支持按月份分表查询。</p>
+                            <div class="api-params">
+                                <div class="api-params-title">请求参数</div>
+                                <table class="param-table">
+                                    <thead>
+                                        <tr>
+                                            <th>参数名</th>
+                                            <th>类型</th>
+                                            <th>必填</th>
+                                            <th>说明</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td class="param-name">page</td>
+                                            <td class="param-type">int</td>
+                                            <td><span class="param-optional">可选</span></td>
+                                            <td>页码，默认1</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="param-name">limit</td>
+                                            <td class="param-type">int</td>
+                                            <td><span class="param-optional">可选</span></td>
+                                            <td>每页数量，默认20</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="param-name">type</td>
+                                            <td class="param-type">string</td>
+                                            <td><span class="param-optional">可选</span></td>
+                                            <td>流水类型筛选</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="param-name">month</td>
+                                            <td class="param-type">string</td>
+                                            <td><span class="param-optional">可选</span></td>
+                                            <td>月份，格式YYYYMM，默认当月</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div class="api-response">
+                                <div class="api-response-title">响应示例</div>
+                                <pre>{
+    "code": 1,
+    "msg": "获取成功",
+    "data": {
+        "total": 100,
+        "list": [
+            {
+                "id": 1,
+                "type": "video_watch",
+                "amount": 100,
+                "balance": 10100,
+                "description": "观看视频奖励",
+                "createtime": 1678886400
+            }
+        ]
+    }
+}</pre>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 提现模块 -->
+                <div class="api-section" id="withdraw">
+                    <h2 class="api-section-title">
+                        <span class="icon">💸</span>
+                        提现模块
+                    </h2>
+                    
+                    <div class="api-item" id="withdraw-config">
+                        <div class="api-header">
+                            <span class="api-method get">GET</span>
+                            <span class="api-url">/api/withdraw/config</span>
+                            <span class="api-title">获取提现配置</span>
+                            <span class="tag tag-auth">需登录</span>
+                        </div>
+                        <div class="api-body">
+                            <p class="api-desc">获取提现相关配置信息，包括汇率、限额、可选金额等。</p>
+                            <div class="api-response">
+                                <div class="api-response-title">响应示例</div>
+                                <pre>{
+    "code": 1,
+    "msg": "获取成功",
+    "data": {
+        "min_withdraw": 1,
+        "max_withdraw": 500,
+        "exchange_rate": 10000,
+        "fee_rate": 0,
+        "daily_limit": 3,
+        "daily_amount": 500,
+        "balance": 10000,
+        "frozen": 0,
+        "withdraw_amounts": [0.3, 0.5, 1, 5, 10],
+        "withdraw_enabled": 1
+    }
+}</pre>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="api-item" id="withdraw-apply">
+                        <div class="api-header">
+                            <span class="api-method post">POST</span>
+                            <span class="api-url">/api/withdraw/apply</span>
+                            <span class="api-title">申请提现</span>
+                            <span class="tag tag-auth">需登录</span>
+                        </div>
+                        <div class="api-body">
+                            <p class="api-desc">用户申请提现，支持微信、支付宝、银行卡等方式。</p>
+                            <div class="api-params">
+                                <div class="api-params-title">请求参数</div>
+                                <table class="param-table">
+                                    <thead>
+                                        <tr>
+                                            <th>参数名</th>
+                                            <th>类型</th>
+                                            <th>必填</th>
+                                            <th>说明</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td class="param-name">coin_amount</td>
+                                            <td class="param-type">int</td>
+                                            <td><span class="param-required">必填</span></td>
+                                            <td>提现金币数量</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="param-name">withdraw_type</td>
+                                            <td class="param-type">string</td>
+                                            <td><span class="param-required">必填</span></td>
+                                            <td>提现方式：wechat/alipay/bank</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="param-name">withdraw_account</td>
+                                            <td class="param-type">string</td>
+                                            <td><span class="param-required">必填</span></td>
+                                            <td>提现账号</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="param-name">withdraw_name</td>
+                                            <td class="param-type">string</td>
+                                            <td><span class="param-required">必填</span></td>
+                                            <td>收款人姓名</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="param-name">bank_name</td>
+                                            <td class="param-type">string</td>
+                                            <td><span class="param-optional">可选</span></td>
+                                            <td>银行名称（银行卡提现时必填）</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div class="api-note">
+                                注意：提现金额必须在系统配置的可选金额范围内，否则会申请失败。
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="api-item" id="withdraw-list">
+                        <div class="api-header">
+                            <span class="api-method get">GET</span>
+                            <span class="api-url">/api/withdraw/list</span>
+                            <span class="api-title">提现记录列表</span>
+                            <span class="tag tag-auth">需登录</span>
+                        </div>
+                        <div class="api-body">
+                            <p class="api-desc">获取用户的提现记录列表。</p>
+                            <div class="api-params">
+                                <div class="api-params-title">请求参数</div>
+                                <table class="param-table">
+                                    <thead>
+                                        <tr>
+                                            <th>参数名</th>
+                                            <th>类型</th>
+                                            <th>必填</th>
+                                            <th>说明</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td class="param-name">status</td>
+                                            <td class="param-type">int</td>
+                                            <td><span class="param-optional">可选</span></td>
+                                            <td>状态筛选：0待审核/1已通过/2已拒绝/3已打款</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="param-name">page</td>
+                                            <td class="param-type">int</td>
+                                            <td><span class="param-optional">可选</span></td>
+                                            <td>页码，默认1</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="param-name">limit</td>
+                                            <td class="param-type">int</td>
+                                            <td><span class="param-optional">可选</span></td>
+                                            <td>每页数量，默认20</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 红包模块 -->
+                <div class="api-section" id="redpacket">
+                    <h2 class="api-section-title">
+                        <span class="icon">🧧</span>
+                        红包模块
+                    </h2>
+                    
+                    <div class="api-item" id="redpacket-click">
+                        <div class="api-header">
+                            <span class="api-method post">POST</span>
+                            <span class="api-url">/api/redpacket/click</span>
+                            <span class="api-title">点击红包</span>
+                            <span class="tag tag-auth">需登录</span>
+                        </div>
+                        <div class="api-body">
+                            <p class="api-desc">点击红包生成/累加红包金额，支持重置模式。</p>
+                            <div class="api-params">
+                                <div class="api-params-title">请求参数</div>
+                                <table class="param-table">
+                                    <thead>
+                                        <tr>
+                                            <th>参数名</th>
+                                            <th>类型</th>
+                                            <th>必填</th>
+                                            <th>说明</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td class="param-name">task_id</td>
+                                            <td class="param-type">int</td>
+                                            <td><span class="param-optional">可选</span></td>
+                                            <td>任务ID</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="param-name">reset</td>
+                                            <td class="param-type">int</td>
+                                            <td><span class="param-optional">可选</span></td>
+                                            <td>是否重置：1=重置并生成新红包，0=正常累加</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div class="api-response">
+                                <div class="api-response-title">响应示例</div>
+                                <pre>{
+    "code": 1,
+    "msg": "获取成功",
+    "data": {
+        "total_amount": 150
+    }
+}</pre>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="api-item" id="redpacket-claim">
+                        <div class="api-header">
+                            <span class="api-method post">POST</span>
+                            <span class="api-url">/api/redpacket/claim</span>
+                            <span class="api-title">领取红包</span>
+                            <span class="tag tag-auth">需登录</span>
+                        </div>
+                        <div class="api-body">
+                            <p class="api-desc">观看广告后领取红包金币。</p>
+                            <div class="api-params">
+                                <div class="api-params-title">请求参数</div>
+                                <table class="param-table">
+                                    <thead>
+                                        <tr>
+                                            <th>参数名</th>
+                                            <th>类型</th>
+                                            <th>必填</th>
+                                            <th>说明</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td class="param-name">task_id</td>
+                                            <td class="param-type">int</td>
+                                            <td><span class="param-optional">可选</span></td>
+                                            <td>任务ID</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div class="api-response">
+                                <div class="api-response-title">响应示例</div>
+                                <pre>{
+    "code": 1,
+    "msg": "领取成功",
+    "data": {
+        "amount": 150,
+        "balance": 10150
+    }
+}</pre>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 视频收益模块 -->
+                <div class="api-section" id="video">
+                    <h2 class="api-section-title">
+                        <span class="icon">🎬</span>
+                        视频收益模块
+                    </h2>
+                    
+                    <div class="api-item" id="video-watch">
+                        <div class="api-header">
+                            <span class="api-method post">POST</span>
+                            <span class="api-url">/api/video_reward/watch</span>
+                            <span class="api-title">上报观看进度</span>
+                            <span class="tag tag-auth">需登录</span>
+                        </div>
+                        <div class="api-body">
+                            <p class="api-desc">上报用户观看视频的进度数据。</p>
+                            <div class="api-params">
+                                <div class="api-params-title">请求参数</div>
+                                <table class="param-table">
+                                    <thead>
+                                        <tr>
+                                            <th>参数名</th>
+                                            <th>类型</th>
+                                            <th>必填</th>
+                                            <th>说明</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td class="param-name">video_id</td>
+                                            <td class="param-type">int</td>
+                                            <td><span class="param-required">必填</span></td>
+                                            <td>视频ID</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="param-name">watch_duration</td>
+                                            <td class="param-type">int</td>
+                                            <td><span class="param-required">必填</span></td>
+                                            <td>本次观看时长（秒）</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="param-name">watch_progress</td>
+                                            <td class="param-type">int</td>
+                                            <td><span class="param-required">必填</span></td>
+                                            <td>观看进度（0-100）</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="param-name">current_position</td>
+                                            <td class="param-type">int</td>
+                                            <td><span class="param-optional">可选</span></td>
+                                            <td>当前播放位置（秒）</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="param-name">session_id</td>
+                                            <td class="param-type">string</td>
+                                            <td><span class="param-optional">可选</span></td>
+                                            <td>会话ID</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="api-item" id="video-claim">
+                        <div class="api-header">
+                            <span class="api-method post">POST</span>
+                            <span class="api-url">/api/video_reward/claim</span>
+                            <span class="api-title">领取视频奖励</span>
+                            <span class="tag tag-auth">需登录</span>
+                        </div>
+                        <div class="api-body">
+                            <p class="api-desc">观看完成后领取金币奖励。</p>
+                            <div class="api-params">
+                                <div class="api-params-title">请求参数</div>
+                                <table class="param-table">
+                                    <thead>
+                                        <tr>
+                                            <th>参数名</th>
+                                            <th>类型</th>
+                                            <th>必填</th>
+                                            <th>说明</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td class="param-name">video_id</td>
+                                            <td class="param-type">int</td>
+                                            <td><span class="param-required">必填</span></td>
+                                            <td>视频ID</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div class="api-response">
+                                <div class="api-response-title">响应示例</div>
+                                <pre>{
+    "code": 1,
+    "msg": "领取成功",
+    "data": {
+        "reward_coin": 100,
+        "balance": 10100
+    }
+}</pre>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 邀请分佣模块 -->
+                <div class="api-section" id="invite">
+                    <h2 class="api-section-title">
+                        <span class="icon">👥</span>
+                        邀请分佣模块
+                    </h2>
+                    
+                    <div class="api-item" id="invite-bind">
+                        <div class="api-header">
+                            <span class="api-method post">POST</span>
+                            <span class="api-url">/api/invite/bind</span>
+                            <span class="api-title">绑定邀请关系</span>
+                            <span class="tag tag-auth">需登录</span>
+                        </div>
+                        <div class="api-body">
+                            <p class="api-desc">新用户绑定邀请人关系。</p>
+                            <div class="api-params">
+                                <div class="api-params-title">请求参数</div>
+                                <table class="param-table">
+                                    <thead>
+                                        <tr>
+                                            <th>参数名</th>
+                                            <th>类型</th>
+                                            <th>必填</th>
+                                            <th>说明</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td class="param-name">invite_code</td>
+                                            <td class="param-type">string</td>
+                                            <td><span class="param-required">必填</span></td>
+                                            <td>邀请码</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="param-name">channel</td>
+                                            <td class="param-type">string</td>
+                                            <td><span class="param-optional">可选</span></td>
+                                            <td>渠道来源，默认link</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="api-item" id="invite-overview">
+                        <div class="api-header">
+                            <span class="api-method get">GET</span>
+                            <span class="api-url">/api/invite/overview</span>
+                            <span class="api-title">获取邀请统计</span>
+                            <span class="tag tag-auth">需登录</span>
+                        </div>
+                        <div class="api-body">
+                            <p class="api-desc">获取邀请统计概览数据，包括邀请人数、佣金总额等。</p>
+                            <div class="api-response">
+                                <div class="api-response-title">响应示例</div>
+                                <pre>{
+    "code": 1,
+    "msg": "获取成功",
+    "data": {
+        "total_invite": 50,
+        "level1_count": 30,
+        "level2_count": 20,
+        "total_commission": 5000,
+        "level1_commission": 3500,
+        "level2_commission": 1500
+    }
+}</pre>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="api-item" id="invite-list">
+                        <div class="api-header">
+                            <span class="api-method get">GET</span>
+                            <span class="api-url">/api/invite/list</span>
+                            <span class="api-title">获取邀请列表</span>
+                            <span class="tag tag-auth">需登录</span>
+                        </div>
+                        <div class="api-body">
+                            <p class="api-desc">获取邀请的下级用户列表。</p>
+                            <div class="api-params">
+                                <div class="api-params-title">请求参数</div>
+                                <table class="param-table">
+                                    <thead>
+                                        <tr>
+                                            <th>参数名</th>
+                                            <th>类型</th>
+                                            <th>必填</th>
+                                            <th>说明</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td class="param-name">level</td>
+                                            <td class="param-type">int</td>
+                                            <td><span class="param-optional">可选</span></td>
+                                            <td>层级：1=一级，2=二级，0=全部</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="param-name">page</td>
+                                            <td class="param-type">int</td>
+                                            <td><span class="param-optional">可选</span></td>
+                                            <td>页码，默认1</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="param-name">limit</td>
+                                            <td class="param-type">int</td>
+                                            <td><span class="param-optional">可选</span></td>
+                                            <td>每页数量，默认20</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 消息模块 -->
+                <div class="api-section" id="message">
+                    <h2 class="api-section-title">
+                        <span class="icon">📬</span>
+                        消息模块
+                    </h2>
+                    
+                    <div class="api-item">
+                        <div class="api-header">
+                            <span class="api-method get">GET</span>
+                            <span class="api-url">/api/message/list</span>
+                            <span class="api-title">获取消息列表</span>
+                            <span class="tag tag-auth">需登录</span>
+                        </div>
+                        <div class="api-body">
+                            <p class="api-desc">获取用户的消息列表。</p>
+                            <div class="api-params">
+                                <div class="api-params-title">请求参数</div>
+                                <table class="param-table">
+                                    <thead>
+                                        <tr>
+                                            <th>参数名</th>
+                                            <th>类型</th>
+                                            <th>必填</th>
+                                            <th>说明</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td class="param-name">page</td>
+                                            <td class="param-type">int</td>
+                                            <td><span class="param-optional">可选</span></td>
+                                            <td>页码，默认1</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="param-name">pagesize</td>
+                                            <td class="param-type">int</td>
+                                            <td><span class="param-optional">可选</span></td>
+                                            <td>每页数量，默认20</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="param-name">type</td>
+                                            <td class="param-type">string</td>
+                                            <td><span class="param-optional">可选</span></td>
+                                            <td>消息类型筛选</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="api-item">
+                        <div class="api-header">
+                            <span class="api-method get">GET</span>
+                            <span class="api-url">/api/message/unreadCount</span>
+                            <span class="api-title">获取未读消息数量</span>
+                            <span class="tag tag-auth">需登录</span>
+                        </div>
+                        <div class="api-body">
+                            <p class="api-desc">获取用户未读消息的数量。</p>
+                            <div class="api-response">
+                                <div class="api-response-title">响应示例</div>
+                                <pre>{
+    "code": 1,
+    "msg": "获取成功",
+    "data": {
+        "unread_count": 5,
+        "total_count": 20
+    }
+}</pre>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="api-item">
+                        <div class="api-header">
+                            <span class="api-method post">POST</span>
+                            <span class="api-url">/api/message/markRead</span>
+                            <span class="api-title">标记消息已读</span>
+                            <span class="tag tag-auth">需登录</span>
+                        </div>
+                        <div class="api-body">
+                            <p class="api-desc">标记消息为已读状态。</p>
+                            <div class="api-params">
+                                <div class="api-params-title">请求参数</div>
+                                <table class="param-table">
+                                    <thead>
+                                        <tr>
+                                            <th>参数名</th>
+                                            <th>类型</th>
+                                            <th>必填</th>
+                                            <th>说明</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td class="param-name">message_id</td>
+                                            <td class="param-type">int</td>
+                                            <td><span class="param-required">必填</span></td>
+                                            <td>消息ID，0表示标记全部已读</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 公共接口 -->
+                <div class="api-section" id="common">
+                    <h2 class="api-section-title">
+                        <span class="icon">⚙️</span>
+                        公共接口
+                    </h2>
+                    
+                    <div class="api-item">
+                        <div class="api-header">
+                            <span class="api-method post">POST</span>
+                            <span class="api-url">/api/common/init</span>
+                            <span class="api-title">初始化配置</span>
+                            <span class="tag tag-public">公开</span>
+                        </div>
+                        <div class="api-body">
+                            <p class="api-desc">获取应用初始化配置信息，包括上传配置、版本信息等。</p>
+                            <div class="api-params">
+                                <div class="api-params-title">请求参数</div>
+                                <table class="param-table">
+                                    <thead>
+                                        <tr>
+                                            <th>参数名</th>
+                                            <th>类型</th>
+                                            <th>必填</th>
+                                            <th>说明</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td class="param-name">version</td>
+                                            <td class="param-type">string</td>
+                                            <td><span class="param-optional">可选</span></td>
+                                            <td>客户端版本号</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="param-name">lng</td>
+                                            <td class="param-type">string</td>
+                                            <td><span class="param-optional">可选</span></td>
+                                            <td>经度</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="param-name">lat</td>
+                                            <td class="param-type">string</td>
+                                            <td><span class="param-optional">可选</span></td>
+                                            <td>纬度</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="api-item">
+                        <div class="api-header">
+                            <span class="api-method post">POST</span>
+                            <span class="api-url">/api/common/upload</span>
+                            <span class="api-title">文件上传</span>
+                            <span class="tag tag-auth">需登录</span>
+                        </div>
+                        <div class="api-body">
+                            <p class="api-desc">上传文件到服务器，支持普通上传和分片上传。</p>
+                            <div class="api-params">
+                                <div class="api-params-title">请求参数</div>
+                                <table class="param-table">
+                                    <thead>
+                                        <tr>
+                                            <th>参数名</th>
+                                            <th>类型</th>
+                                            <th>必填</th>
+                                            <th>说明</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td class="param-name">file</td>
+                                            <td class="param-type">file</td>
+                                            <td><span class="param-required">必填</span></td>
+                                            <td>文件流</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="param-name">chunkid</td>
+                                            <td class="param-type">string</td>
+                                            <td><span class="param-optional">可选</span></td>
+                                            <td>分片上传ID</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="param-name">chunkindex</td>
+                                            <td class="param-type">int</td>
+                                            <td><span class="param-optional">可选</span></td>
+                                            <td>分片索引</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="param-name">chunkcount</td>
+                                            <td class="param-type">int</td>
+                                            <td><span class="param-optional">可选</span></td>
+                                            <td>总分片数</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div class="api-response">
+                                <div class="api-response-title">响应示例</div>
+                                <pre>{
+    "code": 1,
+    "msg": "上传成功",
+    "data": {
+        "url": "/uploads/2023/03/15/xxx.jpg",
+        "fullurl": "https://example.com/uploads/2023/03/15/xxx.jpg"
+    }
+}</pre>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 短信验证 -->
+                <div class="api-section" id="sms">
+                    <h2 class="api-section-title">
+                        <span class="icon">📱</span>
+                        短信验证模块
+                    </h2>
+                    
+                    <div class="api-item">
+                        <div class="api-header">
+                            <span class="api-method post">POST</span>
+                            <span class="api-url">/api/sms/send</span>
+                            <span class="api-title">发送验证码</span>
+                            <span class="tag tag-public">公开</span>
+                        </div>
+                        <div class="api-body">
+                            <p class="api-desc">发送短信验证码，支持多种事件类型。</p>
+                            <div class="api-params">
+                                <div class="api-params-title">请求参数</div>
+                                <table class="param-table">
+                                    <thead>
+                                        <tr>
+                                            <th>参数名</th>
+                                            <th>类型</th>
+                                            <th>必填</th>
+                                            <th>说明</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td class="param-name">mobile</td>
+                                            <td class="param-type">string</td>
+                                            <td><span class="param-required">必填</span></td>
+                                            <td>手机号</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="param-name">event</td>
+                                            <td class="param-type">string</td>
+                                            <td><span class="param-required">必填</span></td>
+                                            <td>事件：register/mobilelogin/changemobile/resetpwd</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div class="api-note">
+                                限制：同一手机号60秒内只能发送一次，同一IP每小时最多发送5次。
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="api-item">
+                        <div class="api-header">
+                            <span class="api-method post">POST</span>
+                            <span class="api-url">/api/sms/check</span>
+                            <span class="api-title">验证验证码</span>
+                            <span class="tag tag-public">公开</span>
+                        </div>
+                        <div class="api-body">
+                            <p class="api-desc">验证短信验证码是否正确。</p>
+                            <div class="api-params">
+                                <div class="api-params-title">请求参数</div>
+                                <table class="param-table">
+                                    <thead>
+                                        <tr>
+                                            <th>参数名</th>
+                                            <th>类型</th>
+                                            <th>必填</th>
+                                            <th>说明</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td class="param-name">mobile</td>
+                                            <td class="param-type">string</td>
+                                            <td><span class="param-required">必填</span></td>
+                                            <td>手机号</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="param-name">event</td>
+                                            <td class="param-type">string</td>
+                                            <td><span class="param-required">必填</span></td>
+                                            <td>事件名称</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="param-name">captcha</td>
+                                            <td class="param-type">string</td>
+                                            <td><span class="param-required">必填</span></td>
+                                            <td>验证码</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 通用说明 -->
+                <div class="api-section" id="common-info">
+                    <h2 class="api-section-title">
+                        <span class="icon">📋</span>
+                        通用说明
+                    </h2>
+                    
+                    <div class="api-item">
+                        <div class="api-body">
+                            <h3 style="margin-bottom: 15px; color: #1a1a2e;">请求头说明</h3>
+                            <div class="api-params">
+                                <table class="param-table">
+                                    <thead>
+                                        <tr>
+                                            <th>参数名</th>
+                                            <th>类型</th>
+                                            <th>说明</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td class="param-name">token</td>
+                                            <td class="param-type">string</td>
+                                            <td>用户登录Token，通过Header或URL参数传递</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="param-name">X-Device-Id</td>
+                                            <td class="param-type">string</td>
+                                            <td>设备唯一标识，用于风控检测</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="param-name">Content-Type</td>
+                                            <td class="param-type">string</td>
+                                            <td>application/x-www-form-urlencoded 或 application/json</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                            
+                            <h3 style="margin: 20px 0 15px; color: #1a1a2e;">响应格式</h3>
+                            <div class="api-params">
+                                <table class="param-table">
+                                    <thead>
+                                        <tr>
+                                            <th>字段</th>
+                                            <th>类型</th>
+                                            <th>说明</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td class="param-name">code</td>
+                                            <td class="param-type">int</td>
+                                            <td>状态码：1=成功，0=失败</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="param-name">msg</td>
+                                            <td class="param-type">string</td>
+                                            <td>提示信息</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="param-name">data</td>
+                                            <td class="param-type">object</td>
+                                            <td>返回数据</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="param-name">time</td>
+                                            <td class="param-type">int</td>
+                                            <td>服务器时间戳</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                            
+                            <h3 style="margin: 20px 0 15px; color: #1a1a2e;">错误码说明</h3>
+                            <div class="api-params">
+                                <table class="param-table">
+                                    <thead>
+                                        <tr>
+                                            <th>错误码</th>
+                                            <th>说明</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td class="param-name">-1</td>
+                                            <td>未登录或Token失效</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="param-name">0</td>
+                                            <td>请求失败，具体原因见msg</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="param-name">1</td>
+                                            <td>请求成功</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="footer">
+            <p>广告网络管理系统 API 接口文档</p>
+            <p style="margin-top: 10px; opacity: 0.7;">基于 ThinkPHP 5.0 + FastAdmin 开发 | 更新时间：2026-03-15</p>
+        </div>
+    </div>
+    
+    <script>
+        // 平滑滚动
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'start'
+                    });
+                }
+            });
+        });
+        
+        // 高亮当前导航
+        const sections = document.querySelectorAll('.api-section');
+        const navLinks = document.querySelectorAll('.nav-list a');
+        
+        window.addEventListener('scroll', () => {
+            let current = '';
+            sections.forEach(section => {
+                const sectionTop = section.offsetTop;
+                if (pageYOffset >= sectionTop - 100) {
+                    current = section.getAttribute('id');
+                }
+            });
+            
+            navLinks.forEach(link => {
+                link.classList.remove('active');
+                if (link.getAttribute('href') === '#' + current) {
+                    link.classList.add('active');
+                }
+            });
+        });
+    </script>
+</body>
+</html>
