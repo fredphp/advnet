@@ -20,4 +20,6 @@ return [
     'app\admin\command\GenerateMockData',
     'app\admin\command\CreateSplitTables',
     'app\command\DataMigration',
+    'app\command\Websocket',
+    'app\command\WebsocketManager',
 ];

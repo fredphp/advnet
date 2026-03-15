@@ -267,17 +267,26 @@ php think queue:listen --daemon
 如果需要实时推送功能（如红包任务推送、在线人数统计），需要启动 WebSocket 服务：
 
 ```bash
-# 进入 mini-services 目录
-cd mini-services/push-service
+# 先安装 Workerman 依赖
+composer require workerman/workerman
 
-# 安装依赖
-bun install
+# 启动 WebSocket 服务（前台运行）
+php think websocket:start
 
-# 启动 WebSocket 服务（开发模式，支持热重载）
-bun run dev
+# 指定端口启动
+php think websocket:start --port=3002 --api=3003
 
-# 或生产模式启动
-bun run start
+# 以守护进程方式运行（后台运行）
+php think websocket:start -d
+
+# 停止服务
+php think websocket:manage stop
+
+# 重启服务
+php think websocket:manage restart
+
+# 查看状态
+php think websocket:manage status
 ```
 
 **WebSocket 服务配置：**
@@ -286,6 +295,20 @@ bun run start
 |------|------|------|
 | WebSocket 服务 | 3002 | 客户端 WebSocket 连接入口 |
 | 推送 API 服务 | 3003 | 内部 HTTP API，用于后端推送消息 |
+
+**生产环境建议使用 Supervisor 管理：**
+
+```ini
+# /etc/supervisor/conf.d/websocket.conf
+[program:websocket]
+command=php /path/to/advnet/think websocket:start
+directory=/path/to/advnet
+autostart=true
+autorestart=true
+user=www-data
+redirect_stderr=true
+stdout_logfile=/var/log/websocket.log
+```
 
 **前端连接示例：**
 
@@ -298,21 +321,25 @@ uni.connectSocket({ url: wsUrl });
 **后端推送消息示例：**
 
 ```php
-use app\common\service\PushService;
+use app\common\library\WebSocketService;
 
-// 推送红包任务通知
-PushService::pushTask([
-    'id' => $taskId,
-    'name' => '新年红包',
-    'type' => 'lucky',
-    'single_amount' => 100,
+// 推送红包任务通知（通过内部 API）
+$ch = curl_init();
+curl_setopt($ch, CURLOPT_URL, 'http://127.0.0.1:3003/api/push-task');
+curl_setopt($ch, CURLOPT_POST, true);
+curl_setopt($ch, CURLOPT_HTTPHEADER, [
+    'Content-Type: application/json',
+    'X-API-Key: your-secret-api-key',
 ]);
-
-// 广播消息
-PushService::broadcast('event_name', ['data' => 'value']);
-
-// 获取在线人数
-$result = PushService::getOnlineCount();
+curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode([
+    'taskId' => $taskId,
+    'taskName' => '新年红包',
+    'taskType' => 'lucky',
+    'reward' => 100,
+]));
+curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+$result = curl_exec($ch);
+curl_close($ch);
 ```
 
 ### 8. 配置定时任务（Crontab）
