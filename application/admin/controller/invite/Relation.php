@@ -23,6 +23,14 @@ class Relation extends Backend
      */
     public function index()
     {
+        // 检查是否有 user_id 参数（从用户管理页面跳转）
+        $userId = $this->request->get('user_id', 0);
+        if ($userId) {
+            // 重定向到显示特定用户邀请关系的页面
+            $this->view->assign('user_id', $userId);
+            return $this->view->fetch('invitees');
+        }
+        
         if ($this->request->isAjax()) {
             $sort = $this->request->get('sort', 'total_invite_count');
             $order = $this->request->get('order', 'desc');
@@ -203,13 +211,16 @@ class Relation extends Backend
             $this->error('参数错误');
         }
         
-        // 非AJAX请求，返回视图
-        if (!$this->request->isAjax()) {
+        // 判断是否是表格数据请求（有 sort 或 offset 参数）
+        $isDataRequest = $this->request->get('sort') || $this->request->get('offset') !== null;
+        
+        // 非数据请求，返回视图
+        if (!$isDataRequest) {
             $this->view->assign('parent_id', $parentId);
             return $this->view->fetch();
         }
         
-        // AJAX请求，返回数据
+        // 表格数据请求，返回 JSON
         $sort = $this->request->get('sort', 'createtime');
         $order = $this->request->get('order', 'desc');
         $offset = $this->request->get('offset', 0);

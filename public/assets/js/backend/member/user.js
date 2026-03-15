@@ -319,7 +319,7 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
                     html += '<ul class="dropdown-menu dropdown-menu-right">';
                     html += '<li class="dropdown-header">信息查看</li>';
                     html += '<li><a href="member/user/behaviors?user_id=' + userId + '" class="btn-dialog"><i class="fa fa-history text-info"></i> 行为记录</a></li>';
-                    html += '<li><a href="invite/relation?user_id=' + userId + '" class="btn-dialog"><i class="fa fa-users text-success"></i> 邀请关系</a></li>';
+                    html += '<li><a href="invite/relation/invitees?parent_id=' + userId + '" class="btn-dialog"><i class="fa fa-users text-success"></i> 邀请关系</a></li>';
                     html += '<li><a href="video/watchrecord?user_id=' + userId + '" class="btn-dialog"><i class="fa fa-play-circle text-danger"></i> 观看记录</a></li>';
                     html += '<li><a href="withdraw/order?user_id=' + userId + '" class="btn-dialog"><i class="fa fa-money-bill text-warning"></i> 提现记录</a></li>';
                     html += '<li><a href="redpacket/record?user_id=' + userId + '" class="btn-dialog"><i class="fa fa-gift text-danger"></i> 红包记录</a></li>';
