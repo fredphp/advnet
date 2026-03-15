@@ -335,26 +335,26 @@ http2 => enabled
 
 ```bash
 # 前台运行（调试用，Ctrl+C 停止）
-php think websocket:start
+php think websocket start
 
 # 指定端口启动
-php think websocket:start --port=3002 --api=3003
+php think websocket start --port=3002 --api=3003
 
 # 后台运行（守护进程模式）
-php think websocket:start -d
+php think websocket start -d
 ```
 
 #### 7.3 管理 WebSocket 服务
 
 ```bash
 # 停止服务
-php think websocket:stop
+php think websocket stop
 
 # 重启服务
-php think websocket:restart
+php think websocket restart
 
 # 查看服务状态
-php think websocket:status
+php think websocket status
 ```
 
 #### 7.4 WebSocket 服务配置
