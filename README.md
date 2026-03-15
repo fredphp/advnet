@@ -264,39 +264,128 @@ php think queue:listen --daemon
 
 ### 7. 启动 WebSocket 服务（可选）
 
-如果需要实时推送功能（如红包任务推送、在线人数统计），需要启动 WebSocket 服务：
+如果需要实时推送功能（如红包任务推送、在线人数统计），需要启动 WebSocket 服务。
+
+#### 7.1 安装 Swoole 扩展
+
+Swoole 是一个高性能的 PHP 协程框架，需要作为 PHP 扩展安装。
+
+**方法一：使用 pecl 安装（推荐）**
 
 ```bash
-# 先安装 Workerman 依赖
-composer require workerman/workerman
+# 安装 Swoole 扩展
+pecl install swoole
 
-# 启动 WebSocket 服务（前台运行）
+# 启用扩展
+echo "extension=swoole.so" >> /etc/php/7.4/cli/php.ini
+echo "extension=swoole.so" >> /etc/php/7.4/fpm/php.ini
+
+# 验证安装
+php --ri swoole
+```
+
+**方法二：编译安装**
+
+```bash
+# 下载源码
+cd /tmp
+wget https://github.com/swoole/swoole-src/archive/refs/tags/v4.8.13.tar.gz
+tar -xzf v4.8.13.tar.gz
+cd swoole-src-4.8.13
+
+# 编译安装
+phpize
+./configure --enable-openssl --enable-http2 --enable-sockets
+make && make install
+
+# 启用扩展
+echo "extension=swoole.so" >> /etc/php/7.4/cli/php.ini
+
+# 验证安装
+php --ri swoole
+```
+
+**方法三：Docker 环境**
+
+```dockerfile
+# Dockerfile
+FROM php:7.4-cli
+
+# 安装 Swoole
+RUN pecl install swoole && docker-php-ext-enable swoole
+```
+
+**验证 Swoole 安装成功：**
+
+```bash
+$ php --ri swoole
+
+swoole
+
+Swoole => enabled
+Author => Swoole Team <team@swoole.com>
+Version => 4.8.13
+Built => Mar 15 2026 10:00:00
+coroutine => enabled
+openssl => OpenSSL 1.1.1f  31 Mar 2020
+http2 => enabled
+```
+
+#### 7.2 启动 WebSocket 服务
+
+```bash
+# 前台运行（调试用，Ctrl+C 停止）
 php think websocket:start
 
 # 指定端口启动
 php think websocket:start --port=3002 --api=3003
 
-# 以守护进程方式运行（后台运行）
+# 后台运行（守护进程模式）
 php think websocket:start -d
-
-# 停止服务
-php think websocket:manage stop
-
-# 重启服务
-php think websocket:manage restart
-
-# 查看状态
-php think websocket:manage status
 ```
 
-**WebSocket 服务配置：**
+#### 7.3 管理 WebSocket 服务
 
-| 服务 | 端口 | 说明 |
-|------|------|------|
-| WebSocket 服务 | 3002 | 客户端 WebSocket 连接入口 |
-| 推送 API 服务 | 3003 | 内部 HTTP API，用于后端推送消息 |
+```bash
+# 停止服务
+php think websocket:stop
 
-**生产环境建议使用 Supervisor 管理：**
+# 重启服务
+php think websocket:restart
+
+# 查看服务状态
+php think websocket:status
+```
+
+#### 7.4 WebSocket 服务配置
+
+| 配置项 | 默认值 | 说明 |
+|--------|--------|------|
+| WebSocket 端口 | 3002 | 客户端 WebSocket 连接入口 |
+| API 端口 | 3003 | 内部 HTTP API，用于后端推送消息 |
+| API 密钥 | your-secret-api-key | 内部 API 认证密钥（请在代码中修改） |
+| PID 文件 | runtime/websocket.pid | 进程 ID 文件 |
+| 日志文件 | runtime/log/websocket.log | 服务日志文件 |
+
+**修改配置（在代码中）：**
+
+```php
+// application/common/library/WebSocketService.php
+
+class WebSocketService
+{
+    // 修改端口
+    const WS_PORT = 3002;
+    const API_PORT = 3003;
+    
+    // 修改 API 密钥（生产环境必须修改！）
+    const API_KEY = 'your-production-api-key';
+}
+```
+
+#### 7.5 生产环境部署
+
+**使用 Supervisor 管理（推荐）：**
 
 ```ini
 # /etc/supervisor/conf.d/websocket.conf
@@ -308,38 +397,217 @@ autorestart=true
 user=www-data
 redirect_stderr=true
 stdout_logfile=/var/log/websocket.log
+stdout_logfile_maxbytes=10MB
+stdout_logfile_backups=3
 ```
 
-**前端连接示例：**
+```bash
+# 重新加载 Supervisor 配置
+supervisorctl reread
+supervisorctl update
+
+# 管理服务
+supervisorctl start websocket
+supervisorctl stop websocket
+supervisorctl restart websocket
+supervisorctl status websocket
+```
+
+**使用 systemd 管理：**
+
+```ini
+# /etc/systemd/system/websocket.service
+[Unit]
+Description=WebSocket Service for AdNetwork
+After=network.target
+
+[Service]
+Type=simple
+User=www-data
+WorkingDirectory=/path/to/advnet
+ExecStart=/usr/bin/php /path/to/advnet/think websocket:start
+Restart=on-failure
+RestartSec=5s
+
+[Install]
+WantedBy=multi-user.target
+```
+
+```bash
+# 启用并启动服务
+systemctl daemon-reload
+systemctl enable websocket
+systemctl start websocket
+systemctl status websocket
+```
+
+#### 7.6 Nginx 代理配置（可选）
+
+如果需要通过 Nginx 代理 WebSocket：
+
+```nginx
+# WebSocket 代理配置
+upstream websocket {
+    server 127.0.0.1:3002;
+}
+
+server {
+    listen 443 ssl;
+    server_name ws.your-domain.com;
+
+    ssl_certificate /path/to/ssl/cert.pem;
+    ssl_certificate_key /path/to/ssl/key.pem;
+
+    location / {
+        proxy_pass http://websocket;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_read_timeout 86400;
+    }
+}
+```
+
+#### 7.7 前端连接示例
 
 ```javascript
-// 通过网关连接 WebSocket（必须使用 XTransformPort 参数）
+// 直接连接（内网或直连）
+const wsUrl = `ws://127.0.0.1:3002?userId=${userId}&token=${token}`;
+
+// 通过网关连接（必须使用 XTransformPort 参数）
 const wsUrl = `wss://your-domain.com/?XTransformPort=3002&userId=${userId}&token=${token}`;
-uni.connectSocket({ url: wsUrl });
+
+// uni-app 连接
+uni.connectSocket({
+    url: wsUrl,
+    success: () => console.log('连接中...')
+});
+
+// 监听连接打开
+uni.onSocketOpen(() => {
+    console.log('WebSocket 连接成功');
+    // 发送认证消息
+    uni.sendSocketMessage({
+        data: JSON.stringify({
+            type: 'auth',
+            userId: userId,
+            token: token
+        })
+    });
+});
+
+// 监听消息
+uni.onSocketMessage((res) => {
+    const data = JSON.parse(res.data);
+    switch (data.type) {
+        case 'task_notification':
+            console.log('收到红包任务:', data);
+            break;
+        case 'online_count':
+            console.log('在线人数:', data.count);
+            break;
+    }
+});
 ```
 
-**后端推送消息示例：**
+#### 7.8 后端推送消息示例
 
 ```php
-use app\common\library\WebSocketService;
+// 推送红包任务通知
+function pushTaskNotification($taskId, $taskName, $reward) {
+    $ch = curl_init();
+    curl_setopt($ch, CURLOPT_URL, 'http://127.0.0.1:3003/api/push-task');
+    curl_setopt($ch, CURLOPT_POST, true);
+    curl_setopt($ch, CURLOPT_HTTPHEADER, [
+        'Content-Type: application/json',
+        'X-API-Key: your-secret-api-key',
+    ]);
+    curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode([
+        'taskId' => $taskId,
+        'taskName' => $taskName,
+        'taskType' => 'lucky',
+        'reward' => $reward,
+        'content' => "【红包任务】{$taskName}，完成可获得 {$reward} 金币奖励！",
+    ]));
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_TIMEOUT, 5);
+    $result = curl_exec($ch);
+    curl_close($ch);
+    return json_decode($result, true);
+}
 
-// 推送红包任务通知（通过内部 API）
-$ch = curl_init();
-curl_setopt($ch, CURLOPT_URL, 'http://127.0.0.1:3003/api/push-task');
-curl_setopt($ch, CURLOPT_POST, true);
-curl_setopt($ch, CURLOPT_HTTPHEADER, [
-    'Content-Type: application/json',
-    'X-API-Key: your-secret-api-key',
-]);
-curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode([
-    'taskId' => $taskId,
-    'taskName' => '新年红包',
-    'taskType' => 'lucky',
-    'reward' => 100,
-]));
-curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-$result = curl_exec($ch);
-curl_close($ch);
+// 发送系统消息
+function sendSystemMessage($title, $content, $targetUsers = null) {
+    $data = [
+        'title' => $title,
+        'content' => $content,
+        'level' => 'info',
+    ];
+    if ($targetUsers) {
+        $data['targetUsers'] = $targetUsers;
+    }
+    
+    $ch = curl_init();
+    curl_setopt($ch, CURLOPT_URL, 'http://127.0.0.1:3003/api/system-message');
+    curl_setopt($ch, CURLOPT_POST, true);
+    curl_setopt($ch, CURLOPT_HTTPHEADER, [
+        'Content-Type: application/json',
+        'X-API-Key: your-secret-api-key',
+    ]);
+    curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    $result = curl_exec($ch);
+    curl_close($ch);
+    return json_decode($result, true);
+}
+
+// 获取在线人数
+function getOnlineCount() {
+    $ch = curl_init();
+    curl_setopt($ch, CURLOPT_URL, 'http://127.0.0.1:3003/api/online-count');
+    curl_setopt($ch, CURLOPT_HTTPHEADER, [
+        'X-API-Key: your-secret-api-key',
+    ]);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    $result = curl_exec($ch);
+    curl_close($ch);
+    return json_decode($result, true);
+}
+```
+
+#### 7.9 常见问题
+
+**问题1: Swoole 扩展安装失败**
+
+```bash
+# 确保安装了必要的依赖
+apt-get install -y php7.4-dev php-pear build-essential libssl-dev
+
+# 重新安装
+pecl install swoole
+```
+
+**问题2: 端口被占用**
+
+```bash
+# 查看端口占用
+netstat -tlnp | grep 3002
+
+# 杀掉占用进程
+kill -9 <PID>
+```
+
+**问题3: 服务无法启动**
+
+```bash
+# 查看错误日志
+tail -f runtime/log/websocket.log
+
+# 检查 PHP 错误日志
+tail -f /var/log/php-errors.log
 ```
 
 ### 8. 配置定时任务（Crontab）
