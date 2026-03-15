@@ -106,7 +106,7 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
             table.bootstrapTable({
                 url: 'member/user/devices',
                 pk: 'id',
-                sortName: 'last_seen',
+                sortName: 'last_login_time',
                 sortOrder: 'desc',
                 queryParams: function(params) {
                     params.user_id = userId;
@@ -116,11 +116,13 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
                     [
                         {checkbox: true},
                         {field: 'id', title: 'ID', sortable: true, width: 60},
-                        {field: 'device_id', title: '设备ID'},
-                        {field: 'device_type', title: '设备类型', width: 100},
-                        {field: 'os', title: '操作系统', width: 100},
-                        {field: 'browser', title: '浏览器', width: 100},
-                        {field: 'last_seen', title: '最后活跃', formatter: Table.api.formatter.datetime, sortable: true, width: 150}
+                        {field: 'device_id', title: '设备ID', width: 150},
+                        {field: 'device_type', title: '设备类型', width: 80},
+                        {field: 'device_brand', title: '品牌', width: 80},
+                        {field: 'device_model', title: '型号', width: 100},
+                        {field: 'os_version', title: '系统版本', width: 80},
+                        {field: 'risk_level', title: '风险等级', width: 80},
+                        {field: 'last_login_time', title: '最后登录', formatter: Table.api.formatter.datetime, sortable: true, width: 150}
                     ]
                 ]
             });

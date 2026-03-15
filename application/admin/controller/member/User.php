@@ -810,7 +810,7 @@ class User extends Backend
             $devices = Db::query("
                 SELECT * FROM {$prefix}device_fingerprint 
                 WHERE user_id = ? 
-                ORDER BY last_seen DESC
+                ORDER BY last_login_time DESC
             ", [$userId]);
 
             return json(['total' => count($devices), 'rows' => $devices]);
