@@ -31,7 +31,7 @@ class Record extends Backend
                 ->alias('rpr')
                 ->join('user u', 'u.id = rpr.user_id', 'LEFT')
                 ->join('red_packet_task task', 'task.id = rpr.task_id', 'LEFT')
-                ->field('rpr.*, u.username, u.nickname, task.title as task_title')
+                ->field('rpr.*, u.username, u.nickname, task.name as task_name')
                 ->where($where)
                 ->order("rpr.{$sort}", $order)
                 ->limit($offset, $limit)
@@ -52,7 +52,7 @@ class Record extends Backend
             ->alias('rpr')
             ->join('user u', 'u.id = rpr.user_id', 'LEFT')
             ->join('red_packet_task task', 'task.id = rpr.task_id', 'LEFT')
-            ->field('rpr.*, u.username, u.nickname, u.mobile, task.title as task_title, task.resource_id')
+            ->field('rpr.*, u.username, u.nickname, u.mobile, task.name as task_name, task.resource_id')
             ->where('rpr.id', $ids)
             ->find();
 

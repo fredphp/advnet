@@ -26,7 +26,7 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
                         {field: 'user_id', title: '用户ID', sortable: true, width: 80},
                         {field: 'username', title: '用户名', operate: 'LIKE'},
                         {field: 'nickname', title: '昵称', operate: 'LIKE'},
-                        {field: 'task_title', title: '任务标题', operate: 'LIKE'},
+                        {field: 'task_name', title: '任务名称', operate: 'LIKE'},
                         {field: 'amount', title: '红包金额', sortable: true, 
                             formatter: function(value, row, index) {
                                 return '<span style="color:#e74a3b;font-weight:600;">' + value + '</span>';
