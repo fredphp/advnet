@@ -21,5 +21,4 @@ return [
     'app\admin\command\CreateSplitTables',
     'app\command\DataMigration',
     'app\command\Websocket',
-    'app\command\WebsocketManager',
 ];
