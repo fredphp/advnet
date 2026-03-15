@@ -191,7 +191,16 @@ class User extends Backend
             }
         }
 
+        // 获取金币账户信息
+        $coinAccount = null;
+        try {
+            $coinAccount = Db::name('coin_account')->where('user_id', $ids)->find();
+        } catch (\Exception $e) {
+            $coinAccount = null;
+        }
+
         $this->view->assign('row', $row);
+        $this->view->assign('coin_account', $coinAccount ?: ['balance' => 0, 'frozen' => 0]);
         return $this->view->fetch();
     }
 

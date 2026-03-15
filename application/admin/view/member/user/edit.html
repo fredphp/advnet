@@ -1,544 +1,324 @@
 <style>
-.user-edit-container {
-    padding: 0;
-}
-
-/* 用户头部信息 */
-.user-header {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    border-radius: 12px 12px 0 0;
-    padding: 25px 30px;
-    color: #fff;
-    display: flex;
-    align-items: center;
-    gap: 20px;
-}
-
-.user-avatar-large {
-    width: 80px;
-    height: 80px;
-    border-radius: 50%;
-    border: 3px solid rgba(255,255,255,0.3);
-    object-fit: cover;
-    background: rgba(255,255,255,0.2);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 32px;
-    font-weight: 600;
-}
-
-.user-basic-info h3 {
-    margin: 0 0 8px 0;
-    font-size: 22px;
-    font-weight: 600;
-}
-
-.user-basic-info .user-meta {
-    display: flex;
-    gap: 20px;
-    font-size: 13px;
-    opacity: 0.9;
-}
-
-.user-basic-info .user-meta span {
-    display: flex;
-    align-items: center;
-    gap: 5px;
-}
-
-.user-status-tag {
-    padding: 4px 12px;
-    border-radius: 20px;
-    font-size: 12px;
-    font-weight: 500;
-}
-
-.user-status-tag.normal {
-    background: rgba(16, 185, 129, 0.2);
-    color: #6ee7b7;
-}
-
-.user-status-tag.frozen {
-    background: rgba(245, 158, 11, 0.2);
-    color: #fcd34d;
-}
-
-.user-status-tag.banned {
-    background: rgba(239, 68, 68, 0.2);
-    color: #fca5a5;
-}
-
-/* 内容区域 */
-.edit-content {
-    padding: 25px 30px;
-}
-
-/* 分组卡片 */
-.edit-section {
-    background: #f8fafc;
-    border-radius: 12px;
-    margin-bottom: 20px;
-    overflow: hidden;
-}
-
-.section-header {
-    background: #fff;
-    padding: 15px 20px;
-    border-bottom: 1px solid #e5e7eb;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    font-weight: 600;
-    color: #374151;
-}
-
-.section-header i {
-    width: 24px;
-    height: 24px;
-    border-radius: 6px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 12px;
-}
-
-.section-header i.info { background: #dbeafe; color: #2563eb; }
-.section-header i.coin { background: #fef3c7; color: #d97706; }
-.section-header i.status { background: #d1fae5; color: #059669; }
-.section-header i.risk { background: #fee2e2; color: #dc2626; }
-
-.section-body {
+.user-edit-form {
     padding: 20px;
 }
 
-/* 表单样式 */
+/* 用户信息头部 */
+.user-info-header {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    padding-bottom: 15px;
+    margin-bottom: 20px;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.user-info-header .avatar {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    object-fit: cover;
+    background: #f3f4f6;
+}
+
+.user-info-header .user-text h4 {
+    margin: 0 0 4px 0;
+    font-size: 16px;
+    font-weight: 600;
+    color: #1f2937;
+}
+
+.user-info-header .user-text p {
+    margin: 0;
+    font-size: 13px;
+    color: #6b7280;
+}
+
+.user-info-header .user-text p span {
+    margin-right: 15px;
+}
+
+/* 表单分组 */
+.form-section {
+    margin-bottom: 20px;
+}
+
+.form-section-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: #374151;
+    margin-bottom: 12px;
+    padding-left: 10px;
+    border-left: 3px solid #667eea;
+}
+
 .form-row {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
-    gap: 15px;
+    gap: 12px;
 }
 
 .form-group {
     margin-bottom: 0;
 }
 
-.form-group.full-width {
-    grid-column: span 2;
-}
-
 .form-group label {
+    display: block;
+    font-size: 13px;
     font-weight: 500;
     color: #4b5563;
-    font-size: 13px;
-    margin-bottom: 6px;
-    display: block;
+    margin-bottom: 5px;
 }
 
-.form-group label .required {
+.form-group label .text-danger {
     color: #ef4444;
-    margin-left: 2px;
 }
 
 .form-control {
-    border: 2px solid #e5e7eb;
-    border-radius: 8px;
-    padding: 10px 14px;
-    font-size: 14px;
-    transition: all 0.2s;
+    width: 100%;
+    height: 36px;
+    padding: 6px 12px;
+    font-size: 13px;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
     background: #fff;
+    transition: border-color 0.2s;
 }
 
 .form-control:focus {
     border-color: #667eea;
-    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
     outline: none;
+    box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.1);
 }
 
 .form-control:disabled, .form-control[readonly] {
-    background: #f3f4f6;
+    background: #f9fafb;
     color: #6b7280;
 }
 
 .form-control-static {
-    padding: 10px 14px;
-    background: #f3f4f6;
-    border-radius: 8px;
-    font-size: 14px;
-    color: #1f2937;
-    min-height: 44px;
-    display: flex;
-    align-items: center;
-}
-
-/* 状态选择器 */
-.status-selector {
-    display: flex;
-    gap: 10px;
-}
-
-.status-option {
-    flex: 1;
-    padding: 12px;
-    border: 2px solid #e5e7eb;
-    border-radius: 10px;
-    text-align: center;
-    cursor: pointer;
-    transition: all 0.2s;
-    background: #fff;
-}
-
-.status-option:hover {
-    border-color: #d1d5db;
-}
-
-.status-option.active {
-    border-color: #667eea;
-    background: linear-gradient(135deg, rgba(102, 126, 234, 0.05) 0%, rgba(118, 75, 162, 0.05) 100%);
-}
-
-.status-option input {
-    display: none;
-}
-
-.status-option .status-icon {
-    width: 36px;
     height: 36px;
-    border-radius: 50%;
+    padding: 6px 12px;
+    font-size: 13px;
+    background: #f9fafb;
+    border-radius: 6px;
     display: flex;
     align-items: center;
-    justify-content: center;
-    margin: 0 auto 8px;
-    font-size: 16px;
-}
-
-.status-option.normal .status-icon { background: #d1fae5; color: #059669; }
-.status-option.frozen .status-icon { background: #fef3c7; color: #d97706; }
-.status-option.banned .status-icon { background: #fee2e2; color: #dc2626; }
-
-.status-option .status-label {
-    font-weight: 500;
-    font-size: 14px;
     color: #374151;
 }
 
-.status-option.active .status-label {
-    color: #667eea;
-}
-
-/* 金币显示 */
-.coin-display {
+/* 状态选择 */
+.status-radio-group {
     display: flex;
-    align-items: center;
     gap: 10px;
 }
 
-.coin-display .coin-value {
-    font-size: 24px;
-    font-weight: 700;
-    color: #f59e0b;
-}
-
-.coin-display .coin-frozen {
-    font-size: 14px;
-    color: #9ca3af;
-}
-
-/* 数字输入组 */
-.number-input-group {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-}
-
-.number-input-group .form-control {
+.status-radio {
     flex: 1;
+    position: relative;
 }
 
-.number-input-group .btn-adjust {
-    width: 40px;
-    height: 40px;
-    border-radius: 8px;
+.status-radio input {
+    position: absolute;
+    opacity: 0;
+}
+
+.status-radio label {
     display: flex;
     align-items: center;
     justify-content: center;
-    border: 2px solid #e5e7eb;
-    background: #fff;
-    font-size: 16px;
-    color: #6b7280;
+    gap: 6px;
+    padding: 8px 12px;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
     cursor: pointer;
+    font-size: 13px;
+    font-weight: 500;
+    background: #fff;
     transition: all 0.2s;
+    margin-bottom: 0;
 }
 
-.number-input-group .btn-adjust:hover {
+.status-radio input:checked + label {
     border-color: #667eea;
+    background: #f0f3ff;
     color: #667eea;
 }
 
-/* 提交按钮区域 */
-.submit-area {
+.status-radio.normal label { color: #059669; }
+.status-radio.normal input:checked + label { border-color: #059669; background: #ecfdf5; color: #059669; }
+
+.status-radio.frozen label { color: #d97706; }
+.status-radio.frozen input:checked + label { border-color: #d97706; background: #fffbeb; color: #d97706; }
+
+.status-radio.banned label { color: #dc2626; }
+.status-radio.banned input:checked + label { border-color: #dc2626; background: #fef2f2; color: #dc2626; }
+
+/* 金币信息 */
+.coin-info {
+    background: #fefce8;
+    border: 1px solid #fde047;
+    border-radius: 6px;
+    padding: 12px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.coin-info .coin-main {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+}
+
+.coin-info .coin-main .label {
+    font-size: 13px;
+    color: #854d0e;
+}
+
+.coin-info .coin-main .value {
+    font-size: 20px;
+    font-weight: 600;
+    color: #ca8a04;
+}
+
+.coin-info .coin-detail {
+    font-size: 12px;
+    color: #a16207;
+}
+
+/* 提交按钮 */
+.form-actions {
     display: flex;
     justify-content: flex-end;
-    gap: 12px;
-    padding-top: 10px;
-    border-top: 1px solid #e5e7eb;
+    gap: 10px;
+    padding-top: 15px;
     margin-top: 20px;
+    border-top: 1px solid #e5e7eb;
 }
 
-.submit-area .btn {
-    padding: 12px 30px;
-    border-radius: 8px;
-    font-weight: 500;
-    font-size: 14px;
-    min-width: 100px;
+.form-actions .btn {
+    padding: 8px 20px;
+    font-size: 13px;
+    border-radius: 6px;
 }
 
-.submit-area .btn-primary {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    border: none;
+.form-actions .btn-primary {
+    background: #667eea;
+    border-color: #667eea;
 }
 
-.submit-area .btn-primary:hover {
-    background: linear-gradient(135deg, #5a6fd6 0%, #6a4190 100%);
-}
-
-/* 提示信息 */
-.info-badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    padding: 4px 10px;
-    border-radius: 20px;
-    font-size: 12px;
-    font-weight: 500;
-}
-
-.info-badge.verified {
-    background: #d1fae5;
-    color: #059669;
-}
-
-.info-badge.unverified {
-    background: #f3f4f6;
-    color: #6b7280;
+.form-actions .btn-primary:hover {
+    background: #5a6fd6;
+    border-color: #5a6fd6;
 }
 
 /* 响应式 */
-@media (max-width: 768px) {
+@media (max-width: 576px) {
     .form-row {
         grid-template-columns: 1fr;
     }
     
-    .form-group.full-width {
-        grid-column: span 1;
-    }
-    
-    .user-header {
-        flex-direction: column;
-        text-align: center;
-    }
-    
-    .user-basic-info .user-meta {
-        justify-content: center;
-        flex-wrap: wrap;
-    }
-    
-    .status-selector {
+    .status-radio-group {
         flex-direction: column;
     }
 }
 </style>
 
-<div class="user-edit-container">
-    <!-- 用户头部信息 -->
-    <div class="user-header">
-        <div class="user-avatar-large">
-            {if $row.avatar}
-            <img src="{$row.avatar}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;">
-            {else}
-            {$row.username|substr=0,1|strtoupper}
-            {/if}
-        </div>
-        <div class="user-basic-info">
-            <h3>{$row.nickname|default=$row.username}</h3>
-            <div class="user-meta">
-                <span><i class="fa fa-user"></i> {$row.username}</span>
-                <span><i class="fa fa-hashtag"></i> ID: {$row.id}</span>
-                <span><i class="fa fa-clock"></i> 注册于 {$row.createtime|date='Y-m-d',###}</span>
-                {if $row.status == 'normal'}
-                <span class="user-status-tag normal"><i class="fa fa-check-circle"></i> 正常</span>
-                {elseif $row.status == 'frozen'}
-                <span class="user-status-tag frozen"><i class="fa fa-snowflake"></i> 冻结</span>
-                {elseif $row.status == 'banned'}
-                <span class="user-status-tag banned"><i class="fa fa-ban"></i> 封禁</span>
-                {/if}
-            </div>
+<div class="user-edit-form">
+    <!-- 用户头部 -->
+    <div class="user-info-header">
+        <img class="avatar" src="{$row.avatar|default='/assets/img/avatar.png'}" onerror="this.src='/assets/img/avatar.png'">
+        <div class="user-text">
+            <h4>{$row.nickname|default=$row.username}</h4>
+            <p>
+                <span>ID: {$row.id}</span>
+                <span>@{$row.username}</span>
+            </p>
         </div>
     </div>
 
-    <!-- 表单内容 -->
-    <div class="edit-content">
-        <form id="edit-form" class="form-horizontal" role="form" data-toggle="validator" method="POST" action="">
-            
-            <!-- 基本信息 -->
-            <div class="edit-section">
-                <div class="section-header">
-                    <i class="fa fa-user info"></i>
-                    基本信息
+    <form id="edit-form" class="form-horizontal" role="form" data-toggle="validator" method="POST" action="">
+        
+        <!-- 基本信息 -->
+        <div class="form-section">
+            <div class="form-section-title">基本信息</div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>用户名</label>
+                    <p class="form-control-static">{$row.username}</p>
                 </div>
-                <div class="section-body">
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label>用户名 <span class="required">*</span></label>
-                            <p class="form-control-static">{$row.username}</p>
-                        </div>
-                        <div class="form-group">
-                            <label>昵称</label>
-                            <input type="text" class="form-control" name="row[nickname]" value="{$row.nickname}" placeholder="用户昵称">
-                        </div>
-                        <div class="form-group">
-                            <label>手机号</label>
-                            <div style="display:flex;align-items:center;gap:8px;">
-                                <input type="text" class="form-control" name="row[mobile]" value="{$row.mobile}" placeholder="手机号码">
-                                {if $row.mobile}
-                                <span class="info-badge {if $row.mobile}verified{else}unverified{/if}">
-                                    <i class="fa fa-{if $row.mobile}check-circle{else}times-circle{/if}"></i>
-                                    {if $row.mobile}已绑定{else}未绑定{/if}
-                                </span>
-                                {/if}
-                            </div>
-                        </div>
-                        <div class="form-group">
-                            <label>邮箱</label>
-                            <div style="display:flex;align-items:center;gap:8px;">
-                                <input type="email" class="form-control" name="row[email]" value="{$row.email}" placeholder="邮箱地址">
-                                {if $row.email}
-                                <span class="info-badge {if $row.email}verified{else}unverified{/if}">
-                                    <i class="fa fa-{if $row.email}check-circle{else}times-circle{/if}"></i>
-                                    {if $row.email}已绑定{else}未绑定{/if}
-                                </span>
-                                {/if}
-                            </div>
-                        </div>
-                    </div>
+                <div class="form-group">
+                    <label>昵称</label>
+                    <input class="form-control" name="row[nickname]" type="text" value="{$row.nickname}" placeholder="用户昵称">
+                </div>
+                <div class="form-group">
+                    <label>手机号</label>
+                    <input class="form-control" name="row[mobile]" type="text" value="{$row.mobile}" placeholder="手机号码">
+                </div>
+                <div class="form-group">
+                    <label>邮箱</label>
+                    <input class="form-control" name="row[email]" type="email" value="{$row.email}" placeholder="邮箱地址">
                 </div>
             </div>
+        </div>
 
-            <!-- 金币信息 -->
-            <div class="edit-section">
-                <div class="section-header">
-                    <i class="fa fa-coins coin"></i>
-                    金币信息
+        <!-- 金币与等级 -->
+        <div class="form-section">
+            <div class="form-section-title">金币与等级</div>
+            <div class="coin-info" style="margin-bottom:12px;">
+                <div class="coin-main">
+                    <span class="label">金币余额</span>
+                    <span class="value">{$coin_account.balance|default=0}</span>
                 </div>
-                <div class="section-body">
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label>当前金币余额</label>
-                            <div class="coin-display">
-                                <span class="coin-value"><i class="fa fa-coins"></i> {$coin_account.balance|default=0}</span>
-                                <span class="coin-frozen">(冻结: {$coin_account.frozen|default=0})</span>
-                            </div>
-                            <p class="text-muted" style="font-size:12px;margin-top:6px;">
-                                累计收入: {$coin_account.total_income|default=0} | 
-                                累计支出: {$coin_account.total_expense|default=0}
-                            </p>
-                        </div>
-                        <div class="form-group">
-                            <label>用户等级</label>
-                            <div class="number-input-group">
-                                <button type="button" class="btn-adjust" onclick="adjustLevel(-1)"><i class="fa fa-minus"></i></button>
-                                <input type="number" class="form-control" name="row[level]" id="level-input" value="{$row.level|default=1}" min="1" max="99">
-                                <button type="button" class="btn-adjust" onclick="adjustLevel(1)"><i class="fa fa-plus"></i></button>
-                            </div>
-                        </div>
-                        <div class="form-group">
-                            <label>VIP等级</label>
-                            <div class="number-input-group">
-                                <button type="button" class="btn-adjust" onclick="adjustVip(-1)"><i class="fa fa-minus"></i></button>
-                                <input type="number" class="form-control" name="row[vip_level]" id="vip-input" value="{$row.vip_level|default=0}" min="0" max="99">
-                                <button type="button" class="btn-adjust" onclick="adjustVip(1)"><i class="fa fa-plus"></i></button>
-                            </div>
-                        </div>
-                        <div class="form-group">
-                            <label>积分</label>
-                            <input type="number" class="form-control" name="row[score]" value="{$row.score|default=0}" min="0" placeholder="用户积分">
-                        </div>
-                    </div>
+                <div class="coin-detail">冻结: {$coin_account.frozen|default=0}</div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>用户等级</label>
+                    <input class="form-control" name="row[level]" type="number" value="{$row.level|default=1}" min="1">
+                </div>
+                <div class="form-group">
+                    <label>VIP等级</label>
+                    <input class="form-control" name="row[vip_level]" type="number" value="{$row.vip_level|default=0}" min="0">
+                </div>
+                <div class="form-group">
+                    <label>积分</label>
+                    <input class="form-control" name="row[score]" type="number" value="{$row.score|default=0}" min="0">
+                </div>
+                <div class="form-group">
+                    <label>最后登录</label>
+                    <p class="form-control-static">{if $row.logintime}{$row.logintime|date='Y-m-d H:i',###}{else}从未{/if}</p>
                 </div>
             </div>
+        </div>
 
-            <!-- 账户状态 -->
-            <div class="edit-section">
-                <div class="section-header">
-                    <i class="fa fa-shield-alt status"></i>
-                    账户状态
-                </div>
-                <div class="section-body">
-                    <div class="form-group">
-                        <label>账户状态 <span class="required">*</span></label>
-                        <div class="status-selector">
-                            <label class="status-option {if $row.status=='normal'}active{/if}">
-                                <input type="radio" name="row[status]" value="normal" {if $row.status=='normal'}checked{/if}>
-                                <div class="status-icon"><i class="fa fa-check-circle"></i></div>
-                                <div class="status-label">正常</div>
-                            </label>
-                            <label class="status-option {if $row.status=='frozen'}active{/if}">
-                                <input type="radio" name="row[status]" value="frozen" {if $row.status=='frozen'}checked{/if}>
-                                <div class="status-icon"><i class="fa fa-snowflake"></i></div>
-                                <div class="status-label">冻结</div>
-                            </label>
-                            <label class="status-option {if $row.status=='banned'}active{/if}">
-                                <input type="radio" name="row[status]" value="banned" {if $row.status=='banned'}checked{/if}>
-                                <div class="status-icon"><i class="fa fa-ban"></i></div>
-                                <div class="status-label">封禁</div>
-                            </label>
-                        </div>
+        <!-- 账户状态 -->
+        <div class="form-section">
+            <div class="form-section-title">账户状态</div>
+            <div class="form-group">
+                <label>状态 <span class="text-danger">*</span></label>
+                <div class="status-radio-group">
+                    <div class="status-radio normal">
+                        <input type="radio" name="row[status]" value="normal" id="status-normal" {if $row.status=='normal'}checked{/if}>
+                        <label for="status-normal"><i class="fa fa-check-circle"></i> 正常</label>
                     </div>
-                    <div class="form-row" style="margin-top:15px;">
-                        <div class="form-group">
-                            <label>最后登录时间</label>
-                            <p class="form-control-static">
-                                {if $row.logintime}{$row.logintime|date='Y-m-d H:i:s',###}{else}从未登录{/if}
-                            </p>
-                        </div>
-                        <div class="form-group">
-                            <label>最后登录IP</label>
-                            <p class="form-control-static">{$row.loginip|default='-'}</p>
-                        </div>
+                    <div class="status-radio frozen">
+                        <input type="radio" name="row[status]" value="frozen" id="status-frozen" {if $row.status=='frozen'}checked{/if}>
+                        <label for="status-frozen"><i class="fa fa-snowflake"></i> 冻结</label>
+                    </div>
+                    <div class="status-radio banned">
+                        <input type="radio" name="row[status]" value="banned" id="status-banned" {if $row.status=='banned'}checked{/if}>
+                        <label for="status-banned"><i class="fa fa-ban"></i> 封禁</label>
                     </div>
                 </div>
             </div>
+        </div>
 
-            <!-- 提交按钮 -->
-            <div class="submit-area">
-                <button type="button" class="btn btn-default" onclick="Layer.closeAll()"><i class="fa fa-times"></i> 取消</button>
-                <button type="submit" class="btn btn-primary"><i class="fa fa-check"></i> 保存修改</button>
-            </div>
-        </form>
-    </div>
+        <!-- 提交 -->
+        <div class="form-actions">
+            <button type="button" class="btn btn-default" onclick="Layer.closeAll()">取消</button>
+            <button type="submit" class="btn btn-primary">保存</button>
+        </div>
+    </form>
 </div>
-
-<script>
-// 状态选择器交互
-$(function() {
-    $('.status-option').on('click', function() {
-        $('.status-option').removeClass('active');
-        $(this).addClass('active');
-    });
-});
-
-// 调整等级
-function adjustLevel(delta) {
-    var input = document.getElementById('level-input');
-    var val = parseInt(input.value) || 1;
-    val = Math.max(1, Math.min(99, val + delta));
-    input.value = val;
-}
-
-function adjustVip(delta) {
-    var input = document.getElementById('vip-input');
-    var val = parseInt(input.value) || 0;
-    val = Math.max(0, Math.min(99, val + delta));
-    input.value = val;
-}
-</script>
