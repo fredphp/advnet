@@ -26,13 +26,30 @@ class Watchrecord extends Backend
         if ($this->request->isAjax()) {
             list($where, $sort, $order, $offset, $limit) = $this->buildparams();
 
-            $total = Db::name('video_watch_record')->where($where)->count();
+            // 处理 where 条件中的字段歧义
+            $newWhere = [];
+            foreach ($where as $condition) {
+                if (is_array($condition) && count($condition) >= 2) {
+                    $field = $condition[0];
+                    // 为 user_id 字段添加表别名
+                    if ($field === 'user_id') {
+                        $condition[0] = 'vwr.user_id';
+                    }
+                    // 为 video_id 字段添加表别名
+                    if ($field === 'video_id') {
+                        $condition[0] = 'vwr.video_id';
+                    }
+                }
+                $newWhere[] = $condition;
+            }
+
+            $total = Db::name('video_watch_record')->alias('vwr')->where($newWhere)->count();
             $list = Db::name('video_watch_record')
                 ->alias('vwr')
                 ->join('user u', 'u.id = vwr.user_id', 'LEFT')
                 ->join('video v', 'v.id = vwr.video_id', 'LEFT')
                 ->field('vwr.*, u.username, u.nickname, v.title')
-                ->where($where)
+                ->where($newWhere)
                 ->order("vwr.{$sort}", $order)
                 ->limit($offset, $limit)
                 ->select();
