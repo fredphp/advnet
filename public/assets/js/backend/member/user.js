@@ -66,6 +66,68 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
                 Controller.api.loadStatistics();
             });
         },
+        behaviors: function () {
+            // 获取用户ID
+            var userId = Fast.api.query('user_id');
+            
+            // 初始化表格
+            var table = $("#table");
+            table.bootstrapTable({
+                url: 'member/user/behaviors',
+                pk: 'id',
+                sortName: 'createtime',
+                sortOrder: 'desc',
+                queryParams: function(params) {
+                    params.user_id = userId;
+                    return params;
+                },
+                columns: [
+                    [
+                        {checkbox: true},
+                        {field: 'id', title: 'ID', sortable: true, width: 60},
+                        {field: 'behavior_type', title: '行为类型', formatter: Controller.api.formatter.behaviorType, width: 100},
+                        {field: 'description', title: '行为描述'},
+                        {field: 'ip', title: 'IP地址', width: 120},
+                        {field: 'device_info', title: '设备信息', width: 150},
+                        {field: 'createtime', title: '时间', formatter: Table.api.formatter.datetime, sortable: true, width: 150}
+                    ]
+                ]
+            });
+            
+            // 为表格绑定事件
+            Table.api.bindevent(table);
+        },
+        devices: function () {
+            // 获取用户ID
+            var userId = Fast.api.query('user_id');
+            
+            // 初始化表格
+            var table = $("#table");
+            table.bootstrapTable({
+                url: 'member/user/devices',
+                pk: 'id',
+                sortName: 'last_seen',
+                sortOrder: 'desc',
+                queryParams: function(params) {
+                    params.user_id = userId;
+                    return params;
+                },
+                columns: [
+                    [
+                        {checkbox: true},
+                        {field: 'id', title: 'ID', sortable: true, width: 60},
+                        {field: 'device_id', title: '设备ID'},
+                        {field: 'device_type', title: '设备类型', width: 100},
+                        {field: 'os', title: '操作系统', width: 100},
+                        {field: 'browser', title: '浏览器', width: 100},
+                        {field: 'last_seen', title: '最后活跃', formatter: Table.api.formatter.datetime, sortable: true, width: 150}
+                    ]
+                ]
+            });
+            
+            // 为表格绑定事件
+            Table.api.bindevent(table);
+        },
         api: {
             bindevent: function () {
                 Form.api.bindevent($("form[role=form]"));
@@ -190,6 +252,17 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
                         'banned': '<span class="status-badge banned"><i class="fa fa-ban"></i> 封禁</span>'
                     };
                     return statusMap[value] || value;
+                },
+                behaviorType: function(value, row, index) {
+                    var typeMap = {
+                        'login': '<span class="behavior-type-badge login"><i class="fa fa-sign-in-alt"></i> 登录</span>',
+                        'register': '<span class="behavior-type-badge register"><i class="fa fa-user-plus"></i> 注册</span>',
+                        'withdraw': '<span class="behavior-type-badge withdraw"><i class="fa fa-money-bill"></i> 提现</span>',
+                        'watch': '<span class="behavior-type-badge watch"><i class="fa fa-play-circle"></i> 观看</span>',
+                        'task': '<span class="behavior-type-badge task"><i class="fa fa-tasks"></i> 任务</span>',
+                        'share': '<span class="behavior-type-badge share"><i class="fa fa-share-alt"></i> 分享</span>'
+                    };
+                    return typeMap[value] || '<span class="behavior-type-badge other"><i class="fa fa-circle"></i> ' + (value || '其他') + '</span>';
                 },
                 operate: function(value, row, index) {
                     var that = this;
