@@ -170,15 +170,29 @@ class UserRisk extends Backend
             $relatedAccounts = array_unique(array_diff($relatedAccounts, [$userId]));
         }
         
-        $this->success('', null, [
-            'user' => $user,
-            'risk_score' => $riskScore,
-            'ban_history' => $banHistory,
-            'violations' => $violations,
-            'devices' => $devices,
-            'behavior_stats' => $behaviorStats,
-            'related_accounts' => $relatedAccounts,
-        ]);
+        // 如果是AJAX请求，返回JSON数据
+        if ($this->request->isAjax()) {
+            $this->success('', null, [
+                'user' => $user,
+                'risk_score' => $riskScore,
+                'ban_history' => $banHistory,
+                'violations' => $violations,
+                'devices' => $devices,
+                'behavior_stats' => $behaviorStats,
+                'related_accounts' => $relatedAccounts,
+            ]);
+        }
+        
+        // 非AJAX请求，返回视图
+        $this->view->assign('user', $user);
+        $this->view->assign('risk_score', $riskScore ?: ['total_score' => 0, 'risk_level' => 'safe', 'violation_count' => 0]);
+        $this->view->assign('ban_history', $banHistory);
+        $this->view->assign('violations', $violations);
+        $this->view->assign('devices', $devices);
+        $this->view->assign('behavior_stats', $behaviorStats);
+        $this->view->assign('related_accounts', $relatedAccounts);
+        
+        return $this->view->fetch();
     }
     
     /**
