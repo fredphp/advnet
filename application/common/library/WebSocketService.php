@@ -6,8 +6,10 @@ use think\Db;
 use think\Log;
 
 /**
- * WebSocket 服务类
- * 基于 Workerman 实现
+ * Swoole WebSocket 服务类
+ * 
+ * 依赖：需要安装 Swoole 扩展 (>=4.5)
+ * 安装：pecl install swoole
  */
 class WebSocketService
 {
@@ -20,10 +22,13 @@ class WebSocketService
     // API 密钥
     const API_KEY = 'your-secret-api-key';
     
-    // 连接用户映射 [connection_id => user_id]
+    // Swoole Server 实例
+    private static $server = null;
+    
+    // 连接用户映射 [fd => user_id]
     private static $connections = [];
     
-    // 用户连接映射 [user_id => connection_id]
+    // 用户连接映射 [user_id => fd]
     private static $userConnections = [];
     
     // 在线用户数
@@ -32,49 +37,72 @@ class WebSocketService
     /**
      * 启动 WebSocket 服务
      */
-    public static function start($port = null, $apiPort = null)
+    public static function start($port = null, $apiPort = null, $daemon = false)
     {
         $port = $port ?: self::WS_PORT;
         $apiPort = $apiPort ?: self::API_PORT;
         
-        // 检查是否安装 Workerman
-        if (!class_exists('Workerman\Worker')) {
-            echo "请先安装 Workerman: composer require workerman/workerman\n";
+        // 检查 Swoole 扩展
+        if (!extension_loaded('swoole')) {
+            echo "\033[31m错误: 未安装 Swoole 扩展\033[0m\n";
+            echo "安装方法:\n";
+            echo "  pecl install swoole\n";
+            echo "  或查看文档: https://wiki.swoole.com/#/environment\n";
             return;
         }
         
-        // 创建 WebSocket 服务
-        $wsWorker = new \Workerman\Worker("websocket://0.0.0.0:{$port}");
-        $wsWorker->count = 1;
-        $wsWorker->name = 'AdNetwork-WebSocket';
+        echo "\033[32m========================================\033[0m\n";
+        echo "\033[32m   广告网络管理系统 - WebSocket 服务\033[0m\n";
+        echo "\033[32m========================================\033[0m\n\n";
+        echo "\033[33mWebSocket 端口:\033[0m \033[36m{$port}\033[0m\n";
+        echo "\033[33mAPI 端口:\033[0m \033[36m{$apiPort}\033[0m\n";
+        echo "\033[33m守护进程:\033[0m \033[36m" . ($daemon ? '是' : '否') . "\033[0m\n";
+        echo "\033[33m启动时间:\033[0m \033[36m" . date('Y-m-d H:i:s') . "\033[0m\n\n";
         
-        // 创建内部 API 服务（用于后端推送消息）
-        $apiWorker = new \Workerman\Worker("http://0.0.0.0:{$apiPort}");
-        $apiWorker->count = 1;
-        $apiWorker->name = 'AdNetwork-PushAPI';
+        // 创建 WebSocket 服务器
+        self::$server = new \Swoole\WebSocket\Server('0.0.0.0', $port);
+        
+        // 守护进程模式
+        if ($daemon) {
+            self::$server->set([
+                'daemonize' => true,
+                'pid_file' => RUNTIME_PATH . 'websocket.pid',
+                'log_file' => RUNTIME_PATH . 'log' . DS . 'websocket.log',
+            ]);
+        } else {
+            self::$server->set([
+                'pid_file' => RUNTIME_PATH . 'websocket.pid',
+            ]);
+        }
+        
+        // 添加 HTTP 端口用于内部 API
+        $apiServer = self::$server->addListener('0.0.0.0', $apiPort, SWOOLE_SOCK_TCP);
+        $apiServer->set([
+            'open_http_protocol' => true,
+        ]);
         
         // WebSocket 连接事件
-        $wsWorker->onConnect = function ($connection) {
-            echo "新连接: {$connection->id}\n";
-        };
+        self::$server->on('open', function ($server, $request) {
+            echo "新连接: fd={$request->fd}\n";
+        });
         
         // WebSocket 消息事件
-        $wsWorker->onMessage = function ($connection, $data) {
-            $message = json_decode($data, true);
+        self::$server->on('message', function ($server, $frame) {
+            $message = json_decode($frame->data, true);
             
             if (!$message) {
-                $connection->send(json_encode(['type' => 'error', 'msg' => '无效的消息格式']));
+                $server->push($frame->fd, json_encode(['type' => 'error', 'msg' => '无效的消息格式']));
                 return;
             }
             
-            self::handleMessage($connection, $message);
-        };
+            self::handleMessage($frame->fd, $message);
+        });
         
         // WebSocket 关闭事件
-        $wsWorker->onClose = function ($connection) {
-            if (isset(self::$connections[$connection->id])) {
-                $userId = self::$connections[$connection->id];
-                unset(self::$connections[$connection->id]);
+        self::$server->on('close', function ($server, $fd) {
+            if (isset(self::$connections[$fd])) {
+                $userId = self::$connections[$fd];
+                unset(self::$connections[$fd]);
                 unset(self::$userConnections[$userId]);
                 self::$onlineCount--;
                 
@@ -83,43 +111,97 @@ class WebSocketService
                 // 广播在线人数更新
                 self::broadcastOnlineCount();
             }
-        };
+        });
         
-        // API 消息事件
-        $apiWorker->onMessage = function ($connection, $data) {
+        // API 请求事件
+        $apiServer->on('request', function ($request, $response) {
             // 验证 API Key
-            $headers = $data->header;
-            $apiKey = $headers['x-api-key'] ?? '';
+            $apiKey = $request->header['x-api-key'] ?? '';
             
             if ($apiKey !== self::API_KEY) {
-                $connection->send(json_encode(['success' => false, 'error' => 'Unauthorized']));
-                $connection->close();
+                $response->status(401);
+                $response->header('Content-Type', 'application/json');
+                $response->end(json_encode(['success' => false, 'error' => 'Unauthorized']));
                 return;
             }
             
-            $path = $data->path;
-            $method = $data->method;
-            $body = json_decode($data->rawBody(), true) ?: [];
+            $path = $request->server['request_uri'] ?? '/';
+            $method = $request->server['request_method'] ?? 'GET';
+            $body = $request->rawContent() ? json_decode($request->rawContent(), true) : [];
             
             $result = self::handleApiRequest($path, $method, $body);
             
-            $connection->send(json_encode($result, JSON_UNESCAPED_UNICODE));
-            $connection->close();
-        };
+            $response->header('Content-Type', 'application/json');
+            $response->end(json_encode($result, JSON_UNESCAPED_UNICODE));
+        });
         
-        echo "WebSocket 服务启动成功!\n";
-        echo "WebSocket 端口: {$port}\n";
-        echo "API 端口: {$apiPort}\n";
-        echo "启动时间: " . date('Y-m-d H:i:s') . "\n";
+        echo "\033[32mWebSocket 服务启动成功!\033[0m\n";
         
-        // 运行所有 Worker
-        \Workerman\Worker::runAll();
+        // 启动服务器
+        self::$server->start();
+    }
+    
+    /**
+     * 停止服务
+     */
+    public static function stop()
+    {
+        $pidFile = RUNTIME_PATH . 'websocket.pid';
+        
+        if (!file_exists($pidFile)) {
+            echo "\033[31m服务未运行或 PID 文件不存在\033[0m\n";
+            return false;
+        }
+        
+        $pid = intval(file_get_contents($pidFile));
+        
+        if ($pid > 0) {
+            \Swoole\Process::kill($pid, SIGTERM);
+            unlink($pidFile);
+            echo "\033[32m服务已停止\033[0m\n";
+            return true;
+        }
+        
+        return false;
+    }
+    
+    /**
+     * 重启服务
+     */
+    public static function restart($port = null, $apiPort = null)
+    {
+        self::stop();
+        sleep(1);
+        self::start($port, $apiPort, true);
+    }
+    
+    /**
+     * 查看状态
+     */
+    public static function status()
+    {
+        $pidFile = RUNTIME_PATH . 'websocket.pid';
+        
+        if (!file_exists($pidFile)) {
+            echo "\033[33m服务未运行\033[0m\n";
+            return;
+        }
+        
+        $pid = intval(file_get_contents($pidFile));
+        
+        if ($pid > 0 && \Swoole\Process::kill($pid, 0)) {
+            echo "\033[32m服务运行中\033[0m (PID: {$pid})\n";
+            echo "在线用户数: " . self::$onlineCount . "\n";
+        } else {
+            echo "\033[33m服务已停止 (PID 文件存在但进程不存在)\033[0m\n";
+            unlink($pidFile);
+        }
     }
     
     /**
      * 处理 WebSocket 消息
      */
-    private static function handleMessage($connection, $message)
+    private static function handleMessage($fd, $message)
     {
         $type = $message['type'] ?? '';
         
@@ -135,40 +217,40 @@ class WebSocketService
                 if ($isValid) {
                     // 如果用户已有连接，先断开旧连接
                     if (isset(self::$userConnections[$userId])) {
-                        $oldConnId = self::$userConnections[$userId];
-                        unset(self::$connections[$oldConnId]);
+                        $oldFd = self::$userConnections[$userId];
+                        unset(self::$connections[$oldFd]);
                     }
                     
-                    self::$connections[$connection->id] = $userId;
-                    self::$userConnections[$userId] = $connection->id;
+                    self::$connections[$fd] = $userId;
+                    self::$userConnections[$userId] = $fd;
                     self::$onlineCount++;
                     
-                    $connection->send(json_encode([
+                    self::send($fd, [
                         'type' => 'connected',
                         'userId' => $userId,
                         'onlineCount' => self::$onlineCount,
-                    ]));
+                    ]);
                     
                     echo "用户 {$userId} 认证成功，当前在线: " . self::$onlineCount . "\n";
                     
                     // 广播在线人数更新
                     self::broadcastOnlineCount();
                 } else {
-                    $connection->send(json_encode(['type' => 'auth_failed', 'msg' => '认证失败']));
+                    self::send($fd, ['type' => 'auth_failed', 'msg' => '认证失败']);
                 }
                 break;
                 
             case 'ping':
                 // 心跳
-                $connection->send(json_encode(['type' => 'pong']));
+                self::send($fd, ['type' => 'pong']);
                 break;
                 
             case 'get_online_count':
-                $connection->send(json_encode(['type' => 'online_count', 'count' => self::$onlineCount]));
+                self::send($fd, ['type' => 'online_count', 'count' => self::$onlineCount]);
                 break;
                 
             default:
-                $connection->send(json_encode(['type' => 'error', 'msg' => '未知的消息类型']));
+                self::send($fd, ['type' => 'error', 'msg' => '未知的消息类型']);
         }
     }
     
@@ -203,19 +285,13 @@ class WebSocketService
      */
     private static function apiPushTask($data)
     {
-        $taskId = $data['taskId'] ?? 0;
-        $taskName = $data['taskName'] ?? '';
-        $taskType = $data['taskType'] ?? '';
-        $reward = $data['reward'] ?? 0;
-        $content = $data['content'] ?? '';
-        
         $message = [
             'type' => 'task_notification',
-            'taskId' => $taskId,
-            'taskName' => $taskName,
-            'taskType' => $taskType,
-            'reward' => $reward,
-            'content' => $content,
+            'taskId' => $data['taskId'] ?? 0,
+            'taskName' => $data['taskName'] ?? '',
+            'taskType' => $data['taskType'] ?? '',
+            'reward' => $data['reward'] ?? 0,
+            'content' => $data['content'] ?? '',
             'time' => time(),
         ];
         
@@ -229,26 +305,21 @@ class WebSocketService
      */
     private static function apiSystemMessage($data)
     {
-        $title = $data['title'] ?? '';
-        $content = $data['content'] ?? '';
-        $level = $data['level'] ?? 'info';
-        $targetUsers = $data['targetUsers'] ?? null;
-        
         $message = [
             'type' => 'system_message',
-            'title' => $title,
-            'content' => $content,
-            'level' => $level,
+            'title' => $data['title'] ?? '',
+            'content' => $data['content'] ?? '',
+            'level' => $data['level'] ?? 'info',
             'time' => time(),
         ];
         
+        $targetUsers = $data['targetUsers'] ?? null;
+        
         if ($targetUsers && is_array($targetUsers)) {
-            // 发送给指定用户
             foreach ($targetUsers as $userId) {
                 self::sendToUser($userId, $message);
             }
         } else {
-            // 广播给所有用户
             self::broadcast($message);
         }
         
@@ -260,12 +331,9 @@ class WebSocketService
      */
     private static function apiBroadcast($data)
     {
-        $event = $data['event'] ?? '';
-        $messageData = $data['data'] ?? [];
-        
         $message = [
-            'type' => $event,
-            'data' => $messageData,
+            'type' => $data['event'] ?? '',
+            'data' => $data['data'] ?? [],
             'time' => time(),
         ];
         
@@ -275,20 +343,30 @@ class WebSocketService
     }
     
     /**
+     * 发送消息给指定连接
+     */
+    private static function send($fd, $message)
+    {
+        if (self::$server && self::$server->isEstablished($fd)) {
+            self::$server->push($fd, json_encode($message, JSON_UNESCAPED_UNICODE));
+        }
+    }
+    
+    /**
      * 广播消息给所有连接
      */
     private static function broadcast($message)
     {
-        global $wsWorker;
-        
-        if (!isset($wsWorker)) {
+        if (!self::$server) {
             return;
         }
         
         $jsonMessage = json_encode($message, JSON_UNESCAPED_UNICODE);
         
-        foreach ($wsWorker->connections as $connection) {
-            $connection->send($jsonMessage);
+        foreach (self::$connections as $fd => $userId) {
+            if (self::$server->isEstablished($fd)) {
+                self::$server->push($fd, $jsonMessage);
+            }
         }
     }
     
@@ -301,16 +379,10 @@ class WebSocketService
             return false;
         }
         
-        global $wsWorker;
+        $fd = self::$userConnections[$userId];
         
-        if (!isset($wsWorker)) {
-            return false;
-        }
-        
-        $connectionId = self::$userConnections[$userId];
-        
-        if (isset($wsWorker->connections[$connectionId])) {
-            $wsWorker->connections[$connectionId]->send(json_encode($message, JSON_UNESCAPED_UNICODE));
+        if (self::$server && self::$server->isEstablished($fd)) {
+            self::$server->push($fd, json_encode($message, JSON_UNESCAPED_UNICODE));
             return true;
         }
         
@@ -347,21 +419,5 @@ class WebSocketService
             // 如果表不存在，简单验证
             return strlen($token) > 10;
         }
-    }
-    
-    /**
-     * 获取在线用户数
-     */
-    public static function getOnlineCount()
-    {
-        return self::$onlineCount;
-    }
-    
-    /**
-     * 获取所有在线用户
-     */
-    public static function getOnlineUsers()
-    {
-        return array_keys(self::$userConnections);
     }
 }
