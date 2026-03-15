@@ -1,0 +1,65 @@
+<div class="panel panel-default">
+    <div class="panel-heading">
+        <h3 class="panel-title">红包领取详情</h3>
+    </div>
+    <div class="panel-body">
+        <div class="row">
+            <div class="col-md-6">
+                <table class="table table-bordered">
+                    <tr>
+                        <th width="120">记录ID</th>
+                        <td>{$row.id}</td>
+                    </tr>
+                    <tr>
+                        <th>用户名</th>
+                        <td>{$row.username|default='-'}</td>
+                    </tr>
+                    <tr>
+                        <th>昵称</th>
+                        <td>{$row.nickname|default='-'}</td>
+                    </tr>
+                    <tr>
+                        <th>手机号</th>
+                        <td>{$row.mobile|default='-'}</td>
+                    </tr>
+                    <tr>
+                        <th>任务标题</th>
+                        <td>{$row.task_title|default='-'}</td>
+                    </tr>
+                </table>
+            </div>
+            <div class="col-md-6">
+                <table class="table table-bordered">
+                    <tr>
+                        <th width="120">红包金额</th>
+                        <td><strong class="text-danger">{$row.amount}</strong></td>
+                    </tr>
+                    <tr>
+                        <th>领取状态</th>
+                        <td>
+                            {if $row.status == 'pending'}
+                            <span class="status-badge pending"><i class="fa fa-clock"></i> 待处理</span>
+                            {elseif $row.status == 'success'}
+                            <span class="status-badge success"><i class="fa fa-check"></i> 成功</span>
+                            {else}
+                            <span class="status-badge failed"><i class="fa fa-times"></i> 失败</span>
+                            {/if}
+                        </td>
+                    </tr>
+                    <tr>
+                        <th>领取时间</th>
+                        <td>{$row.createtime|date='Y-m-d H:i:s',###}</td>
+                    </tr>
+                    <tr>
+                        <th>IP地址</th>
+                        <td>{$row.ip|default='-'}</td>
+                    </tr>
+                    <tr>
+                        <th>备注</th>
+                        <td>{$row.remark|default='-'}</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>

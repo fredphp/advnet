@@ -3,7 +3,6 @@
 namespace app\admin\controller\redpacket;
 
 use app\common\controller\Backend;
-use app\common\model\RedPacketRecord as RedPacketRecordModel;
 use think\Db;
 
 /**
@@ -11,62 +10,56 @@ use think\Db;
  */
 class Record extends Backend
 {
-    /**
-     * RedPacketRecord模型对象
-     */
     protected $model = null;
-    
+
     public function _initialize()
     {
         parent::_initialize();
-        $this->model = new RedPacketRecordModel;
+        $this->model = new \app\common\model\RedPacketRecord();
     }
-    
+
     /**
-     * 查看
+     * 红包记录列表
      */
     public function index()
     {
-        // 设置过滤方法
-        $this->request->filter(['strip_tags', 'trim']);
-        
         if ($this->request->isAjax()) {
             list($where, $sort, $order, $offset, $limit) = $this->buildparams();
 
-            // 默认按ID排序，避免sort字段不存在的问题
-            if ($sort == 'sort') {
-                $sort = 'id';
-            }
-
-            $list = $this->model
-                ->with(['task', 'user'])
+            $total = Db::name('red_packet_record')->alias('rpr')->where($where)->count();
+            $list = Db::name('red_packet_record')
+                ->alias('rpr')
+                ->join('user u', 'u.id = rpr.user_id', 'LEFT')
+                ->join('red_packet_task task', 'task.id = rpr.task_id', 'LEFT')
+                ->field('rpr.*, u.username, u.nickname, task.title as task_title')
                 ->where($where)
-                ->order($sort, $order)
-                ->paginate($limit);
-            
-            foreach ($list as $row) {
-                $row->visible(['id', 'task_id', 'user_id', 'amount', 'status', 'status_text', 'createtime']);
-                $row->visible(['task']);
-                $row->visible(['user']);
-            }
-            
-            $result = ['total' => $list->total(), 'rows' => $list->items()];
+                ->order("rpr.{$sort}", $order)
+                ->limit($offset, $limit)
+                ->select();
+
+            $result = ['total' => $total, 'rows' => $list];
             return json($result);
         }
-        
         return $this->view->fetch();
     }
-    
+
     /**
      * 详情
      */
     public function detail($ids = null)
     {
-        $row = $this->model->with(['task', 'task.resource', 'user'])->find($ids);
+        $row = Db::name('red_packet_record')
+            ->alias('rpr')
+            ->join('user u', 'u.id = rpr.user_id', 'LEFT')
+            ->join('red_packet_task task', 'task.id = rpr.task_id', 'LEFT')
+            ->field('rpr.*, u.username, u.nickname, u.mobile, task.title as task_title, task.resource_id')
+            ->where('rpr.id', $ids)
+            ->find();
+
         if (!$row) {
-            $this->error(__('No Results were found'));
+            $this->error(__('未找到记录'));
         }
-        
+
         $this->view->assign('row', $row);
         return $this->view->fetch();
     }
