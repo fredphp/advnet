@@ -262,7 +262,60 @@ php think queue:listen --daemon
 # 或者使用 Supervisor 管理
 ```
 
-### 7. 配置定时任务（Crontab）
+### 7. 启动 WebSocket 服务（可选）
+
+如果需要实时推送功能（如红包任务推送、在线人数统计），需要启动 WebSocket 服务：
+
+```bash
+# 进入 mini-services 目录
+cd mini-services/push-service
+
+# 安装依赖
+bun install
+
+# 启动 WebSocket 服务（开发模式，支持热重载）
+bun run dev
+
+# 或生产模式启动
+bun run start
+```
+
+**WebSocket 服务配置：**
+
+| 服务 | 端口 | 说明 |
+|------|------|------|
+| WebSocket 服务 | 3002 | 客户端 WebSocket 连接入口 |
+| 推送 API 服务 | 3003 | 内部 HTTP API，用于后端推送消息 |
+
+**前端连接示例：**
+
+```javascript
+// 通过网关连接 WebSocket（必须使用 XTransformPort 参数）
+const wsUrl = `wss://your-domain.com/?XTransformPort=3002&userId=${userId}&token=${token}`;
+uni.connectSocket({ url: wsUrl });
+```
+
+**后端推送消息示例：**
+
+```php
+use app\common\service\PushService;
+
+// 推送红包任务通知
+PushService::pushTask([
+    'id' => $taskId,
+    'name' => '新年红包',
+    'type' => 'lucky',
+    'single_amount' => 100,
+]);
+
+// 广播消息
+PushService::broadcast('event_name', ['data' => 'value']);
+
+// 获取在线人数
+$result = PushService::getOnlineCount();
+```
+
+### 8. 配置定时任务（Crontab）
 
 编辑 crontab：
 
@@ -295,7 +348,7 @@ crontab -e
 0 * * * * cd /path/to/advnet && php think invite:commission --action=period >> /var/log/invite_period.log 2>&1
 ```
 
-### 8. 启动开发服务器（开发环境）
+### 9. 启动开发服务器（开发环境）
 
 ```bash
 php think run -p 8080
