@@ -662,6 +662,66 @@ class User extends Backend
     }
 
     /**
+     * 解封用户
+     */
+    public function unban()
+    {
+        $userId = $this->request->post('user_id');
+        $reason = $this->request->post('reason', '管理员解封');
+
+        if (!$userId) {
+            $this->error('请选择要解封的用户');
+        }
+
+        $prefix = config('database.prefix');
+
+        $user = Db::query("SELECT * FROM {$prefix}user WHERE id = ? LIMIT 1", [$userId]);
+        if (empty($user)) {
+            $this->error('用户不存在');
+        }
+        $user = $user[0];
+
+        if ($user['status'] !== 'banned') {
+            $this->error('该用户状态不是封禁状态');
+        }
+
+        Db::startTrans();
+        try {
+            $now = time();
+
+            // 更新封禁记录状态
+            Db::execute("
+                UPDATE {$prefix}ban_record 
+                SET status = 'released', end_time = ?, updatetime = ?
+                WHERE user_id = ? AND status = 'active'
+            ", [$now, $now, $userId]);
+
+            // 更新用户状态为正常
+            Db::execute("UPDATE {$prefix}user SET status = 'normal', updatetime = ? WHERE id = ?", [$now, $userId]);
+
+            // 更新风险评分状态（如果表存在）
+            try {
+                Db::execute("
+                    UPDATE {$prefix}user_risk_score 
+                    SET status = 'normal', updatetime = ?
+                    WHERE user_id = ?
+                ", [$now, $userId]);
+            } catch (\Exception $e) {
+                // 风险评分表可能不存在，忽略错误
+            }
+
+            Db::commit();
+        } catch (\think\exception\HttpResponseException $e) {
+            throw $e;
+        } catch (\Exception $e) {
+            Db::rollback();
+            $this->error('解封失败：' . $e->getMessage());
+        }
+        
+        $this->success('解封成功');
+    }
+
+    /**
      * 批量操作
      */
     public function batch()

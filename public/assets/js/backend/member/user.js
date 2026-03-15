@@ -223,7 +223,10 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
                     html += '<button type="button" class="btn btn-danger btn-xs dropdown-toggle" data-toggle="dropdown" title="风控"><i class="fa fa-shield-alt"></i> <span class="caret"></span></button>';
                     html += '<ul class="dropdown-menu dropdown-menu-right">';
                     html += '<li class="dropdown-header">风控操作</li>';
-                    if (status !== 'banned') {
+                    if (status === 'banned') {
+                        // 已封禁用户显示解封按钮
+                        html += '<li><a href="javascript:;" onclick="UserAPI.unban(' + userId + ',\'' + userName + '\')"><i class="fa fa-unlock text-success"></i> 解封用户</a></li>';
+                    } else {
                         html += '<li><a href="javascript:;" onclick="UserAPI.ban(' + userId + ',\'' + userName + '\')"><i class="fa fa-ban text-danger"></i> 封禁用户</a></li>';
                     }
                     if (status === 'normal') {
@@ -407,6 +410,18 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
                 }, function(ret){
                     Layer.close(index);
                     Toastr.success('解冻成功');
+                    $("#table").bootstrapTable('refresh');
+                });
+            });
+        },
+        unban: function(userId, userName) {
+            Layer.confirm('确定要解封用户 ' + userName + ' 吗？', function(index){
+                Fast.api.ajax({
+                    url: 'member/user/unban',
+                    data: {user_id: userId}
+                }, function(ret){
+                    Layer.close(index);
+                    Toastr.success('解封成功');
                     $("#table").bootstrapTable('refresh');
                 });
             });
