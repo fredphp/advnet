@@ -231,7 +231,27 @@
         <div style="max-height: 200px; overflow-y: auto;">
             {volist name="violations" id="v"}
             <div class="violation-item">
-                <div><strong>{$v.rule_name|default='-'}</strong> <span class="pull-right">+{$v.score_add|default=0}分</span></div>
+                <div>
+                    <strong>{$v.rule_name|default='-'}</strong>
+                    <span class="pull-right">
+                        {if $v.rule_type == 'video'}
+                        <span class="badge" style="background:#dbeafe;color:#1e40af;">视频</span>
+                        {elseif $v.rule_type == 'task'}
+                        <span class="badge" style="background:#fef3c7;color:#b45309;">任务</span>
+                        {elseif $v.rule_type == 'withdraw'}
+                        <span class="badge" style="background:#fce7f3;color:#be185d;">提现</span>
+                        {elseif $v.rule_type == 'redpacket'}
+                        <span class="badge" style="background:#fee2e2;color:#b91c1c;">红包</span>
+                        {elseif $v.rule_type == 'invite'}
+                        <span class="badge" style="background:#d1fae5;color:#047857;">邀请</span>
+                        {elseif $v.rule_type == 'global'}
+                        <span class="badge" style="background:#e2e8f0;color:#475569;">全局</span>
+                        {else}
+                        <span class="badge" style="background:#e2e8f0;color:#475569;">{$v.rule_type|default='其他'}</span>
+                        {/if}
+                        +{$v.score_add|default=0}分
+                    </span>
+                </div>
                 <div class="time">{$v.createtime|date='Y-m-d H:i:s',###} - {$v.ip|default='-'}</div>
             </div>
             {/volist}
@@ -258,15 +278,27 @@
             <tbody>
                 {volist name="ban_history" id="ban"}
                 <tr>
-                    <td>{$ban.ban_type|default='-'}</td>
+                    <td>
+                        {if $ban.ban_type == 'temporary'}
+                        <span class="badge" style="background:#fef3c7;color:#b45309;">临时封禁</span>
+                        {elseif $ban.ban_type == 'permanent'}
+                        <span class="badge" style="background:#fee2e2;color:#b91c1c;">永久封禁</span>
+                        {else}
+                        <span class="badge" style="background:#e2e8f0;color:#475569;">{$ban.ban_type|default='-'}</span>
+                        {/if}
+                    </td>
                     <td>{$ban.ban_reason|default='-'}</td>
                     <td>{$ban.start_time|date='Y-m-d H:i:s',###}</td>
-                    <td>{$ban.end_time|date='Y-m-d H:i:s',###}</td>
+                    <td>{if $ban.end_time}{$ban.end_time|date='Y-m-d H:i:s',###}{else}-{/if}</td>
                     <td>
                         {if $ban.status == 'active'}
                         <span class="status-badge status-banned">生效中</span>
-                        {else}
+                        {elseif $ban.status == 'released'}
                         <span class="status-badge status-normal">已解除</span>
+                        {elseif $ban.status == 'expired'}
+                        <span class="status-badge" style="background:#e2e8f0;color:#475569;">已过期</span>
+                        {else}
+                        <span class="status-badge">{$ban.status|default='-'}</span>
                         {/if}
                     </td>
                 </tr>
