@@ -30,7 +30,7 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
                         {field: 'level', title: '等级', width: 60, formatter: Controller.api.formatter.level},
                         {field: 'status', title: '状态', searchList: {"normal":"正常","frozen":"冻结","banned":"封禁"}, formatter: Controller.api.formatter.status, width: 80},
                         {field: 'createtime', title: '注册时间', operate: 'RANGE', addclass: 'datetimerange', formatter: Table.api.formatter.datetime, sortable: true, width: 150},
-                        {field: 'operate', title: '操作', table: table, events: Table.api.events.operate, formatter: Controller.api.formatter.operate, width: 180, align: 'left'}
+                        {field: 'operate', title: '操作', table: table, events: Table.api.events.operate, formatter: Controller.api.formatter.operate, width: 280, align: 'left'}
                     ]
                 ]
             });
@@ -189,9 +189,11 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
             },
             formatter: {
                 userInfo: function(value, row, index) {
+                    var initial = (row.username ? row.username.charAt(0).toUpperCase() : 'U');
+                    var defaultAvatarHtml = '<div class="user-avatar default">' + initial + '</div>';
                     var avatar = row.avatar 
-                        ? '<img src="' + row.avatar + '" class="user-avatar" />' 
-                        : '<div class="user-avatar default">' + (row.username ? row.username.charAt(0).toUpperCase() : 'U') + '</div>';
+                        ? '<img src="' + row.avatar + '" class="user-avatar" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'flex\';" /><div class="user-avatar default" style="display:none;">' + initial + '</div>'
+                        : defaultAvatarHtml;
                     return '<div class="user-info-cell">' + avatar + 
                         '<div class="user-name-text"><span class="name">' + (row.username || '-') + '</span>' +
                         '<span class="id">ID: ' + row.id + '</span></div></div>';
@@ -252,11 +254,14 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
                     
                     var html = '<div class="btn-group-operate">';
                     
-                    html += '<button type="button" class="btn btn-primary btn-xs" onclick="UserAPI.showDetail(' + userId + ')" title="详情"><i class="fa fa-eye"></i></button>';
-                    html += '<a href="member/user/edit?ids=' + userId + '" class="btn btn-info btn-xs btn-dialog" data-area=\'["800px","600px"]\' title="编辑"><i class="fa fa-edit"></i></a>';
+                    // 详情按钮 - icon + 中文
+                    html += '<button type="button" class="btn btn-primary btn-xs" onclick="UserAPI.showDetail(' + userId + ')" title="查看详情"><i class="fa fa-eye"></i>详情</button>';
+                    // 编辑按钮 - icon + 中文
+                    html += '<a href="member/user/edit?ids=' + userId + '" class="btn btn-info btn-xs btn-dialog" data-area=\'["800px","600px"]\' title="编辑用户"><i class="fa fa-edit"></i>编辑</a>';
                     
+                    // 金币操作下拉
                     html += '<div class="btn-group">';
-                    html += '<button type="button" class="btn btn-warning btn-xs dropdown-toggle" data-toggle="dropdown" title="金币"><i class="fa fa-coins"></i></button>';
+                    html += '<button type="button" class="btn btn-warning btn-xs dropdown-toggle" data-toggle="dropdown" title="金币操作"><i class="fa fa-coins"></i>金币</button>';
                     html += '<ul class="dropdown-menu dropdown-menu-right">';
                     html += '<li class="dropdown-header">金币操作</li>';
                     html += '<li><a href="javascript:;" onclick="UserAPI.recharge(' + userId + ',\'' + userName + '\')"><i class="fa fa-plus-circle text-success"></i> 充值金币</a></li>';
@@ -265,8 +270,9 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
                     html += '<li><a href="coin/log?user_id=' + userId + '" class="btn-dialog"><i class="fa fa-list-alt text-info"></i> 金币流水</a></li>';
                     html += '</ul></div>';
                     
+                    // 风控操作下拉
                     html += '<div class="btn-group">';
-                    html += '<button type="button" class="btn btn-danger btn-xs dropdown-toggle" data-toggle="dropdown" title="风控"><i class="fa fa-shield-alt"></i></button>';
+                    html += '<button type="button" class="btn btn-danger btn-xs dropdown-toggle" data-toggle="dropdown" title="风控操作"><i class="fa fa-shield-alt"></i>风控</button>';
                     html += '<ul class="dropdown-menu dropdown-menu-right">';
                     html += '<li class="dropdown-header">风控操作</li>';
                     if (status === 'banned') {
@@ -285,8 +291,9 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
                     html += '<li><a href="javascript:;" onclick="UserAPI.addWhitelist(' + userId + ',\'' + userName + '\')"><i class="fa fa-user-check text-success"></i> 加入白名单</a></li>';
                     html += '</ul></div>';
                     
+                    // 更多操作下拉
                     html += '<div class="btn-group">';
-                    html += '<button type="button" class="btn btn-default btn-xs dropdown-toggle" data-toggle="dropdown" title="更多"><i class="fa fa-ellipsis-h"></i></button>';
+                    html += '<button type="button" class="btn btn-default btn-xs dropdown-toggle" data-toggle="dropdown" title="更多操作"><i class="fa fa-ellipsis-h"></i>更多</button>';
                     html += '<ul class="dropdown-menu dropdown-menu-right">';
                     html += '<li class="dropdown-header">信息查看</li>';
                     html += '<li><a href="member/user/behaviors?user_id=' + userId + '" class="btn-dialog"><i class="fa fa-history text-info"></i> 行为记录</a></li>';
