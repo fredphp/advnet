@@ -163,10 +163,10 @@ const install = (Vue, vm) => {
         vm.$api.attribute                 = async (params = {}) => await vm.$u.get('/addons/shop/api.attribute/index',params);
 
         // 红包相关
-        vm.$api.redpacketClick                 = async (params = {}) => await vm.$u.post('/api/redpacket/click', params);
-        vm.$api.redpacketClaim                 = async (params = {}) => await vm.$u.post('/api/redpacket/claim', params);
-        vm.$api.redpacketReset                 = async (params = {}) => await vm.$u.post('/api/redpacket/reset', params);
-        vm.$api.redpacketAmount                = async (params = {}) => await vm.$u.get('/api/redpacket/amount', params);
+        vm.$api.redpacketClick                 = async (params = {}) => await vm.$u.post('/api/red_packet/click', params);
+        vm.$api.redpacketClaim                 = async (params = {}) => await vm.$u.post('/api/red_packet/claim', params);
+        vm.$api.redpacketReset                 = async (params = {}) => await vm.$u.post('/api/red_packet/reset', params);
+        vm.$api.redpacketAmount                = async (params = {}) => await vm.$u.get('/api/red_packet/amount', params);
 }
 
 export default {
