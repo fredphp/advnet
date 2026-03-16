@@ -1,0 +1,464 @@
+/**
+ * Pangolin Media UTS plugin (Android, pure UTS implementation)
+ *
+ * No bridge to legacy Java UniModule.
+ * It calls Pangle SDK classes directly via Android runtime reflection.
+ */
+
+export const Events = {
+  SDK_READY: 'sdk_ready',
+  SDK_ERROR: 'sdk_error',
+  DRAMA_OPEN: 'drama_open',
+  DRAMA_CLOSE: 'drama_close',
+  DRAMA_ERROR: 'drama_error',
+  DRAMA_LIST_LOADED: 'drama_list_loaded',
+  AD_LOADED: 'ad_loaded',
+  AD_SHOW: 'ad_show',
+  AD_CLICK: 'ad_click',
+  AD_CLOSE: 'ad_close',
+  AD_ERROR: 'ad_error',
+  AD_REWARD: 'ad_reward'
+}
+
+export const ErrorCodes = {
+  OK: 0,
+  SDK_NOT_INIT: 1001,
+  PARAM_INVALID: 1003,
+  SDK_INIT_FAILED: 1004,
+  PRIVACY_NOT_ACCEPTED: 1101,
+  SDK_CLASS_NOT_FOUND: 1201,
+  SDK_METHOD_MISSING: 1202,
+  SDK_CALL_FAILED: 1203,
+  SLOT_ID_MISSING: 1301,
+  DRAMA_OPEN_FAILED: 1401,
+  AD_SHOW_FAILED: 1501
+}
+
+let initialized = false
+let sdkConfig: any = {}
+let ttAdSdk: any | null = null
+let adManager: any | null = null
+let shortDramaService: any | null = null
+const listenerMap: any = {}
+
+function ok(message: string, data: any | null = null): any {
+  return {
+    success: true,
+    code: ErrorCodes.OK,
+    message,
+    data: data == null ? {} : data
+  }
+}
+
+function fail(code: number, message: string, data: any | null = null): any {
+  return {
+    success: false,
+    code,
+    message,
+    data: data == null ? {} : data
+  }
+}
+
+function emit(event: string, payload: any | null = null): void {
+  const handlers = listenerMap[event]
+  if (handlers == null || handlers.length == 0) {
+    return
+  }
+  handlers.forEach((fn: Function) => {
+    try {
+      fn(payload == null ? {} : payload)
+    } catch (_e) {}
+  })
+}
+
+function ensureRuntimeActivity(): any | null {
+  try {
+    // #ifdef APP-ANDROID
+    return plus.android.runtimeMainActivity()
+    // #endif
+  } catch (_e) {}
+  return null
+}
+
+function importJavaClass(className: string): any | null {
+  try {
+    // #ifdef APP-ANDROID
+    return plus.android.importClass(className)
+    // #endif
+  } catch (_e) {}
+  return null
+}
+
+function newJavaObject(className: string): any | null {
+  try {
+    // #ifdef APP-ANDROID
+    return plus.android.newObject(className)
+    // #endif
+  } catch (_e) {}
+  return null
+}
+
+function callMethod(target: any, name: string, args: Array<any> = []): any {
+  if (target == null) {
+    throw new Error('target is null')
+  }
+  const fn = target[name]
+  if (typeof fn !== 'function') {
+    throw new Error('method not found: ' + name)
+  }
+  return fn.apply(target, args)
+}
+
+function callOneOf(target: any, methodNames: Array<string>, args: Array<any> = []): any {
+  let lastErr: any = null
+  for (const name of methodNames) {
+    try {
+      return callMethod(target, name, args)
+    } catch (e: any) {
+      lastErr = e
+    }
+  }
+  if (lastErr != null) {
+    throw lastErr
+  }
+  throw new Error('no candidate method')
+}
+
+function getSlotId(adType: string, params: any): string {
+  if (params != null && params.slotId != null && String(params.slotId).trim() != '') {
+    return String(params.slotId).trim()
+  }
+  if (sdkConfig != null && sdkConfig.adSlots != null && sdkConfig.adSlots[adType] != null) {
+    return String(sdkConfig.adSlots[adType]).trim()
+  }
+  return ''
+}
+
+function requireInit(): any | null {
+  if (!initialized) {
+    return fail(ErrorCodes.SDK_NOT_INIT, 'sdk not initialized')
+  }
+  return null
+}
+
+function resolvePangleSdkClass(): any | null {
+  if (ttAdSdk != null) {
+    return ttAdSdk
+  }
+  const cls = importJavaClass('com.bytedance.sdk.openadsdk.TTAdSdk')
+  if (cls == null) {
+    return null
+  }
+  ttAdSdk = cls
+  return cls
+}
+
+function createAdConfig(config: any): any {
+  const builder = newJavaObject('com.bytedance.sdk.openadsdk.TTAdConfig$Builder')
+  if (builder == null) {
+    throw new Error('TTAdConfig.Builder not found')
+  }
+
+  try { callMethod(builder, 'appId', [String(config.appId)]) } catch (_e) {}
+  try { callMethod(builder, 'appName', [config.appName != null ? String(config.appName) : 'UniApp']) } catch (_e) {}
+  try { callMethod(builder, 'debug', [!!config.debug]) } catch (_e) {}
+  try { callMethod(builder, 'supportMultiProcess', [false]) } catch (_e) {}
+  try { callMethod(builder, 'useTextureView', [true]) } catch (_e) {}
+
+  return callMethod(builder, 'build')
+}
+
+function resolveShortDramaServiceFromSdk(sdk: any, manager: any): any | null {
+  try {
+    const service = callOneOf(sdk, ['getShortDramaService'])
+    if (service != null) return service
+  } catch (_e) {}
+
+  if (manager != null) {
+    try {
+      const service = callOneOf(manager, ['getShortDramaService'])
+      if (service != null) return service
+    } catch (_e) {}
+  }
+
+  return null
+}
+
+function callDramaOpen(methods: Array<string>, args: Array<any>, tag: string): any {
+  const guard = requireInit()
+  if (guard != null) return guard
+
+  if (shortDramaService == null) {
+    const err = fail(ErrorCodes.DRAMA_OPEN_FAILED, 'short drama service unavailable')
+    emit(Events.DRAMA_ERROR, { code: err.code, message: err.message })
+    return err
+  }
+
+  try {
+    callOneOf(shortDramaService, methods, args)
+    const payload = { type: tag, dramaId: args.length > 0 ? args[0] : '' }
+    emit(Events.DRAMA_OPEN, payload)
+    return ok('drama opened', payload)
+  } catch (e: any) {
+    const msg = e != null ? String(e) : 'open drama failed'
+    emit(Events.DRAMA_ERROR, { code: ErrorCodes.DRAMA_OPEN_FAILED, message: msg })
+    return fail(ErrorCodes.DRAMA_OPEN_FAILED, msg)
+  }
+}
+
+function showAd(adType: string, params: any, candidateMethods: Array<string>): any {
+  const guard = requireInit()
+  if (guard != null) return guard
+
+  if (adManager == null) {
+    const err = fail(ErrorCodes.AD_SHOW_FAILED, 'ad manager unavailable')
+    emit(Events.AD_ERROR, { adType, code: err.code, message: err.message })
+    return err
+  }
+
+  const slotId = getSlotId(adType, params)
+  if (slotId == '') {
+    return fail(ErrorCodes.SLOT_ID_MISSING, `${adType} slotId is required`)
+  }
+
+  const payload = { adType, slotId }
+  emit(Events.AD_LOADED, payload)
+
+  try {
+    const activity = ensureRuntimeActivity()
+    try {
+      callOneOf(adManager, candidateMethods, [slotId, activity])
+    } catch (_e) {
+      callOneOf(adManager, candidateMethods, [slotId])
+    }
+    emit(Events.AD_SHOW, payload)
+    return ok(`${adType} show requested`, payload)
+  } catch (e: any) {
+    const msg = e != null ? String(e) : `${adType} show failed`
+    emit(Events.AD_ERROR, { adType, code: ErrorCodes.AD_SHOW_FAILED, message: msg })
+    return fail(ErrorCodes.AD_SHOW_FAILED, msg, payload)
+  }
+}
+
+export function on(event: string, handler: Function): void {
+  if (event == '' || handler == null) {
+    return
+  }
+  if (listenerMap[event] == null) {
+    listenerMap[event] = []
+  }
+  const handlers = listenerMap[event]
+  if (handlers.indexOf(handler) < 0) {
+    handlers.push(handler)
+  }
+}
+
+export function off(event: string, handler: Function): void {
+  const handlers = listenerMap[event]
+  if (handlers == null) {
+    return
+  }
+  const idx = handlers.indexOf(handler)
+  if (idx >= 0) {
+    handlers.splice(idx, 1)
+  }
+  if (handlers.length == 0) {
+    delete listenerMap[event]
+  }
+}
+
+export function init(config: any): Promise<any> {
+  return new Promise((resolve) => {
+    const appId = config != null && config.appId != null ? String(config.appId).trim() : ''
+    if (appId == '') {
+      resolve(fail(ErrorCodes.PARAM_INVALID, 'appId is required'))
+      return
+    }
+
+    const privacy = config != null && config.privacy != null ? config.privacy : {}
+    if (!privacy.consent) {
+      resolve(fail(ErrorCodes.PRIVACY_NOT_ACCEPTED, 'privacy consent is required'))
+      return
+    }
+
+    if (initialized) {
+      resolve(ok('already initialized', {
+        initialized,
+        hasAdManager: adManager != null,
+        hasShortDramaService: shortDramaService != null
+      }))
+      return
+    }
+
+    const activity = ensureRuntimeActivity()
+    if (activity == null) {
+      resolve(fail(ErrorCodes.SDK_INIT_FAILED, 'android activity unavailable'))
+      return
+    }
+
+    const sdk = resolvePangleSdkClass()
+    if (sdk == null) {
+      const err = fail(ErrorCodes.SDK_CLASS_NOT_FOUND, 'Pangle SDK class not found, check android/libs')
+      emit(Events.SDK_ERROR, { code: err.code, message: err.message })
+      resolve(err)
+      return
+    }
+
+    try {
+      const adConfig = createAdConfig(config)
+      callOneOf(sdk, ['init'], [activity, adConfig])
+
+      adManager = null
+      try { adManager = callOneOf(sdk, ['getAdManager']) } catch (_e) {}
+      shortDramaService = resolveShortDramaServiceFromSdk(sdk, adManager)
+
+      sdkConfig = {
+        appId,
+        appName: config != null && config.appName != null ? String(config.appName) : 'UniApp',
+        channel: config != null && config.channel != null ? String(config.channel) : 'default',
+        debug: !!(config != null ? config.debug : false),
+        privacy,
+        adSlots: config != null && config.adSlots != null ? config.adSlots : {},
+        user: config != null && config.user != null ? config.user : {}
+      }
+
+      initialized = true
+      emit(Events.SDK_READY, {
+        initialized,
+        hasAdManager: adManager != null,
+        hasShortDramaService: shortDramaService != null
+      })
+      resolve(ok('sdk initialized', {
+        initialized,
+        hasAdManager: adManager != null,
+        hasShortDramaService: shortDramaService != null
+      }))
+    } catch (e: any) {
+      const msg = e != null ? String(e) : 'sdk init failed'
+      const err = fail(ErrorCodes.SDK_INIT_FAILED, msg)
+      emit(Events.SDK_ERROR, { code: err.code, message: err.message })
+      resolve(err)
+    }
+  })
+}
+
+export function destroy(): Promise<any> {
+  return new Promise((resolve) => {
+    initialized = false
+    adManager = null
+    shortDramaService = null
+    sdkConfig = {}
+    resolve(ok('destroyed'))
+  })
+}
+
+export function openDramaHome(options: any): Promise<any> {
+  return new Promise((resolve) => {
+    const activity = ensureRuntimeActivity()
+    resolve(callDramaOpen(['openDramaHome', 'openHome', 'showDramaHome', 'showHomePage'], [activity, options], 'home'))
+  })
+}
+
+export function openDramaDetail(options: any): Promise<any> {
+  return new Promise((resolve) => {
+    const dramaId = options != null && options.dramaId != null ? String(options.dramaId).trim() : ''
+    if (dramaId == '') {
+      resolve(fail(ErrorCodes.PARAM_INVALID, 'dramaId is required'))
+      return
+    }
+
+    const activity = ensureRuntimeActivity()
+    resolve(callDramaOpen(['openDramaDetail', 'openDetail', 'showDramaDetail', 'playDrama'], [dramaId, activity, options], 'detail'))
+  })
+}
+
+export function getDramaList(params: any): Promise<any> {
+  return new Promise((resolve) => {
+    const guard = requireInit()
+    if (guard != null) {
+      resolve(guard)
+      return
+    }
+
+    if (shortDramaService == null) {
+      resolve(fail(ErrorCodes.DRAMA_OPEN_FAILED, 'short drama service unavailable'))
+      return
+    }
+
+    const mode = params != null && params.mode != null ? String(params.mode) : 'recommend'
+    const page = params != null && params.page != null ? Number(params.page) : 1
+    const count = params != null && params.count != null ? Number(params.count) : 20
+    const category = params != null && params.category != null ? String(params.category) : ''
+    const query = params != null && params.query != null ? String(params.query) : ''
+
+    try {
+      if (mode == 'all') {
+        callOneOf(shortDramaService, ['requestAllDrama', 'getAllDramaList'], [page, count, false])
+      } else if (mode == 'category') {
+        callOneOf(shortDramaService, ['requestDramaByCategory', 'getDramaByCategory'], [category, page, count, 0])
+      } else if (mode == 'search') {
+        callOneOf(shortDramaService, ['searchDrama', 'requestDramaByKeyword'], [query, true, page, count])
+      } else {
+        callOneOf(shortDramaService, ['requestAllDramaByRecommend', 'getRecommendDramaList', 'requestRecommendDrama'], [page, count])
+      }
+
+      const payload = { mode, page, count, category, query }
+      emit(Events.DRAMA_LIST_LOADED, payload)
+      resolve(ok('drama list requested', payload))
+    } catch (e: any) {
+      const msg = e != null ? String(e) : 'getDramaList failed'
+      emit(Events.DRAMA_ERROR, { code: ErrorCodes.SDK_CALL_FAILED, message: msg })
+      resolve(fail(ErrorCodes.SDK_CALL_FAILED, msg))
+    }
+  })
+}
+
+export function showRewardVideo(params: any): Promise<any> {
+  return new Promise((resolve) => {
+    resolve(showAd('reward', params, ['showReward', 'showRewardVideo', 'showRewardVideoAd']))
+  })
+}
+
+export function showInterstitial(params: any): Promise<any> {
+  return new Promise((resolve) => {
+    resolve(showAd('interstitial', params, ['showInterstitial', 'showInterstitialAd']))
+  })
+}
+
+export function showSplash(params: any): Promise<any> {
+  return new Promise((resolve) => {
+    resolve(showAd('splash', params, ['showSplash', 'showSplashAd']))
+  })
+}
+
+export function loadFeed(params: any): Promise<any> {
+  return new Promise((resolve) => {
+    const guard = requireInit()
+    if (guard != null) {
+      resolve(guard)
+      return
+    }
+
+    if (adManager == null) {
+      resolve(fail(ErrorCodes.AD_SHOW_FAILED, 'ad manager unavailable'))
+      return
+    }
+
+    const slotId = getSlotId('feed', params)
+    if (slotId == '') {
+      resolve(fail(ErrorCodes.SLOT_ID_MISSING, 'feed slotId is required'))
+      return
+    }
+
+    const payload = { adType: 'feed', slotId }
+    try {
+      callOneOf(adManager, ['loadFeedAd', 'loadFeed', 'requestFeedAd'], [slotId])
+      emit(Events.AD_LOADED, payload)
+      resolve(ok('feed load requested', payload))
+    } catch (e: any) {
+      const msg = e != null ? String(e) : 'feed load failed'
+      emit(Events.AD_ERROR, { adType: 'feed', code: ErrorCodes.AD_SHOW_FAILED, message: msg })
+      resolve(fail(ErrorCodes.AD_SHOW_FAILED, msg, payload))
+    }
+  })
+}

@@ -1,0 +1,11 @@
+{
+  "id": "pangolin-media",
+  "displayName": "Pangolin Media UTS Plugin",
+  "version": "1.0.0",
+  "description": "UTS plugin for Pangle ads and short drama on Android",
+  "keywords": ["uts", "uni-app", "android", "pangle", "short-drama"],
+  "dcloudext": {
+    "type": "uts-plugin",
+    "category": ["NativePlugin"]
+  }
+}
