@@ -549,6 +549,11 @@ class SystemConfigService
      */
     public static function isWechatAppEnabled()
     {
+        // 优先从 advn_config (site config) 读取
+        $value = config('site.wechat_app_enabled');
+        if ($value !== null) {
+            return (bool)$value;
+        }
         return self::get('wechat.wechat_app_enabled', false);
     }
     
@@ -557,6 +562,10 @@ class SystemConfigService
      */
     public static function isWechatMiniEnabled()
     {
+        $value = config('site.wechat_mini_enabled');
+        if ($value !== null) {
+            return (bool)$value;
+        }
         return self::get('wechat.wechat_mini_enabled', false);
     }
     
@@ -565,6 +574,10 @@ class SystemConfigService
      */
     public static function isWechatOfficialEnabled()
     {
+        $value = config('site.wechat_official_enabled');
+        if ($value !== null) {
+            return (bool)$value;
+        }
         return self::get('wechat.wechat_official_enabled', false);
     }
     
@@ -575,9 +588,9 @@ class SystemConfigService
     public static function getWechatAppConfig()
     {
         return [
-            'appid' => self::get('wechat.wechat_app_appid', ''),
-            'secret' => self::get('wechat.wechat_app_secret', ''),
-            'enabled' => self::get('wechat.wechat_app_enabled', false),
+            'appid' => config('site.wechat_app_appid') ?: self::get('wechat.wechat_app_appid', ''),
+            'secret' => config('site.wechat_app_secret') ?: self::get('wechat.wechat_app_secret', ''),
+            'enabled' => self::isWechatAppEnabled(),
         ];
     }
     
@@ -588,9 +601,9 @@ class SystemConfigService
     public static function getWechatMiniConfig()
     {
         return [
-            'appid' => self::get('wechat.wechat_mini_appid', ''),
-            'secret' => self::get('wechat.wechat_mini_secret', ''),
-            'enabled' => self::get('wechat.wechat_mini_enabled', false),
+            'appid' => config('site.wechat_mini_appid') ?: self::get('wechat.wechat_mini_appid', ''),
+            'secret' => config('site.wechat_mini_secret') ?: self::get('wechat.wechat_mini_secret', ''),
+            'enabled' => self::isWechatMiniEnabled(),
         ];
     }
     
@@ -601,9 +614,9 @@ class SystemConfigService
     public static function getWechatOfficialConfig()
     {
         return [
-            'appid' => self::get('wechat.wechat_official_appid', ''),
-            'secret' => self::get('wechat.wechat_official_secret', ''),
-            'enabled' => self::get('wechat.wechat_official_enabled', false),
+            'appid' => config('site.wechat_official_appid') ?: self::get('wechat.wechat_official_appid', ''),
+            'secret' => config('site.wechat_official_secret') ?: self::get('wechat.wechat_official_secret', ''),
+            'enabled' => self::isWechatOfficialEnabled(),
         ];
     }
     
@@ -614,12 +627,12 @@ class SystemConfigService
     public static function getWechatPayConfig()
     {
         return [
-            'enabled' => self::get('wechat.wechat_pay_enabled', false),
-            'mchid' => self::get('wechat.wechat_pay_mchid', ''),
-            'key' => self::get('wechat.wechat_pay_key', ''),
-            'cert_pem' => self::get('wechat.wechat_pay_cert_pem', ''),
-            'key_pem' => self::get('wechat.wechat_pay_key_pem', ''),
-            'notify_url' => self::get('wechat.wechat_pay_notify_url', ''),
+            'enabled' => (bool)(config('site.wechat_pay_enabled') ?: self::get('wechat.wechat_pay_enabled', 0)),
+            'mchid' => config('site.wechat_pay_mchid') ?: self::get('wechat.wechat_pay_mchid', ''),
+            'key' => config('site.wechat_pay_key') ?: self::get('wechat.wechat_pay_key', ''),
+            'cert_pem' => config('site.wechat_pay_cert_pem') ?: self::get('wechat.wechat_pay_cert_pem', ''),
+            'key_pem' => config('site.wechat_pay_key_pem') ?: self::get('wechat.wechat_pay_key_pem', ''),
+            'notify_url' => config('site.wechat_pay_notify_url') ?: self::get('wechat.wechat_pay_notify_url', ''),
         ];
     }
     
@@ -630,11 +643,11 @@ class SystemConfigService
     public static function getWechatTransferConfig()
     {
         return [
-            'enabled' => self::get('wechat.wechat_transfer_enabled', false),
-            'mchid' => self::get('wechat.wechat_transfer_mchid', ''),
-            'key' => self::get('wechat.wechat_transfer_key', ''),
-            'cert_pem' => self::get('wechat.wechat_transfer_cert_pem', ''),
-            'key_pem' => self::get('wechat.wechat_transfer_key_pem', ''),
+            'enabled' => (bool)(config('site.wechat_transfer_enabled') ?: self::get('wechat.wechat_transfer_enabled', 0)),
+            'mchid' => config('site.wechat_transfer_mchid') ?: self::get('wechat.wechat_transfer_mchid', ''),
+            'key' => config('site.wechat_transfer_key') ?: self::get('wechat.wechat_transfer_key', ''),
+            'cert_pem' => config('site.wechat_transfer_cert_pem') ?: self::get('wechat.wechat_transfer_cert_pem', ''),
+            'key_pem' => config('site.wechat_transfer_key_pem') ?: self::get('wechat.wechat_transfer_key_pem', ''),
         ];
     }
     
@@ -643,6 +656,10 @@ class SystemConfigService
      */
     public static function isWechatAutoRegister()
     {
+        $value = config('site.wechat_auto_register');
+        if ($value !== null) {
+            return (bool)$value;
+        }
         return self::get('wechat.wechat_auto_register', true);
     }
     
@@ -651,6 +668,10 @@ class SystemConfigService
      */
     public static function isWechatBindMobile()
     {
+        $value = config('site.wechat_bind_mobile');
+        if ($value !== null) {
+            return (bool)$value;
+        }
         return self::get('wechat.wechat_bind_mobile', false);
     }
 }

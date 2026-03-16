@@ -4,11 +4,25 @@
 
 本文档描述了微信授权登录相关的API接口，支持微信App、小程序、公众号三种平台的授权登录。
 
-## 数据库变更
+## 配置说明
 
-### 1. 系统配置表新增微信配置项 (advn_system_config)
+### 后台配置入口
 
-执行 `sql/wechat_config.sql` 中的SQL语句，添加以下配置：
+微信配置已集成到后台 **系统配置 -> 微信配置** 菜单中，直接访问：
+```
+http://你的域名/BgYmdTvqpf.php/general/config
+```
+
+在配置页面中找到 **"微信配置"** 标签页，即可配置：
+
+- 微信App登录设置
+- 微信小程序登录设置  
+- 微信公众号登录设置
+- 微信支付设置
+- 企业付款设置（用于提现）
+- 登录配置（自动注册、强制绑定手机）
+
+### 配置项说明
 
 | 配置项 | 说明 |
 |--------|------|
@@ -25,14 +39,19 @@
 | wechat_pay_mchid | 微信支付商户号 |
 | wechat_pay_key | 微信支付API密钥 |
 | wechat_transfer_enabled | 企业付款开关 |
-| wechat_transfer_mchid | 企业付款商户号 |
-| wechat_transfer_key | 企业付款API密钥 |
 | wechat_auto_register | 自动注册开关 |
 | wechat_bind_mobile | 强制绑定手机开关 |
 
-### 2. 用户表新增微信字段 (advn_user)
+---
 
-执行 `sql/wechat_config.sql` 中的ALTER语句，添加以下字段：
+## 数据库变更
+
+执行 `sql/wechat_config.sql` 中的SQL语句：
+
+1. 更新 `advn_config` 表添加微信配置分组和配置项
+2. 更新 `advn_user` 表添加微信相关字段
+
+**用户表新增字段：**
 
 | 字段名 | 类型 | 说明 |
 |--------|------|------|
@@ -152,15 +171,6 @@
 | code | string | 是 | 微信授权code |
 | platform | string | 是 | 平台: app/mini/official |
 
-**返回示例**:
-
-```json
-{
-    "code": 1,
-    "msg": "绑定成功"
-}
-```
-
 ### 6. 解绑微信
 
 **接口地址**: `POST /api/wechat/unbindWechat`
@@ -172,15 +182,6 @@
 | 参数名 | 类型 | 必填 | 说明 |
 |--------|------|------|------|
 | platform | string | 是 | 平台: app/mini/official |
-
-**返回示例**:
-
-```json
-{
-    "code": 1,
-    "msg": "解绑成功"
-}
-```
 
 ### 7. 获取微信登录状态
 
@@ -204,30 +205,13 @@
 
 ---
 
-## 后台管理
-
-### 访问路径
-
-后台配置页面: `/admin/general/wechat_config`
-
-### 配置分组
-
-1. **微信App配置** - 配置微信开放平台移动应用
-2. **小程序配置** - 配置微信小程序
-3. **公众号配置** - 配置微信公众号
-4. **微信支付配置** - 配置微信支付
-5. **企业付款配置** - 配置企业付款（用于提现）
-6. **登录配置** - 配置自动注册、强制绑定手机等
-
----
-
 ## 集成指南
 
 ### Android/iOS App集成
 
 1. 在微信开放平台创建移动应用
 2. 获取AppID和AppSecret
-3. 在后台配置微信App参数
+3. 在后台 **系统配置 -> 微信配置** 中配置微信App参数
 4. App端集成微信SDK，调用微信授权获取code
 5. 调用 `/api/wechat/appLogin` 接口完成登录
 
@@ -258,15 +242,14 @@
 | `sql/wechat_config.sql` | 数据库更新脚本 |
 | `application/common/library/WechatService.php` | 微信服务类 |
 | `application/api/controller/Wechat.php` | 微信登录API控制器 |
-| `application/admin/controller/general/WechatConfig.php` | 后台配置控制器 |
-| `application/admin/view/general/wechat_config/index.html` | 后台配置视图 |
 
 ### 修改文件
 
 | 文件路径 | 修改内容 |
 |----------|----------|
-| `application/common/library/SystemConfigService.php` | 添加微信配置分组和方法 |
+| `application/common/library/SystemConfigService.php` | 添加微信配置方法 |
 | `application/common/model/User.php` | 添加微信相关方法 |
+| `api.html` | 添加微信登录API文档 |
 
 ---
 
@@ -276,3 +259,4 @@
 2. **安全性**: AppSecret和API密钥请妥善保管，不要泄露
 3. **证书配置**: 微信支付和企业付款需要配置证书
 4. **测试环境**: 正式上线前请先在测试环境验证配置正确性
+5. **配置刷新**: 修改配置后，FastAdmin会自动刷新配置文件
