@@ -330,6 +330,7 @@
         <div class="nav">
             <ul class="nav-list">
                 <li><a href="#user">用户模块</a></li>
+                <li><a href="#wechat">微信登录</a></li>
                 <li><a href="#coin">金币模块</a></li>
                 <li><a href="#withdraw">提现模块</a></li>
                 <li><a href="#redpacket">红包模块</a></li>
@@ -350,6 +351,16 @@
                     <a href="#user-logout" class="sidebar-link"><span class="method method-post">POST</span>退出登录</a>
                     <a href="#user-profile" class="sidebar-link"><span class="method method-post">POST</span>修改资料</a>
                     <a href="#user-resetpwd" class="sidebar-link"><span class="method method-post">POST</span>重置密码</a>
+                </div>
+                <div class="sidebar-section">
+                    <div class="sidebar-title">微信登录</div>
+                    <a href="#wechat-appLogin" class="sidebar-link"><span class="method method-post">POST</span>App授权登录</a>
+                    <a href="#wechat-miniLogin" class="sidebar-link"><span class="method method-post">POST</span>小程序登录</a>
+                    <a href="#wechat-officialLogin" class="sidebar-link"><span class="method method-post">POST</span>公众号登录</a>
+                    <a href="#wechat-getMiniPhone" class="sidebar-link"><span class="method method-post">POST</span>获取手机号</a>
+                    <a href="#wechat-bindWechat" class="sidebar-link"><span class="method method-post">POST</span>绑定微信</a>
+                    <a href="#wechat-unbindWechat" class="sidebar-link"><span class="method method-post">POST</span>解绑微信</a>
+                    <a href="#wechat-loginStatus" class="sidebar-link"><span class="method method-get">GET</span>登录配置状态</a>
                 </div>
                 <div class="sidebar-section">
                     <div class="sidebar-title">金币模块</div>
@@ -633,6 +644,376 @@
                                         </tr>
                                     </tbody>
                                 </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 微信登录模块 -->
+                <div class="api-section" id="wechat">
+                    <h2 class="api-section-title">
+                        <span class="icon">📱</span>
+                        微信登录模块
+                    </h2>
+                    
+                    <div class="api-item" id="wechat-appLogin">
+                        <div class="api-header">
+                            <span class="api-method post">POST</span>
+                            <span class="api-url">/api/wechat/appLogin</span>
+                            <span class="api-title">微信App授权登录</span>
+                            <span class="tag tag-public">公开</span>
+                        </div>
+                        <div class="api-body">
+                            <p class="api-desc">通过微信App授权code登录系统，支持自动注册和邀请关系绑定。</p>
+                            <div class="api-params">
+                                <div class="api-params-title">请求参数</div>
+                                <table class="param-table">
+                                    <thead>
+                                        <tr>
+                                            <th>参数名</th>
+                                            <th>类型</th>
+                                            <th>必填</th>
+                                            <th>说明</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td class="param-name">code</td>
+                                            <td class="param-type">string</td>
+                                            <td><span class="param-required">必填</span></td>
+                                            <td>微信授权返回的code</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="param-name">invite_code</td>
+                                            <td class="param-type">string</td>
+                                            <td><span class="param-optional">可选</span></td>
+                                            <td>邀请码</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="param-name">device_id</td>
+                                            <td class="param-type">string</td>
+                                            <td><span class="param-optional">可选</span></td>
+                                            <td>设备ID</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div class="api-response">
+                                <div class="api-response-title">响应示例</div>
+                                <pre>{
+    "code": 1,
+    "msg": "登录成功",
+    "data": {
+        "user_id": 1,
+        "token": "xxxx-xxxx-xxxx-xxxx",
+        "userinfo": {
+            "id": 1,
+            "username": "wx_abc12345",
+            "nickname": "微信用户",
+            "avatar": "https://...",
+            "mobile": ""
+        },
+        "is_new": false
+    }
+}</pre>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="api-item" id="wechat-miniLogin">
+                        <div class="api-header">
+                            <span class="api-method post">POST</span>
+                            <span class="api-url">/api/wechat/miniLogin</span>
+                            <span class="api-title">微信小程序登录</span>
+                            <span class="tag tag-public">公开</span>
+                        </div>
+                        <div class="api-body">
+                            <p class="api-desc">通过微信小程序code登录系统，支持传递用户信息。</p>
+                            <div class="api-params">
+                                <div class="api-params-title">请求参数</div>
+                                <table class="param-table">
+                                    <thead>
+                                        <tr>
+                                            <th>参数名</th>
+                                            <th>类型</th>
+                                            <th>必填</th>
+                                            <th>说明</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td class="param-name">code</td>
+                                            <td class="param-type">string</td>
+                                            <td><span class="param-required">必填</span></td>
+                                            <td>小程序登录code (wx.login获取)</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="param-name">nickname</td>
+                                            <td class="param-type">string</td>
+                                            <td><span class="param-optional">可选</span></td>
+                                            <td>用户昵称</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="param-name">avatar</td>
+                                            <td class="param-type">string</td>
+                                            <td><span class="param-optional">可选</span></td>
+                                            <td>用户头像URL</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="param-name">gender</td>
+                                            <td class="param-type">int</td>
+                                            <td><span class="param-optional">可选</span></td>
+                                            <td>性别: 0未知, 1男, 2女</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="param-name">invite_code</td>
+                                            <td class="param-type">string</td>
+                                            <td><span class="param-optional">可选</span></td>
+                                            <td>邀请码</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="param-name">device_id</td>
+                                            <td class="param-type">string</td>
+                                            <td><span class="param-optional">可选</span></td>
+                                            <td>设备ID</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div class="api-response">
+                                <div class="api-response-title">响应示例</div>
+                                <pre>{
+    "code": 1,
+    "msg": "登录成功",
+    "data": {
+        "user_id": 1,
+        "token": "xxxx-xxxx-xxxx-xxxx",
+        "userinfo": {
+            "id": 1,
+            "username": "wx_mini12345",
+            "nickname": "小程序用户",
+            "avatar": "https://..."
+        },
+        "is_new": true
+    }
+}</pre>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="api-item" id="wechat-officialLogin">
+                        <div class="api-header">
+                            <span class="api-method post">POST</span>
+                            <span class="api-url">/api/wechat/officialLogin</span>
+                            <span class="api-title">微信公众号授权登录</span>
+                            <span class="tag tag-public">公开</span>
+                        </div>
+                        <div class="api-body">
+                            <p class="api-desc">通过微信公众号网页授权code登录系统。</p>
+                            <div class="api-params">
+                                <div class="api-params-title">请求参数</div>
+                                <table class="param-table">
+                                    <thead>
+                                        <tr>
+                                            <th>参数名</th>
+                                            <th>类型</th>
+                                            <th>必填</th>
+                                            <th>说明</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td class="param-name">code</td>
+                                            <td class="param-type">string</td>
+                                            <td><span class="param-required">必填</span></td>
+                                            <td>公众号授权code</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="param-name">invite_code</td>
+                                            <td class="param-type">string</td>
+                                            <td><span class="param-optional">可选</span></td>
+                                            <td>邀请码</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div class="api-response">
+                                <div class="api-response-title">响应示例</div>
+                                <pre>{
+    "code": 1,
+    "msg": "登录成功",
+    "data": {
+        "user_id": 1,
+        "token": "xxxx-xxxx-xxxx-xxxx",
+        "userinfo": {...},
+        "is_new": false
+    }
+}</pre>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="api-item" id="wechat-getMiniPhone">
+                        <div class="api-header">
+                            <span class="api-method post">POST</span>
+                            <span class="api-url">/api/wechat/getMiniPhone</span>
+                            <span class="api-title">获取小程序手机号</span>
+                            <span class="tag tag-auth">需登录</span>
+                        </div>
+                        <div class="api-body">
+                            <p class="api-desc">通过小程序getPhoneNumber按钮获取的code来获取用户手机号。</p>
+                            <div class="api-params">
+                                <div class="api-params-title">请求参数</div>
+                                <table class="param-table">
+                                    <thead>
+                                        <tr>
+                                            <th>参数名</th>
+                                            <th>类型</th>
+                                            <th>必填</th>
+                                            <th>说明</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td class="param-name">code</td>
+                                            <td class="param-type">string</td>
+                                            <td><span class="param-required">必填</span></td>
+                                            <td>获取手机号的code (button open-type="getPhoneNumber")</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div class="api-response">
+                                <div class="api-response-title">响应示例</div>
+                                <pre>{
+    "code": 1,
+    "msg": "获取成功",
+    "data": {
+        "phoneNumber": "+8613800138000",
+        "purePhoneNumber": "13800138000",
+        "countryCode": "+86"
+    }
+}</pre>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="api-item" id="wechat-bindWechat">
+                        <div class="api-header">
+                            <span class="api-method post">POST</span>
+                            <span class="api-url">/api/wechat/bindWechat</span>
+                            <span class="api-title">绑定微信</span>
+                            <span class="tag tag-auth">需登录</span>
+                        </div>
+                        <div class="api-body">
+                            <p class="api-desc">已登录用户绑定微信账号，支持App、小程序、公众号三种平台。</p>
+                            <div class="api-params">
+                                <div class="api-params-title">请求参数</div>
+                                <table class="param-table">
+                                    <thead>
+                                        <tr>
+                                            <th>参数名</th>
+                                            <th>类型</th>
+                                            <th>必填</th>
+                                            <th>说明</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td class="param-name">code</td>
+                                            <td class="param-type">string</td>
+                                            <td><span class="param-required">必填</span></td>
+                                            <td>微信授权code</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="param-name">platform</td>
+                                            <td class="param-type">string</td>
+                                            <td><span class="param-required">必填</span></td>
+                                            <td>平台: app/mini/official</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div class="api-response">
+                                <div class="api-response-title">响应示例</div>
+                                <pre>{
+    "code": 1,
+    "msg": "绑定成功"
+}</pre>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="api-item" id="wechat-unbindWechat">
+                        <div class="api-header">
+                            <span class="api-method post">POST</span>
+                            <span class="api-url">/api/wechat/unbindWechat</span>
+                            <span class="api-title">解绑微信</span>
+                            <span class="tag tag-auth">需登录</span>
+                        </div>
+                        <div class="api-body">
+                            <p class="api-desc">解除已绑定微信账号。</p>
+                            <div class="api-params">
+                                <div class="api-params-title">请求参数</div>
+                                <table class="param-table">
+                                    <thead>
+                                        <tr>
+                                            <th>参数名</th>
+                                            <th>类型</th>
+                                            <th>必填</th>
+                                            <th>说明</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td class="param-name">platform</td>
+                                            <td class="param-type">string</td>
+                                            <td><span class="param-required">必填</span></td>
+                                            <td>平台: app/mini/official</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div class="api-response">
+                                <div class="api-response-title">响应示例</div>
+                                <pre>{
+    "code": 1,
+    "msg": "解绑成功"
+}</pre>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="api-item" id="wechat-loginStatus">
+                        <div class="api-header">
+                            <span class="api-method get">GET</span>
+                            <span class="api-url">/api/wechat/loginStatus</span>
+                            <span class="api-title">获取微信登录配置状态</span>
+                            <span class="tag tag-public">公开</span>
+                        </div>
+                        <div class="api-body">
+                            <p class="api-desc">获取系统中微信登录相关功能的开启状态，前端可根据此决定显示哪些登录方式。</p>
+                            <div class="api-response">
+                                <div class="api-response-title">响应示例</div>
+                                <pre>{
+    "code": 1,
+    "msg": "",
+    "data": {
+        "app_enabled": true,
+        "mini_enabled": true,
+        "official_enabled": false,
+        "auto_register": true,
+        "bind_mobile": false
+    }
+}</pre>
+                            </div>
+                            <div class="api-note">
+                                <strong>字段说明：</strong><br>
+                                • app_enabled: 微信App登录是否开启<br>
+                                • mini_enabled: 微信小程序登录是否开启<br>
+                                • official_enabled: 微信公众号登录是否开启<br>
+                                • auto_register: 微信登录时是否自动注册<br>
+                                • bind_mobile: 是否强制绑定手机号
                             </div>
                         </div>
                     </div>
