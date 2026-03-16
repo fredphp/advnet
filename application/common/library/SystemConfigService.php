@@ -2,14 +2,14 @@
 
 namespace app\common\library;
 
-use think\Db;
+use think\Config;
 use think\Cache;
 
 /**
  * 系统配置服务
  * 
  * 统一管理所有业务配置参数
- * 支持数据库配置、缓存、默认值
+ * 配置从 advn_config 表读取，通过 config('site.xxx') 获取
  */
 class SystemConfigService
 {
@@ -239,13 +239,14 @@ class SystemConfigService
     
     /**
      * 获取分组配置
+     * 从 config('site.xxx') 读取配置
      * 
      * @param string $group 分组名
      * @return array
      */
     protected static function getGroupConfig($group)
     {
-        // 检查缓存
+        // 检查内存缓存
         if (isset(self::$configCache[$group])) {
             return self::$configCache[$group];
         }
@@ -254,13 +255,13 @@ class SystemConfigService
         $cacheKey = self::CACHE_PREFIX . $group;
         $cached = Cache::get($cacheKey);
         
-        if ($cached !== null) {
+        if ($cached !== null && is_array($cached)) {
             self::$configCache[$group] = $cached;
             return $cached;
         }
         
-        // 从数据库加载
-        $config = self::loadFromDatabase($group);
+        // 从 config('site.xxx') 加载配置
+        $config = self::loadFromSiteConfig($group);
         
         // 合并默认值
         $defaultConfig = self::$defaultConfig[$group] ?? [];
@@ -274,116 +275,51 @@ class SystemConfigService
     }
     
     /**
-     * 从数据库加载配置
+     * 从 site config 加载配置
+     * 配置存储在 advn_config 表，通过 Config::get('site.xxx') 获取
      * 
      * @param string $group 分组名
      * @return array
      */
-    protected static function loadFromDatabase($group)
+    protected static function loadFromSiteConfig($group)
     {
-        try {
-            $list = Db::name('system_config')
-                ->where('group', $group)
-                ->where('status', 1)
-                ->select()
-                ->toArray();
+        $config = [];
+        $defaultConfig = self::$defaultConfig[$group] ?? [];
+        
+        // 遍历该分组的所有配置项，从 site config 读取
+        foreach ($defaultConfig as $key => $defaultValue) {
+            $siteValue = Config::get('site.' . $key);
             
-            $config = [];
-            foreach ($list as $item) {
-                $value = $item['value'];
-                
-                // 根据类型转换值
-                switch ($item['type'] ?? 'string') {
-                    case 'int':
-                    case 'integer':
-                        $value = intval($value);
-                        break;
-                    case 'float':
-                    case 'number':
-                        $value = floatval($value);
-                        break;
-                    case 'bool':
-                    case 'boolean':
-                        $value = in_array(strtolower($value), ['1', 'true', 'yes', 'on']);
-                        break;
-                    case 'json':
-                    case 'array':
-                        $value = is_string($value) ? json_decode($value, true) : $value;
-                        break;
-                }
-                
-                $config[$item['name']] = $value;
+            // 如果 site config 中有值，使用它
+            if ($siteValue !== null && $siteValue !== '') {
+                // 根据默认值类型进行转换
+                $config[$key] = self::castValue($siteValue, $defaultValue);
             }
-            
-            return $config;
-        } catch (\Exception $e) {
-            // 数据库异常时返回空数组，使用默认值
-            return [];
         }
+        
+        return $config;
     }
     
     /**
-     * 设置配置值
+     * 根据默认值类型转换配置值
      * 
-     * @param string $group 配置分组
-     * @param string $key 配置键名
      * @param mixed $value 配置值
-     * @return bool
+     * @param mixed $defaultValue 默认值
+     * @return mixed
      */
-    public static function set($group, $key, $value)
+    protected static function castValue($value, $defaultValue)
     {
-        try {
-            // 类型转换
-            $type = 'string';
-            $dbValue = $value;
-            
-            if (is_bool($value)) {
-                $type = 'boolean';
-                $dbValue = $value ? '1' : '0';
-            } elseif (is_int($value)) {
-                $type = 'integer';
-                $dbValue = (string)$value;
-            } elseif (is_float($value)) {
-                $type = 'float';
-                $dbValue = (string)$value;
-            } elseif (is_array($value)) {
-                $type = 'json';
-                $dbValue = json_encode($value);
-            }
-            
-            // 更新或插入数据库
-            $exists = Db::name('system_config')
-                ->where('group', $group)
-                ->where('name', $key)
-                ->find();
-            
-            if ($exists) {
-                Db::name('system_config')
-                    ->where('id', $exists['id'])
-                    ->update([
-                        'value' => $dbValue,
-                        'type' => $type,
-                        'updatetime' => time(),
-                    ]);
-            } else {
-                Db::name('system_config')->insert([
-                    'group' => $group,
-                    'name' => $key,
-                    'value' => $dbValue,
-                    'type' => $type,
-                    'status' => 1,
-                    'createtime' => time(),
-                    'updatetime' => time(),
-                ]);
-            }
-            
-            // 清除缓存
-            self::clearCache($group);
-            
-            return true;
-        } catch (\Exception $e) {
-            return false;
+        if (is_int($defaultValue)) {
+            return intval($value);
+        } elseif (is_float($defaultValue)) {
+            return floatval($value);
+        } elseif (is_bool($defaultValue)) {
+            return in_array(strtolower((string)$value), ['1', 'true', 'yes', 'on']);
+        } elseif (is_array($defaultValue)) {
+            return is_array($value) ? $value : (is_string($value) ? json_decode($value, true) : $defaultValue);
         }
+        
+        return $value;
     }
     
     /**
@@ -549,10 +485,9 @@ class SystemConfigService
      */
     public static function isWechatAppEnabled()
     {
-        // 优先从 advn_config (site config) 读取
-        $value = config('site.wechat_app_enabled');
-        if ($value !== null) {
-            return (bool)$value;
+        $value = Config::get('site.wechat_app_enabled');
+        if ($value !== null && $value !== '') {
+            return self::castValue($value, true);
         }
         return self::get('wechat.wechat_app_enabled', false);
     }
@@ -562,9 +497,9 @@ class SystemConfigService
      */
     public static function isWechatMiniEnabled()
     {
-        $value = config('site.wechat_mini_enabled');
-        if ($value !== null) {
-            return (bool)$value;
+        $value = Config::get('site.wechat_mini_enabled');
+        if ($value !== null && $value !== '') {
+            return self::castValue($value, true);
         }
         return self::get('wechat.wechat_mini_enabled', false);
     }
@@ -574,9 +509,9 @@ class SystemConfigService
      */
     public static function isWechatOfficialEnabled()
     {
-        $value = config('site.wechat_official_enabled');
-        if ($value !== null) {
-            return (bool)$value;
+        $value = Config::get('site.wechat_official_enabled');
+        if ($value !== null && $value !== '') {
+            return self::castValue($value, true);
         }
         return self::get('wechat.wechat_official_enabled', false);
     }
@@ -588,8 +523,8 @@ class SystemConfigService
     public static function getWechatAppConfig()
     {
         return [
-            'appid' => config('site.wechat_app_appid') ?: self::get('wechat.wechat_app_appid', ''),
-            'secret' => config('site.wechat_app_secret') ?: self::get('wechat.wechat_app_secret', ''),
+            'appid' => Config::get('site.wechat_app_appid') ?: self::get('wechat.wechat_app_appid', ''),
+            'secret' => Config::get('site.wechat_app_secret') ?: self::get('wechat.wechat_app_secret', ''),
             'enabled' => self::isWechatAppEnabled(),
         ];
     }
@@ -601,8 +536,8 @@ class SystemConfigService
     public static function getWechatMiniConfig()
     {
         return [
-            'appid' => config('site.wechat_mini_appid') ?: self::get('wechat.wechat_mini_appid', ''),
-            'secret' => config('site.wechat_mini_secret') ?: self::get('wechat.wechat_mini_secret', ''),
+            'appid' => Config::get('site.wechat_mini_appid') ?: self::get('wechat.wechat_mini_appid', ''),
+            'secret' => Config::get('site.wechat_mini_secret') ?: self::get('wechat.wechat_mini_secret', ''),
             'enabled' => self::isWechatMiniEnabled(),
         ];
     }
@@ -614,8 +549,8 @@ class SystemConfigService
     public static function getWechatOfficialConfig()
     {
         return [
-            'appid' => config('site.wechat_official_appid') ?: self::get('wechat.wechat_official_appid', ''),
-            'secret' => config('site.wechat_official_secret') ?: self::get('wechat.wechat_official_secret', ''),
+            'appid' => Config::get('site.wechat_official_appid') ?: self::get('wechat.wechat_official_appid', ''),
+            'secret' => Config::get('site.wechat_official_secret') ?: self::get('wechat.wechat_official_secret', ''),
             'enabled' => self::isWechatOfficialEnabled(),
         ];
     }
@@ -627,12 +562,12 @@ class SystemConfigService
     public static function getWechatPayConfig()
     {
         return [
-            'enabled' => (bool)(config('site.wechat_pay_enabled') ?: self::get('wechat.wechat_pay_enabled', 0)),
-            'mchid' => config('site.wechat_pay_mchid') ?: self::get('wechat.wechat_pay_mchid', ''),
-            'key' => config('site.wechat_pay_key') ?: self::get('wechat.wechat_pay_key', ''),
-            'cert_pem' => config('site.wechat_pay_cert_pem') ?: self::get('wechat.wechat_pay_cert_pem', ''),
-            'key_pem' => config('site.wechat_pay_key_pem') ?: self::get('wechat.wechat_pay_key_pem', ''),
-            'notify_url' => config('site.wechat_pay_notify_url') ?: self::get('wechat.wechat_pay_notify_url', ''),
+            'enabled' => self::castValue(Config::get('site.wechat_pay_enabled') ?: self::get('wechat.wechat_pay_enabled', 0), true),
+            'mchid' => Config::get('site.wechat_pay_mchid') ?: self::get('wechat.wechat_pay_mchid', ''),
+            'key' => Config::get('site.wechat_pay_key') ?: self::get('wechat.wechat_pay_key', ''),
+            'cert_pem' => Config::get('site.wechat_pay_cert_pem') ?: self::get('wechat.wechat_pay_cert_pem', ''),
+            'key_pem' => Config::get('site.wechat_pay_key_pem') ?: self::get('wechat.wechat_pay_key_pem', ''),
+            'notify_url' => Config::get('site.wechat_pay_notify_url') ?: self::get('wechat.wechat_pay_notify_url', ''),
         ];
     }
     
@@ -643,11 +578,11 @@ class SystemConfigService
     public static function getWechatTransferConfig()
     {
         return [
-            'enabled' => (bool)(config('site.wechat_transfer_enabled') ?: self::get('wechat.wechat_transfer_enabled', 0)),
-            'mchid' => config('site.wechat_transfer_mchid') ?: self::get('wechat.wechat_transfer_mchid', ''),
-            'key' => config('site.wechat_transfer_key') ?: self::get('wechat.wechat_transfer_key', ''),
-            'cert_pem' => config('site.wechat_transfer_cert_pem') ?: self::get('wechat.wechat_transfer_cert_pem', ''),
-            'key_pem' => config('site.wechat_transfer_key_pem') ?: self::get('wechat.wechat_transfer_key_pem', ''),
+            'enabled' => self::castValue(Config::get('site.wechat_transfer_enabled') ?: self::get('wechat.wechat_transfer_enabled', 0), true),
+            'mchid' => Config::get('site.wechat_transfer_mchid') ?: self::get('wechat.wechat_transfer_mchid', ''),
+            'key' => Config::get('site.wechat_transfer_key') ?: self::get('wechat.wechat_transfer_key', ''),
+            'cert_pem' => Config::get('site.wechat_transfer_cert_pem') ?: self::get('wechat.wechat_transfer_cert_pem', ''),
+            'key_pem' => Config::get('site.wechat_transfer_key_pem') ?: self::get('wechat.wechat_transfer_key_pem', ''),
         ];
     }
     
@@ -656,9 +591,9 @@ class SystemConfigService
      */
     public static function isWechatAutoRegister()
     {
-        $value = config('site.wechat_auto_register');
-        if ($value !== null) {
-            return (bool)$value;
+        $value = Config::get('site.wechat_auto_register');
+        if ($value !== null && $value !== '') {
+            return self::castValue($value, true);
         }
         return self::get('wechat.wechat_auto_register', true);
     }
@@ -668,9 +603,9 @@ class SystemConfigService
      */
     public static function isWechatBindMobile()
     {
-        $value = config('site.wechat_bind_mobile');
-        if ($value !== null) {
-            return (bool)$value;
+        $value = Config::get('site.wechat_bind_mobile');
+        if ($value !== null && $value !== '') {
+            return self::castValue($value, true);
         }
         return self::get('wechat.wechat_bind_mobile', false);
     }
