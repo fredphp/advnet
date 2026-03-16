@@ -260,14 +260,14 @@ class Withdraw extends Api
             $this->error('请输入提现金币数量');
         }
         
-        // 获取配置
-        $config = Db::name('withdraw_config')->column('value', 'code');
-        $exchangeRate = $config['exchange_rate'] ?? 10000;
-        $feeRate = floatval($config['fee_rate'] ?? 0);
+        // 使用统一的配置服务获取配置
+        $coinRate = SystemConfigService::getCoinRate();
+        $withdrawConfig = SystemConfigService::getWithdrawConfig();
+        $feeRate = floatval($withdrawConfig['fee_rate'] ?? 0);
         
         // 计算金额
-        $cashAmount = round($coinAmount / $exchangeRate, 4);
-        $feeAmount = round($cashAmount * $feeRate, 4);
+        $cashAmount = round($coinAmount / $coinRate, 4);
+        $feeAmount = round($cashAmount * $feeRate / 100, 4);
         $actualAmount = round($cashAmount - $feeAmount, 4);
         
         $this->success('计算成功', [
@@ -275,7 +275,7 @@ class Withdraw extends Api
             'cash_amount' => $cashAmount,
             'fee_amount' => $feeAmount,
             'actual_amount' => $actualAmount,
-            'exchange_rate' => $exchangeRate,
+            'exchange_rate' => $coinRate,
         ]);
     }
     

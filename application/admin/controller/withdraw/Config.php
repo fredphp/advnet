@@ -3,158 +3,66 @@
 namespace app\admin\controller\withdraw;
 
 use app\common\controller\Backend;
+use app\common\library\SystemConfigService;
+use app\common\model\Config as ConfigModel;
 use think\Db;
 
 /**
  * 提现配置管理
+ * 
+ * 配置已统一到系统配置（advn_config表）
+ * 此控制器作为入口跳转到系统配置的提现配置分组
  */
 class Config extends Backend
 {
     protected $model = null;
     protected $noNeedRight = ['index'];
 
-    // 默认配置
-    protected $defaultConfig = [
-        'enabled' => '1',
-        'amounts' => '10,20,50,100',
-        'min_withdraw' => '1',
-        'max_withdraw' => '500',
-        'daily_withdraw_limit' => '3',
-        'daily_withdraw_amount' => '500',
-        'same_ip_limit' => '5',
-        'same_device_limit' => '3',
-        'auto_audit_amount' => '10',
-        'manual_audit_amount' => '50',
-        'new_user_withdraw_days' => '3',
-        'fee_rate' => '0',
-        'transfer_retry_count' => '3',
-        'transfer_retry_interval' => '300',
-    ];
-
-    public function _initialize()
-    {
-        parent::_initialize();
-    }
-
     /**
      * 配置页面
+     * 重定向到系统配置页面的提现配置分组
      */
     public function index()
     {
-        if ($this->request->isPost()) {
-            $data = $this->request->post('row/a');
-            
-            if (empty($data) || !is_array($data)) {
-                $this->error('参数错误');
-            }
-
-            Db::startTrans();
-            try {
-                foreach ($data as $code => $value) {
-                    if (!is_scalar($value)) {
-                        continue;
-                    }
-                    $this->setConfig($code, (string)$value);
-                }
-                
-                Db::commit();
-                // 直接返回 JSON 响应，确保格式正确
-                return json(['code' => 1, 'msg' => '保存成功', 'data' => null, 'url' => '', 'wait' => 3]);
-            } catch (\Exception $e) {
-                Db::rollback();
-                $this->error($e->getMessage());
-            }
-        }
-
-        // 读取配置
-        $withdrawConfig = $this->getWithdrawConfig();
-        
-        $this->view->assign('withdrawConfig', $withdrawConfig);
-        return $this->view->fetch();
+        // 直接跳转到系统配置页面的提现配置分组
+        $this->redirect('general/config/index', ['group' => 'withdraw']);
     }
-
+    
     /**
-     * 获取提现配置
+     * 获取提现配置（供其他模块调用）
+     * @return array
      */
-    protected function getWithdrawConfig()
+    public static function getWithdrawConfig()
     {
-        $config = $this->defaultConfig;
-        
-        try {
-            $list = Db::name('withdraw_config')->select();
-            
-            foreach ($list as $item) {
-                if (isset($config[$item['code']])) {
-                    $config[$item['code']] = $item['value'];
-                }
-            }
-        } catch (\Exception $e) {
-            // 使用默认配置
-        }
-        
-        return $config;
+        return SystemConfigService::getWithdrawConfig();
     }
-
+    
     /**
-     * 设置配置
+     * 获取金币汇率（供其他模块调用）
+     * @return int
      */
-    protected function setConfig($code, $value)
+    public static function getCoinRate()
     {
-        if (!isset($this->defaultConfig[$code])) {
-            return;
-        }
-        
-        $exists = Db::name('withdraw_config')
-            ->where('code', $code)
-            ->find();
-        
-        $time = time();
-        
-        if ($exists) {
-            Db::name('withdraw_config')
-                ->where('code', $code)
-                ->update([
-                    'value' => $value,
-                    'updatetime' => $time,
-                ]);
-        } else {
-            Db::name('withdraw_config')->insert([
-                'name' => $this->getConfigName($code),
-                'code' => $code,
-                'value' => $value,
-                'type' => 'string',
-                'title' => $this->getConfigName($code),
-                'remark' => '',
-                'group' => 'withdraw',
-                'sort' => 0,
-                'createtime' => $time,
-                'updatetime' => $time,
-            ]);
-        }
+        return SystemConfigService::getCoinRate();
     }
-
+    
     /**
-     * 获取配置名称
+     * 金币转人民币
+     * @param int $coin 金币数量
+     * @return float
      */
-    protected function getConfigName($code)
+    public static function coinToCash($coin)
     {
-        $names = [
-            'enabled' => '开启提现',
-            'amounts' => '可选提现金额',
-            'min_withdraw' => '最低提现金额',
-            'max_withdraw' => '最高提现金额',
-            'daily_withdraw_limit' => '每日提现次数',
-            'daily_withdraw_amount' => '每日提现金额',
-            'same_ip_limit' => '同IP提现次数',
-            'same_device_limit' => '同设备提现次数',
-            'auto_audit_amount' => '自动审核金额',
-            'manual_audit_amount' => '人工审核金额',
-            'new_user_withdraw_days' => '新用户提现天数',
-            'fee_rate' => '提现手续费率',
-            'transfer_retry_count' => '提现重试次数',
-            'transfer_retry_interval' => '重试间隔',
-        ];
-        
-        return $names[$code] ?? $code;
+        return SystemConfigService::coinToCash($coin);
+    }
+    
+    /**
+     * 人民币转金币
+     * @param float $cash 人民币金额
+     * @return int
+     */
+    public static function cashToCoin($cash)
+    {
+        return SystemConfigService::cashToCoin($cash);
     }
 }

@@ -1135,6 +1135,7 @@ class WithdrawService
     
     /**
      * 获取配置
+     * 统一使用 SystemConfigService 从 advn_config 表获取配置
      */
     protected function getConfig()
     {
@@ -1144,37 +1145,36 @@ class WithdrawService
             return $config;
         }
         
-        $list = Db::name('withdraw_config')->select();
-        $config = [];
+        // 从 SystemConfigService 获取配置（统一使用 advn_config 表）
+        $withdrawConfig = SystemConfigService::getWithdrawConfig();
         
-        foreach ($list as $item) {
-            $config[$item['code']] = $item['value'];
-        }
-        
-        // 默认值
-        $defaults = [
-            'exchange_rate' => 10000,
-            'min_withdraw' => 10000,
-            'max_withdraw' => 1000000,
-            'daily_withdraw_limit' => 3,
-            'daily_withdraw_amount' => 100,
-            'fee_rate' => 0,
-            'auto_audit_amount' => 10,
-            'manual_audit_amount' => 50,
-            'new_user_withdraw_days' => 3,
-            'risk_reject_threshold' => 80,
-            'risk_manual_threshold' => 50,
-            'same_ip_limit' => 5,
-            'same_device_limit' => 3,
-            'transfer_retry_count' => 3,
-            'transfer_retry_interval' => 300,
+        // 映射配置名称（兼容旧代码）
+        $config = [
+            // 金币汇率（使用统一的 coin_rate）
+            'exchange_rate' => SystemConfigService::getCoinRate(),
+            // 提现限制（单位：金币）
+            'min_withdraw' => $withdrawConfig['min_withdraw'] * SystemConfigService::getCoinRate(),
+            'max_withdraw' => $withdrawConfig['max_withdraw'] * SystemConfigService::getCoinRate(),
+            // 每日限制
+            'daily_withdraw_limit' => $withdrawConfig['daily_withdraw_limit'] ?? 3,
+            'daily_withdraw_amount' => $withdrawConfig['daily_withdraw_amount'] ?? 500,
+            // 手续费
+            'fee_rate' => $withdrawConfig['fee_rate'] ?? 0,
+            // 审核配置
+            'auto_audit_amount' => $withdrawConfig['auto_audit_amount'] ?? 10,
+            'manual_audit_amount' => $withdrawConfig['manual_audit_amount'] ?? 50,
+            // 新用户限制
+            'new_user_withdraw_days' => $withdrawConfig['new_user_withdraw_days'] ?? 3,
+            // 风控阈值
+            'risk_reject_threshold' => $withdrawConfig['risk_reject_threshold'] ?? 80,
+            'risk_manual_threshold' => $withdrawConfig['risk_manual_threshold'] ?? 50,
+            // 同IP/设备限制
+            'same_ip_limit' => $withdrawConfig['same_ip_limit'] ?? 5,
+            'same_device_limit' => $withdrawConfig['same_device_limit'] ?? 3,
+            // 重试配置
+            'transfer_retry_count' => $withdrawConfig['transfer_retry_count'] ?? 3,
+            'transfer_retry_interval' => $withdrawConfig['transfer_retry_interval'] ?? 300,
         ];
-        
-        foreach ($defaults as $key => $value) {
-            if (!isset($config[$key])) {
-                $config[$key] = $value;
-            }
-        }
         
         return $config;
     }
