@@ -27,6 +27,7 @@ class SystemConfigService
     const GROUP_REDPACKET = 'redpacket';
     const GROUP_RISK = 'risk';
     const GROUP_SYSTEM = 'system';
+    const GROUP_WECHAT = 'wechat';
     
     /**
      * @var array 配置缓存
@@ -169,6 +170,43 @@ class SystemConfigService
             'token_ttl' => 604800,
             // 日志保留天数
             'log_retention_days' => 30,
+        ],
+        
+        // ==================== 微信配置 ====================
+        'wechat' => [
+            // 微信App登录配置
+            'wechat_app_enabled' => 0,
+            'wechat_app_appid' => '',
+            'wechat_app_secret' => '',
+            
+            // 微信小程序配置
+            'wechat_mini_enabled' => 0,
+            'wechat_mini_appid' => '',
+            'wechat_mini_secret' => '',
+            
+            // 微信公众号配置
+            'wechat_official_enabled' => 0,
+            'wechat_official_appid' => '',
+            'wechat_official_secret' => '',
+            
+            // 微信支付配置
+            'wechat_pay_enabled' => 0,
+            'wechat_pay_mchid' => '',
+            'wechat_pay_key' => '',
+            'wechat_pay_cert_pem' => '',
+            'wechat_pay_key_pem' => '',
+            'wechat_pay_notify_url' => '',
+            
+            // 企业付款配置（用于提现）
+            'wechat_transfer_enabled' => 0,
+            'wechat_transfer_mchid' => '',
+            'wechat_transfer_key' => '',
+            'wechat_transfer_cert_pem' => '',
+            'wechat_transfer_key_pem' => '',
+            
+            // 登录配置
+            'wechat_auto_register' => 1,
+            'wechat_bind_mobile' => 0,
         ],
     ];
     
@@ -496,5 +534,123 @@ class SystemConfigService
     {
         $rate = self::getCoinRate();
         return intval($cash * $rate);
+    }
+    
+    /**
+     * 获取微信配置
+     */
+    public static function getWechatConfig()
+    {
+        return self::getGroupConfig(self::GROUP_WECHAT);
+    }
+    
+    /**
+     * 检查微信App登录是否开启
+     */
+    public static function isWechatAppEnabled()
+    {
+        return self::get('wechat.wechat_app_enabled', false);
+    }
+    
+    /**
+     * 检查微信小程序登录是否开启
+     */
+    public static function isWechatMiniEnabled()
+    {
+        return self::get('wechat.wechat_mini_enabled', false);
+    }
+    
+    /**
+     * 检查微信公众号登录是否开启
+     */
+    public static function isWechatOfficialEnabled()
+    {
+        return self::get('wechat.wechat_official_enabled', false);
+    }
+    
+    /**
+     * 获取微信App配置
+     * @return array ['appid' => '', 'secret' => '']
+     */
+    public static function getWechatAppConfig()
+    {
+        return [
+            'appid' => self::get('wechat.wechat_app_appid', ''),
+            'secret' => self::get('wechat.wechat_app_secret', ''),
+            'enabled' => self::get('wechat.wechat_app_enabled', false),
+        ];
+    }
+    
+    /**
+     * 获取微信小程序配置
+     * @return array ['appid' => '', 'secret' => '']
+     */
+    public static function getWechatMiniConfig()
+    {
+        return [
+            'appid' => self::get('wechat.wechat_mini_appid', ''),
+            'secret' => self::get('wechat.wechat_mini_secret', ''),
+            'enabled' => self::get('wechat.wechat_mini_enabled', false),
+        ];
+    }
+    
+    /**
+     * 获取微信公众号配置
+     * @return array ['appid' => '', 'secret' => '']
+     */
+    public static function getWechatOfficialConfig()
+    {
+        return [
+            'appid' => self::get('wechat.wechat_official_appid', ''),
+            'secret' => self::get('wechat.wechat_official_secret', ''),
+            'enabled' => self::get('wechat.wechat_official_enabled', false),
+        ];
+    }
+    
+    /**
+     * 获取微信支付配置
+     * @return array
+     */
+    public static function getWechatPayConfig()
+    {
+        return [
+            'enabled' => self::get('wechat.wechat_pay_enabled', false),
+            'mchid' => self::get('wechat.wechat_pay_mchid', ''),
+            'key' => self::get('wechat.wechat_pay_key', ''),
+            'cert_pem' => self::get('wechat.wechat_pay_cert_pem', ''),
+            'key_pem' => self::get('wechat.wechat_pay_key_pem', ''),
+            'notify_url' => self::get('wechat.wechat_pay_notify_url', ''),
+        ];
+    }
+    
+    /**
+     * 获取企业付款配置
+     * @return array
+     */
+    public static function getWechatTransferConfig()
+    {
+        return [
+            'enabled' => self::get('wechat.wechat_transfer_enabled', false),
+            'mchid' => self::get('wechat.wechat_transfer_mchid', ''),
+            'key' => self::get('wechat.wechat_transfer_key', ''),
+            'cert_pem' => self::get('wechat.wechat_transfer_cert_pem', ''),
+            'key_pem' => self::get('wechat.wechat_transfer_key_pem', ''),
+        ];
+    }
+    
+    /**
+     * 是否自动注册
+     */
+    public static function isWechatAutoRegister()
+    {
+        return self::get('wechat.wechat_auto_register', true);
+    }
+    
+    /**
+     * 是否强制绑定手机
+     */
+    public static function isWechatBindMobile()
+    {
+        return self::get('wechat.wechat_bind_mobile', false);
     }
 }

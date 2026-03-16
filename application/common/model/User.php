@@ -12,6 +12,10 @@ use think\Model;
  * @method static mixed getByNickname($str) 通过昵称查询用户
  * @method static mixed getByMobile($str) 通过手机查询用户
  * @method static mixed getByEmail($str) 通过邮箱查询用户
+ * @method static mixed getByWechatOpenid($str) 通过微信App OpenID查询用户
+ * @method static mixed getByWechatUnionid($str) 通过微信UnionID查询用户
+ * @method static mixed getByWechatMiniOpenid($str) 通过微信小程序OpenID查询用户
+ * @method static mixed getByWechatOfficialOpenid($str) 通过微信公众号OpenID查询用户
  */
 class User extends Model
 {
@@ -159,5 +163,83 @@ class User extends Model
             }
         }
         return $level;
+    }
+
+    /**
+     * 通过微信App OpenID查询用户
+     * @param string $openid
+     * @return User|null
+     */
+    public static function getByWechatOpenid($openid)
+    {
+        return self::where('wechat_openid', $openid)->find();
+    }
+
+    /**
+     * 通过微信UnionID查询用户
+     * @param string $unionid
+     * @return User|null
+     */
+    public static function getByWechatUnionid($unionid)
+    {
+        return self::where('wechat_unionid', $unionid)->find();
+    }
+
+    /**
+     * 通过微信小程序OpenID查询用户
+     * @param string $openid
+     * @return User|null
+     */
+    public static function getByWechatMiniOpenid($openid)
+    {
+        return self::where('wechat_mini_openid', $openid)->find();
+    }
+
+    /**
+     * 通过微信公众号OpenID查询用户
+     * @param string $openid
+     * @return User|null
+     */
+    public static function getByWechatOfficialOpenid($openid)
+    {
+        return self::where('wechat_official_openid', $openid)->find();
+    }
+
+    /**
+     * 检查用户是否已绑定微信
+     * @param string $platform 平台: app/mini/official
+     * @return bool
+     */
+    public function isWechatBound($platform = 'app')
+    {
+        $field = 'wechat_openid';
+        if ($platform == 'mini') {
+            $field = 'wechat_mini_openid';
+        } elseif ($platform == 'official') {
+            $field = 'wechat_official_openid';
+        }
+        
+        return !empty($this->$field);
+    }
+
+    /**
+     * 获取用户的微信信息
+     * @return array
+     */
+    public function getWechatInfo()
+    {
+        return [
+            'openid' => $this->wechat_openid,
+            'unionid' => $this->wechat_unionid,
+            'mini_openid' => $this->wechat_mini_openid,
+            'official_openid' => $this->wechat_official_openid,
+            'nickname' => $this->wechat_nickname,
+            'avatar' => $this->wechat_avatar,
+            'gender' => $this->wechat_gender,
+            'city' => $this->wechat_city,
+            'province' => $this->wechat_province,
+            'country' => $this->wechat_country,
+            'bindtime' => $this->wechat_bindtime,
+        ];
     }
 }
