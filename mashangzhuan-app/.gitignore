@@ -1,0 +1,9 @@
+/unpackage/*
+/.idea/*
+/package-lock.json
+/android-native/*
+/nativeplugins/*
+/backend
+/.trae/*
+/docs/*
+.hbuilderx/launch.json
