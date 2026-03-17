@@ -20,7 +20,7 @@ class WebSocketService
     const API_PORT = 3003;
     
     // API 密钥
-    const API_KEY = 'your-secret-api-key';
+    const API_KEY = 'tswbkpym4e0yW2YA6w85Zj2Eb9KjH3J9TyKiX4tnGymcFZ7pm0Ynnsz29mxW6hQWyKexTBScMnKhphYpXXjAiA9p9RXaPnMQb2yzYTtXmWBaAyWfXAayrNw00hPtyrKfH6C6MabNzFZ4AEH2YKw04H2Gt63yxee65eT5bDxeBzS02DeYKCrZcinhtSk9y2JkbQCemQ8B7ARQaeXFEre6M6axMN39ws2ZBAhkwrpkWMWpYa4c2JJsyw6k91bBBW0i';
     
     // Swoole Server 实例
     private static $server = null;

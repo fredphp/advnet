@@ -30,6 +30,9 @@
 				<view class="loading-more" v-if="loading">
 					<text>加载中...</text>
 				</view>
+				<view class="connection-status" :class="{ connected: isConnected }">
+					<text>{{ isConnected ? '已连接' : '连接中...' }}</text>
+				</view>
 				<view v-for="(msg, index) in messages" :key="msg.id" :id="'msg-' + msg.id">
 					<!-- 系统消息 -->
 					<view class="system-message" v-if="msg.type === 'system'">
@@ -62,6 +65,7 @@
 	import ChatMessage from '@/components/chat/chatMessage.vue'
 	import RedbagMessage from '@/components/chat/redbagMessage.vue'
 	import AdBanner from '@/components/ad/adBanner.vue'
+	import socketService from '@/common/socket.js'
 
 	export default {
 		components: {
@@ -70,19 +74,28 @@
 			AdBanner
 		},
 		onLoad(opt) {
-			this.to_user_id = opt.user_id;
-			this.initScrollHeight();
+			
+			this.groupId = opt.group_id || 'default_group';
+			const userInfo = uni.getStorageSync('user_info') || {}
+			this.user_info = userInfo
+			
+			// this.initScrollHeight();
 			// 启动轮询自动发送消息
-			this.startAutoSendMessage();
+			// this.startAutoSendMessage();
+			
+			// 初始化 WebSocket
+			this.initSocket()
 		},
 		onUnload() {
-			// 清除定时器
-			this.stopAutoSendMessage();
+			// 断开 WebSocket 连接
+			socketService.disconnect()
 		},
 		data() {
 			return {
 				inputText: '',
-				to_user_id: 0,
+				groupId: '',
+				groupName: '红包群94',
+				onlineCount: 0,
 				user_info: {},
 				scrollTop: 0,
 				scrollViewRef: '',
@@ -94,158 +107,37 @@
 				pageSize: 20,
 				scrollHeight: 0,
 				hasMore: true,
-				// 轮询定时器
-				autoSendTimer: null,
-				// 自动发送消息的索引
-				autoMessageIndex: 0,
-				// 预设的自动发送消息列表
-				autoMessages: [
-					{
-						type: 'text',
-						content: '恭喜发财，大吉大利！',
-						sender: 'other',
-						user: {
-							nickname: '用户9527',
-							avatar: '/static/image/avatar.png'
-						}
-					},
-					{
-						type: 'redbag',
-						content: '恭喜发财，大吉大利',
-						sender: 'other',
-						status: 'unopened',
-						amount: 0.88,
-						user: {
-							nickname: '红包达人',
-							avatar: '/static/image/avatar.png'
-						}
-					},
-					{
-						type: 'img',
-						url: 'https://picsum.photos/400/300?random=1',
-						imgWidth: 400,
-						imgHeight: 300,
-						sender: 'other',
-						user: {
-							nickname: '图片分享者',
-							avatar: '/static/image/avatar.png'
-						}
-					},
-					{
-						type: 'redbag',
-						content: '恭喜发财，大吉大利',
-						sender: 'other',
-						status: 'opened',
-						amount: 1.68,
-						user: {
-							nickname: '幸运星',
-							avatar: '/static/image/avatar.png'
-						}
-					},
-					{
-						type: 'text',
-						content: '抢红包啦！手快有手慢无！',
-						sender: 'other',
-						user: {
-							nickname: '抢红包高手',
-							avatar: '/static/image/avatar.png'
-						}
-					},
-					{
-						type: 'img',
-						url: 'https://picsum.photos/400/300?random=2',
-						imgWidth: 400,
-						imgHeight: 300,
-						sender: 'other',
-						user: {
-							nickname: '美图分享',
-							avatar: '/static/image/avatar.png'
-						}
-					},
-					{
-						type: 'redbag',
-						content: '恭喜发财，大吉大利',
-						sender: 'other',
-						status: 'unopened',
-						amount: 5.20,
-						user: {
-							nickname: '财神爷',
-							avatar: '/static/image/avatar.png'
-						}
-					},
-					{
-						type: 'text',
-						content: '今天运气真好，抢到了大红包！',
-						sender: 'other',
-						user: {
-							nickname: '幸运儿',
-							avatar: '/static/image/avatar.png'
-						}
-					}
-				],
-				messages: [
-					{
-						"id": "msg_001",
-						"type": "text",
-						"content": "早上好呀，今天天气看起来不错～",
-						"time": "2026-02-04 09:05:30",
-						"sender": "other",
-						"user": {
-							nickname: '小明',
-							avatar: '/static/image/avatar.png'
-						}
-					},
-					{
-						"id": "msg_002",
-						"type": "redbag",
-						"content": "恭喜发财，大吉大利",
-						"time": "2026-02-04 09:06:15",
-						"sender": "other",
-						"status": "unopened",
-						"amount": 0.88,
-						"user": {
-							nickname: '红包达人',
-							avatar: '/static/image/avatar.png'
-						}
-					},
-					{
-						"id": "msg_003",
-						"type": "img",
-						"url": "https://picsum.photos/400/300?random=3",
-						"time": "2026-02-04 09:08:20",
-						"sender": "other",
-						"imgWidth": 400,
-						"imgHeight": 300,
-						"user": {
-							nickname: '图片分享者',
-							avatar: '/static/image/avatar.png'
-						}
-					},
-					{
-						"id": "msg_004",
-						"type": "redbag",
-						"content": "恭喜发财，大吉大利",
-						"time": "2026-02-04 09:10:00",
-						"sender": "other",
-						"status": "opened",
-						"amount": 1.68,
-						"user": {
-							nickname: '幸运星',
-							avatar: '/static/image/avatar.png'
-						}
-					},
-					{
-						"id": "msg_005",
-						"type": "text",
-						"content": "抢红包啦！",
-						"time": "2026-02-04 09:16:30",
-						"sender": "other",
-						"user": {
-							nickname: '抢红包高手',
-							avatar: '/static/image/avatar.png'
-						}
-					}
-				]
+				isConnected: false,
+				messages: [],
+				// // 轮询定时器
+				// autoSendTimer: null,
+				// // 自动发送消息的索引
+				// autoMessageIndex: 0,
+				// // 预设的自动发送消息列表
+				// autoMessages: [
+				// 	{
+				// 		type: 'text',
+				// 		content: '恭喜发财，大吉大利！',
+				// 		sender: 'other',
+				// 		user: {
+				// 			nickname: '用户9527',
+				// 			avatar: '/static/image/avatar.png'
+				// 		}
+				// 	}
+				// ],
+				// messages: [
+				// 	{
+				// 		"id": "msg_005",
+				// 		"type": "text",
+				// 		"content": "抢红包啦！",
+				// 		"time": "2026-02-04 09:16:30",
+				// 		"sender": "other",
+				// 		"user": {
+				// 			nickname: '抢红包高手',
+				// 			avatar: '/static/image/avatar.png'
+				// 		}
+				// 	}
+				// ]
 			}
 		},
 
@@ -264,6 +156,63 @@
 		},
 
 		methods: {
+			// 初始化 WebSocket
+			initSocket() {
+				// 连接 WebSocket
+				// ⚠️ 注意：如果是在 H5 环境，直接使用相对路径
+				// 如果是小程序或 App，需要使用完整的服务器地址
+				socketService.connect({
+					userId: this.user_info.id || this.user_info.user_id,
+					username: this.user_info.token || '',
+					groupId: this.groupId
+				})
+			  
+				// 监听连接成功
+				socketService.onConnected((data) => {
+					this.isConnected = true
+					this.onlineCount = data.onlineCount
+					console.log('WebSocket 认证成功')
+				})
+			  
+				// 监听认证失败
+				socketService.onAuthFailed((data) => {
+					this.isConnected = false
+					uni.showToast({
+						title: '认证失败，请重新登录',
+						icon: 'none'
+					})
+				})
+				// 监听在线人数
+				socketService.onOnlineCount((count) => {
+					this.onlineCount = count
+				})
+				// 监听任务通知（红包等）
+				socketService.onTask((task) => {
+					this.messages.push({
+						id: 'task_' + Date.now(),
+						type: 'redbag',
+						content: task.taskName,
+						amount: task.reward,
+						status: 'unopened',
+						time: task.time * 1000,
+						sender: 'other',
+						user: { nickname: '系统' }
+					})
+					this.scrollToBottom()
+				})
+				
+				// 监听系统消息
+				socketService.onSystemMessage((msg) => {
+					this.messages.push({
+						id: 'sys_' + Date.now(),
+						type: 'system',
+						content: msg.content,
+						time: Date.now(),
+						sender: 'system'
+					})
+					this.scrollToBottom()
+				})
+			},
 			// 返回上一页
 			goBack() {
 				uni.navigateBack();
@@ -284,51 +233,51 @@
 				const statusBarHeight = systemInfo.statusBarHeight || 0;
 				this.scrollHeight = systemInfo.windowHeight - navHeight - adHeight - tabbarHeight - statusBarHeight;
 			},
-			// 启动自动发送消息轮询
-			startAutoSendMessage() {
-				// 每3-8秒随机发送一条消息
-				const randomInterval = Math.floor(Math.random() * 5000) + 3000;
-				this.autoSendTimer = setInterval(() => {
-					this.sendAutoMessage();
-				}, randomInterval);
-			},
+			// // 启动自动发送消息轮询
+			// startAutoSendMessage() {
+			// 	// 每3-8秒随机发送一条消息
+			// 	const randomInterval = Math.floor(Math.random() * 5000) + 3000;
+			// 	this.autoSendTimer = setInterval(() => {
+			// 		this.sendAutoMessage();
+			// 	}, randomInterval);
+			// },
 			// 停止自动发送消息
-			stopAutoSendMessage() {
-				if (this.autoSendTimer) {
-					clearInterval(this.autoSendTimer);
-					this.autoSendTimer = null;
-				}
-			},
+			// stopAutoSendMessage() {
+			// 	if (this.autoSendTimer) {
+			// 		clearInterval(this.autoSendTimer);
+			// 		this.autoSendTimer = null;
+			// 	}
+			// },
 			// 发送自动消息
-			sendAutoMessage() {
-				if (this.autoMessageIndex >= this.autoMessages.length) {
-					this.autoMessageIndex = 0; // 循环发送
-				}
+			// sendAutoMessage() {
+			// 	if (this.autoMessageIndex >= this.autoMessages.length) {
+			// 		this.autoMessageIndex = 0; // 循环发送
+			// 	}
 
-				const templateMsg = this.autoMessages[this.autoMessageIndex];
-				const newMsg = {
-					id: 'auto_' + Date.now(),
-					type: templateMsg.type,
-					content: templateMsg.content,
-					time: new Date().getTime(),
-					sender: templateMsg.sender,
-					user: templateMsg.user
-				};
+			// 	const templateMsg = this.autoMessages[this.autoMessageIndex];
+			// 	const newMsg = {
+			// 		id: 'auto_' + Date.now(),
+			// 		type: templateMsg.type,
+			// 		content: templateMsg.content,
+			// 		time: new Date().getTime(),
+			// 		sender: templateMsg.sender,
+			// 		user: templateMsg.user
+			// 	};
 
-				// 根据消息类型添加额外字段
-				if (templateMsg.type === 'redbag') {
-					newMsg.status = templateMsg.status;
-					newMsg.amount = templateMsg.amount;
-				} else if (templateMsg.type === 'img') {
-					newMsg.url = templateMsg.url;
-					newMsg.imgWidth = templateMsg.imgWidth;
-					newMsg.imgHeight = templateMsg.imgHeight;
-				}
+			// 	// 根据消息类型添加额外字段
+			// 	if (templateMsg.type === 'redbag') {
+			// 		newMsg.status = templateMsg.status;
+			// 		newMsg.amount = templateMsg.amount;
+			// 	} else if (templateMsg.type === 'img') {
+			// 		newMsg.url = templateMsg.url;
+			// 		newMsg.imgWidth = templateMsg.imgWidth;
+			// 		newMsg.imgHeight = templateMsg.imgHeight;
+			// 	}
 
-				this.messages.push(newMsg);
-				this.autoMessageIndex++;
-				this.scrollToBottom();
-			},
+			// 	this.messages.push(newMsg);
+			// 	this.autoMessageIndex++;
+			// 	this.scrollToBottom();
+			// },
 			getHistoryMsg() {
 				// 加载历史消息逻辑
 			},
@@ -380,6 +329,18 @@
 </script>
 
 <style lang="scss" scoped>
+	.connection-status {
+		text-align: center;
+		padding: 10rpx;
+		background-color: #fff3cd;
+		color: #856404;
+		font-size: 24rpx;
+	  
+		&.connected {
+			background-color: #d4edda;
+			color: #155724;
+		}
+	}
 	.page-content {
 		background-color: #f5f5f5;
 		min-height: 100vh;
