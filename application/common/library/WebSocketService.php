@@ -407,17 +407,22 @@ class WebSocketService
         }
         
         try {
-            // 从数据库验证 token
+            // 获取 token 配置
+            $tokenConfig = \think\Config::get('token');
+            $encryptedToken = hash_hmac($tokenConfig['hashalgo'], $token, $tokenConfig['key']);
+            
+            // 从数据库验证加密后的 token
             $userToken = Db::name('user_token')
                 ->where('user_id', $userId)
-                ->where('token', $token)
+                ->where('token', $encryptedToken)  // 使用加密后的 token 查询
                 ->where('expiretime', '>', time())
                 ->find();
             
             return !empty($userToken);
         } catch (\Exception $e) {
-            // 如果表不存在，简单验证
-            return strlen($token) > 10;
+            // 如果出错，记录日志
+            \think\Log::error('WebSocket Token验证失败: ' . $e->getMessage());
+            return false;
         }
     }
 }

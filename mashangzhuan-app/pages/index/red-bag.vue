@@ -30,7 +30,7 @@
 				<view class="loading-more" v-if="loading">
 					<text>加载中...</text>
 				</view>
-				<view class="connection-status" :class="{ connected: isConnected }">
+				<view class="connection-status" v-if="showConnected" :class="{ connected: isConnected }">
 					<text>{{ isConnected ? '已连接' : '连接中...' }}</text>
 				</view>
 				<view v-for="(msg, index) in messages" :key="msg.id" :id="'msg-' + msg.id">
@@ -105,6 +105,7 @@
 				keyboardHeight: 0,
 				isKeyboardVisible: false,
 				loading: false,
+				showConnected:true,
 				page: 1,
 				pageSize: 20,
 				scrollHeight: 0,
@@ -163,14 +164,9 @@
 				// 连接 WebSocket
 				// ⚠️ 注意：如果是在 H5 环境，直接使用相对路径
 				// 如果是小程序或 App，需要使用完整的服务器地址
-				console.log({
-					userId: this.user_info.id || this.user_info.user_id,
-					username: this.user_info.token || '',
-					groupId: this.groupId
-				})
 				socketService.connect({
 					userId: this.user_info.id || this.user_info.user_id,
-					username: this.user_info.token || '',
+					token: this.user_info.token || '',
 					groupId: this.groupId
 				})
 			  
@@ -178,7 +174,9 @@
 				socketService.onConnected((data) => {
 					this.isConnected = true
 					this.onlineCount = data.onlineCount
-					console.log('WebSocket 认证成功')
+					setTimeout(() => {
+						this.showConnected = false;
+					},1000)
 				})
 			  
 				// 监听认证失败
@@ -195,6 +193,7 @@
 				})
 				// 监听任务通知（红包等）
 				socketService.onTask((task) => {
+					console.log("任务------",task);
 					this.messages.push({
 						id: 'task_' + Date.now(),
 						type: 'redbag',
