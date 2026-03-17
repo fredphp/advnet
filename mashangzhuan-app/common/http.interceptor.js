@@ -4,7 +4,8 @@ let noLoginUrl = [
 	'/addons/shop/api.common/area',
 	'/addons/shop/api.ems/send',
 	'/addons/shop/api.sms/send',
-	'/addons/shop/api.login/login',
+	// '/addons/shop/api.login/login',
+	'/api/user/login',
 	'/addons/shop/api.login/mobilelogin',
 	'/addons/shop/api.login/register',
 	'/addons/shop/api.login/resetpwd',
@@ -51,7 +52,7 @@ const getSessionId = function(vm) {
 // 同时，我们也可以在此使用getApp().globalData，如果你把token放在getApp().globalData的话，也是可以使用的
 const install = (Vue, vm) => {
 	// let url = 'http://mashangzhuan.dev.coco3g.net';
-	let url = 'http://mashangzhuan.dev.coco3g.net';
+	let url = 'http://adv.cocos2026.com';
 	// #ifdef H5
 		if(typeof window.fastUrl !== 'undefined'){
 			url = window.fastUrl;

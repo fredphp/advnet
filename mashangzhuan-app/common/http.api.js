@@ -81,7 +81,8 @@ const install = (Vue, vm) => {
 	// 登录	
 	vm.$api.getEmsSend 		  	= async (params = {}) => await vm.$u.post('/addons/shop/api.ems/send', params);
 	vm.$api.getSmsSend 		  	= async (params = {}) => await vm.$u.post('/addons/shop/api.sms/send', params);
-	vm.$api.goLogin 		  	= async (params = {}) => await vm.$u.post('/addons/shop/api.login/login', params);
+	// vm.$api.goLogin 		  	= async (params = {}) => await vm.$u.post('/addons/shop/api.login/login', params);
+	vm.$api.goLogin 		  	= async (params = {}) => await vm.$u.post('/api/user/login', params);
 	vm.$api.mobilelogin 	  	= async (params = {}) => await vm.$u.post('/addons/shop/api.login/mobilelogin', params);
 	vm.$api.goRegister 		  	= async (params = {}) => await vm.$u.post('/addons/shop/api.login/register', params);
 	vm.$api.goResetpwd 		  	= async (params = {}) => await vm.$u.post('/addons/shop/api.login/resetpwd', params);

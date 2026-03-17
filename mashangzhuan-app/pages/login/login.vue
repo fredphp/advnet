@@ -117,7 +117,10 @@
 							this.$u.toast(res.msg);
 							return;
 						}
-						this.$u.vuex('vuex_token', res.data.token);
+						const userInfo = JSON.parse(JSON.stringify(res.data.userinfo));
+						this.$u.vuex('vuex_token', res.data.userinfo.token);
+						uni.setStorageSync('user_info', userInfo);
+			
 						this.success();
 					} else {
 						this.$u.toast('验证失败');

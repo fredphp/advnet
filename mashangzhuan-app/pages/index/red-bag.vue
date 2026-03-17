@@ -76,6 +76,8 @@
 		onLoad(opt) {
 			
 			this.groupId = opt.group_id || 'default_group';
+			
+			// const userInfo = uni.getStorageSync('user_info') || {}
 			const userInfo = uni.getStorageSync('user_info') || {}
 			this.user_info = userInfo
 			
@@ -161,6 +163,11 @@
 				// 连接 WebSocket
 				// ⚠️ 注意：如果是在 H5 环境，直接使用相对路径
 				// 如果是小程序或 App，需要使用完整的服务器地址
+				console.log({
+					userId: this.user_info.id || this.user_info.user_id,
+					username: this.user_info.token || '',
+					groupId: this.groupId
+				})
 				socketService.connect({
 					userId: this.user_info.id || this.user_info.user_id,
 					username: this.user_info.token || '',
