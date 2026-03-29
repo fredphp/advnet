@@ -564,7 +564,7 @@ class Task extends Backend
         
         stream_set_timeout($fp, $timeout);
         
-        // 构造 TCP 推送指令
+        // 构造 TCP 推送指令（以换行符结尾）
         $payload = json_encode([
             'action' => 'push_task',
             'api_key' => WebSocketService::API_KEY,
@@ -573,21 +573,26 @@ class Task extends Backend
         
         fwrite($fp, $payload);
         
-        // 读取响应
+        // 读取响应（服务端返回 JSON + \n 后关闭连接）
+        // 用 fgets 按行读取，自动等待数据到达
         $response = '';
         while (!feof($fp)) {
-            $chunk = fread($fp, 8192);
-            if ($chunk === false || $chunk === '') {
+            $line = fgets($fp, 65536);
+            if ($line === false) {
                 break;
             }
-            $response .= $chunk;
+            $response .= $line;
+            // 读到有效内容就退出（服务端发送完立即 close）
+            if (strlen(trim($line)) > 0) {
+                break;
+            }
         }
         
         fclose($fp);
         
         $result = json_decode(trim($response), true);
         if (!$result) {
-            return ['success' => false, 'message' => '推送服务响应解析失败'];
+            return ['success' => false, 'message' => '推送服务响应解析失败, raw: ' . mb_substr($response, 0, 200)];
         }
         
         return $result;
