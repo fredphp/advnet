@@ -6,6 +6,7 @@ use app\common\controller\Backend;
 use app\common\model\RedPacketTask as RedPacketTaskModel;
 use app\common\model\RedPacketTaskSplit;
 use app\common\model\RedPacketResource;
+use app\common\library\WebSocketService;
 use think\Db;
 use think\Exception;
 use think\Env;
@@ -553,8 +554,9 @@ class Task extends Backend
     protected function sendPushNotification($data)
     {
         // 推送服务配置 - 使用网关访问
-        $pushServiceUrl = Env::get('push.service_url', 'http://localhost:3003/api/push-task?XTransformPort=3003');
-        $pushApiKey = Env::get('push.api_key', 'redpacket-push-secret-key-2024');
+        $pushServiceUrl = Env::get('push.service_url', 'http://localhost:3003/api/push-task');
+        // 使用与 WebSocketService 一致的 API Key
+        $pushApiKey = WebSocketService::API_KEY;
 
         try {
             $ch = curl_init();

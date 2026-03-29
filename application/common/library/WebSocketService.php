@@ -285,19 +285,38 @@ class WebSocketService
      */
     private static function apiPushTask($data)
     {
+        // 兼容 snake_case (buildPushData) 和 camelCase 两种格式
         $message = [
             'type' => 'task_notification',
-            'taskId' => $data['taskId'] ?? 0,
-            'taskName' => $data['taskName'] ?? '',
-            'taskType' => $data['taskType'] ?? '',
-            'reward' => $data['reward'] ?? 0,
-            'content' => $data['content'] ?? '',
-            'time' => time(),
+            'taskId'              => $data['taskId'] ?? $data['task_id'] ?? 0,
+            'taskName'            => $data['taskName'] ?? $data['task_name'] ?? '',
+            'taskType'            => $data['taskType'] ?? $data['type'] ?? '',
+            'description'         => $data['description'] ?? '',
+            'display_title'       => $data['display_title'] ?? ($data['taskName'] ?? $data['task_name'] ?? ''),
+            'display_description' => $data['display_description'] ?? ($data['description'] ?? ''),
+            'show_red_packet'     => $data['show_red_packet'] ?? false,
+            'background_image'    => $data['background_image'] ?? '',
+            'jump_url'            => $data['jump_url'] ?? '',
+            'status'              => $data['status'] ?? '',
+            'sender_name'         => $data['sender_name'] ?? '',
+            'sender_avatar'       => $data['sender_avatar'] ?? '',
+            'resource'            => $data['resource'] ?? null,
+            'reward'              => $data['reward'] ?? 0,
+            'content'             => $data['content'] ?? ($data['description'] ?? ''),
+            'time'                => $data['timestamp'] ?? time(),
         ];
-        
+
+        // 如果有聊天相关字段，保留
+        if (!empty($data['chat_content'])) {
+            $message['chat_content'] = $data['chat_content'];
+        }
+        if (!empty($data['chat_duration'])) {
+            $message['chat_duration'] = $data['chat_duration'];
+        }
+
         self::broadcast($message);
-        
-        return ['success' => true, 'message' => '推送成功'];
+
+        return ['success' => true, 'message' => '推送成功', 'online_count' => self::$onlineCount];
     }
     
     /**
