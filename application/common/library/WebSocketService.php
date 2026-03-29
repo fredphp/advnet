@@ -281,9 +281,9 @@ class WebSocketService
     }
     
     /**
-     * 推送红包任务
+     * 推送红包任务（供 API 调用）
      */
-    private static function apiPushTask($data)
+    public static function apiPushTask($data)
     {
         // 兼容 snake_case (buildPushData) 和 camelCase 两种格式
         $message = [
@@ -374,19 +374,33 @@ class WebSocketService
     /**
      * 广播消息给所有连接
      */
-    private static function broadcast($message)
+    public static function broadcast($message)
     {
         if (!self::$server) {
+            echo "[广播] 失败: 服务未启动\n";
             return;
         }
         
+        $connCount = count(self::$connections);
+        echo "[广播] 开始广播，在线连接数: {$connCount}\n";
+        
         $jsonMessage = json_encode($message, JSON_UNESCAPED_UNICODE);
         
+        $sentCount = 0;
         foreach (self::$connections as $fd => $userId) {
             if (self::$server->isEstablished($fd)) {
-                self::$server->push($fd, $jsonMessage);
+                $result = self::$server->push($fd, $jsonMessage);
+                if ($result) {
+                    $sentCount++;
+                } else {
+                    echo "[广播] fd={$fd} userId={$userId} 推送失败\n";
+                }
+            } else {
+                echo "[广播] fd={$fd} userId={$userId} 连接未建立，跳过\n";
             }
         }
+        
+        echo "[广播] 完成，成功发送: {$sentCount}/{$connCount}\n";
     }
     
     /**

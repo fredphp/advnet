@@ -22,22 +22,29 @@ class SocketService {
     this.options = options
     const { userId, token } = options
     
-    // 支持通过 options 传入 serverUrl，或根据当前环境自动判断
+    // WebSocket 连接地址
+    // 优先级: options.serverUrl > Nginx 代理 /ws > 直连 host:3002
     let serverUrl = options.serverUrl || ''
     if (!serverUrl) {
-      // 自动检测环境
       const href = window.location || {}
       const host = href.hostname || 'localhost'
       const protocol = href.protocol === 'https:' ? 'wss:' : 'ws:'
-      serverUrl = `${protocol}//${host}:3002`
+      
+      if (host === 'localhost' || host === '127.0.0.1') {
+        // 本地开发：直连 WebSocket 端口
+        serverUrl = `${protocol}//${host}:3002`
+      } else {
+        // 生产环境：通过 Nginx 代理 (location /ws)
+        serverUrl = `${protocol}//${host}/ws`
+      }
     }
     
-    console.log('正在连接 WebSocket:', serverUrl)
+    console.log('[Socket] 正在连接:', serverUrl)
     
     this.socket = new WebSocket(serverUrl)
     
     this.socket.onopen = () => {
-      console.log('✅ WebSocket 已连接')
+      console.log('[Socket] ✅ 已连接')
       this.isConnected = true
       this.reconnectAttempts = 0
       
@@ -51,29 +58,29 @@ class SocketService {
     this.socket.onmessage = (event) => {
       try {
         const message = JSON.parse(event.data)
-        console.log('📩 收到消息:', message)
+        console.log('[Socket] 📩 收到消息, type:', message.type, message)
         this.handleMessage(message)
       } catch (e) {
-        console.error('消息解析错误:', e)
+        console.error('[Socket] 消息解析错误:', e, event.data)
       }
     }
     
     this.socket.onclose = (event) => {
-      console.log('🔌 WebSocket 已断开', event.code, event.reason)
+      console.log('[Socket] 🔌 已断开, code:', event.code, 'reason:', event.reason)
       this.isConnected = false
       this.stopHeartbeat()
       this.attemptReconnect()
     }
     
     this.socket.onerror = (error) => {
-      console.error('❌ WebSocket 错误:', error)
+      console.error('[Socket] ❌ 连接错误, serverUrl:', serverUrl)
     }
     
     return this.socket
   }
 
   authenticate(userId, token) {
-    console.log('发送认证消息, userId:', userId)
+    console.log('[Socket] 发送认证, userId:', userId, ', token:', token ? '有' : '无')
     this.send({
       type: 'auth',
       userId: userId || '',
@@ -84,26 +91,34 @@ class SocketService {
   send(data) {
     if (this.socket && this.socket.readyState === WebSocket.OPEN) {
       this.socket.send(JSON.stringify(data))
+    } else {
+      console.warn('[Socket] 发送失败，连接状态:', this.socket ? this.socket.readyState : 'null')
     }
   }
 
   handleMessage(message) {
-    switch (message.type) {
+    const type = message.type
+    console.log('[Socket] handleMessage -> type:', type)
+    
+    switch (type) {
       case 'connected':
-        console.log('✅ 认证成功，在线人数:', message.onlineCount)
+        console.log('[Socket] ✅ 认证成功, onlineCount:', message.onlineCount)
         if (this.onConnectedCallback) {
           this.onConnectedCallback(message)
+        } else {
+          console.warn('[Socket] ⚠️ onConnected 回调未注册')
         }
         break
         
       case 'auth_failed':
-        console.error('❌ 认证失败:', message.msg)
+        console.error('[Socket] ❌ 认证失败:', message.msg)
         if (this.onAuthFailedCallback) {
           this.onAuthFailedCallback(message)
         }
         break
         
       case 'pong':
+        // 心跳响应，静默处理
         break
         
       case 'online_count':
@@ -113,8 +128,11 @@ class SocketService {
         break
         
       case 'task_notification':
+        console.log('[Socket] 🎯 收到 task_notification, 回调已注册:', !!this.onTaskCallback)
         if (this.onTaskCallback) {
           this.onTaskCallback(message)
+        } else {
+          console.warn('[Socket] ⚠️ onTask 回调未注册！')
         }
         break
         
@@ -124,8 +142,14 @@ class SocketService {
         }
         break
         
+      case 'chat_message':
+        if (this.onChatMessageCallback) {
+          this.onChatMessageCallback(message)
+        }
+        break
+        
       default:
-        console.log('未知消息类型:', message.type)
+        console.log('[Socket] 未处理的消息类型:', type, message)
     }
   }
 
@@ -144,12 +168,17 @@ class SocketService {
   }
 
   attemptReconnect() {
-    if (this.reconnectAttempts >= this.maxReconnectAttempts) return
+    if (this.reconnectAttempts >= this.maxReconnectAttempts) {
+      console.error('[Socket] 达到最大重连次数:', this.maxReconnectAttempts)
+      return
+    }
     
     this.reconnectAttempts++
     const delay = Math.min(1000 * this.reconnectAttempts, 10000)
+    console.log('[Socket] 将在', delay / 1000, '秒后重连, 第', this.reconnectAttempts, '次')
     
     this.reconnectTimer = setTimeout(() => {
+      console.log('[Socket] 开始重连...')
       this.connect(this.options)
     }, delay)
   }
@@ -166,6 +195,7 @@ class SocketService {
     this.stopHeartbeat()
     if (this.reconnectTimer) {
       clearTimeout(this.reconnectTimer)
+      this.reconnectTimer = null
     }
     if (this.socket) {
       this.socket.close()
