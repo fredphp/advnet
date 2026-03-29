@@ -550,43 +550,37 @@ class Task extends Backend
 
     /**
      * 发送推送通知
-     * 优先直接调用 WebSocketService（同进程），回退到 HTTP 方式
+     * 通过 HTTP 调用 WebSocket API（Swoole 独立进程，不能直接调用）
      */
     protected function sendPushNotification($data)
     {
+        $pushServiceUrl = Env::get('push.service_url', 'http://127.0.0.1:3003/api/push-task');
+        $pushApiKey = WebSocketService::API_KEY;
+
         try {
-            // 优先方式：直接调用 WebSocketService（同一个 PHP 进程）
-            $result = WebSocketService::apiPushTask($data);
-            return $result;
-        } catch (Exception $e) {
-            // 回退方式：通过 HTTP 调用 WebSocket API
-            $pushServiceUrl = Env::get('push.service_url', 'http://127.0.0.1:3003/api/push-task');
-            $pushApiKey = WebSocketService::API_KEY;
+            $ch = curl_init();
+            curl_setopt($ch, CURLOPT_URL, $pushServiceUrl);
+            curl_setopt($ch, CURLOPT_POST, true);
+            curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
+            curl_setopt($ch, CURLOPT_HTTPHEADER, [
+                'Content-Type: application/json',
+                'X-API-Key: ' . $pushApiKey
+            ]);
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($ch, CURLOPT_TIMEOUT, 10);
 
-            try {
-                $ch = curl_init();
-                curl_setopt($ch, CURLOPT_URL, $pushServiceUrl);
-                curl_setopt($ch, CURLOPT_POST, true);
-                curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
-                curl_setopt($ch, CURLOPT_HTTPHEADER, [
-                    'Content-Type: application/json',
-                    'X-API-Key: ' . $pushApiKey
-                ]);
-                curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-                curl_setopt($ch, CURLOPT_TIMEOUT, 10);
+            $response = curl_exec($ch);
+            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            $curlError = curl_error($ch);
+            curl_close($ch);
 
-                $response = curl_exec($ch);
-                $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-                curl_close($ch);
-
-                if ($httpCode == 200) {
-                    return json_decode($response, true);
-                } else {
-                    return ['success' => false, 'message' => 'HTTP 回退也失败: ' . $httpCode . ', 直接调用错误: ' . $e->getMessage()];
-                }
-            } catch (Exception $e2) {
-                return ['success' => false, 'message' => '直接调用错误: ' . $e->getMessage() . ', HTTP回退错误: ' . $e2->getMessage()];
+            if ($httpCode == 200) {
+                return json_decode($response, true);
+            } else {
+                return ['success' => false, 'message' => "HTTP Error: {$httpCode}, curl: {$curlError}"];
             }
+        } catch (Exception $e) {
+            return ['success' => false, 'message' => $e->getMessage()];
         }
     }
 

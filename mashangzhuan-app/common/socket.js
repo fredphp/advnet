@@ -30,11 +30,13 @@ class SocketService {
       const host = href.hostname || 'localhost'
       const protocol = href.protocol === 'https:' ? 'wss:' : 'ws:'
       
+      // 生产环境（非 localhost）必须通过 Nginx 代理 /ws 连接服务器 WebSocket
+      // 本地开发直连 :3002
       if (host === 'localhost' || host === '127.0.0.1') {
-        // 本地开发：直连 WebSocket 端口
         serverUrl = `${protocol}//${host}:3002`
       } else {
-        // 生产环境：通过 Nginx 代理 (location /ws)
+        // 生产环境: wss://advnet.cocos2026.cn/ws
+        // 需要服务器 Nginx 配置 location /ws 代理到 127.0.0.1:3002
         serverUrl = `${protocol}//${host}/ws`
       }
     }
