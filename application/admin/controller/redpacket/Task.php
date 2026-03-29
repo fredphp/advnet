@@ -9,7 +9,6 @@ use app\common\model\RedPacketResource;
 use app\common\library\WebSocketService;
 use think\Db;
 use think\Exception;
-use think\Env;
 
 /**
  * 红包任务管理
@@ -549,39 +548,49 @@ class Task extends Backend
     }
 
     /**
-     * 发送推送通知
-     * 通过 HTTP 调用 WebSocket API（Swoole 独立进程，不能直接调用）
+     * 发送推送通知（纯 TCP，不走 HTTP）
+     * 通过 fsockopen 直连 Swoole 内部 TCP 端口发送推送指令
      */
     protected function sendPushNotification($data)
     {
-        $pushServiceUrl = Env::get('push.service_url', 'http://127.0.0.1:3003/api/push-task');
-        $pushApiKey = WebSocketService::API_KEY;
-
-        try {
-            $ch = curl_init();
-            curl_setopt($ch, CURLOPT_URL, $pushServiceUrl);
-            curl_setopt($ch, CURLOPT_POST, true);
-            curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
-            curl_setopt($ch, CURLOPT_HTTPHEADER, [
-                'Content-Type: application/json',
-                'X-API-Key: ' . $pushApiKey
-            ]);
-            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-            curl_setopt($ch, CURLOPT_TIMEOUT, 10);
-
-            $response = curl_exec($ch);
-            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-            $curlError = curl_error($ch);
-            curl_close($ch);
-
-            if ($httpCode == 200) {
-                return json_decode($response, true);
-            } else {
-                return ['success' => false, 'message' => "HTTP Error: {$httpCode}, curl: {$curlError}"];
-            }
-        } catch (Exception $e) {
-            return ['success' => false, 'message' => $e->getMessage()];
+        $host = '127.0.0.1';
+        $port = 3003;
+        $timeout = 5;
+        
+        $fp = @fsockopen($host, $port, $errno, $errstr, $timeout);
+        if (!$fp) {
+            return ['success' => false, 'message' => "无法连接推送服务({$host}:{$port}): [{$errno}] {$errstr}"];
         }
+        
+        stream_set_timeout($fp, $timeout);
+        
+        // 构造 TCP 推送指令
+        $payload = json_encode([
+            'action' => 'push_task',
+            'api_key' => WebSocketService::API_KEY,
+            'data' => $data
+        ], JSON_UNESCAPED_UNICODE) . "\n";
+        
+        fwrite($fp, $payload);
+        
+        // 读取响应
+        $response = '';
+        while (!feof($fp)) {
+            $chunk = fread($fp, 8192);
+            if ($chunk === false || $chunk === '') {
+                break;
+            }
+            $response .= $chunk;
+        }
+        
+        fclose($fp);
+        
+        $result = json_decode(trim($response), true);
+        if (!$result) {
+            return ['success' => false, 'message' => '推送服务响应解析失败'];
+        }
+        
+        return $result;
     }
 
     /**

@@ -75,11 +75,73 @@ class WebSocketService
             ]);
         }
         
-        // 添加 HTTP 端口用于内部 API
+        // 添加内部 TCP 推送端口（纯 TCP，不走 HTTP）
+        // PHP-FPM 通过 fsockopen 直连此端口发送推送指令
         $apiServer = self::$server->addListener('0.0.0.0', $apiPort, SWOOLE_SOCK_TCP);
-        $apiServer->set([
-            'open_http_protocol' => true,
-        ]);
+        // 不设置 open_http_protocol，使用原始 TCP 协议
+        
+        // TCP 内部连接事件
+        $apiServer->on('connect', function ($server, $fd) {
+            echo "[TCP] 内部连接建立: fd={$fd}\n";
+        });
+        
+        $apiServer->on('close', function ($server, $fd) {
+            echo "[TCP] 内部连接断开: fd={$fd}\n";
+        });
+        
+        // TCP 内部推送事件（替代原来的 HTTP API）
+        $apiServer->on('receive', function ($server, $fd, $reactor_id, $data) {
+            $body = trim($data);
+            if (empty($body)) {
+                $server->send($fd, json_encode(['success' => false, 'error' => '空数据'], JSON_UNESCAPED_UNICODE) . "\n");
+                $server->close($fd);
+                return;
+            }
+            
+            $request = json_decode($body, true);
+            if (!$request) {
+                $server->send($fd, json_encode(['success' => false, 'error' => '无效的JSON'], JSON_UNESCAPED_UNICODE) . "\n");
+                $server->close($fd);
+                return;
+            }
+            
+            // 验证密钥
+            $apiKey = $request['api_key'] ?? '';
+            if ($apiKey !== self::API_KEY) {
+                echo "[TCP] 认证失败: fd={$fd}\n";
+                $server->send($fd, json_encode(['success' => false, 'error' => 'Unauthorized'], JSON_UNESCAPED_UNICODE) . "\n");
+                $server->close($fd);
+                return;
+            }
+            
+            $action = $request['action'] ?? '';
+            $payload = $request['data'] ?? [];
+            
+            echo "[TCP] 收到指令: {$action}, fd={$fd}\n";
+            
+            $result = ['success' => false, 'error' => '未知操作: ' . $action];
+            
+            switch ($action) {
+                case 'push_task':
+                    $result = self::apiPushTask($payload);
+                    break;
+                case 'system_message':
+                    $result = self::apiSystemMessage($payload);
+                    break;
+                case 'broadcast':
+                    $result = self::apiBroadcast($payload);
+                    break;
+                case 'online_count':
+                    $result = ['success' => true, 'count' => self::$onlineCount];
+                    break;
+                case 'connections':
+                    $result = ['success' => true, 'count' => self::$onlineCount, 'users' => array_keys(self::$userConnections)];
+                    break;
+            }
+            
+            $server->send($fd, json_encode($result, JSON_UNESCAPED_UNICODE) . "\n");
+            $server->close($fd);
+        });
         
         // WebSocket 连接事件
         self::$server->on('open', function ($server, $request) {
@@ -113,27 +175,7 @@ class WebSocketService
             }
         });
         
-        // API 请求事件
-        $apiServer->on('request', function ($request, $response) {
-            // 验证 API Key
-            $apiKey = $request->header['x-api-key'] ?? '';
-            
-            if ($apiKey !== self::API_KEY) {
-                $response->status(401);
-                $response->header('Content-Type', 'application/json');
-                $response->end(json_encode(['success' => false, 'error' => 'Unauthorized']));
-                return;
-            }
-            
-            $path = $request->server['request_uri'] ?? '/';
-            $method = $request->server['request_method'] ?? 'GET';
-            $body = $request->rawContent() ? json_decode($request->rawContent(), true) : [];
-            
-            $result = self::handleApiRequest($path, $method, $body);
-            
-            $response->header('Content-Type', 'application/json');
-            $response->end(json_encode($result, JSON_UNESCAPED_UNICODE));
-        });
+        // HTTP API 已移除，全部通过 TCP 推送端口（3003）通信
         
         echo "\033[32mWebSocket 服务启动成功!\033[0m\n";
         
@@ -254,32 +296,7 @@ class WebSocketService
         }
     }
     
-    /**
-     * 处理 API 请求
-     */
-    private static function handleApiRequest($path, $method, $body)
-    {
-        switch ($path) {
-            case '/api/push-task':
-                return self::apiPushTask($body);
-                
-            case '/api/system-message':
-                return self::apiSystemMessage($body);
-                
-            case '/api/broadcast':
-                return self::apiBroadcast($body);
-                
-            case '/api/online-count':
-                return ['success' => true, 'count' => self::$onlineCount];
-                
-            case '/api/connections':
-                return ['success' => true, 'count' => self::$onlineCount, 'users' => array_keys(self::$userConnections)];
-                
-            default:
-                return ['success' => false, 'error' => '未知的接口'];
-        }
-    }
-    
+
     /**
      * 推送红包任务（供 API 调用）
      */
