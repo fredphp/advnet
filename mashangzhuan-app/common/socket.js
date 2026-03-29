@@ -22,9 +22,15 @@ class SocketService {
     this.options = options
     const { userId, token } = options
     
-    // ⚠️ 本地开发：直接连接 localhost:3002
-    // 不需要 wss://，不需要 XTransformPort
-    const serverUrl = 'ws://localhost:3002'
+    // 支持通过 options 传入 serverUrl，或根据当前环境自动判断
+    let serverUrl = options.serverUrl || ''
+    if (!serverUrl) {
+      // 自动检测环境
+      const href = window.location || {}
+      const host = href.hostname || 'localhost'
+      const protocol = href.protocol === 'https:' ? 'wss:' : 'ws:'
+      serverUrl = `${protocol}//${host}:3002`
+    }
     
     console.log('正在连接 WebSocket:', serverUrl)
     
@@ -154,6 +160,7 @@ class SocketService {
   onOnlineCount(callback) { this.onOnlineCountCallback = callback }
   onTask(callback) { this.onTaskCallback = callback }
   onSystemMessage(callback) { this.onSystemMessageCallback = callback }
+  onChatMessage(callback) { this.onChatMessageCallback = callback }
 
   disconnect() {
     this.stopHeartbeat()
