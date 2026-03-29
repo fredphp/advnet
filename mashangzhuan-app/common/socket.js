@@ -23,22 +23,10 @@ class SocketService {
     const { userId, token } = options
     
     // WebSocket 连接地址
-    // 优先级: options.serverUrl > Nginx 代理 /ws > 直连 host:3002
+    // 优先级: options.serverUrl > 自动推导
     let serverUrl = options.serverUrl || ''
     if (!serverUrl) {
-      const href = window.location || {}
-      const host = href.hostname || 'localhost'
-      const protocol = href.protocol === 'https:' ? 'wss:' : 'ws:'
-      
-      // 生产环境（非 localhost）必须通过 Nginx 代理 /ws 连接服务器 WebSocket
-      // 本地开发直连 :3002
-      if (host === 'localhost' || host === '127.0.0.1') {
-        serverUrl = `${protocol}//${host}:3002`
-      } else {
-        // 生产环境: wss://advnet.cocos2026.cn/ws
-        // 需要服务器 Nginx 配置 location /ws 代理到 127.0.0.1:3002
-        serverUrl = `${protocol}//${host}/ws`
-      }
+      serverUrl = this._autoDetectServerUrl()
     }
     
     console.log('[Socket] 正在连接:', serverUrl)
@@ -81,8 +69,30 @@ class SocketService {
     return this.socket
   }
 
+  /**
+   * 自动推导 WebSocket 服务器地址
+   * 核心逻辑: 取当前页面 hostname，替换端口为 3002
+   * 这样无论本地开发还是线上部署，都能正确连接到对应环境的 WebSocket
+   */
+  _autoDetectServerUrl() {
+    if (typeof window === 'undefined') return 'ws://localhost:3002'
+
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
+    const hostname = window.location.hostname
+
+    // 如果是本地开发，直连本地 WebSocket
+    if (hostname === 'localhost' || hostname === '127.0.0.1') {
+      return `${protocol}//${hostname}:3002`
+    }
+
+    // 线上环境: 使用当前页面所在域名的 3002 端口
+    // 例如: 页面在 adv.cocos2026.com:8080 → WebSocket 连 ws://adv.cocos2026.com:3002
+    // 例如: 页面在 advnet.cocos2026.cn → WebSocket 连 ws://advnet.cocos2026.cn:3002
+    return `${protocol}//${hostname}:3002`
+  }
+
   authenticate(userId, token) {
-    console.log('[Socket] 发送认证, userId:', userId, ', token:', token ? '有' : '无')
+    console.log('[Socket] 发送认证, userId:', userId, ', token:', token ? '有(' + token.length + '字符)' : '无')
     this.send({
       type: 'auth',
       userId: userId || '',
@@ -100,15 +110,12 @@ class SocketService {
 
   handleMessage(message) {
     const type = message.type
-    console.log('[Socket] handleMessage -> type:', type)
     
     switch (type) {
       case 'connected':
         console.log('[Socket] ✅ 认证成功, onlineCount:', message.onlineCount)
         if (this.onConnectedCallback) {
           this.onConnectedCallback(message)
-        } else {
-          console.warn('[Socket] ⚠️ onConnected 回调未注册')
         }
         break
         
@@ -120,7 +127,6 @@ class SocketService {
         break
         
       case 'pong':
-        // 心跳响应，静默处理
         break
         
       case 'online_count':
