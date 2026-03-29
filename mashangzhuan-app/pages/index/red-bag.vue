@@ -167,7 +167,12 @@
                                 socketService.connect({
                                         userId: this.user_info.id || this.user_info.user_id,
                                         token: this.user_info.token || '',
-                                        groupId: this.groupId
+                                        groupId: this.groupId,
+                                        // WebSocket 服务器地址
+                                        // 本地开发连本地 localhost:3002
+                                        // 生产环境连服务器（需要 Nginx 配置 /ws 代理）
+                                        // 如果 Nginx 未配 /ws 代理，可直接连 ws://服务器IP:3002
+                                        serverUrl: 'ws://advnet.cocos2026.cn:3002'
                                 })
                           
                                 // 监听连接成功
