@@ -78,7 +78,9 @@ class WebSocketService
         // 添加内部 TCP 推送端口（纯 TCP，不走 HTTP）
         // PHP-FPM 通过 fsockopen 直连此端口发送推送指令
         $apiServer = self::$server->addListener('0.0.0.0', $apiPort, SWOOLE_SOCK_TCP);
-        // 不设置 open_http_protocol，使用原始 TCP 协议
+        $apiServer->set([
+            'open_http_protocol' => false,
+        ]);
         
         // TCP 内部连接事件
         $apiServer->on('connect', function ($server, $fd) {
