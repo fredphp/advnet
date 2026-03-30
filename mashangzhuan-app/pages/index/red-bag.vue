@@ -275,13 +275,11 @@ export default {
 
                         switch (taskType) {
                                 case 'chat':
-                                        // 普通聊天任务 → 显示聊天内容卡片
+                                        // 普通聊天任务 → 以普通文本气泡形式显示 description
                                         this.messages.push({
                                                 ...baseMsg,
                                                 type: 'task_chat',
-                                                content: displayTitle,
-                                                chatContent: task.chat_content || (resource && resource.chat_requirement) || displayDesc,
-                                                chatDuration: task.chat_duration || (resource && resource.chat_duration) || 30,
+                                                content: task.description || displayDesc || displayTitle,
                                         });
                                         break;
 
