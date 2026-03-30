@@ -522,7 +522,6 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
 
     // 打开生成弹窗
     window.openGenerateModal = function() {
-        // 加载统计信息
         $.ajax({
             url: 'member/user/getSystemMemberCount',
             type: 'GET',
@@ -537,126 +536,71 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
             }
         });
 
-        // 加载头像分类列表
-        $.ajax({
-            url: 'member/user/getAvatarList',
-            type: 'GET',
-            data: {category: 'all'},
-            dataType: 'json',
-            success: function(ret) {
-                if (ret.code == 1) {
-                    var categoryList = ret.data.categoryList || {};
-                    var $select = $('#avatar-category-select');
-                    $select.html('<option value="">不设置头像</option>');
-                    $.each(categoryList, function(key, val) {
-                        $select.append('<option value="' + key + '">' + val + '</option>');
-                    });
-                }
-            }
-        });
-
-        // 重置表单
         $('#generate-form input[name="count"]').val(10);
         $('#generate-form input[name="password"]').val('qwe123');
-        $('#avatar-preview-area').hide();
-        $('#avatar-preview-list').html('');
-        $('#avatar-count-info').html('');
-
         $('#generate-modal').modal('show');
     };
 
-    // 快捷数量调整
+    // 设置生成数量
+    window.setCount = function(num) {
+        var $input = $('#generate-form input[name="count"]');
+        $input.val(num);
+        $input.css('border-color', '#f5576c');
+        setTimeout(function() { $input.css('border-color', '#e5e7eb'); }, 300);
+    };
+
+    // 调整数量
     window.adjustCount = function(add) {
         var $input = $('#generate-form input[name="count"]');
         var current = parseInt($input.val()) || 0;
-        var newVal = Math.min(current + add, 500);
+        var newVal = Math.max(1, Math.min(current + add, 500));
         $input.val(newVal);
-    };
-
-    // 加载头像预览
-    window.loadAvatarPreview = function() {
-        var category = $('#avatar-category-select').val();
-        if (!category) {
-            $('#avatar-preview-area').hide();
-            return;
-        }
-
-        $.ajax({
-            url: 'member/user/getAvatarList',
-            type: 'GET',
-            data: {category: category},
-            dataType: 'json',
-            success: function(ret) {
-                if (ret.code == 1) {
-                    var avatars = ret.data.avatars || [];
-                    var $list = $('#avatar-preview-list');
-                    $list.html('');
-
-                    if (avatars.length === 0) {
-                        $list.html('<div style="color:#9ca3af;font-size:13px;padding:10px;">该分类下暂无图片附件</div>');
-                    } else {
-                        // 随机展示最多20个
-                        var shuffled = avatars.sort(function() { return 0.5 - Math.random(); });
-                        var show = shuffled.slice(0, 20);
-                        show.forEach(function(item) {
-                            $list.append('<img src="' + item.url + '" style="width:48px;height:48px;border-radius:50%;object-fit:cover;border:2px solid #e5e7eb;cursor:pointer;" onerror="this.style.display=\'none\';" />');
-                        });
-                    }
-
-                    $('#avatar-count-info').html('共 ' + avatars.length + ' 张图片，预览展示 ' + Math.min(avatars.length, 20) + ' 张');
-                    $('#avatar-preview-area').show();
-                }
-            }
-        });
     };
 
     // 确认生成
     window.confirmGenerate = function() {
         var count = parseInt($('#generate-form input[name="count"]').val()) || 0;
         var password = $('#generate-form input[name="password"]').val() || 'qwe123';
-        var avatarCategory = $('#avatar-category-select').val();
 
         if (count <= 0 || count > 500) {
             Toastr.error('生成数量需在1~500之间');
             return;
         }
-
         if (password.length < 4) {
             Toastr.error('密码长度不能少于4位');
             return;
         }
 
         Layer.confirm(
-            '<div style="text-align:center;padding:10px;">' +
-            '<div style="font-size:48px;margin-bottom:10px;">🤖</div>' +
-            '<div style="font-size:16px;font-weight:bold;">即将生成 ' + count + ' 个系统会员</div>' +
-            '<div style="font-size:13px;color:#6c757d;margin-top:5px;">密码: ' + password + (avatarCategory ? ' | 头像分类: ' + avatarCategory : ' | 不设置头像') + '</div>' +
+            '<div style="text-align:center;padding:12px 0;">' +
+            '<div style="width:56px;height:56px;margin:0 auto 10px;background:linear-gradient(135deg,#f093fb,#f5576c);border-radius:14px;display:flex;align-items:center;justify-content:center;">' +
+            '<i class="fa fa-robot" style="font-size:24px;color:#fff;"></i></div>' +
+            '<div style="font-size:16px;font-weight:700;color:#1f2937;">即将生成 <span style="color:#f5576c;">' + count + '</span> 个系统会员</div>' +
+            '<div style="font-size:12px;color:#9ca3af;margin-top:6px;">密码: <code style="background:#f3f4f6;padding:1px 6px;border-radius:4px;font-size:11px;">' + password + '</code> &middot; 头像从附件库随机分配</div>' +
             '</div>',
             {
-                title: '确认生成系统会员',
-                btn: ['确认生成', '取消'],
+                title: '<i class="fa fa-magic" style="color:#f5576c;margin-right:5px;"></i>确认生成',
+                btn: ['<i class="fa fa-check"></i> 确认', '<i class="fa fa-times"></i> 取消'],
                 btn1: function(index) {
-                    var loadIndex = Layer.load(1, {shade: [0.3, '#000']});
+                    var loadIndex = Layer.load(2, {shade: [0.25, '#000'], content: '<div style="padding-top:20px;color:#fff;font-size:13px;"><i class="fa fa-spinner fa-spin" style="font-size:20px;display:block;margin-bottom:8px;"></i>正在生成，请稍候...</div>'});
 
                     Fast.api.ajax({
                         url: 'member/user/generateSystemMembers',
-                        data: {
-                            count: count,
-                            password: password,
-                            avatar_category: avatarCategory
-                        }
+                        data: { count: count, password: password }
                     }, function(ret) {
                         Layer.close(loadIndex);
                         Layer.close(index);
                         $('#generate-modal').modal('hide');
 
                         var data = ret.data || {};
-                        Toastr.success('成功生成 ' + (data.success || 0) + ' 个系统会员');
-
-                        // 刷新统计
+                        var msg = '成功生成 ' + (data.success || 0) + ' 个系统会员';
+                        if (data.has_avatar) {
+                            msg += '（已随机分配头像）';
+                        } else {
+                            msg += '（附件库暂无图片，未分配头像）';
+                        }
+                        Toastr.success(msg);
                         $('#gen-sys-count').text(data.total_system_members || 0);
-
-                        // 刷新表格
                         $("#table").bootstrapTable('refresh');
                     }, function() {
                         Layer.close(loadIndex);
@@ -664,6 +608,18 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
                 }
             }
         );
+    };
+
+    // 筛选全部会员
+    window.filterAllMembers = function() {
+        var table = $("#table");
+        var options = table.bootstrapTable('getOptions');
+        options.queryParams = function(params) {
+            delete params.filter;
+            return params;
+        };
+        table.bootstrapTable('refresh', {silent: true});
+        Toastr.info('已重置：全部会员');
     };
 
     // 筛选系统会员
