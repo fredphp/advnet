@@ -60,15 +60,34 @@ class Task extends Backend
     {
         $this->request->filter(['strip_tags', 'trim']);
 
-        // selectpage 参数
-        $search = $this->request->request('search', '');
+        // 兼容 selectpage 插件发送的参数格式：
+        // searchField[]=nickname  &  nickname=xxx  或  q_word[]=xxx
+        $searchFields = $this->request->request('searchField/a', []);
+        $search = '';
+        if (!empty($searchFields)) {
+            foreach ($searchFields as $field) {
+                $val = $this->request->request($field, '');
+                if ($val !== '' && $val !== null) {
+                    $search = $val;
+                    break;
+                }
+            }
+        }
+        // 兜底：直接读 search 参数
+        if ($search === '') {
+            $search = $this->request->request('search', '');
+        }
+
         $pageNumber = intval($this->request->request('pageNumber', 1));
         $pageSize = intval($this->request->request('pageSize', 20));
         if ($pageNumber < 1) $pageNumber = 1;
         if ($pageSize < 1) $pageSize = 20;
         if ($pageSize > 100) $pageSize = 100;
 
-        $query = User::where('user_type', 1)
+        // 直接查库，绕过 User 模型的 $append 干扰
+        $prefix = \think\Db::getConfig('prefix');
+        $query = \think\Db::name('user')
+            ->where('user_type', 1)
             ->where('status', 'normal');
 
         if ($search) {
