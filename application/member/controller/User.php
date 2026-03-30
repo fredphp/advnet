@@ -278,66 +278,74 @@ class User extends Backend
 
         $now = time();
         $success = 0;
-        $usedUsernames = [];
+        $failed = 0;
+        $errors = [];
+        $usedMobiles = [];
 
-        Db::startTrans();
-        try {
-            for ($i = 0; $i < $count; $i++) {
-                // 使用 uniqid + mt_rand 确保用户名唯一
-                $retryCount = 0;
-                do {
-                    $username = 'sys_' . uniqid() . mt_rand(10, 99);
-                    $retryCount++;
-                } while (in_array($username, $usedUsernames) && $retryCount < 10);
-                $usedUsernames[] = $username;
+        // 通过模型获取真实表名，直接用 Db 操作避免 Model 状态污染
+        $tableName = $this->model->getQuery()->getTable();
 
-                $nickname = $nicknames[mt_rand(0, count($nicknames) - 1)];
-                $salt = $this->generateSalt();
-                $encryptedPassword = md5(md5($password) . $salt);
+        for ($i = 0; $i < $count; $i++) {
+            // 生成绝对唯一的用户名: microtime精确到微秒 + 随机数
+            $username = 'sys_' . sprintf('%.6f', microtime(true)) . mt_rand(100, 999);
+            $username = str_replace('.', '', $username);
+
+            $nickname = $nicknames[mt_rand(0, count($nicknames) - 1)];
+            $salt = $this->generateSalt();
+            $encryptedPassword = md5(md5($password) . $salt);
+
+            // 确保手机号不重复
+            $retryCount = 0;
+            do {
                 $mobile = $mobilePrefixes[mt_rand(0, count($mobilePrefixes) - 1)] . str_pad(mt_rand(10000000, 99999999), 8, '0');
-                $avatar = $hasAvatar ? $avatarList[mt_rand(0, count($avatarList) - 1)] : '';
-                $createtime = $now - mt_rand(30 * 86400, 365 * 86400);
+                $retryCount++;
+            } while (in_array($mobile, $usedMobiles) && $retryCount < 20);
+            $usedMobiles[] = $mobile;
 
-                try {
-                    $this->model->insert([
-                        'username'   => $username,
-                        'nickname'   => $nickname,
-                        'password'   => $encryptedPassword,
-                        'salt'       => $salt,
-                        'mobile'     => $mobile,
-                        'avatar'     => $avatar,
-                        'user_type'  => 1,
-                        'status'     => 'normal',
-                        'level'      => 0,
-                        'gender'     => mt_rand(0, 2),
-                        'score'      => 0,
-                        'successions' => 1,
-                        'maxsuccessions' => 1,
-                        'joinip'     => mt_rand(1, 254) . '.' . mt_rand(0, 255) . '.' . mt_rand(0, 255) . '.' . mt_rand(1, 254),
-                        'jointime'   => $createtime,
-                        'createtime' => $createtime,
-                        'updatetime' => $now,
-                        'source'     => 'system',
-                    ]);
-                    $success++;
-                } catch (\Exception $e) {
-                    if (strpos($e->getMessage(), 'Duplicate') !== false) {
-                        continue;
-                    }
-                    throw $e;
-                }
+            $avatar = $hasAvatar ? $avatarList[mt_rand(0, count($avatarList) - 1)] : '';
+            $createtime = $now - mt_rand(30 * 86400, 365 * 86400);
+
+            try {
+                Db::table($tableName)->insert([
+                    'username'      => $username,
+                    'nickname'      => $nickname,
+                    'password'      => $encryptedPassword,
+                    'salt'          => $salt,
+                    'mobile'        => $mobile,
+                    'avatar'        => $avatar,
+                    'user_type'     => 1,
+                    'status'        => 'normal',
+                    'level'         => 0,
+                    'gender'        => mt_rand(0, 2),
+                    'score'         => 0,
+                    'successions'   => 1,
+                    'maxsuccessions' => 1,
+                    'joinip'        => mt_rand(1, 254) . '.' . mt_rand(0, 255) . '.' . mt_rand(0, 255) . '.' . mt_rand(1, 254),
+                    'jointime'      => $createtime,
+                    'createtime'    => $createtime,
+                    'updatetime'    => $now,
+                    'source'        => 'system',
+                ]);
+                $success++;
+            } catch (\Exception $e) {
+                $failed++;
+                $errors[] = '#' . ($i + 1) . ': ' . $e->getMessage();
             }
-            Db::commit();
-        } catch (\Exception $e) {
-            Db::rollback();
-            $this->error('生成失败: ' . $e->getMessage());
         }
 
         $totalSystemMembers = $this->model->where('user_type', 1)->count();
-        $this->success('成功生成 ' . $success . ' 个系统会员', [
+
+        $msg = '成功生成 ' . $success . ' 个系统会员';
+        if ($failed > 0) {
+            $msg .= '，失败 ' . $failed . ' 个';
+        }
+
+        $this->success($msg, [
             'success' => $success,
+            'failed' => $failed,
             'total_system_members' => $totalSystemMembers,
             'has_avatar' => $hasAvatar,
+            'errors' => $errors,
         ]);
     }
 

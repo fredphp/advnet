@@ -593,14 +593,19 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
 
                         var data = ret.data || {};
                         var msg = '成功生成 ' + (data.success || 0) + ' 个系统会员';
+                        if (data.failed > 0) {
+                            msg += '，失败 ' + data.failed + ' 个';
+                        }
                         if (data.has_avatar) {
                             msg += '（已随机分配头像）';
-                        } else {
-                            msg += '（附件库暂无图片，未分配头像）';
                         }
                         Toastr.success(msg);
                         $('#gen-sys-count').text(data.total_system_members || 0);
                         $("#table").bootstrapTable('refresh');
+
+                        if (data.errors && data.errors.length > 0) {
+                            console.warn('生成失败详情:', data.errors);
+                        }
                     }, function() {
                         Layer.close(loadIndex);
                     });
