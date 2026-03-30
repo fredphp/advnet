@@ -85,17 +85,30 @@ class Task extends Backend
         if ($pageSize > 100) $pageSize = 100;
 
         // 直接查库，绕过 User 模型的 $append 干扰
-        $prefix = \think\Db::getConfig('prefix');
-        $query = \think\Db::name('user')
-            ->where('user_type', 1)
-            ->where('status', 'normal');
+        $buildQuery = function () use ($search) {
+            $query = \think\Db::name('user')
+                ->where('user_type', 1)
+                ->where('status', 'normal');
 
-        if ($search) {
-            $query->where('nickname|username', 'like', '%' . $search . '%');
-        }
+            if ($search) {
+                $query->where('nickname|username', 'like', '%' . $search . '%');
+            }
 
-        $total = $query->count();
-        $list = $query
+            return $query;
+        };
+
+        $total = $buildQuery()->count();
+        // $prefix = \think\Db::getConfig('prefix');
+        // $query = \think\Db::name('user')
+        //     ->where('user_type', 1)
+        //     ->where('status', 'normal');
+
+        // if ($search) {
+        //     $query->where('nickname|username', 'like', '%' . $search . '%');
+        // }
+
+        // $total = (clone $query)->count();
+        $list = $buildQuery()
             ->field('id,nickname,username,avatar')
             ->order('id', 'asc')
             ->page($pageNumber, $pageSize)
