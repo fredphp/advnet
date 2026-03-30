@@ -129,6 +129,28 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
 
                 var $resourceInput = $('#c-resource_id');
 
+                // selectpage插件已由Form.api.bindevent自动初始化，
+                // 但它的data-params只在初始化时读取一次，后续修改DOM属性无效。
+                // 需要将插件内部的option.params改为动态函数，
+                // 使selectpage每次AJAX请求都带上当前选中的任务类型。
+                var retryCount = 0;
+                function setupDynamicParams() {
+                    var spPlugin = $resourceInput.data('selectPageObject');
+                    if (spPlugin) {
+                        // params设为函数后，selectpage在searchForDb/getInitRecord
+                        // 每次AJAX请求时都会调用此函数获取最新参数
+                        spPlugin.option.params = function() {
+                            return { 'custom[type]': currentTaskType || '' };
+                        };
+                        // 触发初始任务类型设置
+                        $('#c-type').trigger('change');
+                    } else if (retryCount < 20) {
+                        retryCount++;
+                        setTimeout(setupDynamicParams, 50);
+                    }
+                }
+                setupDynamicParams();
+
                 // 任务类型切换
                 $('#c-type').on('change', function() {
                     var taskType = $(this).val();
@@ -139,12 +161,9 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
                         var typeName = typeList[taskType] || '资源';
                         $('.resource-type-tip').text('请选择【' + typeName + '】类型的资源');
 
-                        // 更新 selectpage 的 data-params 属性
-                        $resourceInput.attr('data-params', '{"custom[type]":"' + taskType + '"}');
-                        
                         // 如果类型变化了，清空当前选中值
                         if (prevTaskType && prevTaskType !== taskType) {
-                            $resourceInput.val('');
+                            $resourceInput.selectPageClear();
                             Controller.api.hideResourceInfo();
                         }
                     } else {
@@ -167,11 +186,6 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
                 $(document).on('selectpage:clear', '#c-resource_id', function(e) {
                     Controller.api.hideResourceInfo();
                 });
-
-                // 初始化任务类型
-                setTimeout(function() {
-                    $('#c-type').trigger('change');
-                }, 100);
             },
             // 发送页面绑定事件
             bindeventSend: function() {
