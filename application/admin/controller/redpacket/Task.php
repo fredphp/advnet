@@ -7,6 +7,7 @@ use app\common\model\RedPacketTask as RedPacketTaskModel;
 use app\common\model\RedPacketTaskSplit;
 use app\common\model\RedPacketResource;
 use app\common\library\WebSocketService;
+use app\common\model\User;
 use think\Db;
 use think\Exception;
 
@@ -31,6 +32,10 @@ class Task extends Backend
         $this->model = new RedPacketTaskModel;
         $this->splitModel = new RedPacketTaskSplit;
 
+        // 搜索字段映射
+        $this->searchFields = ['name', 'display_title', 'description', 'sender_name'];
+    }
+
         // 类型列表
         $typeList = RedPacketTaskSplit::$typeList;
         $this->view->assign('typeList', $typeList);
@@ -46,6 +51,35 @@ class Task extends Backend
         // 资源列表
         $resourceList = RedPacketResource::where('status', 'normal')->column('id,name,type');
         $this->view->assign('resourceList', $resourceList);
+    }
+
+    /**
+     * 系统会员选择接口（供 selectpage 调用）
+     * 只返回 user_type=1 的系统会员
+     */
+    public function systemUsers()
+    {
+        $this->request->filter(['strip_tags', 'trim']);
+        if ($this->request->request('keyField')) {
+            return $this->selectpage();
+        }
+
+        $search = $this->request->get('search', '');
+        $list = User::where('user_type', 1)
+            ->where('status', 'normal')
+            ->where(function ($query) use ($search) {
+                if ($search) {
+                    $query->where('nickname|username', 'like', '%' . $search . '%');
+                }
+            })
+            ->field('id,nickname,username,avatar')
+            ->order('id', 'asc')
+            ->select();
+
+        $total = count($list);
+
+        // selectpage 格式
+        return json(['total' => $total, 'list' => $list]);
     }
 
     /**
@@ -278,10 +312,24 @@ class Task extends Backend
                 $result = false;
                 Db::startTrans();
                 try {
-                    // 设置发送者信息
-                    $params['sender_id'] = $this->auth->id;
-                    $params['sender_name'] = $this->auth->nickname;
-                    $params['sender_avatar'] = $this->auth->avatar;
+                    // 设置发送者信息：优先使用选择的系统会员，否则使用默认系统信息
+                    $senderId = intval($params['sender_id'] ?? 0);
+                    if ($senderId > 0) {
+                        $senderUser = User::where('id', $senderId)->where('user_type', 1)->find();
+                        if ($senderUser) {
+                            $params['sender_id'] = $senderUser['id'];
+                            $params['sender_name'] = $senderUser['nickname'] ?? $senderUser['username'];
+                            $params['sender_avatar'] = $senderUser['avatar'] ?? '';
+                        } else {
+                        $params['sender_id'] = 0;
+                        $params['sender_name'] = '系统';
+                        $params['sender_avatar'] = '';
+                    }
+                    } else {
+                        $params['sender_id'] = 0;
+                        $params['sender_name'] = '系统';
+                        $params['sender_avatar'] = '';
+                    }
 
                     // 默认值
                     if (!isset($params['show_red_packet'])) {
@@ -704,10 +752,22 @@ class Task extends Backend
             'background_image' => '',
             'jump_url' => '',
             'status' => $rowData['status'] ?? '',
+            'sender_id' => $rowData['sender_id'] ?? 0,
             'sender_name' => $rowData['sender_name'] ?? '',
             'sender_avatar' => $rowData['sender_avatar'] ?? '',
             'timestamp' => time(),
         ];
+
+        // 如果有 sender_id，尝试查用户表获取最新的头像信息
+        $senderId = intval($rowData['sender_id'] ?? 0);
+        if ($senderId > 0) {
+            $senderUser = User::where('id', $senderId)->find();
+            if ($senderUser) {
+                $data['sender_id'] = $senderUser['id'];
+                $data['sender_name'] = $senderUser['nickname'] ?? $senderUser['username'];
+                $data['sender_avatar'] = $senderUser['avatar'] ?? '';
+            }
+        }
 
         // 关联资源信息
         if (!empty($rowData['resource'])) {

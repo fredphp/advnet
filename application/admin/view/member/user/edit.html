@@ -24,6 +24,8 @@
 .edit-user-box .status-group input[value="frozen"]:checked + .status-btn { border-color: #f59e0b; background: #fffbeb; color: #f59e0b; }
 .edit-user-box .status-group input[value="banned"]:checked + .status-btn { border-color: #ef4444; background: #fef2f2; color: #ef4444; }
 .edit-user-box .status-btn i { margin-right: 4px; }
+.edit-user-box .system-user-badge { font-size: 13px; }
+.edit-user-box .form-row .form-col .form-control-static .label { padding: 3px 8px; font-size: 12px; border-radius: 3px; }
 .edit-user-box .btn-footer { margin-top: 15px; padding-top: 15px; border-top: 1px solid #eee; text-align: right; }
 .edit-user-box .btn-footer .btn { min-width: 80px; }
 @media (max-width: 576px) {
@@ -90,7 +92,17 @@
 
         <div class="section-title">账户状态</div>
         <div class="form-row">
-            <div class="form-col full">
+            <div class="form-col">
+                <label>会员类型</label>
+                <p class="form-control-static {if condition="$row.user_type == 1"}system-user-badge{/if}">
+                    {if condition="$row.user_type == 1"}
+                        <span class="label label-warning"><i class="fa fa-robot"></i> 系统会员</span>
+                    {else/}
+                        <span class="label label-success"><i class="fa fa-user"></i> 真实会员</span>
+                    {/if}
+                </p>
+            </div>
+            <div class="form-col">
                 <label>状态</label>
                 <div class="status-group">
                     <label>

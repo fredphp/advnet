@@ -51,6 +51,19 @@
             <input id="c-vip_level" class="form-control" name="row[vip_level]" type="number" value="0">
         </div>
     </div>
+    <div class="form-group">
+        <label class="control-label col-xs-12 col-sm-2">会员类型:</label>
+        <div class="col-xs-12 col-sm-8">
+            <select id="c-user_type" class="form-control selectpicker" name="row[user_type]">
+                <option value="0" selected>真实会员</option>
+                <option value="1">系统会员</option>
+            </select>
+            <span class="help-block">
+                <strong>真实会员</strong>：通过正常渠道注册的用户<br>
+                <strong>系统会员</strong>：由后台创建的虚拟会员，用于发送系统任务消息（如聊天、红包、广告等），前端会显示为该会员发送的消息
+            </span>
+        </div>
+    </div>
     <div class="form-group layer-footer">
         <label class="control-label col-xs-12 col-sm-2"></label>
         <div class="col-xs-12 col-sm-8">
