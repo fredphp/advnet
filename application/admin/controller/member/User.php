@@ -19,8 +19,29 @@ class User extends Backend
         parent::_initialize();
         $this->model = new \app\common\model\User();
 
+        // 自动检查并添加 member_type 字段（确保数据库兼容）
+        $this->ensureMemberTypeField();
+
         // 会员类型列表
         $this->view->assign('memberTypeList', ['0' => '真实会员', '1' => '系统会员']);
+    }
+
+    /**
+     * 确保 member_type 字段存在
+     */
+    protected function ensureMemberTypeField()
+    {
+        try {
+            $prefix = config('database.prefix');
+            $table = $prefix . 'user';
+            $columns = Db::query("SHOW COLUMNS FROM {$table} LIKE 'member_type'");
+            if (empty($columns)) {
+                Db::execute("ALTER TABLE {$table} ADD COLUMN `member_type` tinyint unsigned NOT NULL DEFAULT '0' COMMENT '会员类型: 0=真实会员, 1=系统会员' AFTER `group_id`");
+                Db::execute("ALTER TABLE {$table} ADD INDEX `idx_member_type` (`member_type`)");
+            }
+        } catch (\Exception $e) {
+            // 忽略错误，不影响主流程
+        }
     }
 
     /**
