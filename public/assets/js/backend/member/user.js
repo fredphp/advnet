@@ -23,7 +23,7 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
                     [
                         {checkbox: true},
                         {field: 'id', title: 'ID', sortable: true, width: 70},
-                        {field: 'member_type', title: '会员类型', searchList: {"0":"真实会员","1":"系统会员"}, formatter: Controller.api.formatter.memberType, width: 100},
+                        {field: 'user_type', title: '会员类型', searchList: {"0":"真实会员","1":"系统会员"}, formatter: Controller.api.formatter.memberType, width: 100},
                         {field: 'username', title: '用户信息', operate: 'LIKE', formatter: Controller.api.formatter.userInfo, width: 180},
                         {field: 'mobile', title: '手机号', operate: 'LIKE', width: 120},
                         {field: 'coin_balance', title: '金币余额', sortable: true, formatter: Controller.api.formatter.coin, width: 100},
@@ -157,7 +157,7 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
                                         '<div class="detail-row"><span class="detail-label">用户ID</span><span class="detail-value">' + (user.id || '-') + '</span></div>' +
                                         '<div class="detail-row"><span class="detail-label">用户名</span><span class="detail-value">' + (user.username || '-') + '</span></div>' +
                                         '<div class="detail-row"><span class="detail-label">昵称</span><span class="detail-value">' + (user.nickname || '-') + '</span></div>' +
-                                        '<div class="detail-row"><span class="detail-label">会员类型</span><span class="detail-value">' + (parseInt(user.member_type) == 1 ? '<span class="status-badge normal" style="background:linear-gradient(135deg,#1cc88a,#13855c);color:#fff;"><i class="fa fa-robot"></i> 系统会员</span>' : '<span class="status-badge normal"><i class="fa fa-user"></i> 真实会员</span>') + '</span></div>' +
+                                        '<div class="detail-row"><span class="detail-label">会员类型</span><span class="detail-value">' + (parseInt(user.user_type) == 1 ? '<span class="status-badge normal" style="background:linear-gradient(135deg,#1cc88a,#13855c);color:#fff;"><i class="fa fa-robot"></i> 系统会员</span>' : '<span class="status-badge normal"><i class="fa fa-user"></i> 真实会员</span>') + '</span></div>' +
                                         '<div class="detail-row"><span class="detail-label">手机号</span><span class="detail-value">' + (user.mobile || '-') + '</span></div>' +
                                         '<div class="detail-row"><span class="detail-label">状态</span><span class="detail-value">' + Controller.api.formatStatus(user.status) + '</span></div>' +
                                         '<div class="detail-row"><span class="detail-label">等级</span><span class="detail-value">Lv.' + (user.level || 1) + '</span></div>' +
@@ -199,7 +199,7 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
                 },
                 userInfo: function(value, row, index) {
                     var initial = (row.username ? row.username.charAt(0).toUpperCase() : 'U');
-                    var isSystem = parseInt(row.member_type) == 1;
+                    var isSystem = parseInt(row.user_type) == 1;
                     var badgeStyle = isSystem ? 'background:linear-gradient(135deg,#1cc88a,#13855c);color:#fff;' : '';
                     var badgeText = isSystem ? '<span style="font-size:9px;background:#fff;color:#13855c;padding:1px 4px;border-radius:3px;margin-left:4px;font-weight:600;">SYS</span>' : '';
 
@@ -671,7 +671,7 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
         var table = $("#table");
         var options = table.bootstrapTable('getOptions');
         options.queryParams = function(params) {
-            params.filter = JSON.stringify({member_type: '1'});
+            params.filter = JSON.stringify({user_type: '1'});
             return params;
         };
         table.bootstrapTable('refresh', {silent: true});
@@ -683,7 +683,7 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
         var table = $("#table");
         var options = table.bootstrapTable('getOptions');
         options.queryParams = function(params) {
-            params.filter = JSON.stringify({member_type: '0'});
+            params.filter = JSON.stringify({user_type: '0'});
             return params;
         };
         table.bootstrapTable('refresh', {silent: true});

@@ -19,25 +19,25 @@ class User extends Backend
         parent::_initialize();
         $this->model = new \app\common\model\User();
 
-        // 自动检查并添加 member_type 字段（确保数据库兼容）
-        $this->ensureMemberTypeField();
+        // 自动检查并添加 user_type 字段（确保数据库兼容）
+        $this->ensureUserTypeField();
 
         // 会员类型列表
         $this->view->assign('memberTypeList', ['0' => '真实会员', '1' => '系统会员']);
     }
 
     /**
-     * 确保 member_type 字段存在
+     * 确保 user_type 字段存在
      */
-    protected function ensureMemberTypeField()
+    protected function ensureUserTypeField()
     {
         try {
             $prefix = config('database.prefix');
             $table = $prefix . 'user';
-            $columns = Db::query("SHOW COLUMNS FROM {$table} LIKE 'member_type'");
+            $columns = Db::query("SHOW COLUMNS FROM {$table} LIKE 'user_type'");
             if (empty($columns)) {
-                Db::execute("ALTER TABLE {$table} ADD COLUMN `member_type` tinyint unsigned NOT NULL DEFAULT '0' COMMENT '会员类型: 0=真实会员, 1=系统会员' AFTER `group_id`");
-                Db::execute("ALTER TABLE {$table} ADD INDEX `idx_member_type` (`member_type`)");
+                Db::execute("ALTER TABLE {$table} ADD COLUMN `user_type` tinyint unsigned NOT NULL DEFAULT '0' COMMENT '用户类型: 0=真实会员, 1=系统会员' AFTER `group_id`");
+                Db::execute("ALTER TABLE {$table} ADD INDEX `idx_user_type` (`user_type`)");
             }
         } catch (\Exception $e) {
             // 忽略错误，不影响主流程
@@ -65,7 +65,7 @@ class User extends Backend
                 $item['coin_balance'] = $account ? $account['balance'] : 0;
                 $item['frozen_coin'] = $account ? $account['frozen'] : 0;
                 // 会员类型文本
-                $item['member_type'] = isset($item['member_type']) ? intval($item['member_type']) : 0;
+                $item['member_type'] = isset($item['user_type']) ? intval($item['user_type']) : 0;
                 $item['member_type_text'] = $item['member_type'] == 1 ? '系统会员' : '真实会员';
             }
 
@@ -880,11 +880,11 @@ class User extends Backend
         $prefix = config('database.prefix');
         $table = $prefix . 'user';
 
-        // 确保 member_type 字段存在
+        // 确保 user_type 字段存在
         try {
-            $columns = Db::query("SHOW COLUMNS FROM {$table} LIKE 'member_type'");
+            $columns = Db::query("SHOW COLUMNS FROM {$table} LIKE 'user_type'");
             if (empty($columns)) {
-                Db::execute("ALTER TABLE {$table} ADD COLUMN `member_type` tinyint unsigned NOT NULL DEFAULT '0' COMMENT '会员类型: 0=真实会员, 1=系统会员' AFTER `group_id`");
+                Db::execute("ALTER TABLE {$table} ADD COLUMN `user_type` tinyint unsigned NOT NULL DEFAULT '0' COMMENT '用户类型: 0=真实会员, 1=系统会员' AFTER `group_id`");
             }
         } catch (\Exception $e) {
             // 忽略
@@ -940,9 +940,9 @@ class User extends Backend
         // 获取当前系统会员最大编号
         $maxSysIndex = 0;
         try {
-            $maxUser = Db::query("SELECT MAX(id) as max_id FROM {$table} WHERE member_type = 1");
+            $maxUser = Db::query("SELECT MAX(id) as max_id FROM {$table} WHERE user_type = 1");
             if (!empty($maxUser) && $maxUser[0]['max_id'] > 0) {
-                $maxSysIndex = Db::query("SELECT COUNT(*) as cnt FROM {$table} WHERE member_type = 1")[0]['cnt'];
+                $maxSysIndex = Db::query("SELECT COUNT(*) as cnt FROM {$table} WHERE user_type = 1")[0]['cnt'];
             }
         } catch (\Exception $e) {
             // 忽略
@@ -1003,7 +1003,7 @@ class User extends Backend
             try {
                 Db::execute("
                     INSERT INTO {$table} (
-                        `group_id`, `member_type`, `username`, `nickname`, `password`, `salt`,
+                        `group_id`, `user_type`, `username`, `nickname`, `password`, `salt`,
                         `invite_code`, `parent_id`, `grandparent_id`, `mobile`,
                         `avatar`, `level`, `gender`, `money`, `score`,
                         `successions`, `maxsuccessions`, `joinip`, `jointime`,
@@ -1025,7 +1025,7 @@ class User extends Backend
         // 获取最新系统会员总数
         $totalSys = 0;
         try {
-            $totalSys = Db::query("SELECT COUNT(*) as cnt FROM {$table} WHERE member_type = 1")[0]['cnt'];
+            $totalSys = Db::query("SELECT COUNT(*) as cnt FROM {$table} WHERE user_type = 1")[0]['cnt'];
         } catch (\Exception $e) {
             // 忽略
         }
@@ -1046,9 +1046,9 @@ class User extends Backend
         $table = $prefix . 'user';
 
         try {
-            $total = Db::query("SELECT COUNT(*) as cnt FROM {$table} WHERE member_type = 1")[0]['cnt'];
+            $total = Db::query("SELECT COUNT(*) as cnt FROM {$table} WHERE user_type = 1")[0]['cnt'];
             $totalAll = Db::query("SELECT COUNT(*) as cnt FROM {$table}")[0]['cnt'];
-            $totalReal = Db::query("SELECT COUNT(*) as cnt FROM {$table} WHERE member_type = 0 OR member_type IS NULL")[0]['cnt'];
+            $totalReal = Db::query("SELECT COUNT(*) as cnt FROM {$table} WHERE user_type = 0 OR user_type IS NULL")[0]['cnt'];
         } catch (\Exception $e) {
             $total = 0;
             $totalAll = 0;
