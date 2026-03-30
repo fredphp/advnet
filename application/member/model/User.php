@@ -18,7 +18,8 @@ class User extends Model
 
     // 追加属性
     protected $append = [
-        'status_text'
+        'status_text',
+        'member_type_text'
     ];
 
     // 状态列表
@@ -27,9 +28,31 @@ class User extends Model
         'hidden' => '隐藏'
     ];
 
+    // 会员类型列表
+    public static $memberTypeList = [
+        0 => '真实会员',
+        1 => '系统会员'
+    ];
+
     public function getStatusTextAttr($value, $data)
     {
         return isset($data['status']) ? self::$statusList[$data['status']] ?? '' : '';
+    }
+
+    public function getMemberTypeTextAttr($value, $data)
+    {
+        return isset($data['member_type']) ? self::$memberTypeList[$data['member_type']] ?? '未知' : '';
+    }
+
+    /**
+     * 获取系统会员列表（用于任务发送）
+     */
+    public static function getSystemMembers()
+    {
+        return self::where('member_type', 1)
+            ->where('status', 'normal')
+            ->field('id,username,nickname,avatar')
+            ->select();
     }
 
     /**
