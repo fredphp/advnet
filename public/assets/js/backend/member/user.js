@@ -200,19 +200,18 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
                 userInfo: function(value, row, index) {
                     var initial = (row.username ? row.username.charAt(0).toUpperCase() : 'U');
                     var isSystem = parseInt(row.user_type) == 1;
-                    var badgeStyle = isSystem ? 'background:linear-gradient(135deg,#1cc88a,#13855c);color:#fff;' : '';
-                    var badgeText = isSystem ? '<span style="font-size:9px;background:#fff;color:#13855c;padding:1px 4px;border-radius:3px;margin-left:4px;font-weight:600;">SYS</span>' : '';
+                    var sysBadge = isSystem ? ' <span style="font-size:9px;background:#fff;color:#13855c;padding:1px 4px;border-radius:3px;font-weight:600;">SYS</span>' : '';
 
                     if (row.avatar && row.avatar.indexOf('/assets/') === -1) {
-                        var avatar = '<img src="' + row.avatar + '" class="user-avatar" onerror="this.outerHTML=\'<div class=user-avatar default style=' + badgeStyle + '>' + initial + badgeText + '</div>\';" />';
+                        var avatar = '<img src="' + row.avatar + '" class="user-avatar" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'flex\';" /><div class="user-avatar default' + (isSystem ? ' system-avatar' : '') + '" style="display:none;">' + initial + '</div>';
                         return '<div class="user-info-cell">' + avatar +
-                            '<div class="user-name-text"><span class="name">' + (row.nickname || row.username || '-') + badgeText + '</span>' +
+                            '<div class="user-name-text"><span class="name">' + (row.nickname || row.username || '-') + sysBadge + '</span>' +
                             '<span class="id">ID: ' + row.id + '</span></div></div>';
                     }
 
-                    var avatarHtml = '<div class="user-avatar default" style="' + badgeStyle + '">' + initial + badgeText + '</div>';
+                    var avatarHtml = '<div class="user-avatar default' + (isSystem ? ' system-avatar' : '') + '">' + initial + '</div>';
                     return '<div class="user-info-cell">' + avatarHtml +
-                        '<div class="user-name-text"><span class="name">' + (row.nickname || row.username || '-') + badgeText + '</span>' +
+                        '<div class="user-name-text"><span class="name">' + (row.nickname || row.username || '-') + sysBadge + '</span>' +
                         '<span class="id">ID: ' + row.id + '</span></div></div>';
                 },
                 coin: function(value, row, index) {

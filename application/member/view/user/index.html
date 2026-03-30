@@ -1,3 +1,158 @@
+<style>
+/* 用户信息单元格样式 */
+.user-info-cell {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.user-info-cell .user-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    object-fit: cover;
+    flex-shrink: 0;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.user-info-cell .user-avatar.default {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.user-info-cell .user-avatar.system-avatar {
+    background: linear-gradient(135deg, #1cc88a 0%, #13855c 100%);
+}
+
+.user-info-cell .user-name-text {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.user-info-cell .user-name-text .name {
+    font-weight: 500;
+    color: #333;
+    font-size: 13px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.user-info-cell .user-name-text .id {
+    font-size: 11px;
+    color: #999;
+}
+
+/* 状态标签样式 */
+.status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.status-badge.normal {
+    background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
+    color: #047857;
+}
+
+.status-badge.frozen {
+    background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+    color: #b45309;
+}
+
+.status-badge.banned {
+    background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
+    color: #b91c1c;
+}
+
+/* 操作按钮组样式 */
+.btn-group-operate {
+    display: inline-flex;
+    gap: 4px;
+    flex-wrap: nowrap;
+}
+
+.btn-group-operate .btn {
+    padding: 4px 8px;
+    font-size: 12px;
+    border-radius: 4px;
+    border: none;
+    transition: all 0.2s;
+    white-space: nowrap;
+}
+
+.btn-group-operate .btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+}
+
+.btn-group-operate .btn-xs {
+    padding: 4px 8px;
+    font-size: 12px;
+}
+
+.btn-group-operate .btn i {
+    margin-right: 3px;
+}
+
+/* 下拉菜单美化 */
+.dropdown-menu {
+    border: none;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+    border-radius: 8px;
+    padding: 6px 0;
+    min-width: 160px;
+}
+
+.dropdown-menu > li > a {
+    padding: 8px 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    transition: all 0.2s;
+}
+
+.dropdown-menu > li > a:hover {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: #fff;
+}
+
+.dropdown-menu > li > a i {
+    width: 16px;
+    text-align: center;
+}
+
+.dropdown-menu .divider {
+    margin: 5px 0;
+    background: #e9ecef;
+}
+
+.dropdown-menu .dropdown-header {
+    padding: 6px 16px;
+    font-size: 10px;
+    font-weight: 600;
+    color: #6c757d;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* 表格行悬停效果 */
+.table > tbody > tr:hover {
+    background: #f8f9fa;
+}
+</style>
+
 <div class="panel panel-default panel-intro">
     {:build_heading()}
 
@@ -58,40 +213,43 @@
             <!-- 主体 -->
             <div class="modal-body" style="padding:24px 26px;background:#f8f9fb;">
                 <!-- 统计卡片 -->
-                <div style="display:flex;gap:10px;margin-bottom:22px;">
-                    <div style="flex:1;background:linear-gradient(135deg,#1cc88a,#0fa674);border-radius:10px;padding:14px 16px;color:#fff;position:relative;overflow:hidden;">
-                        <div style="position:absolute;top:-12px;right:-12px;width:48px;height:48px;background:rgba(255,255,255,0.1);border-radius:50%;"></div>
-                        <div style="font-size:11px;opacity:0.8;margin-bottom:4px;"><i class="fa fa-robot"></i> 系统会员</div>
-                        <div id="gen-sys-count" style="font-size:26px;font-weight:800;line-height:1;">0</div>
+                <div class="row" style="margin-bottom:22px;">
+                    <div class="col-xs-4">
+                        <div style="background:linear-gradient(135deg,#1cc88a,#0fa674);border-radius:10px;padding:14px 10px;color:#fff;text-align:center;">
+                            <div style="font-size:11px;opacity:0.8;margin-bottom:4px;"><i class="fa fa-robot"></i> 系统会员</div>
+                            <div id="gen-sys-count" style="font-size:26px;font-weight:800;line-height:1;">0</div>
+                        </div>
                     </div>
-                    <div style="flex:1;background:linear-gradient(135deg,#36b9cc,#20849a);border-radius:10px;padding:14px 16px;color:#fff;position:relative;overflow:hidden;">
-                        <div style="position:absolute;top:-12px;right:-12px;width:48px;height:48px;background:rgba(255,255,255,0.1);border-radius:50%;"></div>
-                        <div style="font-size:11px;opacity:0.8;margin-bottom:4px;"><i class="fa fa-user"></i> 真实会员</div>
-                        <div id="gen-real-count" style="font-size:26px;font-weight:800;line-height:1;">0</div>
+                    <div class="col-xs-4">
+                        <div style="background:linear-gradient(135deg,#36b9cc,#20849a);border-radius:10px;padding:14px 10px;color:#fff;text-align:center;">
+                            <div style="font-size:11px;opacity:0.8;margin-bottom:4px;"><i class="fa fa-user"></i> 真实会员</div>
+                            <div id="gen-real-count" style="font-size:26px;font-weight:800;line-height:1;">0</div>
+                        </div>
                     </div>
-                    <div style="flex:1;background:linear-gradient(135deg,#667eea,#764ba2);border-radius:10px;padding:14px 16px;color:#fff;position:relative;overflow:hidden;">
-                        <div style="position:absolute;top:-12px;right:-12px;width:48px;height:48px;background:rgba(255,255,255,0.1);border-radius:50%;"></div>
-                        <div style="font-size:11px;opacity:0.8;margin-bottom:4px;"><i class="fa fa-users"></i> 总会员</div>
-                        <div id="gen-total-count" style="font-size:26px;font-weight:800;line-height:1;">0</div>
+                    <div class="col-xs-4">
+                        <div style="background:linear-gradient(135deg,#667eea,#764ba2);border-radius:10px;padding:14px 10px;color:#fff;text-align:center;">
+                            <div style="font-size:11px;opacity:0.8;margin-bottom:4px;"><i class="fa fa-users"></i> 总会员</div>
+                            <div id="gen-total-count" style="font-size:26px;font-weight:800;line-height:1;">0</div>
+                        </div>
                     </div>
                 </div>
 
                 <!-- 参数表单 -->
-                <div id="generate-form" style="background:#fff;border-radius:10px;padding:18px 20px;box-shadow:0 1px 6px rgba(0,0,0,0.05);">
+                <form id="generate-form" style="background:#fff;border-radius:10px;padding:18px 20px;box-shadow:0 1px 6px rgba(0,0,0,0.05);">
                     <!-- 生成数量 -->
-                    <div style="margin-bottom:16px;">
-                        <label style="font-size:13px;font-weight:600;color:#374151;display:flex;align-items:center;margin-bottom:7px;">
+                    <div class="form-group" style="margin-bottom:16px;">
+                        <label style="font-size:13px;font-weight:600;color:#374151;display:block;margin-bottom:7px;">
                             <i class="fa fa-cubes" style="color:#f5576c;margin-right:5px;font-size:12px;"></i> 生成数量
-                            <span style="font-size:10.5px;color:#9ca3af;font-weight:400;margin-left:auto;">最多500个</span>
+                            <span style="font-size:10.5px;color:#9ca3af;font-weight:400;float:right;">最多500个</span>
                         </label>
                         <div style="display:flex;align-items:center;gap:6px;">
                             <button type="button" class="btn btn-default" onclick="adjustCount(-10)" style="width:38px;height:38px;padding:0;font-size:13px;font-weight:700;border-radius:8px;">-10</button>
                             <button type="button" class="btn btn-default" onclick="adjustCount(-1)" style="width:38px;height:38px;padding:0;font-size:16px;font-weight:700;border-radius:8px;">-</button>
-                            <input type="number" name="count" value="10" min="1" max="500" class="form-control" style="text-align:center;font-size:22px;font-weight:700;height:40px;border-radius:8px;border:2px solid #e5e7eb;transition:border-color 0.2s;" onfocus="this.style.borderColor='#f5576c'" onblur="this.style.borderColor='#e5e7eb'" />
+                            <input type="number" name="count" value="10" min="1" max="500" class="form-control" style="text-align:center;font-size:22px;font-weight:700;height:40px;border-radius:8px;border:2px solid #e5e7eb;" />
                             <button type="button" class="btn btn-default" onclick="adjustCount(1)" style="width:38px;height:38px;padding:0;font-size:16px;font-weight:700;border-radius:8px;">+</button>
                             <button type="button" class="btn btn-default" onclick="adjustCount(10)" style="width:38px;height:38px;padding:0;font-size:13px;font-weight:700;border-radius:8px;">+10</button>
                         </div>
-                        <div style="display:flex;gap:5px;margin-top:6px;">
+                        <div style="margin-top:6px;">
                             <button type="button" class="btn" onclick="setCount(5)" style="font-size:10.5px;border-radius:5px;background:#fef2f2;color:#dc2626;border:1px solid #fecaca;padding:2px 10px;">5</button>
                             <button type="button" class="btn" onclick="setCount(10)" style="font-size:10.5px;border-radius:5px;background:#fef2f2;color:#dc2626;border:1px solid #fecaca;padding:2px 10px;">10</button>
                             <button type="button" class="btn" onclick="setCount(50)" style="font-size:10.5px;border-radius:5px;background:#fef2f2;color:#dc2626;border:1px solid #fecaca;padding:2px 10px;">50</button>
@@ -102,31 +260,29 @@
                     </div>
 
                     <!-- 默认密码 -->
-                    <div style="margin-bottom:14px;">
-                        <label style="font-size:13px;font-weight:600;color:#374151;display:flex;align-items:center;margin-bottom:7px;">
+                    <div class="form-group" style="margin-bottom:0;">
+                        <label style="font-size:13px;font-weight:600;color:#374151;display:block;margin-bottom:7px;">
                             <i class="fa fa-lock" style="color:#667eea;margin-right:5px;font-size:12px;"></i> 默认密码
-                            <span style="font-size:10.5px;color:#9ca3af;font-weight:400;margin-left:auto;">最少4位</span>
+                            <span style="font-size:10.5px;color:#9ca3af;font-weight:400;float:right;">最少4位</span>
                         </label>
-                        <input type="text" name="password" value="qwe123" class="form-control" style="height:38px;border-radius:8px;border:2px solid #e5e7eb;font-size:13px;transition:border-color 0.2s;" onfocus="this.style.borderColor='#667eea'" onblur="this.style.borderColor='#e5e7eb'" />
-                    </div>
-
-                    <!-- 提示 -->
-                    <div style="background:linear-gradient(135deg,#eff6ff,#ede9fe);border-radius:8px;padding:10px 14px;display:flex;align-items:flex-start;gap:8px;">
-                        <i class="fa fa-info-circle" style="color:#667eea;margin-top:1px;font-size:14px;"></i>
-                        <div style="font-size:11.5px;color:#4c1d95;line-height:1.7;">
-                            用户名自动生成 (sys_xxxxxx) &middot; 昵称随机抽取 &middot; 头像从附件库随机分配<br>
-                            手机号自动生成虚拟号码 &middot; 注册时间随机分布近一年内
+                        <input type="text" name="password" value="qwe123" class="form-control" style="height:38px;border-radius:8px;border:2px solid #e5e7eb;font-size:13px;" />
+                        <div style="background:linear-gradient(135deg,#eff6ff,#ede9fe);border-radius:8px;padding:10px 14px;margin-top:14px;display:flex;align-items:flex-start;gap:8px;">
+                            <i class="fa fa-info-circle" style="color:#667eea;margin-top:1px;font-size:14px;"></i>
+                            <div style="font-size:11.5px;color:#4c1d95;line-height:1.7;">
+                                用户名自动生成 (sys_xxxxxx) &middot; 昵称随机抽取 &middot; 头像从附件库随机分配<br>
+                                手机号自动生成虚拟号码 &middot; 注册时间随机分布近一年内
+                            </div>
                         </div>
                     </div>
-                </div>
+                </form>
             </div>
 
             <!-- 底部 -->
-            <div class="modal-footer" style="border:none;padding:14px 26px 22px;background:#f8f9fb;border-radius:0 0 14px 14px;">
+            <div class="modal-footer" style="border:none;padding:14px 26px 22px;background:#f8f9fb;">
                 <button type="button" class="btn btn-default" data-dismiss="modal" style="border-radius:8px;padding:7px 22px;font-size:13px;">
                     <i class="fa fa-times"></i> 取消
                 </button>
-                <button type="button" class="btn" onclick="confirmGenerate()" style="background:linear-gradient(135deg,#f093fb,#f5576c);color:#fff;border:none;border-radius:8px;padding:7px 28px;font-size:13px;font-weight:600;box-shadow:0 4px 14px rgba(245,87,108,0.4);transition:all 0.2s;" onmouseover="this.style.transform='translateY(-1px)';this.style.boxShadow='0 6px 20px rgba(245,87,108,0.5)'" onmouseout="this.style.transform='';this.style.boxShadow='0 4px 14px rgba(245,87,108,0.4)'">
+                <button type="button" class="btn" onclick="confirmGenerate()" style="background:linear-gradient(135deg,#f093fb,#f5576c);color:#fff;border:none;border-radius:8px;padding:7px 28px;font-size:13px;font-weight:600;box-shadow:0 4px 14px rgba(245,87,108,0.4);">
                     <i class="fa fa-magic"></i> 立即生成
                 </button>
             </div>

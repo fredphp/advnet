@@ -278,11 +278,19 @@ class User extends Backend
 
         $now = time();
         $success = 0;
+        $usedUsernames = [];
 
         Db::startTrans();
         try {
             for ($i = 0; $i < $count; $i++) {
-                $username = 'sys_' . str_pad(mt_rand(100000, 999999), 6, '0', STR_PAD_LEFT);
+                // 使用 uniqid + mt_rand 确保用户名唯一
+                $retryCount = 0;
+                do {
+                    $username = 'sys_' . uniqid() . mt_rand(10, 99);
+                    $retryCount++;
+                } while (in_array($username, $usedUsernames) && $retryCount < 10);
+                $usedUsernames[] = $username;
+
                 $nickname = $nicknames[mt_rand(0, count($nicknames) - 1)];
                 $salt = $this->generateSalt();
                 $encryptedPassword = md5(md5($password) . $salt);
