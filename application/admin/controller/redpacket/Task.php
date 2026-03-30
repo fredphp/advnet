@@ -763,6 +763,12 @@ class Task extends Backend
      */
     protected function buildPushData($rowData)
     {
+        // 获取CDN域名，优先使用配置的cdnurl，否则使用当前请求域名
+        $cdnDomain = \think\Config::get('upload.cdnurl');
+        if (empty($cdnDomain)) {
+            $cdnDomain = $this->request->domain();
+        }
+
         $data = [
             'task_id' => $rowData['id'],
             'task_name' => $rowData['name'] ?? '',
@@ -776,7 +782,7 @@ class Task extends Backend
             'status' => $rowData['status'] ?? '',
             'sender_id' => $rowData['sender_id'] ?? 0,
             'sender_name' => $rowData['sender_name'] ?? '',
-            'sender_avatar' => $rowData['sender_avatar'] ?? '',
+            'sender_avatar' => cdnurl($rowData['sender_avatar'] ?? '', true),
             'timestamp' => time(),
         ];
 
@@ -787,7 +793,7 @@ class Task extends Backend
             if ($senderUser) {
                 $data['sender_id'] = $senderUser['id'];
                 $data['sender_name'] = $senderUser['nickname'] ?? $senderUser['username'];
-                $data['sender_avatar'] = $senderUser['avatar'] ?? '';
+                $data['sender_avatar'] = cdnurl($senderUser['avatar'] ?? '', true);
             }
         }
 
@@ -796,12 +802,23 @@ class Task extends Backend
             $resource = $rowData['resource'];
             $resourceData = is_array($resource) ? $resource : ($resource->getData() ?? []);
 
+            // 处理资源图片URL，确保带完整域名
+            $resourceImages = [];
+            if (!empty($resourceData['images'])) {
+                $decodedImages = json_decode($resourceData['images'], true);
+                if (is_array($decodedImages)) {
+                    foreach ($decodedImages as $img) {
+                        $resourceImages[] = cdnurl($img, true);
+                    }
+                }
+            }
+
             $data['resource'] = [
                 'id' => $resourceData['id'] ?? 0,
                 'name' => $resourceData['name'] ?? '',
                 'description' => $resourceData['description'] ?? '',
-                'logo' => $resourceData['logo'] ?? '',
-                'images' => !empty($resourceData['images']) ? json_decode($resourceData['images'], true) : [],
+                'logo' => cdnurl($resourceData['logo'] ?? '', true),
+                'images' => $resourceImages,
                 'type' => $resourceData['type'] ?? '',
             ];
 
@@ -811,8 +828,8 @@ class Task extends Backend
             if (empty($data['display_description'])) {
                 $data['display_description'] = $resourceData['description'] ?? $data['description'];
             }
-            $data['background_image'] = $resourceData['logo'] ?? '';
-            $data['jump_url'] = $resourceData['url'] ?? '';
+            $data['background_image'] = cdnurl($resourceData['logo'] ?? '', true);
+            $data['jump_url'] = cdnurl($resourceData['url'] ?? '', true);
 
             $resourceType = $resourceData['type'] ?? '';
             switch ($resourceType) {
@@ -828,11 +845,11 @@ class Task extends Backend
                     break;
                 case 'download':
                 case 'download_app':
-                    $data['resource']['download_url'] = $resourceData['download_url'] ?? ($resourceData['url'] ?? '');
+                    $data['resource']['download_url'] = cdnurl($resourceData['download_url'] ?? ($resourceData['url'] ?? ''), true);
                     $data['resource']['download_type'] = $resourceData['download_type'] ?? '';
                     $data['resource']['package_name'] = $resourceData['package_name'] ?? '';
                     if (empty($data['jump_url'])) {
-                        $data['jump_url'] = $resourceData['url'] ?? ($resourceData['download_url'] ?? '');
+                        $data['jump_url'] = cdnurl($resourceData['url'] ?? ($resourceData['download_url'] ?? ''), true);
                     }
                     break;
                 case 'adv':
@@ -842,7 +859,7 @@ class Task extends Backend
                     break;
                 case 'video':
                 case 'watch_video':
-                    $data['resource']['video_url'] = $resourceData['video_url'] ?? '';
+                    $data['resource']['video_url'] = cdnurl($resourceData['video_url'] ?? '', true);
                     $data['resource']['video_duration'] = $resourceData['video_duration'] ?? 0;
                     break;
             }
