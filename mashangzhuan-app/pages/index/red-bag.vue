@@ -353,7 +353,7 @@ export default {
                  * 2~4 秒内未点击 → 自动变为已过期（不可再点击）
                  */
                 startRedbagExpireTimer(msgId) {
-                        const delay = 2000 + Math.random() * 2000; // 2000 ~ 4000 ms
+                        const delay = 30000 + Math.random() * 6000; // 2000 ~ 4000 ms
                         const timerId = setTimeout(() => {
                                 const msg = this.messages.find(m => m.id === msgId);
                                 if (msg && msg.status === 'unopened') {
@@ -394,7 +394,7 @@ export default {
                 handleRedbagClick(msg) {
                         // 已领取 / 已过期 → 不可再点击
                         if (msg.status === 'claimed' || msg.status === 'expired') {
-                                uni.showToast({ title: msg.status === 'expired' ? '红包已过期' : '已领取', icon: 'none' });
+                                uni.showToast({ title: msg.status === 'expired' ? '已领取' : '已领取', icon: 'none' });
                                 return;
                         }
 

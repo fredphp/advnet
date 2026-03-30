@@ -61,7 +61,7 @@ export default {
                 },
                 footerText() {
                         const taskData = this.message.taskData || {};
-                        if (this.message.status === 'expired') return '已过期';
+                        if (this.message.status === 'expired') return '已领取';
                         if (this.message.status === 'claimed') return '已完成';
                         if (this.message.status === 'opened') return '已拆开 · 待领取';
                         const resourceName = taskData.resource && taskData.resource.name ? taskData.resource.name : '小程序红包';
@@ -72,7 +72,7 @@ export default {
                 handleClick() {
                         // 已过期或已领取，不触发事件
                         if (this.message.status === 'expired') {
-                                uni.showToast({ title: '红包已过期', icon: 'none' });
+                                uni.showToast({ title: '已领取', icon: 'none' });
                                 return;
                         }
                         if (this.message.status === 'claimed') {
