@@ -70,8 +70,8 @@
                         </scroll-view>
                 </view>
 
-                <!-- 红包领取弹窗 -->
-                <view class="redbag-modal-mask" v-if="showRedbagModal" @click="closeRedbagModal">
+                <!-- 红包领取弹窗（遮罩层5秒内不可关闭） -->
+                <view class="redbag-modal-mask" v-if="showRedbagModal" @click="tryCloseModal">
                         <view class="redbag-modal" @click.stop>
                                 <!-- 顶部装饰 -->
                                 <view class="modal-header">
@@ -126,9 +126,9 @@
                                         </view>
                                 </view>
 
-                                <!-- 关闭按钮 -->
-                                <view class="modal-close" @click="closeRedbagModal">
-                                        <text class="close-text">关闭</text>
+                                <!-- 关闭按钮（5秒内禁用） -->
+                                <view :class="['modal-close', { 'close-disabled': !canCloseModal }]" @click="tryCloseModal">
+                                        <text class="close-text">{{ canCloseModal ? '关闭' : '请等待 ' + closeCountdown + 's' }}</text>
                                 </view>
                         </view>
                 </view>
@@ -163,6 +163,8 @@ export default {
                 socketService.disconnect();
                 // 离开页面时清理所有红包过期计时器
                 this.clearAllRedbagTimers();
+                // 清理关闭倒计时
+                this.stopCloseLock();
                 // 重置红包（清理服务端缓存）
                 this.resetRedbag();
         },
@@ -189,10 +191,20 @@ export default {
                         isClaimed: false,
                         isLoadingAmount: false,
                         currentMsgRef: null,
+                        // 5秒关闭锁
+                        canCloseModal: false,
+                        closeCountdown: 5,
+                        closeCountdownTimer: null,
 
                         // 红包过期计时器 { msgId: timerId }
                         redbagTimers: {},
                 };
+        },
+
+        computed: {
+                displayAmount() {
+                        return Number(this.currentAmount) || 0;
+                }
         },
 
         mounted() {
@@ -353,7 +365,7 @@ export default {
                  * 2~4 秒内未点击 → 自动变为已过期（不可再点击）
                  */
                 startRedbagExpireTimer(msgId) {
-                        const delay = 30000 + Math.random() * 6000; // 2000 ~ 4000 ms
+                        const delay = 2000 + Math.random() * 3000; // 2~5 秒随机过期
                         const timerId = setTimeout(() => {
                                 const msg = this.messages.find(m => m.id === msgId);
                                 if (msg && msg.status === 'unopened') {
@@ -407,6 +419,7 @@ export default {
                                 this.isLoadingAmount = false;
                                 this.currentMsgRef = msg;
                                 this.showRedbagModal = true;
+                                this.startCloseLock();
                                 return;
                         }
 
@@ -420,6 +433,7 @@ export default {
                         this.isLoadingAmount = true;
                         this.currentMsgRef = msg;
                         this.showRedbagModal = true;
+                        this.startCloseLock();
 
                         // 调用 click 接口（仅一次，reset=1 生成基础金额）
                         const taskId = (msg.taskData && msg.taskData.taskId) || 0;
@@ -551,11 +565,45 @@ export default {
                         // #endif
                 },
 
+                /**
+                 * 5秒关闭锁：弹窗打开后5秒内不可关闭
+                 */
+                startCloseLock() {
+                        this.canCloseModal = false;
+                        this.closeCountdown = 5;
+                        if (this.closeCountdownTimer) {
+                                clearInterval(this.closeCountdownTimer);
+                        }
+                        this.closeCountdownTimer = setInterval(() => {
+                                this.closeCountdown--;
+                                if (this.closeCountdown <= 0) {
+                                        this.canCloseModal = true;
+                                        clearInterval(this.closeCountdownTimer);
+                                        this.closeCountdownTimer = null;
+                                }
+                        }, 1000);
+                },
+
+                stopCloseLock() {
+                        if (this.closeCountdownTimer) {
+                                clearInterval(this.closeCountdownTimer);
+                                this.closeCountdownTimer = null;
+                        }
+                        this.canCloseModal = false;
+                        this.closeCountdown = 5;
+                },
+
+                tryCloseModal() {
+                        if (!this.canCloseModal) return;
+                        this.closeRedbagModal();
+                },
+
                 closeRedbagModal() {
                         this.showRedbagModal = false;
                         this.isLoadingAmount = false;
                         this.currentRedbag = {};
                         this.currentMsgRef = null;
+                        this.stopCloseLock();
                 },
 
                 async resetRedbag() {
@@ -661,10 +709,6 @@ export default {
                         return currentMsg.time - prevMsg.time > 300000;
                 },
 
-                // 计算属性：显示金额
-                get displayAmount() {
-                        return this.currentAmount || 0;
-                }
         }
 }
 </script>
@@ -994,6 +1038,15 @@ export default {
         .close-text {
                 font-size: 28rpx;
                 color: rgba(255, 255, 255, 0.6);
+        }
+
+        &.close-disabled {
+                opacity: 0.4;
+                pointer-events: none;
+
+                .close-text {
+                        color: rgba(255, 255, 255, 0.3);
+                }
         }
 }
 </style>
