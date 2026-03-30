@@ -970,7 +970,7 @@ class User extends Backend
                         `createtime`, `updatetime`, `status`, `source`, `verification`
                     ) VALUES (
                         0, 1, ?, ?, ?, ?,
-                        LPAD(?, 6, '0'), 0, 0, ?,
+                        CONCAT('SYS', LPAD(?, 6, '0')), 0, 0, ?,
                         ?, 0, ?, 0.00, 0,
                         1, 1, ?, ?,
                         ?, ?, 'normal', 'system', ''

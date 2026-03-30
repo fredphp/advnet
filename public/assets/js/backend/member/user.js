@@ -28,6 +28,7 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
                         {field: 'mobile', title: '手机号', operate: 'LIKE', width: 120},
                         {field: 'coin_balance', title: '金币余额', sortable: true, formatter: Controller.api.formatter.coin, width: 100},
                         {field: 'frozen_coin', title: '冻结金币', sortable: true, formatter: Controller.api.formatter.coinFrozen, width: 100},
+                        {field: 'invite_code', title: '邀请码', sortable: true, formatter:Controller.api.formatter.normal, width: 100},
                         {field: 'level', title: '等级', width: 60, formatter: Controller.api.formatter.level},
                         {field: 'status', title: '状态', searchList: {"normal":"正常","frozen":"冻结","banned":"封禁"}, formatter: Controller.api.formatter.status, width: 80},
                         {field: 'createtime', title: '注册时间', operate: 'RANGE', addclass: 'datetimerange', formatter: Table.api.formatter.datetime, sortable: true, width: 150},
