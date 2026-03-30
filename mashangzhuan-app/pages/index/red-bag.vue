@@ -167,10 +167,10 @@
                                 socketService.connect({
                                         userId: this.user_info.id || this.user_info.user_id,
                                         token: this.user_info.token || '',
-                                        groupId: this.groupId
-                                        // 不传 serverUrl，自动从当前页面域名推导 WebSocket 地址
-                                        // 本地 localhost:8080 → ws://localhost:3002
-                                        // 线上 xxx.com → ws://xxx.com:3002
+                                        groupId: this.groupId,
+                                        // ⚠️ 必须指向运行 WebSocket 服务的服务器地址
+                                        // 不能用 localhost（那是你本机，没有 Swoole 服务）
+                                        serverUrl: 'ws://advnet.cocos2026.cn:3002'
                                 })
                           
                                 // 监听连接成功

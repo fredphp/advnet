@@ -71,23 +71,26 @@ class SocketService {
 
   /**
    * 自动推导 WebSocket 服务器地址
-   * 核心逻辑: 取当前页面 hostname，替换端口为 3002
-   * 这样无论本地开发还是线上部署，都能正确连接到对应环境的 WebSocket
+   * 核心逻辑: 如果是 localhost，尝试从 localStorage 读取配置的远程地址
+   * 因为 WebSocket 服务通常不在本机，而前端可能在本地开发
    */
   _autoDetectServerUrl() {
     if (typeof window === 'undefined') return 'ws://localhost:3002'
 
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
     const hostname = window.location.hostname
 
-    // 如果是本地开发，直连本地 WebSocket
+    // 如果是 localhost，优先用 localStorage 中配置的远程服务器地址
     if (hostname === 'localhost' || hostname === '127.0.0.1') {
-      return `${protocol}//${hostname}:3002`
+      // 可通过控制台设置: localStorage.setItem('ws_server_url', 'ws://advnet.cocos2026.cn:3002')
+      const remoteUrl = window.localStorage.getItem('ws_server_url')
+      if (remoteUrl) {
+        console.log('[Socket] 使用 localStorage 中配置的远程地址:', remoteUrl)
+        return remoteUrl
+      }
+      return 'ws://localhost:3002'
     }
 
-    // 线上环境: 使用当前页面所在域名的 3002 端口
-    // 例如: 页面在 adv.cocos2026.com:8080 → WebSocket 连 ws://adv.cocos2026.com:3002
-    // 例如: 页面在 advnet.cocos2026.cn → WebSocket 连 ws://advnet.cocos2026.cn:3002
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
     return `${protocol}//${hostname}:3002`
   }
 
