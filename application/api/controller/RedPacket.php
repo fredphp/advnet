@@ -43,7 +43,12 @@ class RedPacket extends Api
     public function _initialize()
     {
         parent::_initialize();
-        $this->service = new \app\common\library\RedPacketClickService();
+        try {
+            $this->service = new \app\common\library\RedPacketClickService();
+        } catch (\Throwable $e) {
+            Log::error('RedPacketClickService 初始化失败: ' . $e->getMessage());
+            $this->service = null;
+        }
     }
     
     /**
@@ -146,7 +151,7 @@ class RedPacket extends Api
             if (!$riskResult['passed']) {
                 $this->error($riskResult['message'] ?: '风控检测未通过');
             }
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             Log::error('红包点击风控服务调用失败: ' . $e->getMessage());
         }
         
@@ -165,19 +170,29 @@ class RedPacket extends Api
             // 获取今日已领取金额（从当月分表查询）
             $todayStart = strtotime(date('Y-m-d'));
             $todayAmount = 0;
-            $tableName = CoinLog::getTableByMonth();
-            if (CoinLog::tableExists($tableName)) {
-                $todayAmount = Db::name($tableName)
-                    ->where('user_id', $userId)
-                    ->whereIn('type', ['red_packet_grab', 'red_packet_click', 'red_packet_reward'])
-                    ->where('createtime', '>=', $todayStart)
-                    ->sum('amount');
+            try {
+                $tableName = CoinLog::getTableByMonth();
+                if (CoinLog::tableExists($tableName)) {
+                    $todayAmount = Db::name($tableName)
+                        ->where('user_id', $userId)
+                        ->whereIn('type', ['red_packet_grab', 'red_packet_click', 'red_packet_reward'])
+                        ->where('createtime', '>=', $todayStart)
+                        ->sum('amount');
+                }
+                $todayAmount = intval($todayAmount);
+            } catch (\Throwable $e) {
+                Log::warning('获取今日红包金额失败: ' . $e->getMessage());
+                $todayAmount = 0;
             }
-            $todayAmount = intval($todayAmount);
             
             // 判断是否新用户（注册7天内）
-            $user = Db::name('user')->field('jointime')->find($userId);
-            $isNewUser = $user && (time() - $user['jointime'] < 7 * 86400);
+            $isNewUser = false;
+            try {
+                $user = Db::name('user')->field('jointime')->find($userId);
+                $isNewUser = $user && (time() - intval($user['jointime']) < 7 * 86400);
+            } catch (\Throwable $e) {
+                Log::warning('获取用户注册时间失败: ' . $e->getMessage());
+            }
             
             // 获取封顶额度
             $maxLimit = RedPacketRewardConfig::getMaxRewardLimit();
@@ -239,7 +254,7 @@ class RedPacket extends Api
                 'total_amount' => intval($latestData['total_amount'] ?? 0),
             ]);
             
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             Log::error('红包点击失败: ' . $e->getMessage() . "\n" . $e->getTraceAsString());
             $this->error('系统错误: ' . $e->getMessage());
         }
@@ -270,7 +285,7 @@ class RedPacket extends Api
                 $this->request->ip(),
                 $this->request->header('user-agent', '')
             );
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             Log::error('红包领取风控服务初始化失败: ' . $e->getMessage());
         }
         
@@ -328,7 +343,7 @@ class RedPacket extends Api
                 $this->error($result['message'] ?? '发放失败');
             }
             
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             Log::error('红包领取失败: ' . $e->getMessage() . "\n" . $e->getTraceAsString());
             $this->error('系统错误: ' . $e->getMessage());
         }
@@ -362,7 +377,7 @@ class RedPacket extends Api
                 'cleared_amount' => $totalAmount
             ]);
             
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             Log::error('红包重置失败: ' . $e->getMessage());
             $this->error('系统错误');
         }
@@ -388,7 +403,7 @@ class RedPacket extends Api
                 'total_amount' => $totalAmount,
             ]);
             
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             Log::error('红包金额获取失败: ' . $e->getMessage());
             $this->error('系统错误');
         }

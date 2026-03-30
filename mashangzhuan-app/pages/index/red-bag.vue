@@ -46,24 +46,24 @@
                                         </view>
 
                                         <!-- 普通聊天/下载/广告/视频 任务卡片 -->
-                                        <task-message 
-                                                v-if="msg.type === 'task_chat' || msg.type === 'task_download' || msg.type === 'task_adv' || msg.type === 'task_video'" 
-                                                :message="msg" 
-                                                :is-me="false" 
+                                        <task-message
+                                                v-if="msg.type === 'task_chat' || msg.type === 'task_download' || msg.type === 'task_adv' || msg.type === 'task_video'"
+                                                :message="msg"
+                                                :is-me="false"
                                                 @task-click="handleTaskClick" />
 
                                         <!-- 红包消息（小程序类型） -->
-                                        <redbag-message 
-                                                v-if="msg.type === 'redbag'" 
-                                                :message="msg" 
-                                                :is-me="false" 
+                                        <redbag-message
+                                                v-if="msg.type === 'redbag'"
+                                                :message="msg"
+                                                :is-me="false"
                                                 @open-redbag="handleRedbagClick" />
 
                                         <!-- 普通文本/图片消息 -->
-                                        <chat-message 
-                                                v-if="msg.type === 'text' || msg.type === 'img'" 
-                                                :message="msg" 
-                                                :is-me="msg.sender === 'me'" 
+                                        <chat-message
+                                                v-if="msg.type === 'text' || msg.type === 'img'"
+                                                :message="msg"
+                                                :is-me="msg.sender === 'me'"
                                                 @play-voice="playVoice(msg)" />
                                 </view>
                                 <view id="bottom-anchor"></view>
@@ -81,34 +81,48 @@
 
                                 <!-- 金额显示区域 -->
                                 <view class="modal-amount-area">
-                                        <view class="amount-circle" :class="{ shaking: isClicking && !isOpened }">
+                                        <!-- 加载中 -->
+                                        <view v-if="isLoadingAmount" class="amount-circle loading">
+                                                <text class="amount-number loading-text">...</text>
+                                                <text class="amount-label">获取中</text>
+                                        </view>
+                                        <!-- 有金额 -->
+                                        <view v-else class="amount-circle" :class="{ shaking: false }">
                                                 <text class="amount-number">{{ displayAmount }}</text>
                                                 <text class="amount-label">金币</text>
                                         </view>
-                                        <text class="amount-hint" v-if="!isOpened && currentAmount > 0">
-                                                金币持续增长中...
+
+                                        <text class="amount-hint" v-if="isLoadingAmount">
+                                                正在获取红包金额...
                                         </text>
-                                        <text class="amount-hint" v-else-if="isOpened">
-                                                拆开红包获得 {{ displayAmount }} 金币
+                                        <text class="amount-hint" v-else-if="isClaimed">
+                                                已领取 {{ displayAmount }} 金币
+                                        </text>
+                                        <text class="amount-hint" v-else-if="currentAmount > 0">
+                                                恭喜获得 {{ displayAmount }} 金币
                                         </text>
                                         <text class="amount-hint" v-else>
-                                                点击红包拆开
+                                                获取金额失败，请重试
                                         </text>
                                 </view>
 
                                 <!-- 操作按钮 -->
                                 <view class="modal-actions">
-                                        <!-- 未拆开：拆红包按钮 -->
-                                        <view v-if="!isOpened" class="action-btn open-btn" @click="openRedbag">
-                                                <text class="action-text">拆红包</text>
+                                        <!-- 加载中 -->
+                                        <view v-if="isLoadingAmount" class="action-btn disabled-btn">
+                                                <text class="action-text">获取中...</text>
                                         </view>
-                                        <!-- 已拆开：领取按钮 → 跳转小程序 -->
-                                        <view v-else-if="isOpened && !isClaimed" class="action-btn claim-btn" @click="claimRedbag">
+                                        <!-- 金额获取成功，未领取 → 领取按钮 -->
+                                        <view v-else-if="!isClaimed && currentAmount > 0" class="action-btn claim-btn" @click="claimRedbag">
                                                 <text class="action-text">领取并去小程序</text>
                                         </view>
                                         <!-- 已领取 -->
-                                        <view v-else class="action-btn done-btn">
+                                        <view v-else-if="isClaimed" class="action-btn done-btn">
                                                 <text class="action-text">已领取</text>
+                                        </view>
+                                        <!-- 获取失败 -->
+                                        <view v-else class="action-btn close-action-btn" @click="closeRedbagModal">
+                                                <text class="action-text">关闭</text>
                                         </view>
                                 </view>
 
@@ -147,8 +161,9 @@ export default {
 
         onUnload() {
                 socketService.disconnect();
-                this.stopRedbagClickTimer();
-                // 离开页面时重置红包
+                // 离开页面时清理所有红包过期计时器
+                this.clearAllRedbagTimers();
+                // 重置红包（清理服务端缓存）
                 this.resetRedbag();
         },
 
@@ -171,11 +186,12 @@ export default {
                         showRedbagModal: false,
                         currentRedbag: {},
                         currentAmount: 0,
-                        isOpened: false,
                         isClaimed: false,
-                        isClicking: false,
-                        clickTimer: null,
+                        isLoadingAmount: false,
                         currentMsgRef: null,
+
+                        // 红包过期计时器 { msgId: timerId }
+                        redbagTimers: {},
                 };
         },
 
@@ -231,13 +247,6 @@ export default {
                 // ==================== 任务推送分发（核心逻辑） ====================
                 /**
                  * 根据任务类型，将推送转化为不同样式的消息卡片
-                 * 
-                 * 类型映射：
-                 *  - chat     → type: 'task_chat'     → TaskMessage 聊天卡片
-                 *  - download → type: 'task_download' → TaskMessage 下载卡片
-                 *  - adv      → type: 'task_adv'      → TaskMessage 广告卡片
-                 *  - video    → type: 'task_video'    → TaskMessage 视频卡片
-                 *  - miniapp  → type: 'redbag'        → RedbagMessage 红包卡片
                  */
                 handleTaskPush(task) {
                         const taskId = task.taskId || task.task_id || 0;
@@ -275,7 +284,6 @@ export default {
 
                         switch (taskType) {
                                 case 'chat':
-                                        // 普通聊天任务 → 以普通文本气泡形式显示 description
                                         this.messages.push({
                                                 ...baseMsg,
                                                 type: 'task_chat',
@@ -285,7 +293,6 @@ export default {
 
                                 case 'download':
                                 case 'download_app':
-                                        // 下载App任务 → 显示下载卡片
                                         this.messages.push({
                                                 ...baseMsg,
                                                 type: 'task_download',
@@ -295,19 +302,21 @@ export default {
 
                                 case 'miniapp':
                                 case 'mini_program':
-                                        // 小程序游戏 → 显示红包卡片（仅展示，用户点击后才累加金额）
+                                        // 小程序游戏 → 显示红包卡片
+                                        const msgId = baseMsg.id;
                                         this.messages.push({
                                                 ...baseMsg,
                                                 type: 'redbag',
                                                 content: displayTitle,
                                                 amount: 0,
                                                 currentAmount: 0,
-                                                status: 'unopened', // unopened → opened → claimed
+                                                status: 'unopened', // unopened → opened → claimed / expired
                                         });
+                                        // ★ 新红包到达后，启动 2~4 秒自动过期计时器
+                                        this.startRedbagExpireTimer(msgId);
                                         break;
 
                                 case 'adv':
-                                        // 广告时长任务 → 显示广告卡片
                                         this.messages.push({
                                                 ...baseMsg,
                                                 type: 'task_adv',
@@ -318,7 +327,6 @@ export default {
 
                                 case 'video':
                                 case 'watch_video':
-                                        // 观看视频任务 → 显示视频卡片
                                         this.messages.push({
                                                 ...baseMsg,
                                                 type: 'task_video',
@@ -328,7 +336,6 @@ export default {
                                         break;
 
                                 default:
-                                        // 未知类型，按普通文本显示
                                         this.messages.push({
                                                 ...baseMsg,
                                                 type: 'text',
@@ -339,90 +346,124 @@ export default {
                         this.scrollToBottom();
                 },
 
-                // ==================== 红包点击累加逻辑 ====================
+                // ==================== 红包自动过期机制 ====================
+
                 /**
-                 * 用户点击红包卡片后，开始每隔2秒调用 click 接口累加金额
-                 * 用户不点击则不会请求接口
+                 * 为新到达的红包启动自动过期计时器
+                 * 2~4 秒内未点击 → 自动变为已过期（不可再点击）
                  */
-                startRedbagClick(msgId, taskId) {
-                        // 首次点击：reset=1 生成基础金额
-                        this.doClickRedbag(msgId, taskId, 1);
-                        // 之后每2秒累加一次
-                        this.clickTimer = setInterval(() => {
-                                this.doClickRedbag(msgId, taskId, 0);
-                        }, 2000);
-                },
-
-                async doClickRedbag(msgId, taskId, reset) {
-                        try {
-                                const res = await this.$api.redpacketClick({ task_id: taskId, reset: reset || 0 });
-                                if (res && res.code === 1 && res.data) {
-                                        const amount = res.data.total_amount || 0;
-                                        this.currentAmount = amount;
-                                        // 同步更新消息列表中的金额
-                                        const msg = this.messages.find(m => m.id === msgId);
-                                        if (msg) {
-                                                this.$set(msg, 'currentAmount', amount);
-                                        }
-                                } else {
-                                        console.warn('[RedBag] click接口异常:', res);
+                startRedbagExpireTimer(msgId) {
+                        const delay = 2000 + Math.random() * 2000; // 2000 ~ 4000 ms
+                        const timerId = setTimeout(() => {
+                                const msg = this.messages.find(m => m.id === msgId);
+                                if (msg && msg.status === 'unopened') {
+                                        this.$set(msg, 'status', 'expired');
                                 }
-                        } catch (e) {
-                                // 静默处理，不打扰用户
-                        }
+                                // 清理计时器引用
+                                delete this.redbagTimers[msgId];
+                        }, delay);
+                        this.redbagTimers[msgId] = timerId;
                 },
 
-                stopRedbagClickTimer() {
-                        if (this.clickTimer) {
-                                clearInterval(this.clickTimer);
-                                this.clickTimer = null;
-                        }
-                },
-
-                // ==================== 红包弹窗交互 ====================
                 /**
-                 * 点击红包卡片 → 打开弹窗 → 开始累加金额
-                 * 用户不点击红包卡片，则完全不会请求 click 接口
+                 * 取消指定红包的过期计时器
+                 */
+                cancelRedbagExpireTimer(msgId) {
+                        if (this.redbagTimers[msgId]) {
+                                clearTimeout(this.redbagTimers[msgId]);
+                                delete this.redbagTimers[msgId];
+                        }
+                },
+
+                /**
+                 * 清理所有红包过期计时器
+                 */
+                clearAllRedbagTimers() {
+                        Object.keys(this.redbagTimers).forEach(msgId => {
+                                clearTimeout(this.redbagTimers[msgId]);
+                        });
+                        this.redbagTimers = {};
+                },
+
+                // ==================== 红包点击（单次点击） ====================
+
+                /**
+                 * 用户点击红包卡片 → 打开弹窗 → 调用一次 click 接口获取金额
+                 * 不再每 2 秒累加，只有点击新红包时才获取金额
                  */
                 handleRedbagClick(msg) {
-                        if (msg.status === 'claimed') {
-                                uni.showToast({ title: '已领取', icon: 'none' });
+                        // 已领取 / 已过期 → 不可再点击
+                        if (msg.status === 'claimed' || msg.status === 'expired') {
+                                uni.showToast({ title: msg.status === 'expired' ? '红包已过期' : '已领取', icon: 'none' });
                                 return;
                         }
 
+                        // 已拆开但未领取（金额已获取）
+                        if (msg.status === 'opened') {
+                                // 直接打开弹窗显示已有金额，允许领取
+                                this.currentRedbag = msg;
+                                this.currentAmount = msg.currentAmount || msg.claimedAmount || 0;
+                                this.isClaimed = false;
+                                this.isLoadingAmount = false;
+                                this.currentMsgRef = msg;
+                                this.showRedbagModal = true;
+                                return;
+                        }
+
+                        // ★ 新红包点击：取消过期计时器
+                        this.cancelRedbagExpireTimer(msg.id);
+
                         // 记录当前操作的红包
                         this.currentRedbag = msg;
-                        this.currentAmount = msg.currentAmount || 0;
-                        this.isOpened = msg.status === 'opened';
-                        this.isClaimed = msg.status === 'claimed';
-                        this.isClicking = !this.isOpened;
+                        this.currentAmount = 0;
+                        this.isClaimed = false;
+                        this.isLoadingAmount = true;
                         this.currentMsgRef = msg;
                         this.showRedbagModal = true;
 
-                        // ★ 用户点击红包后，才开始累加金额
-                        if (!this.isOpened) {
-                                const taskId = (msg.taskData && msg.taskData.taskId) || 0;
-                                const msgId = msg.id;
-                                if (taskId) {
-                                        this.startRedbagClick(msgId, taskId);
-                                }
+                        // 调用 click 接口（仅一次，reset=1 生成基础金额）
+                        const taskId = (msg.taskData && msg.taskData.taskId) || 0;
+                        if (taskId) {
+                                this.doClickOnce(msg.id, taskId);
+                        } else {
+                                this.isLoadingAmount = false;
                         }
                 },
 
                 /**
-                 * 拆红包 → 停止累加，显示最终金额
+                 * 单次调用 click 接口获取红包金额
                  */
-                openRedbag() {
-                        this.isOpened = true;
-                        this.isClicking = false;
-                        this.stopRedbagClickTimer();
+                async doClickOnce(msgId, taskId) {
+                        try {
+                                const res = await this.$api.redpacketClick({ task_id: taskId, reset: 1 });
+                                if (res && res.code === 1 && res.data) {
+                                        const amount = res.data.total_amount || 0;
+                                        this.currentAmount = amount;
+                                        this.isLoadingAmount = false;
 
-                        // 更新消息状态
-                        if (this.currentMsgRef) {
-                                this.$set(this.currentMsgRef, 'status', 'opened');
-                                this.$set(this.currentMsgRef, 'claimedAmount', this.currentAmount);
+                                        // 同步更新消息列表中的金额和状态
+                                        const msg = this.messages.find(m => m.id === msgId);
+                                        if (msg) {
+                                                this.$set(msg, 'currentAmount', amount);
+                                                this.$set(msg, 'claimedAmount', amount);
+                                                this.$set(msg, 'status', 'opened');
+                                        }
+                                } else {
+                                        this.isLoadingAmount = false;
+                                        console.warn('[RedBag] click接口异常:', res);
+                                        // 恢复过期计时器，让用户可以重试
+                                        this.startRedbagExpireTimer(msgId);
+                                }
+                        } catch (e) {
+                                this.isLoadingAmount = false;
+                                console.error('[RedBag] click失败:', e);
+                                // 恢复过期计时器
+                                this.startRedbagExpireTimer(msgId);
+                                uni.showToast({ title: '网络异常，请重试', icon: 'none' });
                         }
                 },
+
+                // ==================== 红包领取 ====================
 
                 /**
                  * 领取红包 → 调用 claim 接口发放金币 → 跳转小程序广告页
@@ -436,7 +477,6 @@ export default {
 
                                 if (res && res.code === 1) {
                                         this.isClaimed = true;
-                                        this.stopRedbagClickTimer();
 
                                         // 更新消息状态
                                         if (this.currentMsgRef) {
@@ -513,14 +553,12 @@ export default {
 
                 closeRedbagModal() {
                         this.showRedbagModal = false;
-                        this.isClicking = false;
-                        this.stopRedbagClickTimer();
+                        this.isLoadingAmount = false;
                         this.currentRedbag = {};
                         this.currentMsgRef = null;
                 },
 
                 async resetRedbag() {
-                        this.stopRedbagClickTimer();
                         // 静默重置，不弹提示
                         try {
                                 await this.$api.redpacketReset({});
@@ -530,22 +568,17 @@ export default {
                 },
 
                 // ==================== 任务卡片点击处理 ====================
-                /**
-                 * 处理聊天/下载/广告/视频任务卡片的点击
-                 */
                 handleTaskClick({ type, message, taskData }) {
                         const jumpUrl = taskData.jump_url || '';
                         const resource = taskData.resource || {};
 
                         switch (type) {
                                 case 'chat':
-                                        // 聊天任务 → 可以跳转到聊天详情或打开输入框
                                         uni.showToast({ title: '聊天任务 · 请按要求聊天', icon: 'none' });
                                         break;
 
                                 case 'download':
                                 case 'download_app':
-                                        // 下载App → 跳转到下载链接
                                         if (jumpUrl) {
                                                 // #ifdef H5
                                                 window.location.href = jumpUrl;
@@ -562,13 +595,11 @@ export default {
                                         break;
 
                                 case 'adv':
-                                        // 广告时长 → 显示广告弹窗或跳转广告页
                                         uni.showToast({ title: '广告任务 · 请观看广告', icon: 'none' });
                                         break;
 
                                 case 'video':
                                 case 'watch_video':
-                                        // 视频任务 → 跳转视频播放
                                         if (resource.video_url) {
                                                 uni.navigateTo({ url: '/pages/webview/webview?url=' + encodeURIComponent(resource.video_url) });
                                         } else {
@@ -868,9 +899,14 @@ export default {
         justify-content: center;
         margin-bottom: 16rpx;
 
-        &.shaking {
-                animation: shake 0.5s ease-in-out infinite;
+        &.loading {
+                animation: pulse-glow 1s ease-in-out infinite;
         }
+}
+
+@keyframes pulse-glow {
+        0%, 100% { opacity: 1; border-color: rgba(255, 255, 255, 0.2); }
+        50% { opacity: 0.7; border-color: rgba(255, 255, 255, 0.4); }
 }
 
 @keyframes shake {
@@ -884,6 +920,18 @@ export default {
         font-weight: 700;
         color: #ffe082;
         line-height: 1;
+}
+
+.loading-text {
+        font-size: 48rpx;
+        color: rgba(255, 255, 255, 0.5);
+        animation: dot-blink 1.5s steps(3, end) infinite;
+}
+
+@keyframes dot-blink {
+        0% { opacity: 0.3; }
+        50% { opacity: 1; }
+        100% { opacity: 0.3; }
 }
 
 .amount-label {
@@ -916,11 +964,6 @@ export default {
         }
 }
 
-.open-btn {
-        background: linear-gradient(135deg, #ffe082, #ffc107);
-        .action-text { color: #c0392b; }
-}
-
 .claim-btn {
         background: linear-gradient(135deg, #ffe082, #ffc107);
 
@@ -931,6 +974,18 @@ export default {
         background: rgba(255, 255, 255, 0.15);
 
         .action-text { color: rgba(255, 255, 255, 0.6); }
+}
+
+.disabled-btn {
+        background: rgba(255, 255, 255, 0.1);
+
+        .action-text { color: rgba(255, 255, 255, 0.5); }
+}
+
+.close-action-btn {
+        background: rgba(255, 255, 255, 0.15);
+
+        .action-text { color: rgba(255, 255, 255, 0.8); }
 }
 
 .modal-close {
