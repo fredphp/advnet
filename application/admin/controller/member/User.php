@@ -4,6 +4,7 @@ namespace app\admin\controller\member;
 
 use app\common\controller\Backend;
 use app\common\library\CoinService;
+use app\common\model\Attachment;
 use think\Db;
 use think\Exception;
 
@@ -879,22 +880,12 @@ class User extends Backend
         $prefix = config('database.prefix');
         $table = $prefix . 'user';
 
-        // 确保 user_type 字段存在
-        try {
-            $columns = Db::query("SHOW COLUMNS FROM {$table} LIKE 'user_type'");
-            if (empty($columns)) {
-                Db::execute("ALTER TABLE {$table} ADD COLUMN `user_type` tinyint unsigned NOT NULL DEFAULT '0' COMMENT '用户类型: 0=真实会员, 1=系统会员' AFTER `group_id`");
-            }
-        } catch (\Exception $e) {
-            // 忽略
-        }
-
         // 从附件表随机获取所有图片头像
         $avatarList = [];
         try {
-            $avatarList = Db::name('attachment')
-                ->where('mimetype', 'like', 'image/%')
+            $avatarList = Attachment::where('mimetype', 'like', 'image/%')
                 ->where('url', '<>', '')
+                ->where('category','avatar')
                 ->column('url');
         } catch (\Exception $e) {
             $avatarList = [];
@@ -979,7 +970,7 @@ class User extends Backend
                         `createtime`, `updatetime`, `status`, `source`, `verification`
                     ) VALUES (
                         0, 1, ?, ?, ?, ?,
-                        'SYS' || LPAD(?, 6, '0'), 0, 0, ?,
+                        LPAD(?, 6, '0'), 0, 0, ?,
                         ?, 0, ?, 0.00, 0,
                         1, 1, ?, ?,
                         ?, ?, 'normal', 'system', ''
@@ -993,7 +984,6 @@ class User extends Backend
                 $failed++;
             }
         }
-
         // 获取最新系统会员总数
         $totalSys = 0;
         try {
