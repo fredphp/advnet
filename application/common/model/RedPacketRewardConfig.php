@@ -102,10 +102,10 @@ class RedPacketRewardConfig extends Model
         $redis = self::getRedis();
         
         try {
-            $allConfigs = self::where('status', 'normal')
+            $result = self::where('status', 'normal')
                 ->order('id', 'desc')
-                ->select()
-                ->toArray();
+                ->select();
+            $allConfigs = is_object($result) ? $result->toArray() : (array)$result;
             
             if ($redis) {
                 $redis->set(self::CACHE_KEY_ALL_CONFIGS, json_encode($allConfigs), self::CACHE_TTL);
@@ -191,10 +191,10 @@ class RedPacketRewardConfig extends Model
         } catch (\Exception $e) {
         }
         
-        return self::where('status', 'normal')
+        $result = self::where('status', 'normal')
             ->order('id', 'desc')
-            ->select()
-            ->toArray();
+            ->select();
+        return is_object($result) ? $result->toArray() : (array)$result;
     }
 
     // ==================== 属性访问器 ====================
