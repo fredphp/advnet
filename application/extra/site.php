@@ -15,9 +15,9 @@ return array (
   'fixedpage' => 'dashboard',
   'categorytype' => 
   array (
-    'default' => 'Default',
-    'page' => 'Page',
-    'article' => 'Article',
+    'default' => '默认',
+    'page' => '单页',
+    'article' => '文章',
     'test' => 'Test',
   ),
   'configgroup' => 
@@ -44,9 +44,10 @@ return array (
   'mail_from' => '',
   'attachmentcategory' => 
   array (
-    'category1' => 'Category1',
-    'category2' => 'Category2',
-    'custom' => 'Custom',
+    'category1' => '分类一',
+    'category2' => '分类二',
+    'avatar' => '头像',
+    'custom' => '自定义',
   ),
   'coin_rate' => '10000',
   'new_user_coin' => '1000',

@@ -42,7 +42,7 @@ class Rewardconfig extends Backend
     {
         // 设置过滤方法
         $this->request->filter(['strip_tags', 'trim']);
-
+        
         if ($this->request->isAjax()) {
             // 如果发送的来源是Selectpage，则转发到Selectpage
             if ($this->request->request('keyField')) {
