@@ -10,6 +10,7 @@ use app\common\model\CoinLog;
 use think\Db;
 use think\Cache;
 use think\Log;
+use think\exception\HttpResponseException;
 
 /**
  * 红包任务接口
@@ -43,7 +44,24 @@ class RedPacket extends Api
     public function _initialize()
     {
         parent::_initialize();
-        $this->service = new \app\common\library\RedPacketClickService();
+        try {
+            $this->service = new \app\common\library\RedPacketClickService();
+        } catch (\Throwable $e) {
+            Log::error('RedPacketClickService 初始化失败: ' . $e->getMessage());
+            $this->service = null;
+        }
+    }
+
+    /**
+     * 在 catch(\Throwable) 中必须重新抛出 HttpResponseException
+     * 因为 $this->success() / $this->error() 内部通过抛出 HttpResponseException 来中断执行并返回 JSON
+     * 如果被 catch 吞掉，正常响应就会被替换为错误响应
+     */
+    private function rethrowHttpResponseException(\Throwable $e)
+    {
+        if ($e instanceof HttpResponseException) {
+            throw $e;
+        }
     }
     
     /**
@@ -109,10 +127,6 @@ class RedPacket extends Api
     /**
      * 点击红包 - 生成/累加红包金额
      * 
-     * 逻辑：
-     * 1. 首次进入（reset=1）：清理旧数据，生成基础金额
-     * 2. 正常点击：累加金额
-     * 
      * @api {post} /api/redpacket/click 点击红包
      * @apiParam {Number} [task_id] 任务ID(可选)
      * @apiParam {Number} [reset] 是否重置：1=重置并生成新红包，0=正常累加
@@ -146,7 +160,8 @@ class RedPacket extends Api
             if (!$riskResult['passed']) {
                 $this->error($riskResult['message'] ?: '风控检测未通过');
             }
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
+            $this->rethrowHttpResponseException($e);
             Log::error('红包点击风控服务调用失败: ' . $e->getMessage());
         }
         
@@ -165,19 +180,31 @@ class RedPacket extends Api
             // 获取今日已领取金额（从当月分表查询）
             $todayStart = strtotime(date('Y-m-d'));
             $todayAmount = 0;
-            $tableName = CoinLog::getTableByMonth();
-            if (CoinLog::tableExists($tableName)) {
-                $todayAmount = Db::name($tableName)
-                    ->where('user_id', $userId)
-                    ->whereIn('type', ['red_packet_grab', 'red_packet_click', 'red_packet_reward'])
-                    ->where('createtime', '>=', $todayStart)
-                    ->sum('amount');
+            try {
+                $tableName = CoinLog::getTableByMonth();
+                if (CoinLog::tableExists($tableName)) {
+                    $todayAmount = Db::name($tableName)
+                        ->where('user_id', $userId)
+                        ->whereIn('type', ['red_packet_grab', 'red_packet_click', 'red_packet_reward'])
+                        ->where('createtime', '>=', $todayStart)
+                        ->sum('amount');
+                }
+                $todayAmount = intval($todayAmount);
+            } catch (\Throwable $e) {
+                $this->rethrowHttpResponseException($e);
+                Log::warning('获取今日红包金额失败: ' . $e->getMessage());
+                $todayAmount = 0;
             }
-            $todayAmount = intval($todayAmount);
             
             // 判断是否新用户（注册7天内）
-            $user = Db::name('user')->field('jointime')->find($userId);
-            $isNewUser = $user && (time() - $user['jointime'] < 7 * 86400);
+            $isNewUser = false;
+            try {
+                $user = Db::name('user')->field('jointime')->find($userId);
+                $isNewUser = $user && (time() - intval($user['jointime']) < 7 * 86400);
+            } catch (\Throwable $e) {
+                $this->rethrowHttpResponseException($e);
+                Log::warning('获取用户注册时间失败: ' . $e->getMessage());
+            }
             
             // 获取封顶额度
             $maxLimit = RedPacketRewardConfig::getMaxRewardLimit();
@@ -239,9 +266,10 @@ class RedPacket extends Api
                 'total_amount' => intval($latestData['total_amount'] ?? 0),
             ]);
             
-        } catch (\Exception $e) {
-            Log::error('红包点击失败: ' . $e->getMessage());
-            $this->error('系统错误');
+        } catch (\Throwable $e) {
+            $this->rethrowHttpResponseException($e);
+            Log::error('红包点击失败: ' . $e->getMessage() . "\n" . $e->getTraceAsString());
+            $this->error('系统错误: ' . $e->getMessage());
         }
     }
     
@@ -270,7 +298,8 @@ class RedPacket extends Api
                 $this->request->ip(),
                 $this->request->header('user-agent', '')
             );
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
+            $this->rethrowHttpResponseException($e);
             Log::error('红包领取风控服务初始化失败: ' . $e->getMessage());
         }
         
@@ -300,7 +329,8 @@ class RedPacket extends Api
                     if (!$riskResult['passed']) {
                         $this->error($riskResult['message'] ?: '风控检测未通过');
                     }
-                } catch (\Exception $e) {
+                } catch (\Throwable $e) {
+                    $this->rethrowHttpResponseException($e);
                     Log::error('红包领取风控检查失败: ' . $e->getMessage());
                 }
             }
@@ -311,14 +341,9 @@ class RedPacket extends Api
                 $userId,
                 $totalAmount,
                 'red_packet_click',
-                [
-                    'relation_type' => 'click',
-                    'relation_id' => $taskId ?: 0,
-                    'description' => '观看广告领取红包金币',
-                    'base_amount' => $baseAmount,
-                    'accumulate_amount' => $accumulateAmount,
-                    'click_count' => $clickCount
-                ]
+                'redpacket',
+                $taskId ?: 0,
+                '观看广告领取红包金币'
             );
             
             if ($result['success']) {
@@ -333,15 +358,15 @@ class RedPacket extends Api
                 $this->error($result['message'] ?? '发放失败');
             }
             
-        } catch (\Exception $e) {
-            Log::error('红包领取失败: ' . $e->getMessage());
-            $this->error('系统错误');
+        } catch (\Throwable $e) {
+            $this->rethrowHttpResponseException($e);
+            Log::error('红包领取失败: ' . $e->getMessage() . "\n" . $e->getTraceAsString());
+            $this->error('系统错误: ' . $e->getMessage());
         }
     }
     
     /**
      * 重置红包 - 清理缓存
-     * 
      * @api {post} /api/redpacket/reset 重置红包
      * @apiSuccess {Boolean} success 是否成功
      */
@@ -367,7 +392,8 @@ class RedPacket extends Api
                 'cleared_amount' => $totalAmount
             ]);
             
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
+            $this->rethrowHttpResponseException($e);
             Log::error('红包重置失败: ' . $e->getMessage());
             $this->error('系统错误');
         }
@@ -393,7 +419,8 @@ class RedPacket extends Api
                 'total_amount' => $totalAmount,
             ]);
             
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
+            $this->rethrowHttpResponseException($e);
             Log::error('红包金额获取失败: ' . $e->getMessage());
             $this->error('系统错误');
         }
