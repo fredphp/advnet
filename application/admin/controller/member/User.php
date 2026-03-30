@@ -858,6 +858,7 @@ class User extends Backend
 
     /**
      * 生成系统会员
+     * 头像从附件库中随机分配
      */
     public function generateSystemMembers()
     {
@@ -866,13 +867,11 @@ class User extends Backend
         }
 
         $count = intval($this->request->post('count', 0));
-        $avatarCategory = $this->request->post('avatar_category', '');
         $password = $this->request->post('password', 'qwe123');
 
         if ($count <= 0 || $count > 500) {
             $this->error('生成数量需在1~500之间');
         }
-
         if (strlen($password) < 4) {
             $this->error('密码长度不能少于4位');
         }
@@ -890,28 +889,17 @@ class User extends Backend
             // 忽略
         }
 
-        // 获取头像分类下的附件列表
-        $avatars = [];
-        if (!empty($avatarCategory)) {
-            try {
-                $category = $avatarCategory;
-                if ($category === 'unclassed') {
-                    $category = '';
-                }
-                $attachments = Db::name('attachment')
-                    ->where('category', $category)
-                    ->where('mimetype', 'like', 'image/%')
-                    ->field('url')
-                    ->select();
-                foreach ($attachments as $att) {
-                    if (!empty($att['url'])) {
-                        $avatars[] = $att['url'];
-                    }
-                }
-            } catch (\Exception $e) {
-                $avatars = [];
-            }
+        // 从附件表随机获取所有图片头像
+        $avatarList = [];
+        try {
+            $avatarList = Db::name('attachment')
+                ->where('mimetype', 'like', 'image/%')
+                ->where('url', '<>', '')
+                ->column('url');
+        } catch (\Exception $e) {
+            $avatarList = [];
         }
+        $hasAvatar = !empty($avatarList);
 
         // 昵称池
         $nicknames = [
@@ -935,15 +923,17 @@ class User extends Backend
             'Jack王同学','Rose李小姐','大胡子Bob','Vicky张','小土豆Tom',
             '花花世界','Kevin刘总','一杯咖啡','Cici陈','Leo王大锤',
             '自由飞翔','Amy赵小花','大白兔Miki','Tony孙大圣','猫和鱼Fish',
+            '数字猎人','代码诗人','像素冒险','比特行者','量子漫步',
+            '云端织梦','银河信使','极光守望','晨光微熹','夜色温柔',
         ];
 
-        // 获取当前系统会员最大编号
+        // 手机号前缀
+        $mobilePrefixes = ['130','131','132','133','135','136','137','138','139','150','151','152','155','156','157','158','159','170','176','177','178','180','181','182','183','185','186','187','188','189'];
+
+        // 获取当前系统会员总数
         $maxSysIndex = 0;
         try {
-            $maxUser = Db::query("SELECT MAX(id) as max_id FROM {$table} WHERE user_type = 1");
-            if (!empty($maxUser) && $maxUser[0]['max_id'] > 0) {
-                $maxSysIndex = Db::query("SELECT COUNT(*) as cnt FROM {$table} WHERE user_type = 1")[0]['cnt'];
-            }
+            $maxSysIndex = Db::query("SELECT COUNT(*) as cnt FROM {$table} WHERE user_type = 1")[0]['cnt'];
         } catch (\Exception $e) {
             // 忽略
         }
@@ -951,54 +941,33 @@ class User extends Backend
         $success = 0;
         $failed = 0;
         $now = time();
-        $password = $password;
 
         for ($i = 0; $i < $count; $i++) {
             $idx = $maxSysIndex + $i;
-            $username = 'sys_member_' . str_pad($idx + 1, 4, '0', STR_PAD_LEFT);
-            $nickname = $nicknames[$idx % count($nicknames)];
-
-            // 检查用户名是否已存在
-            try {
-                $exists = Db::query("SELECT COUNT(*) as cnt FROM {$table} WHERE username = ?", [$username]);
-                if ($exists[0]['cnt'] > 0) {
-                    $username = 'sys_member_' . str_pad($idx + 1 + 1000, 4, '0', STR_PAD_LEFT);
-                }
-            } catch (\Exception $e) {
-                // 忽略
-            }
+            $username = 'sys_' . str_pad(mt_rand(100000, 999999), 6, '0', STR_PAD_LEFT);
+            $nickname = $nicknames[mt_rand(0, count($nicknames) - 1)];
 
             // 随机盐
             $chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
             $salt = '';
             for ($j = 0; $j < 6; $j++) {
-                $salt .= $chars[rand(0, strlen($chars) - 1)];
+                $salt .= $chars[mt_rand(0, strlen($chars) - 1)];
             }
 
-            // 密码加密 md5(md5(password) . salt)
+            // 密码加密
             $encryptedPassword = md5(md5($password) . $salt);
 
-            // 随机邀请码
-            $inviteCode = 'SYS' . str_pad($idx + 1, 6, '0', STR_PAD_LEFT);
-
             // 随机手机号
-            $mobilePrefixes = ['130','131','132','133','135','136','137','138','139','150','151','152','155','156','157','158','159','170','176','177','178','180','181','182','183','185','186','187','188','189'];
-            $mobile = $mobilePrefixes[array_rand($mobilePrefixes)] . str_pad(rand(10000000, 99999999), 8, '0', STR_PAD_LEFT);
+            $mobile = $mobilePrefixes[mt_rand(0, count($mobilePrefixes) - 1)] . str_pad(mt_rand(10000000, 99999999), 8, '0', STR_PAD_LEFT);
 
             // 随机头像
-            $avatar = '';
-            if (!empty($avatars)) {
-                $avatar = $avatars[array_rand($avatars)];
-            }
-
-            // 随机性别
-            $gender = rand(0, 2);
+            $avatar = $hasAvatar ? $avatarList[mt_rand(0, count($avatarList) - 1)] : '';
 
             // 随机注册时间（过去30~365天）
-            $createtime = $now - rand(30 * 86400, 365 * 86400);
+            $createtime = $now - mt_rand(30 * 86400, 365 * 86400);
 
             // 随机IP
-            $ip = rand(1, 254) . '.' . rand(0, 255) . '.' . rand(0, 255) . '.' . rand(1, 254);
+            $ip = mt_rand(1, 254) . '.' . mt_rand(0, 255) . '.' . mt_rand(0, 255) . '.' . mt_rand(1, 254);
 
             try {
                 Db::execute("
@@ -1010,14 +979,17 @@ class User extends Backend
                         `createtime`, `updatetime`, `status`, `source`, `verification`
                     ) VALUES (
                         0, 1, ?, ?, ?, ?,
-                        ?, 0, 0, ?,
+                        'SYS' || LPAD(?, 6, '0'), 0, 0, ?,
                         ?, 0, ?, 0.00, 0,
                         1, 1, ?, ?,
                         ?, ?, 'normal', 'system', ''
                     )
-                ", [$username, $nickname, $encryptedPassword, $salt, $inviteCode, $mobile, $avatar, $gender, $ip, $createtime, $createtime, $now]);
+                ", [$username, $nickname, $encryptedPassword, $salt, $idx + 1, $mobile, $avatar, mt_rand(0, 2), $ip, $createtime, $createtime, $now]);
                 $success++;
             } catch (\Exception $e) {
+                if (strpos($e->getMessage(), 'Duplicate') !== false) {
+                    continue;
+                }
                 $failed++;
             }
         }
@@ -1030,10 +1002,11 @@ class User extends Backend
             // 忽略
         }
 
-        $this->success("成功生成 {$success} 个系统会员，失败 {$failed} 个", null, [
+        $this->success("成功生成 {$success} 个系统会员", null, [
             'success' => $success,
             'failed' => $failed,
-            'total_system_members' => $totalSys
+            'total_system_members' => $totalSys,
+            'has_avatar' => $hasAvatar,
         ]);
     }
 
@@ -1059,41 +1032,6 @@ class User extends Backend
             'system_count' => intval($total),
             'real_count' => intval($totalReal),
             'total_count' => intval($totalAll),
-        ]);
-    }
-
-    /**
-     * 获取头像分类及附件列表
-     */
-    public function getAvatarList()
-    {
-        $category = $this->request->get('category', '');
-
-        try {
-            $query = Db::name('attachment')->where('mimetype', 'like', 'image/%');
-
-            if (!empty($category) && $category !== 'all') {
-                if ($category === 'unclassed') {
-                    $query->where('category', '')->whereOr('category', 'null');
-                } else {
-                    $query->where('category', $category);
-                }
-            }
-
-            $list = $query->field('id,url,filename')
-                ->order('id', 'desc')
-                ->limit(100)
-                ->select();
-        } catch (\Exception $e) {
-            $list = [];
-        }
-
-        // 获取分类列表
-        $categoryList = \app\common\model\Attachment::getCategoryList();
-
-        $this->success('', null, [
-            'avatars' => $list,
-            'categoryList' => $categoryList,
         ]);
     }
 
