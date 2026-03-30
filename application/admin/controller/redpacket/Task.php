@@ -34,7 +34,6 @@ class Task extends Backend
 
         // 搜索字段映射
         $this->searchFields = ['name', 'display_title', 'description', 'sender_name'];
-    }
 
         // 类型列表
         $typeList = RedPacketTaskSplit::$typeList;
@@ -321,10 +320,10 @@ class Task extends Backend
                             $params['sender_name'] = $senderUser['nickname'] ?? $senderUser['username'];
                             $params['sender_avatar'] = $senderUser['avatar'] ?? '';
                         } else {
-                        $params['sender_id'] = 0;
-                        $params['sender_name'] = '系统';
-                        $params['sender_avatar'] = '';
-                    }
+                            $params['sender_id'] = 0;
+                            $params['sender_name'] = '系统';
+                            $params['sender_avatar'] = '';
+                        }
                     } else {
                         $params['sender_id'] = 0;
                         $params['sender_name'] = '系统';
