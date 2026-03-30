@@ -23,6 +23,7 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
                     [
                         {checkbox: true},
                         {field: 'id', title: 'ID', sortable: true, width: 70},
+                        {field: 'member_type', title: '会员类型', searchList: {"0":"真实会员","1":"系统会员"}, formatter: Controller.api.formatter.memberType, width: 100},
                         {field: 'username', title: '用户信息', operate: 'LIKE', formatter: Controller.api.formatter.userInfo, width: 180},
                         {field: 'mobile', title: '手机号', operate: 'LIKE', width: 120},
                         {field: 'coin_balance', title: '金币余额', sortable: true, formatter: Controller.api.formatter.coin, width: 100},
@@ -156,6 +157,7 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
                                         '<div class="detail-row"><span class="detail-label">用户ID</span><span class="detail-value">' + (user.id || '-') + '</span></div>' +
                                         '<div class="detail-row"><span class="detail-label">用户名</span><span class="detail-value">' + (user.username || '-') + '</span></div>' +
                                         '<div class="detail-row"><span class="detail-label">昵称</span><span class="detail-value">' + (user.nickname || '-') + '</span></div>' +
+                                        '<div class="detail-row"><span class="detail-label">会员类型</span><span class="detail-value">' + (parseInt(user.member_type) == 1 ? '<span class="status-badge normal" style="background:linear-gradient(135deg,#1cc88a,#13855c);color:#fff;"><i class="fa fa-robot"></i> 系统会员</span>' : '<span class="status-badge normal"><i class="fa fa-user"></i> 真实会员</span>') + '</span></div>' +
                                         '<div class="detail-row"><span class="detail-label">手机号</span><span class="detail-value">' + (user.mobile || '-') + '</span></div>' +
                                         '<div class="detail-row"><span class="detail-label">状态</span><span class="detail-value">' + Controller.api.formatStatus(user.status) + '</span></div>' +
                                         '<div class="detail-row"><span class="detail-label">等级</span><span class="detail-value">Lv.' + (user.level || 1) + '</span></div>' +
@@ -188,14 +190,29 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
                 return statusMap[status] || status;
             },
             formatter: {
+                memberType: function(value, row, index) {
+                    var type = parseInt(value) || 0;
+                    if (type == 1) {
+                        return '<span class="status-badge" style="background:linear-gradient(135deg,#1cc88a 0%,#13855c 100%);color:#fff;"><i class="fa fa-robot"></i> 系统会员</span>';
+                    }
+                    return '<span class="status-badge" style="background:linear-gradient(135deg,#36b9cc 0%,#258396 100%);color:#fff;"><i class="fa fa-user"></i> 真实会员</span>';
+                },
                 userInfo: function(value, row, index) {
                     var initial = (row.username ? row.username.charAt(0).toUpperCase() : 'U');
-                    var defaultAvatarHtml = '<div class="user-avatar default">' + initial + '</div>';
-                    var avatar = row.avatar 
-                        ? '<img src="' + row.avatar + '" class="user-avatar" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'flex\';" /><div class="user-avatar default" style="display:none;">' + initial + '</div>'
-                        : defaultAvatarHtml;
-                    return '<div class="user-info-cell">' + avatar + 
-                        '<div class="user-name-text"><span class="name">' + (row.username || '-') + '</span>' +
+                    var isSystem = parseInt(row.member_type) == 1;
+                    var badgeStyle = isSystem ? 'background:linear-gradient(135deg,#1cc88a,#13855c);color:#fff;' : '';
+                    var badgeText = isSystem ? '<span style="font-size:9px;background:#fff;color:#13855c;padding:1px 4px;border-radius:3px;margin-left:4px;font-weight:600;">SYS</span>' : '';
+
+                    if (row.avatar && row.avatar.indexOf('/assets/') === -1) {
+                        var avatar = '<img src="' + row.avatar + '" class="user-avatar" onerror="this.outerHTML=\'<div class=user-avatar default style=' + badgeStyle + '>' + initial + badgeText + '</div>\';" />';
+                        return '<div class="user-info-cell">' + avatar +
+                            '<div class="user-name-text"><span class="name">' + (row.nickname || row.username || '-') + badgeText + '</span>' +
+                            '<span class="id">ID: ' + row.id + '</span></div></div>';
+                    }
+
+                    var avatarHtml = '<div class="user-avatar default" style="' + badgeStyle + '">' + initial + badgeText + '</div>';
+                    return '<div class="user-info-cell">' + avatarHtml +
+                        '<div class="user-name-text"><span class="name">' + (row.nickname || row.username || '-') + badgeText + '</span>' +
                         '<span class="id">ID: ' + row.id + '</span></div></div>';
                 },
                 coin: function(value, row, index) {
@@ -254,9 +271,9 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
                     
                     var html = '<div class="btn-group-operate">';
                     
-                    // 详情按钮 - icon + 中文
+                    // 详情按钮
                     html += '<button type="button" class="btn btn-primary btn-xs" onclick="UserAPI.showDetail(' + userId + ')" title="查看详情"><i class="fa fa-eye"></i>详情</button>';
-                    // 编辑按钮 - icon + 中文
+                    // 编辑按钮
                     html += '<a href="member/user/edit?ids=' + userId + '" class="btn btn-info btn-xs btn-dialog" data-area=\'["800px","600px"]\' title="编辑用户"><i class="fa fa-edit"></i>编辑</a>';
                     
                     // 金币操作下拉
@@ -500,6 +517,178 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
             });
         }
     };
-    
+
+    // ========== 生成系统会员相关全局函数 ==========
+
+    // 打开生成弹窗
+    window.openGenerateModal = function() {
+        // 加载统计信息
+        $.ajax({
+            url: 'member/user/getSystemMemberCount',
+            type: 'GET',
+            dataType: 'json',
+            success: function(ret) {
+                if (ret.code == 1) {
+                    var data = ret.data;
+                    $('#gen-sys-count').text(data.system_count);
+                    $('#gen-real-count').text(data.real_count);
+                    $('#gen-total-count').text(data.total_count);
+                }
+            }
+        });
+
+        // 加载头像分类列表
+        $.ajax({
+            url: 'member/user/getAvatarList',
+            type: 'GET',
+            data: {category: 'all'},
+            dataType: 'json',
+            success: function(ret) {
+                if (ret.code == 1) {
+                    var categoryList = ret.data.categoryList || {};
+                    var $select = $('#avatar-category-select');
+                    $select.html('<option value="">不设置头像</option>');
+                    $.each(categoryList, function(key, val) {
+                        $select.append('<option value="' + key + '">' + val + '</option>');
+                    });
+                }
+            }
+        });
+
+        // 重置表单
+        $('#generate-form input[name="count"]').val(10);
+        $('#generate-form input[name="password"]').val('qwe123');
+        $('#avatar-preview-area').hide();
+        $('#avatar-preview-list').html('');
+        $('#avatar-count-info').html('');
+
+        $('#generate-modal').modal('show');
+    };
+
+    // 快捷数量调整
+    window.adjustCount = function(add) {
+        var $input = $('#generate-form input[name="count"]');
+        var current = parseInt($input.val()) || 0;
+        var newVal = Math.min(current + add, 500);
+        $input.val(newVal);
+    };
+
+    // 加载头像预览
+    window.loadAvatarPreview = function() {
+        var category = $('#avatar-category-select').val();
+        if (!category) {
+            $('#avatar-preview-area').hide();
+            return;
+        }
+
+        $.ajax({
+            url: 'member/user/getAvatarList',
+            type: 'GET',
+            data: {category: category},
+            dataType: 'json',
+            success: function(ret) {
+                if (ret.code == 1) {
+                    var avatars = ret.data.avatars || [];
+                    var $list = $('#avatar-preview-list');
+                    $list.html('');
+
+                    if (avatars.length === 0) {
+                        $list.html('<div style="color:#9ca3af;font-size:13px;padding:10px;">该分类下暂无图片附件</div>');
+                    } else {
+                        // 随机展示最多20个
+                        var shuffled = avatars.sort(function() { return 0.5 - Math.random(); });
+                        var show = shuffled.slice(0, 20);
+                        show.forEach(function(item) {
+                            $list.append('<img src="' + item.url + '" style="width:48px;height:48px;border-radius:50%;object-fit:cover;border:2px solid #e5e7eb;cursor:pointer;" onerror="this.style.display=\'none\';" />');
+                        });
+                    }
+
+                    $('#avatar-count-info').html('共 ' + avatars.length + ' 张图片，预览展示 ' + Math.min(avatars.length, 20) + ' 张');
+                    $('#avatar-preview-area').show();
+                }
+            }
+        });
+    };
+
+    // 确认生成
+    window.confirmGenerate = function() {
+        var count = parseInt($('#generate-form input[name="count"]').val()) || 0;
+        var password = $('#generate-form input[name="password"]').val() || 'qwe123';
+        var avatarCategory = $('#avatar-category-select').val();
+
+        if (count <= 0 || count > 500) {
+            Toastr.error('生成数量需在1~500之间');
+            return;
+        }
+
+        if (password.length < 4) {
+            Toastr.error('密码长度不能少于4位');
+            return;
+        }
+
+        Layer.confirm(
+            '<div style="text-align:center;padding:10px;">' +
+            '<div style="font-size:48px;margin-bottom:10px;">🤖</div>' +
+            '<div style="font-size:16px;font-weight:bold;">即将生成 ' + count + ' 个系统会员</div>' +
+            '<div style="font-size:13px;color:#6c757d;margin-top:5px;">密码: ' + password + (avatarCategory ? ' | 头像分类: ' + avatarCategory : ' | 不设置头像') + '</div>' +
+            '</div>',
+            {
+                title: '确认生成系统会员',
+                btn: ['确认生成', '取消'],
+                btn1: function(index) {
+                    var loadIndex = Layer.load(1, {shade: [0.3, '#000']});
+
+                    Fast.api.ajax({
+                        url: 'member/user/generateSystemMembers',
+                        data: {
+                            count: count,
+                            password: password,
+                            avatar_category: avatarCategory
+                        }
+                    }, function(ret) {
+                        Layer.close(loadIndex);
+                        Layer.close(index);
+                        $('#generate-modal').modal('hide');
+
+                        var data = ret.data || {};
+                        Toastr.success('成功生成 ' + (data.success || 0) + ' 个系统会员');
+
+                        // 刷新统计
+                        $('#gen-sys-count').text(data.total_system_members || 0);
+
+                        // 刷新表格
+                        $("#table").bootstrapTable('refresh');
+                    }, function() {
+                        Layer.close(loadIndex);
+                    });
+                }
+            }
+        );
+    };
+
+    // 筛选系统会员
+    window.filterSystemMembers = function() {
+        var table = $("#table");
+        var options = table.bootstrapTable('getOptions');
+        options.queryParams = function(params) {
+            params.filter = JSON.stringify({member_type: '1'});
+            return params;
+        };
+        table.bootstrapTable('refresh', {silent: true});
+        Toastr.info('已筛选：系统会员');
+    };
+
+    // 筛选真实会员
+    window.filterRealMembers = function() {
+        var table = $("#table");
+        var options = table.bootstrapTable('getOptions');
+        options.queryParams = function(params) {
+            params.filter = JSON.stringify({member_type: '0'});
+            return params;
+        };
+        table.bootstrapTable('refresh', {silent: true});
+        Toastr.info('已筛选：真实会员');
+    };
+
     return Controller;
 });

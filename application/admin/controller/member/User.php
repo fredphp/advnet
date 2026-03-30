@@ -18,6 +18,9 @@ class User extends Backend
     {
         parent::_initialize();
         $this->model = new \app\common\model\User();
+
+        // 会员类型列表
+        $this->view->assign('memberTypeList', ['0' => '真实会员', '1' => '系统会员']);
     }
 
     /**
@@ -40,6 +43,9 @@ class User extends Backend
                     ->find();
                 $item['coin_balance'] = $account ? $account['balance'] : 0;
                 $item['frozen_coin'] = $account ? $account['frozen'] : 0;
+                // 会员类型文本
+                $item['member_type'] = isset($item['member_type']) ? intval($item['member_type']) : 0;
+                $item['member_type_text'] = $item['member_type'] == 1 ? '系统会员' : '真实会员';
             }
 
             $result = ['total' => $total, 'rows' => $list];
@@ -827,6 +833,247 @@ class User extends Backend
 
         $this->view->assign('user_id', $userId);
         return $this->view->fetch();
+    }
+
+    /**
+     * 生成系统会员
+     */
+    public function generateSystemMembers()
+    {
+        if (!$this->request->isPost()) {
+            $this->error('非法请求');
+        }
+
+        $count = intval($this->request->post('count', 0));
+        $avatarCategory = $this->request->post('avatar_category', '');
+        $password = $this->request->post('password', 'qwe123');
+
+        if ($count <= 0 || $count > 500) {
+            $this->error('生成数量需在1~500之间');
+        }
+
+        if (strlen($password) < 4) {
+            $this->error('密码长度不能少于4位');
+        }
+
+        $prefix = config('database.prefix');
+        $table = $prefix . 'user';
+
+        // 确保 member_type 字段存在
+        try {
+            $columns = Db::query("SHOW COLUMNS FROM {$table} LIKE 'member_type'");
+            if (empty($columns)) {
+                Db::execute("ALTER TABLE {$table} ADD COLUMN `member_type` tinyint unsigned NOT NULL DEFAULT '0' COMMENT '会员类型: 0=真实会员, 1=系统会员' AFTER `group_id`");
+            }
+        } catch (\Exception $e) {
+            // 忽略
+        }
+
+        // 获取头像分类下的附件列表
+        $avatars = [];
+        if (!empty($avatarCategory)) {
+            try {
+                $category = $avatarCategory;
+                if ($category === 'unclassed') {
+                    $category = '';
+                }
+                $attachments = Db::name('attachment')
+                    ->where('category', $category)
+                    ->where('mimetype', 'like', 'image/%')
+                    ->field('url')
+                    ->select();
+                foreach ($attachments as $att) {
+                    if (!empty($att['url'])) {
+                        $avatars[] = $att['url'];
+                    }
+                }
+            } catch (\Exception $e) {
+                $avatars = [];
+            }
+        }
+
+        // 昵称池
+        $nicknames = [
+            '夏天的风','阳光少年','暴走萝莉','奶茶续命','佛系青年',
+            '烟火人间','暮色四合','逍遥游','追风少年','樱花落尽',
+            '蓝色海岸','星辰大海','浅笑安然','温柔以待','月光如水',
+            '青春纪念册','繁花似锦','清风明月','踏雪寻梅','南风知我意',
+            '一叶知秋','浮生若梦','云淡风轻','时光旅人','静水深流',
+            '紫霞仙子','闲云野鹤','雨后初晴','桃花源记','诗和远方',
+            '寻梦环游','岁月静好','山河故人','晚风轻拂','林间小路',
+            '晨曦微露','花间一壶酒','竹林听雨','秋水共长天','江上清风',
+            '红尘客栈','归来少年','海上生明月','雪落无声','春风十里',
+            '半夏微凉','柠檬不酸','薄荷微凉','南城旧事','拾光者',
+            'Alex Chen','Emma Wilson','Jake Miller','Sophia Lee','Noah Zhang',
+            'Olivia Wang','Liam Liu','Ava Chen','Ethan Huang','Isabella Wu',
+            'Mason Xu','Mia Zhao','Logan Yang','Charlotte Sun','Aiden Zhou',
+            'Amelia Zheng','Lucas Feng','Harper Lin','Henry Wu','Evelyn He',
+            'Daniel Kim','Abigail Park','Michael Chang','Emily Song','James Yoon',
+            'Elizabeth Cho','Benjamin Tang','Chloe Guan','William Hao','Avery Jiang',
+            '大卫Walker','小李飞刀','安娜贝尔','马克思K','海阔天空',
+            'Jack王同学','Rose李小姐','大胡子Bob','Vicky张','小土豆Tom',
+            '花花世界','Kevin刘总','一杯咖啡','Cici陈','Leo王大锤',
+            '自由飞翔','Amy赵小花','大白兔Miki','Tony孙大圣','猫和鱼Fish',
+        ];
+
+        // 获取当前系统会员最大编号
+        $maxSysIndex = 0;
+        try {
+            $maxUser = Db::query("SELECT MAX(id) as max_id FROM {$table} WHERE member_type = 1");
+            if (!empty($maxUser) && $maxUser[0]['max_id'] > 0) {
+                $maxSysIndex = Db::query("SELECT COUNT(*) as cnt FROM {$table} WHERE member_type = 1")[0]['cnt'];
+            }
+        } catch (\Exception $e) {
+            // 忽略
+        }
+
+        $success = 0;
+        $failed = 0;
+        $now = time();
+        $password = $password;
+
+        for ($i = 0; $i < $count; $i++) {
+            $idx = $maxSysIndex + $i;
+            $username = 'sys_member_' . str_pad($idx + 1, 4, '0', STR_PAD_LEFT);
+            $nickname = $nicknames[$idx % count($nicknames)];
+
+            // 检查用户名是否已存在
+            try {
+                $exists = Db::query("SELECT COUNT(*) as cnt FROM {$table} WHERE username = ?", [$username]);
+                if ($exists[0]['cnt'] > 0) {
+                    $username = 'sys_member_' . str_pad($idx + 1 + 1000, 4, '0', STR_PAD_LEFT);
+                }
+            } catch (\Exception $e) {
+                // 忽略
+            }
+
+            // 随机盐
+            $chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
+            $salt = '';
+            for ($j = 0; $j < 6; $j++) {
+                $salt .= $chars[rand(0, strlen($chars) - 1)];
+            }
+
+            // 密码加密 md5(md5(password) . salt)
+            $encryptedPassword = md5(md5($password) . $salt);
+
+            // 随机邀请码
+            $inviteCode = 'SYS' . str_pad($idx + 1, 6, '0', STR_PAD_LEFT);
+
+            // 随机手机号
+            $mobilePrefixes = ['130','131','132','133','135','136','137','138','139','150','151','152','155','156','157','158','159','170','176','177','178','180','181','182','183','185','186','187','188','189'];
+            $mobile = $mobilePrefixes[array_rand($mobilePrefixes)] . str_pad(rand(10000000, 99999999), 8, '0', STR_PAD_LEFT);
+
+            // 随机头像
+            $avatar = '';
+            if (!empty($avatars)) {
+                $avatar = $avatars[array_rand($avatars)];
+            }
+
+            // 随机性别
+            $gender = rand(0, 2);
+
+            // 随机注册时间（过去30~365天）
+            $createtime = $now - rand(30 * 86400, 365 * 86400);
+
+            // 随机IP
+            $ip = rand(1, 254) . '.' . rand(0, 255) . '.' . rand(0, 255) . '.' . rand(1, 254);
+
+            try {
+                Db::execute("
+                    INSERT INTO {$table} (
+                        `group_id`, `member_type`, `username`, `nickname`, `password`, `salt`,
+                        `invite_code`, `parent_id`, `grandparent_id`, `mobile`,
+                        `avatar`, `level`, `gender`, `money`, `score`,
+                        `successions`, `maxsuccessions`, `joinip`, `jointime`,
+                        `createtime`, `updatetime`, `status`, `source`, `verification`
+                    ) VALUES (
+                        0, 1, ?, ?, ?, ?,
+                        ?, 0, 0, ?,
+                        ?, 0, ?, 0.00, 0,
+                        1, 1, ?, ?,
+                        ?, ?, 'normal', 'system', ''
+                    )
+                ", [$username, $nickname, $encryptedPassword, $salt, $inviteCode, $mobile, $avatar, $gender, $ip, $createtime, $createtime, $now]);
+                $success++;
+            } catch (\Exception $e) {
+                $failed++;
+            }
+        }
+
+        // 获取最新系统会员总数
+        $totalSys = 0;
+        try {
+            $totalSys = Db::query("SELECT COUNT(*) as cnt FROM {$table} WHERE member_type = 1")[0]['cnt'];
+        } catch (\Exception $e) {
+            // 忽略
+        }
+
+        $this->success("成功生成 {$success} 个系统会员，失败 {$failed} 个", null, [
+            'success' => $success,
+            'failed' => $failed,
+            'total_system_members' => $totalSys
+        ]);
+    }
+
+    /**
+     * 获取系统会员数量
+     */
+    public function getSystemMemberCount()
+    {
+        $prefix = config('database.prefix');
+        $table = $prefix . 'user';
+
+        try {
+            $total = Db::query("SELECT COUNT(*) as cnt FROM {$table} WHERE member_type = 1")[0]['cnt'];
+            $totalAll = Db::query("SELECT COUNT(*) as cnt FROM {$table}")[0]['cnt'];
+            $totalReal = Db::query("SELECT COUNT(*) as cnt FROM {$table} WHERE member_type = 0 OR member_type IS NULL")[0]['cnt'];
+        } catch (\Exception $e) {
+            $total = 0;
+            $totalAll = 0;
+            $totalReal = 0;
+        }
+
+        $this->success('', null, [
+            'system_count' => intval($total),
+            'real_count' => intval($totalReal),
+            'total_count' => intval($totalAll),
+        ]);
+    }
+
+    /**
+     * 获取头像分类及附件列表
+     */
+    public function getAvatarList()
+    {
+        $category = $this->request->get('category', '');
+
+        try {
+            $query = Db::name('attachment')->where('mimetype', 'like', 'image/%');
+
+            if (!empty($category) && $category !== 'all') {
+                if ($category === 'unclassed') {
+                    $query->where('category', '')->whereOr('category', 'null');
+                } else {
+                    $query->where('category', $category);
+                }
+            }
+
+            $list = $query->field('id,url,filename')
+                ->order('id', 'desc')
+                ->limit(100)
+                ->select();
+        } catch (\Exception $e) {
+            $list = [];
+        }
+
+        // 获取分类列表
+        $categoryList = \app\common\model\Attachment::getCategoryList();
+
+        $this->success('', null, [
+            'avatars' => $list,
+            'categoryList' => $categoryList,
+        ]);
     }
 
     /**
