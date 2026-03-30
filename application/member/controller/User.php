@@ -238,7 +238,7 @@ class User extends Backend
             $this->error('密码长度不能少于4位');
         }
 
-        // 从附件表随机获取头像图片
+        // 从附件表随机获取头像图片（使用 Db::name 与查询模型一致）
         $avatarList = Db::name('attachment')
             ->where('mimetype', 'like', 'image/%')
             ->where('url', '<>', '')
@@ -276,19 +276,18 @@ class User extends Backend
         // 手机号前缀
         $mobilePrefixes = ['130','131','132','133','135','136','137','138','139','150','151','152','155','156','157','158','159','170','176','177','178','180','181','182','183','185','186','187','188','189'];
 
+        // 邮箱域名
+        $emailDomains = ['qq.com', '163.com', 'gmail.com', 'outlook.com', 'foxmail.com', 'hotmail.com'];
+
         $now = time();
         $success = 0;
         $failed = 0;
         $errors = [];
         $usedMobiles = [];
 
-        // 通过模型获取真实表名，直接用 Db 操作避免 Model 状态污染
-        $tableName = $this->model->getQuery()->getTable();
-
         for ($i = 0; $i < $count; $i++) {
             // 生成绝对唯一的用户名: microtime精确到微秒 + 随机数
-            $username = 'sys_' . sprintf('%.6f', microtime(true)) . mt_rand(100, 999);
-            $username = str_replace('.', '', $username);
+            $username = 'sys_' . str_replace('.', '', sprintf('%.6f', microtime(true))) . mt_rand(100, 999);
 
             $nickname = $nicknames[mt_rand(0, count($nicknames) - 1)];
             $salt = $this->generateSalt();
@@ -302,15 +301,20 @@ class User extends Backend
             } while (in_array($mobile, $usedMobiles) && $retryCount < 20);
             $usedMobiles[] = $mobile;
 
+            $email = str_replace('.', '_', $username) . '@' . $emailDomains[mt_rand(0, count($emailDomains) - 1)];
             $avatar = $hasAvatar ? $avatarList[mt_rand(0, count($avatarList) - 1)] : '';
             $createtime = $now - mt_rand(30 * 86400, 365 * 86400);
+            $ip = mt_rand(1, 254) . '.' . mt_rand(0, 255) . '.' . mt_rand(0, 255) . '.' . mt_rand(1, 254);
 
             try {
-                Db::table($tableName)->insert([
+                // 使用 Db::name('user') 与同文件中 Db::name('attachment') 保持一致
+                // ThinkPHP 会自动拼接前缀（如 advn_），无需手动指定表名
+                Db::name('user')->insert([
                     'username'      => $username,
                     'nickname'      => $nickname,
                     'password'      => $encryptedPassword,
                     'salt'          => $salt,
+                    'email'         => $email,
                     'mobile'        => $mobile,
                     'avatar'        => $avatar,
                     'user_type'     => 1,
@@ -318,9 +322,10 @@ class User extends Backend
                     'level'         => 0,
                     'gender'        => mt_rand(0, 2),
                     'score'         => 0,
+                    'money'         => 0,
                     'successions'   => 1,
                     'maxsuccessions' => 1,
-                    'joinip'        => mt_rand(1, 254) . '.' . mt_rand(0, 255) . '.' . mt_rand(0, 255) . '.' . mt_rand(1, 254),
+                    'joinip'        => $ip,
                     'jointime'      => $createtime,
                     'createtime'    => $createtime,
                     'updatetime'    => $now,
