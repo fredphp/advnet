@@ -225,6 +225,7 @@ class User extends Backend
     /**
      * 批量生成系统会员
      * 头像从附件库中随机分配
+     * 使用原始 SQL 绕过 ThinkPHP ORM，避免 Db::name()->insert() 静默失败
      */
     public function generateSystemMembers()
     {
@@ -238,7 +239,7 @@ class User extends Backend
             $this->error('密码长度不能少于4位');
         }
 
-        // 从附件表随机获取头像图片（使用 Db::name 与查询模型一致）
+        // 从附件表随机获取头像图片
         $avatarList = Db::name('attachment')
             ->where('mimetype', 'like', 'image/%')
             ->where('url', '<>', '')
@@ -273,11 +274,12 @@ class User extends Backend
             '南风过境', '十里桃花', '月下独酌', '浮云游子', '落花有意',
         ];
 
-        // 手机号前缀
         $mobilePrefixes = ['130','131','132','133','135','136','137','138','139','150','151','152','155','156','157','158','159','170','176','177','178','180','181','182','183','185','186','187','188','189'];
-
-        // 邮箱域名
         $emailDomains = ['qq.com', '163.com', 'gmail.com', 'outlook.com', 'foxmail.com', 'hotmail.com'];
+
+        // 获取数据库表前缀和完整表名
+        $prefix = Db::getConfig('prefix');
+        $tableName = $prefix . 'user';
 
         $now = time();
         $success = 0;
@@ -285,15 +287,29 @@ class User extends Backend
         $errors = [];
         $usedMobiles = [];
 
-        for ($i = 0; $i < $count; $i++) {
-            // 生成绝对唯一的用户名: microtime精确到微秒 + 随机数
-            $username = 'sys_' . str_replace('.', '', sprintf('%.6f', microtime(true))) . mt_rand(100, 999);
+        // 原始 SQL 模板（字段与 install_system_members.php 完全一致）
+        $sql = "INSERT INTO `{$tableName}` (
+            `username`, `nickname`, `password`, `salt`,
+            `email`, `mobile`, `avatar`,
+            `level`, `gender`, `score`, `money`,
+            `successions`, `maxsuccessions`, `joinip`,
+            `jointime`, `createtime`, `updatetime`,
+            `status`, `source`, `user_type`
+        ) VALUES (
+            ?, ?, ?, ?,
+            ?, ?, ?,
+            ?, ?, ?, ?,
+            ?, ?, ?,
+            ?, ?, ?,
+            ?, ?, ?
+        )";
 
+        for ($i = 0; $i < $count; $i++) {
+            $username = 'sys_' . str_replace('.', '', sprintf('%.6f', microtime(true))) . mt_rand(100, 999);
             $nickname = $nicknames[mt_rand(0, count($nicknames) - 1)];
             $salt = $this->generateSalt();
             $encryptedPassword = md5(md5($password) . $salt);
 
-            // 确保手机号不重复
             $retryCount = 0;
             do {
                 $mobile = $mobilePrefixes[mt_rand(0, count($mobilePrefixes) - 1)] . str_pad(mt_rand(10000000, 99999999), 8, '0');
@@ -307,29 +323,13 @@ class User extends Backend
             $ip = mt_rand(1, 254) . '.' . mt_rand(0, 255) . '.' . mt_rand(0, 255) . '.' . mt_rand(1, 254);
 
             try {
-                // 使用 Db::name('user') 与同文件中 Db::name('attachment') 保持一致
-                // ThinkPHP 会自动拼接前缀（如 advn_），无需手动指定表名
-                Db::name('user')->insert([
-                    'username'      => $username,
-                    'nickname'      => $nickname,
-                    'password'      => $encryptedPassword,
-                    'salt'          => $salt,
-                    'email'         => $email,
-                    'mobile'        => $mobile,
-                    'avatar'        => $avatar,
-                    'user_type'     => 1,
-                    'status'        => 'normal',
-                    'level'         => 0,
-                    'gender'        => mt_rand(0, 2),
-                    'score'         => 0,
-                    'money'         => 0,
-                    'successions'   => 1,
-                    'maxsuccessions' => 1,
-                    'joinip'        => $ip,
-                    'jointime'      => $createtime,
-                    'createtime'    => $createtime,
-                    'updatetime'    => $now,
-                    'source'        => 'system',
+                Db::execute($sql, [
+                    $username, $nickname, $encryptedPassword, $salt,
+                    $email, $mobile, $avatar,
+                    0, mt_rand(0, 2), 0, 0,
+                    1, 1, $ip,
+                    $createtime, $createtime, $now,
+                    'normal', 'system', 1,
                 ]);
                 $success++;
             } catch (\Exception $e) {
@@ -350,6 +350,7 @@ class User extends Backend
             'failed' => $failed,
             'total_system_members' => $totalSystemMembers,
             'has_avatar' => $hasAvatar,
+            'table' => $tableName,
             'errors' => $errors,
         ]);
     }
