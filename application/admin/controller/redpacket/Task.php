@@ -59,25 +59,29 @@ class Task extends Backend
     public function systemUsers()
     {
         $this->request->filter(['strip_tags', 'trim']);
-        if ($this->request->request('keyField')) {
-            return $this->selectpage();
+
+        // selectpage 参数
+        $search = $this->request->request('search', '');
+        $pageNumber = intval($this->request->request('pageNumber', 1));
+        $pageSize = intval($this->request->request('pageSize', 20));
+        if ($pageNumber < 1) $pageNumber = 1;
+        if ($pageSize < 1) $pageSize = 20;
+        if ($pageSize > 100) $pageSize = 100;
+
+        $query = User::where('user_type', 1)
+            ->where('status', 'normal');
+
+        if ($search) {
+            $query->where('nickname|username', 'like', '%' . $search . '%');
         }
 
-        $search = $this->request->get('search', '');
-        $list = User::where('user_type', 1)
-            ->where('status', 'normal')
-            ->where(function ($query) use ($search) {
-                if ($search) {
-                    $query->where('nickname|username', 'like', '%' . $search . '%');
-                }
-            })
+        $total = $query->count();
+        $list = $query
             ->field('id,nickname,username,avatar')
             ->order('id', 'asc')
+            ->page($pageNumber, $pageSize)
             ->select();
 
-        $total = count($list);
-
-        // selectpage 格式
         return json(['total' => $total, 'list' => $list]);
     }
 
