@@ -10,6 +10,17 @@ use think\Log;
  * 
  * 依赖：需要安装 Swoole 扩展 (>=4.5)
  * 安装：pecl install swoole
+ * 
+ * ★★★ 重要修复 ★★★
+ * 使用 Swoole\Table 共享内存 + Swoole\Atomic 原子计数器
+ * 解决多 Worker 进程之间连接状态不共享的核心问题
+ * 
+ * 之前的问题：Swoole 默认启动多个 Worker 进程，
+ * PHP static 变量在进程间不共享，导致 Worker A 接收的前端连接
+ * 在 Worker B 处理 TCP 推送时看不到，广播 0 条消息。
+ * 
+ * 修复后：所有连接信息存储在 Swoole\Table（共享内存）中，
+ * 任何 Worker 都能读取到完整的连接列表。
  */
 class WebSocketService
 {
@@ -25,14 +36,92 @@ class WebSocketService
     // Swoole Server 实例
     private static $server = null;
     
-    // 连接用户映射 [fd => user_id]
-    private static $connections = [];
+    /**
+     * ★ 共享内存表：fd => userId 映射（所有 Worker 进程共享）
+     */
+    private static $connectionTable = null;
     
-    // 用户连接映射 [user_id => fd]
-    private static $userConnections = [];
+    /**
+     * ★ 共享内存表：userId => fd 映射（所有 Worker 进程共享）
+     */
+    private static $userConnectionTable = null;
     
-    // 在线用户数
-    private static $onlineCount = 0;
+    /**
+     * ★ 原子计数器：在线用户数（所有 Worker 进程共享，线程安全）
+     */
+    private static $onlineCountAtomic = null;
+    
+    /**
+     * 初始化共享内存（必须在 server->start() 之前调用）
+     */
+    private static function initSharedMemory($maxConnections = 1024)
+    {
+        // fd => userId 表 (key=fd, value=userId, connect_time)
+        self::$connectionTable = new \Swoole\Table($maxConnections);
+        self::$connectionTable->column('user_id', \Swoole\Table::TYPE_STRING, 64);
+        self::$connectionTable->column('connect_time', \Swoole\Table::TYPE_INT);
+        self::$connectionTable->create();
+        
+        // userId => fd 表 (key=userId, value=fd, connect_time)
+        self::$userConnectionTable = new \Swoole\Table($maxConnections);
+        self::$userConnectionTable->column('fd', \Swoole\Table::TYPE_INT);
+        self::$userConnectionTable->column('connect_time', \Swoole\Table::TYPE_INT);
+        self::$userConnectionTable->create();
+        
+        // 原子计数器（替代 PHP static 变量）
+        self::$onlineCountAtomic = new \Swoole\Atomic(0);
+        
+        echo "\033[36m[共享内存] 初始化完成\033[0m\n";
+        echo "  - connectionTable: fd→userId (容量: {$maxConnections})\n";
+        echo "  - userConnectionTable: userId→fd (容量: {$maxConnections})\n";
+        echo "  - onlineCount: Atomic 原子计数器\n\n";
+    }
+    
+    /**
+     * 获取在线用户数（跨 Worker 安全）
+     */
+    private static function getOnlineCount()
+    {
+        return self::$onlineCountAtomic ? self::$onlineCountAtomic->get() : 0;
+    }
+    
+    /**
+     * 增加在线用户数
+     */
+    private static function incOnlineCount()
+    {
+        if (self::$onlineCountAtomic) {
+            self::$onlineCountAtomic->add(1);
+        }
+    }
+    
+    /**
+     * 减少在线用户数
+     */
+    private static function decOnlineCount()
+    {
+        if (self::$onlineCountAtomic) {
+            $val = self::$onlineCountAtomic->get();
+            if ($val > 0) {
+                self::$onlineCountAtomic->sub(1);
+            }
+        }
+    }
+    
+    /**
+     * 获取所有已认证的连接（从共享内存表读取，跨 Worker 可见）
+     * @return array [fd => userId]
+     */
+    private static function getAllConnections()
+    {
+        $connections = [];
+        if (self::$connectionTable) {
+            foreach (self::$connectionTable as $fd => $row) {
+                $connections[$fd] = $row['user_id'];
+            }
+        }
+        return $connections;
+    }
     
     /**
      * 启动 WebSocket 服务
@@ -53,27 +142,31 @@ class WebSocketService
         
         echo "\033[32m========================================\033[0m\n";
         echo "\033[32m   广告网络管理系统 - WebSocket 服务\033[0m\n";
+        echo "\033[32m   (Swoole\Table 共享内存版)\033[0m\n";
         echo "\033[32m========================================\033[0m\n\n";
         echo "\033[33mWebSocket 端口:\033[0m \033[36m{$port}\033[0m\n";
-        echo "\033[33mAPI 端口:\033[0m \033[36m{$apiPort}\033[0m\n";
+        echo "\033[33mAPI 端口 (TCP):\033[0m \033[36m{$apiPort}\033[0m\n";
         echo "\033[33m守护进程:\033[0m \033[36m" . ($daemon ? '是' : '否') . "\033[0m\n";
         echo "\033[33m启动时间:\033[0m \033[36m" . date('Y-m-d H:i:s') . "\033[0m\n\n";
+        
+        // ★★★ 第一步：初始化共享内存（必须在 start() 之前） ★★★
+        self::initSharedMemory(1024);
         
         // 创建 WebSocket 服务器
         self::$server = new \Swoole\WebSocket\Server('0.0.0.0', $port);
         
-        // 守护进程模式
+        // 服务器配置
+        $serverConfig = [
+            'pid_file' => RUNTIME_PATH . 'websocket.pid',
+            'worker_num' => 2,  // ★ 多 Worker 进程，通过共享内存表通信
+        ];
+        
         if ($daemon) {
-            self::$server->set([
-                'daemonize' => true,
-                'pid_file' => RUNTIME_PATH . 'websocket.pid',
-                'log_file' => RUNTIME_PATH . 'log' . DS . 'websocket.log',
-            ]);
-        } else {
-            self::$server->set([
-                'pid_file' => RUNTIME_PATH . 'websocket.pid',
-            ]);
+            $serverConfig['daemonize'] = true;
+            $serverConfig['log_file'] = RUNTIME_PATH . 'log' . DS . 'websocket.log';
         }
+        
+        self::$server->set($serverConfig);
         
         // 添加内部 TCP 推送端口（纯 TCP，不走 HTTP）
         // PHP-FPM 通过 fsockopen 直连此端口发送推送指令
@@ -91,7 +184,7 @@ class WebSocketService
             echo "[TCP] 内部连接断开: fd={$fd}\n";
         });
         
-        // TCP 内部推送事件（替代原来的 HTTP API）
+        // TCP 内部推送事件
         $apiServer->on('receive', function ($server, $fd, $reactor_id, $data) {
             $body = trim($data);
             if (empty($body)) {
@@ -119,7 +212,11 @@ class WebSocketService
             $action = $request['action'] ?? '';
             $payload = $request['data'] ?? [];
             
-            echo "[TCP] 收到指令: {$action}, fd={$fd}\n";
+            // ★ 打印当前 Worker ID 和在线连接数，方便调试
+            $workerId = $server->worker_id;
+            $onlineCount = self::getOnlineCount();
+            $tableCount = count(self::getAllConnections());
+            echo "[TCP] 收到指令: {$action}, worker_id={$workerId}, 在线人数={$onlineCount}, 共享表连接数={$tableCount}\n";
             
             $result = ['success' => false, 'error' => '未知操作: ' . $action];
             
@@ -134,10 +231,17 @@ class WebSocketService
                     $result = self::apiBroadcast($payload);
                     break;
                 case 'online_count':
-                    $result = ['success' => true, 'count' => self::$onlineCount];
+                    $result = ['success' => true, 'count' => self::getOnlineCount()];
                     break;
                 case 'connections':
-                    $result = ['success' => true, 'count' => self::$onlineCount, 'users' => array_keys(self::$userConnections)];
+                    $connections = self::getAllConnections();
+                    $result = [
+                        'success' => true,
+                        'count' => self::getOnlineCount(),
+                        'users' => array_values($connections),
+                        'worker_id' => $workerId,
+                        'table_connections' => $tableCount,
+                    ];
                     break;
             }
             
@@ -147,7 +251,7 @@ class WebSocketService
         
         // WebSocket 连接事件
         self::$server->on('open', function ($server, $request) {
-            echo "新连接: fd={$request->fd}\n";
+            echo "[WS] 新连接: fd={$request->fd}, worker_id=" . $server->worker_id . "\n";
         });
         
         // WebSocket 消息事件
@@ -164,22 +268,27 @@ class WebSocketService
         
         // WebSocket 关闭事件
         self::$server->on('close', function ($server, $fd) {
-            if (isset(self::$connections[$fd])) {
-                $userId = self::$connections[$fd];
-                unset(self::$connections[$fd]);
-                unset(self::$userConnections[$userId]);
-                self::$onlineCount--;
+            echo "[WS] 连接关闭: fd={$fd}, worker_id=" . $server->worker_id . "\n";
+            
+            // ★ 从共享内存表中查找并清理
+            if (self::$connectionTable && self::$connectionTable->exists($fd)) {
+                $row = self::$connectionTable->get($fd);
+                $userId = $row ? $row['user_id'] : null;
                 
-                echo "用户 {$userId} 断开连接，当前在线: " . self::$onlineCount . "\n";
-                
-                // 广播在线人数更新
-                self::broadcastOnlineCount();
+                if ($userId !== null) {
+                    self::$connectionTable->del($fd);
+                    self::$userConnectionTable->del($userId);
+                    self::decOnlineCount();
+                    
+                    echo "[WS] 用户 {$userId} 断开连接，当前在线: " . self::getOnlineCount() . "\n";
+                    
+                    // 广播在线人数更新
+                    self::broadcastOnlineCount();
+                }
             }
         });
         
-        // HTTP API 已移除，全部通过 TCP 推送端口（3003）通信
-        
-        echo "\033[32mWebSocket 服务启动成功!\033[0m\n";
+        echo "\033[32mWebSocket 服务启动成功! (worker_num=" . $serverConfig['worker_num'] . ")\033[0m\n\n";
         
         // 启动服务器
         self::$server->start();
@@ -235,7 +344,7 @@ class WebSocketService
         
         if ($pid > 0 && \Swoole\Process::kill($pid, 0)) {
             echo "\033[32m服务运行中\033[0m (PID: {$pid})\n";
-            echo "在线用户数: " . self::$onlineCount . "\n";
+            echo "在线用户数: " . self::getOnlineCount() . "\n";
         } else {
             echo "\033[33m服务已停止 (PID 文件存在但进程不存在)\033[0m\n";
             unlink($pidFile);
@@ -244,6 +353,7 @@ class WebSocketService
     
     /**
      * 处理 WebSocket 消息
+     * ★ 使用共享内存表存储连接信息（跨 Worker 可见）
      */
     private static function handleMessage($fd, $message)
     {
@@ -260,22 +370,38 @@ class WebSocketService
                 
                 if ($isValid) {
                     // 如果用户已有连接，先断开旧连接
-                    if (isset(self::$userConnections[$userId])) {
-                        $oldFd = self::$userConnections[$userId];
-                        unset(self::$connections[$oldFd]);
+                    if (self::$userConnectionTable->exists((string)$userId)) {
+                        $oldRow = self::$userConnectionTable->get((string)$userId);
+                        if ($oldRow) {
+                            $oldFd = $oldRow['fd'];
+                            if (self::$server->isEstablished($oldFd)) {
+                                self::$server->close($oldFd);
+                            }
+                            self::$connectionTable->del($oldFd);
+                            self::$userConnectionTable->del((string)$userId);
+                            self::decOnlineCount();
+                            echo "[WS] 用户 {$userId} 旧连接 fd={$oldFd} 已断开\n";
+                        }
                     }
                     
-                    self::$connections[$fd] = $userId;
-                    self::$userConnections[$userId] = $fd;
-                    self::$onlineCount++;
+                    // ★ 写入共享内存表（所有 Worker 进程都能读到） ★
+                    self::$connectionTable->set((string)$fd, [
+                        'user_id' => (string)$userId,
+                        'connect_time' => time(),
+                    ]);
+                    self::$userConnectionTable->set((string)$userId, [
+                        'fd' => (int)$fd,
+                        'connect_time' => time(),
+                    ]);
+                    self::incOnlineCount();
                     
                     self::send($fd, [
                         'type' => 'connected',
                         'userId' => $userId,
-                        'onlineCount' => self::$onlineCount,
+                        'onlineCount' => self::getOnlineCount(),
                     ]);
                     
-                    echo "用户 {$userId} 认证成功，当前在线: " . self::$onlineCount . "\n";
+                    echo "[WS] 用户 {$userId} 认证成功, fd={$fd}, 在线: " . self::getOnlineCount() . "\n";
                     
                     // 广播在线人数更新
                     self::broadcastOnlineCount();
@@ -285,12 +411,11 @@ class WebSocketService
                 break;
                 
             case 'ping':
-                // 心跳
                 self::send($fd, ['type' => 'pong']);
                 break;
                 
             case 'get_online_count':
-                self::send($fd, ['type' => 'online_count', 'count' => self::$onlineCount]);
+                self::send($fd, ['type' => 'online_count', 'count' => self::getOnlineCount()]);
                 break;
                 
             default:
@@ -300,7 +425,8 @@ class WebSocketService
     
 
     /**
-     * 推送红包任务（供 API 调用）
+     * 推送红包任务（供 TCP API 调用）
+     * ★ 关键：通过 Swoole\Table 读取所有连接，确保跨 Worker 广播
      */
     public static function apiPushTask($data)
     {
@@ -325,7 +451,6 @@ class WebSocketService
             'time'                => $data['timestamp'] ?? time(),
         ];
 
-        // 如果有聊天相关字段，保留
         if (!empty($data['chat_content'])) {
             $message['chat_content'] = $data['chat_content'];
         }
@@ -335,7 +460,7 @@ class WebSocketService
 
         self::broadcast($message);
 
-        return ['success' => true, 'message' => '推送成功', 'online_count' => self::$onlineCount];
+        return ['success' => true, 'message' => '推送成功', 'online_count' => self::getOnlineCount()];
     }
     
     /**
@@ -391,7 +516,10 @@ class WebSocketService
     }
     
     /**
-     * 广播消息给所有连接
+     * ★★★ 核心方法：广播消息给所有已连接用户 ★★★
+     * 
+     * 使用 Swoole\Table 共享内存读取所有连接（跨 Worker 进程可见），
+     * 然后 Swoole 引擎自动将 push 路由到拥有该 fd 的 Worker 进程。
      */
     public static function broadcast($message)
     {
@@ -400,43 +528,67 @@ class WebSocketService
             return;
         }
         
-        $connCount = count(self::$connections);
-        echo "[广播] 开始广播，在线连接数: {$connCount}\n";
+        // ★ 从共享内存表获取所有连接（跨 Worker 可见） ★
+        $allConnections = self::getAllConnections();
+        $connCount = count($allConnections);
+        $onlineCount = self::getOnlineCount();
+        
+        echo "\033[33m[广播] 开始\033[0m | 消息类型: " . ($message['type'] ?? 'unknown') 
+             . " | 共享表连接数: {$connCount} | 在线人数: {$onlineCount}\n";
+        
+        if ($connCount === 0) {
+            echo "\033[31m[广播] ⚠️ 没有已连接的用户，跳过广播！\033[0m\n";
+            echo "\033[31m[广播] 请检查前端是否已连接并认证成功\033[0m\n\n";
+            return;
+        }
         
         $jsonMessage = json_encode($message, JSON_UNESCAPED_UNICODE);
         
         $sentCount = 0;
-        foreach (self::$connections as $fd => $userId) {
+        foreach ($allConnections as $fd => $userId) {
             if (self::$server->isEstablished($fd)) {
                 $result = self::$server->push($fd, $jsonMessage);
                 if ($result) {
                     $sentCount++;
+                    echo "[广播] ✅ fd={$fd} userId={$userId}\n";
                 } else {
-                    echo "[广播] fd={$fd} userId={$userId} 推送失败\n";
+                    echo "[广播] ❌ fd={$fd} userId={$userId} push失败\n";
                 }
             } else {
-                echo "[广播] fd={$fd} userId={$userId} 连接未建立，跳过\n";
+                echo "[广播] ⚠️ fd={$fd} 连接无效，清理\n";
+                self::$connectionTable->del((string)$fd);
+                if ($userId) {
+                    self::$userConnectionTable->del((string)$userId);
+                }
             }
         }
         
-        echo "[广播] 完成，成功发送: {$sentCount}/{$connCount}\n";
+        echo "\033[32m[广播] 完成: {$sentCount}/{$connCount} 条消息已发送\033[0m\n\n";
     }
     
     /**
-     * 发送消息给指定用户
+     * 发送消息给指定用户（从共享内存表查找 fd）
      */
     private static function sendToUser($userId, $message)
     {
-        if (!isset(self::$userConnections[$userId])) {
+        if (!self::$userConnectionTable->exists((string)$userId)) {
             return false;
         }
         
-        $fd = self::$userConnections[$userId];
+        $row = self::$userConnectionTable->get((string)$userId);
+        $fd = $row ? $row['fd'] : 0;
         
-        if (self::$server && self::$server->isEstablished($fd)) {
+        if (self::$server && $fd > 0 && self::$server->isEstablished($fd)) {
             self::$server->push($fd, json_encode($message, JSON_UNESCAPED_UNICODE));
             return true;
         }
+        
+        // 清理无效连接
+        if ($fd > 0) {
+            self::$connectionTable->del((string)$fd);
+        }
+        self::$userConnectionTable->del((string)$userId);
+        self::decOnlineCount();
         
         return false;
     }
@@ -446,7 +598,7 @@ class WebSocketService
      */
     private static function broadcastOnlineCount()
     {
-        self::broadcast(['type' => 'online_count', 'count' => self::$onlineCount]);
+        self::broadcast(['type' => 'online_count', 'count' => self::getOnlineCount()]);
     }
     
     /**
@@ -459,20 +611,17 @@ class WebSocketService
         }
         
         try {
-            // 获取 token 配置
             $tokenConfig = \think\Config::get('token');
             $encryptedToken = hash_hmac($tokenConfig['hashalgo'], $token, $tokenConfig['key']);
             
-            // 从数据库验证加密后的 token
             $userToken = Db::name('user_token')
                 ->where('user_id', $userId)
-                ->where('token', $encryptedToken)  // 使用加密后的 token 查询
+                ->where('token', $encryptedToken)
                 ->where('expiretime', '>', time())
                 ->find();
             
             return !empty($userToken);
         } catch (\Exception $e) {
-            // 如果出错，记录日志
             \think\Log::error('WebSocket Token验证失败: ' . $e->getMessage());
             return false;
         }
