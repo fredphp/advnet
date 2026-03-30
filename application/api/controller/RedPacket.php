@@ -311,14 +311,9 @@ class RedPacket extends Api
                 $userId,
                 $totalAmount,
                 'red_packet_click',
-                [
-                    'relation_type' => 'click',
-                    'relation_id' => $taskId ?: 0,
-                    'description' => '观看广告领取红包金币',
-                    'base_amount' => $baseAmount,
-                    'accumulate_amount' => $accumulateAmount,
-                    'click_count' => $clickCount
-                ]
+                'redpacket',                    // relationType
+                $taskId ?: 0,                   // relationId
+                '观看广告领取红包金币'              // description
             );
             
             if ($result['success']) {
