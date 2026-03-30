@@ -331,13 +331,18 @@ class RedPacketRewardConfig extends Model
         } catch (\Exception $e) {
         }
         
-        return self::where('status', 'normal')
-            ->where('start_hour', '<=', $hour)
-            ->where('end_hour', '>', $hour)
-            ->where('min_today_amount', 0)
-            ->where('max_today_amount', 0)
-            ->order('id', 'desc')
-            ->find();
+        try {
+            return self::where('status', 'normal')
+                ->where('start_hour', '<=', $hour)
+                ->where('end_hour', '>', $hour)
+                ->where('min_today_amount', 0)
+                ->where('max_today_amount', 0)
+                ->order('id', 'desc')
+                ->find();
+        } catch (\Exception $e) {
+            Log::warning('getTimeConfig数据库查询异常: ' . $e->getMessage());
+            return null;
+        }
     }
 
     /**
@@ -391,16 +396,21 @@ class RedPacketRewardConfig extends Model
         } catch (\Exception $e) {
         }
         
-        return self::where('status', 'normal')
-            ->where('min_today_amount', '<=', $todayAmount)
-            ->where(function ($q) use ($todayAmount) {
-                $q->where('max_today_amount', '>=', $todayAmount)
-                  ->whereOr('max_today_amount', 0);
-            })
-            ->where('start_hour', 0)
-            ->where('end_hour', 24)
-            ->order('id', 'desc')
-            ->find();
+        try {
+            return self::where('status', 'normal')
+                ->where('min_today_amount', '<=', $todayAmount)
+                ->where(function ($q) use ($todayAmount) {
+                    $q->where('max_today_amount', '>=', $todayAmount)
+                      ->whereOr('max_today_amount', 0);
+                })
+                ->where('start_hour', 0)
+                ->where('end_hour', 24)
+                ->order('id', 'desc')
+                ->find();
+        } catch (\Exception $e) {
+            Log::warning('getTodayAmountConfig数据库查询异常: ' . $e->getMessage());
+            return null;
+        }
     }
 
     /**

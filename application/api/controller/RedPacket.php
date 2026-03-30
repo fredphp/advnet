@@ -240,8 +240,8 @@ class RedPacket extends Api
             ]);
             
         } catch (\Exception $e) {
-            Log::error('红包点击失败: ' . $e->getMessage());
-            $this->error('系统错误');
+            Log::error('红包点击失败: ' . $e->getMessage() . "\n" . $e->getTraceAsString());
+            $this->error('系统错误: ' . $e->getMessage());
         }
     }
     
@@ -329,8 +329,8 @@ class RedPacket extends Api
             }
             
         } catch (\Exception $e) {
-            Log::error('红包领取失败: ' . $e->getMessage());
-            $this->error('系统错误');
+            Log::error('红包领取失败: ' . $e->getMessage() . "\n" . $e->getTraceAsString());
+            $this->error('系统错误: ' . $e->getMessage());
         }
     }
     
