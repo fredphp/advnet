@@ -13,17 +13,20 @@ use think\Log;
 
 /**
  * 红包任务接口
+ * 
+ * 使用 ThinkPHP Cache 统一缓存接口，支持 Redis / File 降级
+ * Redis 可用时自动使用 Redis，不可用时降级到文件缓存
  */
 class RedPacket extends Api
 {
     protected $noNeedLogin = [];
     protected $noNeedRight = ['*'];
     
-    // Redis键前缀 - 用于存储用户当前红包金额
-    const REDIS_CLICK_PREFIX = 'red_packet:click:';
+    // 缓存键前缀
+    const CACHE_CLICK_PREFIX = 'red_packet:click:';
     
-    // 过期时间：1小时（兜底，防止数据残留）
-    const REDIS_EXPIRE = 3600;
+    // 过期时间：1小时
+    const CACHE_EXPIRE = 3600;
     
     protected $service = null;
     
@@ -31,11 +34,76 @@ class RedPacket extends Api
      * @var RiskControlService
      */
     protected $riskService;
+    
+    /**
+     * 是否使用 Redis（运行时检测）
+     */
+    private static $useRedis = null;
 
     public function _initialize()
     {
         parent::_initialize();
         $this->service = new \app\common\library\RedPacketClickService();
+    }
+    
+    /**
+     * 获取缓存实例（自动降级）
+     * 优先 Redis，不可用时降级到 File
+     */
+    private function getCache()
+    {
+        if (self::$useRedis === null) {
+            try {
+                $handler = Cache::store('redis')->handler();
+                if ($handler && method_exists($handler, 'ping')) {
+                    $handler->ping();
+                }
+                self::$useRedis = true;
+                return Cache::store('redis');
+            } catch (\Exception $e) {
+                Log::warning('[RedPacket] Redis 不可用，降级到文件缓存: ' . $e->getMessage());
+                self::$useRedis = false;
+                return Cache::store('file');
+            }
+        }
+        
+        return self::$useRedis ? Cache::store('redis') : Cache::store('file');
+    }
+    
+    /**
+     * 读取红包点击数据
+     */
+    private function getClickData($userId)
+    {
+        $cache = $this->getCache();
+        $key = self::CACHE_CLICK_PREFIX . $userId;
+        $data = $cache->get($key);
+        
+        if (!is_array($data)) {
+            return [];
+        }
+        
+        return $data;
+    }
+    
+    /**
+     * 写入红包点击数据
+     */
+    private function setClickData($userId, $data)
+    {
+        $cache = $this->getCache();
+        $key = self::CACHE_CLICK_PREFIX . $userId;
+        $cache->set($key, $data, self::CACHE_EXPIRE);
+    }
+    
+    /**
+     * 删除红包点击数据
+     */
+    private function delClickData($userId)
+    {
+        $cache = $this->getCache();
+        $key = self::CACHE_CLICK_PREFIX . $userId;
+        $cache->rm($key);
     }
     
     /**
@@ -60,7 +128,7 @@ class RedPacket extends Api
         $taskId = $this->request->post('task_id/d', 0);
         $reset = $this->request->post('reset/d', 0);
         
-        // 调用统一风控服务
+        // 调用统一风控服务（失败不影响主流程）
         try {
             $this->riskService = new RiskControlService();
             $this->riskService->init(
@@ -83,12 +151,12 @@ class RedPacket extends Api
         }
         
         try {
-            $redis = Cache::store('redis')->handler();
-            $redisKey = self::REDIS_CLICK_PREFIX . $userId;
-            
             // 如果是重置模式，先清理旧数据
             if ($reset == 1) {
-                $redis->del($redisKey);
+                $this->delClickData($userId);
+                $clickData = [];
+            } else {
+                $clickData = $this->getClickData($userId);
             }
             
             // 获取当前小时
@@ -114,8 +182,7 @@ class RedPacket extends Api
             // 获取封顶额度
             $maxLimit = RedPacketRewardConfig::getMaxRewardLimit();
             
-            // 获取Redis中已有的红包数据
-            $clickData = $redis->hGetAll($redisKey);
+            // 获取已有的红包数据
             $currentAmount = isset($clickData['total_amount']) ? intval($clickData['total_amount']) : 0;
             
             // 本次获得的金额
@@ -126,17 +193,17 @@ class RedPacket extends Api
                 $addAmount = RedPacketRewardConfig::generateBaseAmount($todayAmount, $currentHour, $isNewUser);
                 
                 // 存储新数据
-                $redis->hMSet($redisKey, [
-                    'base_amount' => $addAmount,
+                $this->setClickData($userId, [
+                    'base_amount'      => $addAmount,
                     'accumulate_amount' => 0,
-                    'total_amount' => $addAmount,
-                    'click_count' => 1,
-                    'task_id' => $taskId,
-                    'base_hour' => $currentHour,
-                    'is_new_user' => $isNewUser ? 1 : 0,
-                    'today_amount' => $todayAmount,
-                    'createtime' => time(),
-                    'updatetime' => time()
+                    'total_amount'      => $addAmount,
+                    'click_count'       => 1,
+                    'task_id'           => $taskId,
+                    'base_hour'         => $currentHour,
+                    'is_new_user'       => $isNewUser ? 1 : 0,
+                    'today_amount'      => $todayAmount,
+                    'createtime'        => time(),
+                    'updatetime'        => time()
                 ]);
             } else {
                 // 当前红包金额不为0 → 生成累加金额
@@ -151,18 +218,22 @@ class RedPacket extends Api
                 
                 // 更新数据
                 $newTotal = $currentAmount + $addAmount;
-                $redis->hMSet($redisKey, [
+                $this->setClickData($userId, [
+                    'base_amount'      => $clickData['base_amount'] ?? 0,
                     'accumulate_amount' => intval($clickData['accumulate_amount'] ?? 0) + $addAmount,
-                    'total_amount' => $newTotal,
-                    'click_count' => intval($clickData['click_count'] ?? 0) + 1,
-                    'updatetime' => time()
+                    'total_amount'      => $newTotal,
+                    'click_count'       => intval($clickData['click_count'] ?? 0) + 1,
+                    'task_id'           => $taskId,
+                    'base_hour'         => $clickData['base_hour'] ?? $currentHour,
+                    'is_new_user'       => $clickData['is_new_user'] ?? 0,
+                    'today_amount'      => $todayAmount,
+                    'createtime'        => $clickData['createtime'] ?? time(),
+                    'updatetime'        => time()
                 ]);
             }
             
-            $redis->expire($redisKey, self::REDIS_EXPIRE);
-            
-            // 获取最新的红包数据
-            $latestData = $redis->hGetAll($redisKey);
+            // 获取最新数据
+            $latestData = $this->getClickData($userId);
             
             $this->success('获取成功', [
                 'total_amount' => intval($latestData['total_amount'] ?? 0),
@@ -170,7 +241,7 @@ class RedPacket extends Api
             
         } catch (\Exception $e) {
             Log::error('红包点击失败: ' . $e->getMessage());
-            $this->error('系统错误: ' . $e->getMessage());
+            $this->error('系统错误');
         }
     }
     
@@ -190,9 +261,7 @@ class RedPacket extends Api
         
         $taskId = $this->request->post('task_id/d', 0);
         
-        $redisKey = self::REDIS_CLICK_PREFIX . $userId;
-        
-        // 调用统一风控服务
+        // 调用统一风控服务（失败不影响主流程）
         try {
             $this->riskService = new RiskControlService();
             $this->riskService->init(
@@ -206,11 +275,9 @@ class RedPacket extends Api
         }
         
         try {
-            $redis = Cache::store('redis')->handler();
+            $clickData = $this->getClickData($userId);
             
-            $clickData = $redis->hGetAll($redisKey);
-            
-            if (!$clickData || !isset($clickData['total_amount']) || $clickData['total_amount'] <= 0) {
+            if (empty($clickData) || !isset($clickData['total_amount']) || $clickData['total_amount'] <= 0) {
                 $this->error('没有可领取的金币');
             }
             
@@ -255,8 +322,8 @@ class RedPacket extends Api
             );
             
             if ($result['success']) {
-                // 发放成功后删除Redis中的累计金额，开启新一轮红包点击累加
-                $redis->del($redisKey);
+                // 发放成功后删除缓存中的累计金额，开启新一轮红包点击累加
+                $this->delClickData($userId);
                 
                 $this->success('领取成功', [
                     'amount' => $totalAmount,
@@ -268,17 +335,12 @@ class RedPacket extends Api
             
         } catch (\Exception $e) {
             Log::error('红包领取失败: ' . $e->getMessage());
-            $this->error('系统错误: ' . $e->getMessage());
+            $this->error('系统错误');
         }
     }
     
     /**
-     * 重置红包 - 清理红包缓存
-     * 
-     * 调用时机：
-     * 1. 用户离开红包领取页面（点击其他位置、关闭弹窗等）
-     * 2. 用户关闭APP时（前端生命周期钩子调用）
-     * 3. 用户重新进入APP时（App onLaunch/onShow）
+     * 重置红包 - 清理缓存
      * 
      * @api {post} /api/redpacket/reset 重置红包
      * @apiSuccess {Boolean} success 是否成功
@@ -291,15 +353,12 @@ class RedPacket extends Api
         }
         
         try {
-            $redis = Cache::store('redis')->handler();
-            $redisKey = self::REDIS_CLICK_PREFIX . $userId;
-            
             // 获取当前红包金额（用于日志记录）
-            $clickData = $redis->hGetAll($redisKey);
+            $clickData = $this->getClickData($userId);
             $totalAmount = isset($clickData['total_amount']) ? intval($clickData['total_amount']) : 0;
             
-            // 清理红包缓存
-            $redis->del($redisKey);
+            // 清理缓存
+            $this->delClickData($userId);
             
             Log::info("红包已重置: 用户{$userId}, 原金额{$totalAmount}");
             
@@ -310,7 +369,7 @@ class RedPacket extends Api
             
         } catch (\Exception $e) {
             Log::error('红包重置失败: ' . $e->getMessage());
-            $this->error('系统错误: ' . $e->getMessage());
+            $this->error('系统错误');
         }
     }
     
@@ -325,11 +384,8 @@ class RedPacket extends Api
             $this->error('请先登录');
         }
         
-        $redisKey = self::REDIS_CLICK_PREFIX . $userId;
-        
         try {
-            $redis = Cache::store('redis')->handler();
-            $clickData = $redis->hGetAll($redisKey);
+            $clickData = $this->getClickData($userId);
             
             $totalAmount = isset($clickData['total_amount']) ? intval($clickData['total_amount']) : 0;
             
@@ -338,7 +394,8 @@ class RedPacket extends Api
             ]);
             
         } catch (\Exception $e) {
-            $this->error('系统错误: ' . $e->getMessage());
+            Log::error('红包金额获取失败: ' . $e->getMessage());
+            $this->error('系统错误');
         }
     }
     
