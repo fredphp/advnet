@@ -343,7 +343,6 @@ export default {
                 /**
                  * 用户点击红包卡片后，开始每隔2秒调用 click 接口累加金额
                  * 用户不点击则不会请求接口
-                 * 使用 uni.request 直接请求，避免全局拦截器弹出错误提示
                  */
                 startRedbagClick(msgId, taskId) {
                         // 首次点击：reset=1 生成基础金额
@@ -356,30 +355,17 @@ export default {
 
                 async doClickRedbag(msgId, taskId, reset) {
                         try {
-                                // 直接用 uni.request，不走全局拦截器，避免弹出 toast
-                                const [err, res] = await uni.request({
-                                        url: '/api/redpacket/click',
-                                        method: 'POST',
-                                        header: {
-                                                'content-type': 'application/json',
-                                                'token': this.vuex_token || '',
-                                                'uid': (this.vuex_user && this.vuex_user.id) || 0
-                                        },
-                                        data: { task_id: taskId, reset: reset || 0 }
-                                });
-                                if (!err && res.statusCode === 200 && res.data) {
-                                        const result = res.data;
-                                        if (result.code === 1 && result.data) {
-                                                const amount = result.data.total_amount || 0;
-                                                this.currentAmount = amount;
-                                                // 同步更新消息列表中的金额
-                                                const msg = this.messages.find(m => m.id === msgId);
-                                                if (msg) {
-                                                        this.$set(msg, 'currentAmount', amount);
-                                                }
+                                const res = await this.$api.redpacketClick({ task_id: taskId, reset: reset || 0 });
+                                if (res && res.code === 1 && res.data) {
+                                        const amount = res.data.total_amount || 0;
+                                        this.currentAmount = amount;
+                                        // 同步更新消息列表中的金额
+                                        const msg = this.messages.find(m => m.id === msgId);
+                                        if (msg) {
+                                                this.$set(msg, 'currentAmount', amount);
                                         }
                                 } else {
-                                        console.warn('[RedBag] click接口异常:', err, res);
+                                        console.warn('[RedBag] click接口异常:', res);
                                 }
                         } catch (e) {
                                 // 静默处理，不打扰用户
@@ -445,20 +431,10 @@ export default {
                         const taskId = (this.currentRedbag.taskData && this.currentRedbag.taskData.taskId) || 0;
                         try {
                                 uni.showLoading({ title: '领取中...', mask: true });
-                                // 用 uni.request 直接请求，避免拦截器弹错误 toast
-                                const [err, res] = await uni.request({
-                                        url: '/api/redpacket/claim',
-                                        method: 'POST',
-                                        header: {
-                                                'content-type': 'application/json',
-                                                'token': this.vuex_token || '',
-                                                'uid': (this.vuex_user && this.vuex_user.id) || 0
-                                        },
-                                        data: { task_id: taskId }
-                                });
+                                const res = await this.$api.redpacketClaim({ task_id: taskId });
                                 uni.hideLoading();
 
-                                if (!err && res.statusCode === 200 && res.data && res.data.code === 1) {
+                                if (res && res.code === 1) {
                                         this.isClaimed = true;
                                         this.stopRedbagClickTimer();
 
@@ -468,7 +444,7 @@ export default {
                                                 this.$set(this.currentMsgRef, 'claimedAmount', this.currentAmount);
                                         }
 
-                                        const claimAmount = res.data.data.amount || this.currentAmount;
+                                        const claimAmount = (res.data && res.data.amount) || this.currentAmount;
                                         uni.showToast({
                                                 title: '领取成功 +' + claimAmount + ' 金币',
                                                 icon: 'none',
@@ -480,7 +456,7 @@ export default {
                                                 this.jumpToMiniapp();
                                         }, 2000);
                                 } else {
-                                        const msg = (res && res.data && res.data.msg) || '领取失败';
+                                        const msg = (res && res.msg) || '领取失败';
                                         uni.showToast({ title: msg, icon: 'none' });
                                 }
                         } catch (e) {
@@ -547,16 +523,7 @@ export default {
                         this.stopRedbagClickTimer();
                         // 静默重置，不弹提示
                         try {
-                                const [err, res] = await uni.request({
-                                        url: '/api/redpacket/reset',
-                                        method: 'POST',
-                                        header: {
-                                                'content-type': 'application/json',
-                                                'token': this.vuex_token || '',
-                                                'uid': (this.vuex_user && this.vuex_user.id) || 0
-                                        },
-                                        data: {}
-                                });
+                                await this.$api.redpacketReset({});
                         } catch (e) {
                                 // 静默处理
                         }
