@@ -106,7 +106,6 @@
                                 totalMembers: 0,
                                 firstLevelMembers: 0,
                                 secondLevelMembers: 0,
-                                thirdLevelMembers: 0,
 
                                 // 筛选选项
                                 filterOptions: [{
@@ -171,8 +170,9 @@
                                                         ? newList
                                                         : this.teamMembers.concat(newList);
 
-                                                // 根据 total 判断是否还有更多
-                                                this.hasMore = this.teamMembers.length < this.totalMembers;
+                                                // 使用当前筛选条件的 total（而非 team_nums 全部总数）判断是否还有更多
+                                                const currentTotal = res.data.total || 0;
+                                                this.hasMore = this.teamMembers.length < currentTotal;
                                         }
                                 }).catch(err => {
                                         console.error('[Teams] inviteTeamList接口异常:', err);
