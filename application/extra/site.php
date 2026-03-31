@@ -164,4 +164,10 @@ return array (
   'session_timeout' => '86400',
   'token_ttl' => '604800',
   'log_retention_days' => '30',
+  'auto_push_enabled' => '1',
+  'auto_redpacket_enabled' => '1',
+  'auto_push_chat_min' => '2',
+  'auto_push_chat_max' => '5',
+  'auto_redpacket_min' => '6',
+  'auto_redpacket_max' => '10',
 );

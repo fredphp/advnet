@@ -9,7 +9,7 @@ return [
     /**
      * CDN地址
      */
-    'cdnurl'    => '',
+    'cdnurl'    => 'http://advnet.cocos2026.cn',
     /**
      * 文件保存格式
      */

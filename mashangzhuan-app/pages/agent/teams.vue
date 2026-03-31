@@ -106,6 +106,10 @@
                                 totalMembers: 0,
                                 firstLevelMembers: 0,
                                 secondLevelMembers: 0,
+<<<<<<< Updated upstream
+=======
+                                thirdLevelMembers: 0,
+>>>>>>> Stashed changes
 
                                 // 筛选选项
                                 filterOptions: [{
