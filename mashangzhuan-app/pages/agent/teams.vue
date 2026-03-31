@@ -88,9 +88,12 @@
                 </view>
 
                 <!-- 加载更多 -->
-                <view class="load-more" v-if="hasMore">
-                        <!-- <u-loading-icon mode="circle" size="24"></u-loading-icon> -->
-                        <text class="load-text">加载更多</text>
+                <view class="load-more" v-if="loading">
+                        <u-loading-icon mode="circle" size="24"></u-loading-icon>
+                        <text class="load-text">加载中...</text>
+                </view>
+                <view class="load-more" v-else-if="!hasMore && teamMembers.length > 0">
+                        <text class="load-text">— 没有更多了 —</text>
                 </view>
         </view>
 </template>
@@ -100,10 +103,9 @@
                 data() {
                         return {
                                 // 团队统计数据
-                                totalMembers: 156,
-                                firstLevelMembers: 32,
-                                secondLevelMembers: 68,
-                                thirdLevelMembers: 56,
+                                totalMembers: 0,
+                                firstLevelMembers: 0,
+                                secondLevelMembers: 0,
 
                                 // 筛选选项
                                 filterOptions: [{
@@ -115,7 +117,6 @@
                                         {
                                                 name: '二级成员'
                                         }
-
                                 ],
                                 activeFilter: 0,
 
@@ -123,61 +124,67 @@
                                 searchKeyword: '',
 
                                 // 团队成员列表
-                                teamMembers: [
-                                ],
+                                teamMembers: [],
 
-                                // 是否有更多数据
-                                hasMore: true
+                                // 分页
+                                currentPage: 1,
+                                pageSize: 50,
+                                loading: false,
+                                hasMore: false
                         };
                 },
                 computed: {
                         // 筛选后的成员列表
                         filteredMembers() {
-                                let result = [...this.teamMembers];
-
-                                // 根据级别筛选
-                                if (this.activeFilter > 0) {
-                                        const levelMap = ['', 1,2,3];
-                                        result = result.filter(member => member.ulevel === levelMap[this.activeFilter]);
-                                }
-
-                                // 根据关键词搜索
-                                if (this.searchKeyword) {
-                                        const keyword = this.searchKeyword.toLowerCase();
-                                        result = result.filter(member =>
-                                                member.name.toLowerCase().includes(keyword) ||
-                                                member.id.toLowerCase().includes(keyword)
-                                        );
-                                }
-
-                                return result;
+                                return this.teamMembers;
                         }
                 },
                 onLoad() {
-                        // 加载团队数据
                         this.loadTeamData();
                 },
                 methods: {
                         // 加载团队数据
                         loadTeamData() {
-                                this.$api.inviteTeamList({ level: this.activeFilter, page: 1, limit: 50 }).then(res => {
+                                this.currentPage = 1;
+                                this.teamMembers = [];
+                                this._fetchTeamList();
+                        },
+
+                        // 请求API
+                        _fetchTeamList() {
+                                if (this.loading) return;
+                                this.loading = true;
+
+                                this.$api.inviteTeamList({
+                                        level: this.activeFilter,
+                                        page: this.currentPage,
+                                        limit: this.pageSize
+                                }).then(res => {
                                         if (res && res.code == 1) {
                                                 this.firstLevelMembers = res.data.team_1_count || 0;
                                                 this.secondLevelMembers = res.data.team_2_count || 0;
                                                 this.totalMembers = res.data.team_nums || 0;
-                                                this.teamMembers = res.data.list || [];
+
+                                                const newList = res.data.list || [];
+                                                this.teamMembers = this.currentPage === 1
+                                                        ? newList
+                                                        : this.teamMembers.concat(newList);
+
+                                                // 根据 total 判断是否还有更多
+                                                this.hasMore = this.teamMembers.length < this.totalMembers;
                                         }
                                 }).catch(err => {
                                         console.error('[Teams] inviteTeamList接口异常:', err);
+                                }).finally(() => {
+                                        this.loading = false;
                                 });
                         },
 
                         // 筛选切换
-                                handleFilterChange(index) {
-                                        this.activeFilter = index;
-                                        this.teamMembers = [];
-                                        this.loadTeamData();
-                                },
+                        handleFilterChange(index) {
+                                this.activeFilter = index;
+                                this.loadTeamData();
+                        },
 
                         // 搜索处理
                         handleSearch() {
@@ -193,28 +200,12 @@
 
                         // 加载更多
                         loadMoreData() {
-                                // 模拟加载更多数据
-                                if (this.hasMore) {
-                                        setTimeout(() => {
-                                                // 复制现有数据并修改部分信息作为新数据
-                                                const newMembers = this.teamMembers.slice(0, 3).map(member => ({
-                                                        ...member,
-                                                        id: `FX${Math.floor(Math.random() * 10000)}`,
-                                                        joinTime: '2023-08-15'
-                                                }));
-
-                                                this.teamMembers = [...this.teamMembers, ...newMembers];
-
-                                                // 控制加载更多次数
-                                                if (this.teamMembers.length >= 15) {
-                                                        this.hasMore = false;
-                                                }
-                                        }, 1000);
-                                }
+                                if (this.loading || !this.hasMore) return;
+                                this.currentPage++;
+                                this._fetchTeamList();
                         }
                 },
                 onReachBottom() {
-                        // 页面滚动到底部时加载更多
                         this.loadMoreData();
                 }
         };
