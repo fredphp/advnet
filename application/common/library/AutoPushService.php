@@ -131,6 +131,9 @@ class AutoPushService
     /** @var bool 红包定时器是否活跃 */
     private $redpacketActive = false;
 
+    /** @var string CDN域名（CLI模式下手动从数据库读取） */
+    private $cdnUrl = '';
+
     /** @var int 已推送统计 */
     private $stats = [
         'chat' => 0,
@@ -169,6 +172,7 @@ class AutoPushService
         }
         
         // 初始化
+        $this->loadCdnUrl();
         $this->loadSystemUsers();
         $this->loadAllResources();
         $this->refreshConfig();
@@ -372,7 +376,7 @@ class AutoPushService
             'display_title' => $title,
             'display_description' => $description,
             'description' => $description,
-            'jump_url' => $jumpUrl ? cdnurl($jumpUrl, true) : '',
+            'jump_url' => $jumpUrl ? $this->fullUrl($jumpUrl) : '',
             'resource' => $resource ? $this->buildResourceData($resource, 'download') : null,
         ]);
 
@@ -438,7 +442,7 @@ class AutoPushService
 
         if ($resource) {
             $title = $resource['name'] ?: '恭喜发财，大吉大利！';
-            $backgroundImage = $resource['logo'] ? cdnurl($resource['logo'], true) : '';
+            $backgroundImage = $resource['logo'] ? $this->fullUrl($resource['logo']) : '';
         }
 
         $pushData = $this->buildBasePushData($sender, 'miniapp', [
@@ -450,7 +454,7 @@ class AutoPushService
             'description' => '拆红包赢金币',
             'show_red_packet' => true,
             'background_image' => $backgroundImage,
-            'jump_url' => $resource ? ($resource['url'] ? cdnurl($resource['url'], true) : '') : '',
+            'jump_url' => $resource ? ($resource['url'] ? $this->fullUrl($resource['url']) : '') : '',
             'resource' => $resource ? $this->buildResourceData($resource, 'miniapp') : null,
         ]);
 
@@ -525,7 +529,7 @@ class AutoPushService
             'status'              => 'normal',
             'sender_id'           => intval($sender['id'] ?? 0),
             'sender_name'         => $sender['nickname'] ?: '系统',
-            'sender_avatar'       => $sender['avatar'] ? cdnurl($sender['avatar'], true) : '',
+            'sender_avatar'       => $sender['avatar'] ? $this->fullUrl($sender['avatar']) : '',
             'resource'            => null,
             'reward'              => 0,
             'timestamp'           => time(),
@@ -543,7 +547,7 @@ class AutoPushService
             'id'          => intval($resource['id'] ?? 0),
             'name'        => $resource['name'] ?? '',
             'description' => $resource['description'] ?? '',
-            'logo'        => ($resource['logo'] ?? '') ? cdnurl($resource['logo'], true) : '',
+            'logo'        => ($resource['logo'] ?? '') ? $this->fullUrl($resource['logo']) : '',
             'type'        => $type ?: ($resource['type'] ?? ''),
         ];
 
@@ -554,7 +558,7 @@ class AutoPushService
                 $data['chat_requirement'] = $resource['chat_requirement'] ?? '';
                 break;
             case 'download':
-                $data['download_url'] = ($resource['download_url'] ?? '') ? cdnurl($resource['download_url'], true) : '';
+                $data['download_url'] = ($resource['download_url'] ?? '') ? $this->fullUrl($resource['download_url']) : '';
                 $data['download_type'] = $resource['download_type'] ?? '';
                 $data['package_name'] = $resource['package_name'] ?? '';
                 break;
@@ -569,7 +573,7 @@ class AutoPushService
                 $data['adv_duration'] = intval($resource['adv_duration'] ?? 0) ?: 30;
                 break;
             case 'video':
-                $data['video_url'] = ($resource['video_url'] ?? '') ? cdnurl($resource['video_url'], true) : '';
+                $data['video_url'] = ($resource['video_url'] ?? '') ? $this->fullUrl($resource['video_url']) : '';
                 $data['video_duration'] = intval($resource['video_duration'] ?? 0) ?: 0;
                 break;
         }
@@ -621,6 +625,54 @@ class AutoPushService
     }
 
     // ==================== 数据源 ====================
+
+    /**
+     * 加载CDN域名（CLI模式下request()->domain()为空）
+     */
+    private function loadCdnUrl()
+    {
+        // 优先从 ThinkPHP Config 读取
+        $cdn = \think\Config::get('upload.cdnurl');
+        if (!empty($cdn) && strpos($cdn, 'http') === 0) {
+            $this->cdnUrl = rtrim($cdn, '/');
+            return;
+        }
+        // 兜底：从数据库 advn_config 表读取
+        try {
+            $row = Db::name('config')
+                ->where('name', 'upload')
+                ->where('group', 'basic')
+                ->value('value');
+            if ($row) {
+                $uploadConfig = json_decode($row, true);
+                if (!empty($uploadConfig['cdnurl']) && strpos($uploadConfig['cdnurl'], 'http') === 0) {
+                    $this->cdnUrl = rtrim($uploadConfig['cdnurl'], '/');
+                    return;
+                }
+            }
+        } catch (\Exception $e) {
+            // 忽略
+        }
+        $this->cdnUrl = '';
+    }
+
+    /**
+     * 构建完整URL（替代cdnurl，CLI模式下不会产生http:///错误）
+     */
+    private function fullUrl($path)
+    {
+        if (empty($path)) return '';
+        // 已经是完整URL，直接返回
+        if (preg_match('/^((?:[a-z]+:)?\/\/|data:image\/)/i', $path)) {
+            return $path;
+        }
+        $path = '/' . ltrim(str_replace(['\\', '//'], '/', $path), '/');
+        if (!empty($this->cdnUrl)) {
+            return $this->cdnUrl . $path;
+        }
+        // cdnurl为空，返回相对路径（前端自动补全域名）
+        return $path;
+    }
 
     /**
      * 获取随机发送者
