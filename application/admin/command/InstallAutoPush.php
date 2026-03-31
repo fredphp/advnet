@@ -118,9 +118,12 @@ class InstallAutoPush extends Command
             }
         }
 
-        // 刷新配置缓存
+        // 刷新配置缓存（删除运行时缓存文件）
         try {
-            \think\Config::clear();
+            $cacheFile = RUNTIME_PATH . 'cache' . DS . 'config' . DS . 'site.php';
+            if (file_exists($cacheFile)) {
+                @unlink($cacheFile);
+            }
             $output->writeln('');
             $output->writeln('<info>配置缓存已刷新</info>');
         } catch (\Exception $e) {
