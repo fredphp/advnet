@@ -211,7 +211,7 @@
                 left: 0;
                 right: 0;
                 bottom: 0;
-                background: linear-gradient(135deg, #c87341 0%, #90532f 50%, #6b3a1f 100%);
+                background: linear-gradient(135deg, #E62129 0%, #c41a22 50%, #a01520 100%);
         }
 
         .balance-card-content {
@@ -297,20 +297,20 @@
         .cash-currency {
                 font-size: 28rpx;
                 font-weight: 600;
-                color: #ffd700;
+                color: #FFD700;
                 margin-right: 4rpx;
         }
 
         .cash-amount {
                 font-size: 56rpx;
                 font-weight: 700;
-                color: #ffd700;
+                color: #FFD700;
                 letter-spacing: 1rpx;
         }
 
         /* 汇率徽章 */
         .rate-badge {
-                background: rgba(255, 255, 255, 0.15);
+                background: rgba(255, 255, 255, 0.18);
                 border-radius: 20rpx;
                 padding: 8rpx 20rpx;
                 margin-left: 20rpx;
@@ -318,7 +318,7 @@
 
         .rate-text {
                 font-size: 22rpx;
-                color: rgba(255, 255, 255, 0.85);
+                color: rgba(255, 215, 0, 0.9);
                 white-space: nowrap;
         }
 
@@ -383,7 +383,7 @@
         }
 
         .error-tip {
-                color: #ff4d4f;
+                color: #E62129;
                 font-size: 24rpx;
                 margin-top: 12rpx;
         }
@@ -411,9 +411,9 @@
         }
 
         .amount-option.active {
-                background: linear-gradient(135deg, #ff6b6b, #ff4d4f);
+                background: linear-gradient(135deg, #FF4D4F, #E62129);
                 color: #fff;
-                border: 2rpx solid #ff4d4f;
+                border: 2rpx solid #E62129;
                 transform: scale(1.02);
         }
 
@@ -468,7 +468,7 @@
         }
 
         .service-fee-num {
-                color: #ff4d4f;
+                color: #E62129;
                 font-size: 26rpx;
                 font-weight: 600;
         }
@@ -482,7 +482,7 @@
                 display: flex;
                 align-items: center;
                 justify-content: center;
-                background: linear-gradient(135deg, #c87341, #90532f);
+                background: linear-gradient(135deg, #E62129, #c41a22);
                 color: #fff;
                 border-radius: 80rpx;
                 height: 96rpx;
@@ -490,7 +490,7 @@
                 font-size: 34rpx;
                 font-weight: 600;
                 letter-spacing: 2rpx;
-                box-shadow: 0 8rpx 24rpx rgba(144, 83, 47, 0.35);
+                box-shadow: 0 8rpx 24rpx rgba(230, 33, 41, 0.35);
         }
 
         .withdraw-btn::after {
