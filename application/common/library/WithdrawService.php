@@ -1376,7 +1376,7 @@ class WithdrawService
      */
     protected function clearAccountCache($userId)
     {
-        Cache::delete('coin:balance:' . $userId);
+        Cache::rm('coin:balance:' . $userId);
     }
     
     /**
