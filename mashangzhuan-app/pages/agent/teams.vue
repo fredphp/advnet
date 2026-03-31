@@ -9,33 +9,20 @@
                         <u-search placeholder="搜索团队成员" v-model="searchKeyword"
                                 :custom-style="{backgroundColor: '#F5F7FA', margin: '0 30rpx'}" @search="handleSearch"></u-search>
                 </view>
-                <!-- 团队数据概览 -->
+                <!-- 团队数据概览（统计+Tab切换合二为一） -->
                 <view class="team-stats">
-                        <view class="stat-item">
+                        <view class="stat-item" :class="{ active: activeFilter === 0 }" @click="handleFilterChange(0)">
                                 <text class="stat-value">{{ totalMembers }}</text>
                                 <text class="stat-label">团队总人数</text>
                         </view>
-                        <view class="stat-item">
+                        <view class="stat-item" :class="{ active: activeFilter === 1 }" @click="handleFilterChange(1)">
                                 <text class="stat-value">{{ firstLevelMembers }}</text>
                                 <text class="stat-label">一级成员</text>
                         </view>
-                        <view class="stat-item">
+                        <view class="stat-item" :class="{ active: activeFilter === 2 }" @click="handleFilterChange(2)">
                                 <text class="stat-value">{{ secondLevelMembers }}</text>
                                 <text class="stat-label">二级成员</text>
                         </view>
-                        <!-- <view class="stat-item">
-                                <text class="stat-value">{{ thirdLevelMembers }}</text>
-                                <text class="stat-label">三级成员</text>
-                        </view> -->
-                </view>
-
-                <!-- 筛选区域 -->
-                <view class="filter-section">
-                        <u-subsection 
-                        :current="activeFilter" 
-                        :list="filterOptions" @change="handleFilterChange"
-                        bg-color="#fff" button-color="rgba(230,33,41,0.1)" active-color="#E62129" inactive-color="#000"   
-                        ></u-subsection>
                 </view>
 
                 
@@ -107,17 +94,6 @@
                                 firstLevelMembers: 0,
                                 secondLevelMembers: 0,
 
-                                // 筛选选项
-                                filterOptions: [{
-                                                name: '全部成员'
-                                        },
-                                        {
-                                                name: '一级成员'
-                                        },
-                                        {
-                                                name: '二级成员'
-                                        }
-                                ],
                                 activeFilter: 0,
 
                                 // 搜索关键词
@@ -220,7 +196,7 @@
                 color: #1D2129;
         }
 
-        // 团队数据概览
+        // 团队数据概览（统计+Tab切换合二为一）
         .team-stats {
                 margin: 32rpx;
                 display: flex;
@@ -228,11 +204,29 @@
                 border-radius: 20rpx;
                 color: #fff;
                 background: linear-gradient( to right, #FF8D3B 0%, #E62129 100%);
-                 
+                cursor: pointer;
 
                 .stat-item {
                         flex: 1;
                         text-align: center;
+                        position: relative;
+                        transition: opacity 0.2s;
+
+                        &:active {
+                                opacity: 0.8;
+                        }
+
+                        &.active::after {
+                                content: '';
+                                position: absolute;
+                                bottom: -8rpx;
+                                left: 50%;
+                                transform: translateX(-50%);
+                                width: 40rpx;
+                                height: 6rpx;
+                                border-radius: 3rpx;
+                                background: #fff;
+                        }
 
                         .stat-value {
                                 font-size: 32rpx;
@@ -245,11 +239,6 @@
                                 margin-top: 10rpx;
                         }
                 }
-        }
-
-        // 筛选区域
-        .filter-section {
-                 margin: 32rpx ;
         }
 
         // 搜索框
