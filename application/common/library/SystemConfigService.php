@@ -463,7 +463,7 @@ class SystemConfigService
      */
     public static function getWithdrawAmounts()
     {
-        $amountsStr = self::get('withdraw.withdraw_amounts',null, '10,20,50,100');
+        $amountsStr = self::get('site.withdraw_amounts',null, '10,20,50,100');
         $amounts = array_map('floatval', array_filter(explode(',', $amountsStr)));
         sort($amounts);
         return $amounts;
