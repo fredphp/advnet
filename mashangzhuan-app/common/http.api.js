@@ -169,6 +169,14 @@ const install = (Vue, vm) => {
         vm.$api.redpacketReset           = async (params = {}) => await vm.$u.post('/api/redpacket/reset', params);
         vm.$api.redpacketAmount          = async (params = {}) => await vm.$u.get('/api/redpacket/amount', params);
         vm.$api.redpacketToday           = async (params = {}) => await vm.$u.get('/api/redpacket/today', params);
+
+        // 分销/邀请
+        vm.$api.inviteOverview           = async (params = {}) => await vm.$u.get('/api/invite/overview', params);
+        vm.$api.inviteTeamList           = async (params = {}) => await vm.$u.get('/api/invite/teamList', params);
+        vm.$api.inviteCommissionList     = async (params = {}) => await vm.$u.get('/api/invite/commissionList', params);
+        vm.$api.inviteRanking            = async (params = {}) => await vm.$u.get('/api/invite/ranking', params);
+        vm.$api.inviteMyCode             = async (params = {}) => await vm.$u.get('/api/invite/myCode', params);
+        vm.$api.inviteBind               = async (params = {}) => await vm.$u.post('/api/invite/bind', params);
 }
 
 export default {
