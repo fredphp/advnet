@@ -201,8 +201,8 @@ class Invite extends Api
             
         } catch (\Throwable $e) {
             $this->rethrowHttpResponseException($e);
-            Log::error('分销概览获取失败: ' . $e->getMessage());
-            $this->error('系统错误');
+            Log::error('分销概览获取失败: ' . $e->getMessage() . ' [' . $e->getFile() . ':' . $e->getLine() . ']' . "\n" . $e->getTraceAsString());
+            $this->error('系统错误: ' . $e->getMessage());
         }
     }
     
@@ -236,11 +236,13 @@ class Invite extends Api
         $limit = min($limit, 50);
         
         try {
-            // 一级成员ID
-            $level1Ids = InviteRelation::where('parent_id', $userId)->column('user_id');
+            // 一级成员ID（使用Db::name避免Model层autoWriteTimestamp干扰）
+            $level1Ids = Db::name('invite_relation')->where('parent_id', $userId)->column('user_id');
+            $level1Ids = $level1Ids ? $level1Ids : [];
             
             // 二级成员ID
-            $level2Ids = InviteRelation::where('grandparent_id', $userId)->column('user_id');
+            $level2Ids = Db::name('invite_relation')->where('grandparent_id', $userId)->column('user_id');
+            $level2Ids = $level2Ids ? $level2Ids : [];
             
             $team1Count = count($level1Ids);
             $team2Count = count($level2Ids);
@@ -283,10 +285,11 @@ class Invite extends Api
                 $users = [];
             }
             
-            // 查询每个成员对我的佣金贡献
+            // 查询每个成员对我的佣金贡献（使用Db::name避免Model层干扰聚合查询）
             $commissionMap = [];
             if (!empty($pagedIds)) {
-                $commissions = InviteCommissionLog::whereIn('user_id', $pagedIds)
+                $commissions = Db::name('invite_commission_log')
+                    ->whereIn('user_id', $pagedIds)
                     ->where('parent_id', $userId)
                     ->where('status', 1)
                     ->field('user_id, SUM(commission_amount) as total_commission')
@@ -299,6 +302,17 @@ class Invite extends Api
                 }
             }
             
+            // 批量查询成员佣金统计（避免N+1查询）
+            $memberStats = [];
+            if (!empty($pagedIds)) {
+                $stats = Db::name('user_commission_stat')
+                    ->whereIn('user_id', $pagedIds)
+                    ->column('total_commission', 'user_id');
+                if ($stats) {
+                    $memberStats = $stats;
+                }
+            }
+            
             // 组装列表
             $level1Set = array_flip($level1Ids);
             $list = [];
@@ -307,15 +321,14 @@ class Invite extends Api
                 $isLevel1 = isset($level1Set[$uid]);
                 
                 // 成员自己的佣金统计
-                $memberStat = UserCommissionStat::where('user_id', $uid)->find();
-                $memberTotalIncome = $memberStat ? floatval($memberStat->total_commission) : 0;
+                $memberTotalIncome = isset($memberStats[$uid]) ? floatval($memberStats[$uid]) : 0;
                 
                 // 成员等级
-                $memberLevel = 1;
                 $memberLevelName = '普通会员';
-                if ($memberStat) {
+                if (isset($memberStats[$uid])) {
+                    $memberCommission = floatval($memberStats[$uid]);
                     foreach (self::$levelConfig as $cfg) {
-                        if ($memberStat->total_commission >= $cfg['min']) {
+                        if ($memberCommission >= $cfg['min']) {
                             $memberLevelName = $cfg['name'];
                         }
                     }
@@ -326,7 +339,7 @@ class Invite extends Api
                     'user'       => [
                         'nickname'       => $u['nickname'] ?: '未知用户',
                         'avatar'         => $u['avatar'] ?: '/static/image/avatar.png',
-                        'logintime_text' => $u['logintime'] ? date('Y-m-d H:i', $u['logintime']) : '',
+                        'logintime_text' => !empty($u['logintime']) ? date('Y-m-d H:i', $u['logintime']) : '',
                     ],
                     'ulevel'            => $isLevel1 ? 1 : 2,
                     'level_name'        => $memberLevelName,
@@ -342,11 +355,12 @@ class Invite extends Api
                 'total'        => $total,
                 'list'         => $list,
             ]);
+            return;
             
         } catch (\Throwable $e) {
             $this->rethrowHttpResponseException($e);
-            Log::error('团队列表获取失败: ' . $e->getMessage());
-            $this->error('系统错误');
+            Log::error('团队列表获取失败: ' . $e->getMessage() . ' [' . $e->getFile() . ':' . $e->getLine() . ']' . "\n" . $e->getTraceAsString());
+            $this->error('系统错误: ' . $e->getMessage());
         }
     }
     
@@ -463,8 +477,8 @@ class Invite extends Api
             
         } catch (\Throwable $e) {
             $this->rethrowHttpResponseException($e);
-            Log::error('佣金明细获取失败: ' . $e->getMessage());
-            $this->error('系统错误');
+            Log::error('佣金明细获取失败: ' . $e->getMessage() . ' [' . $e->getFile() . ':' . $e->getLine() . ']' . "\n" . $e->getTraceAsString());
+            $this->error('系统错误: ' . $e->getMessage());
         }
     }
     
@@ -562,8 +576,8 @@ class Invite extends Api
             
         } catch (\Throwable $e) {
             $this->rethrowHttpResponseException($e);
-            Log::error('排行获取失败: ' . $e->getMessage());
-            $this->error('系统错误');
+            Log::error('排行获取失败: ' . $e->getMessage() . ' [' . $e->getFile() . ':' . $e->getLine() . ']' . "\n" . $e->getTraceAsString());
+            $this->error('系统错误: ' . $e->getMessage());
         }
     }
     
