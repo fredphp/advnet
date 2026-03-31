@@ -274,16 +274,12 @@ class Invite extends Api
             // 分页
             $pagedIds = array_slice($allIds, ($page - 1) * $limit, $limit);
             
-            // 查询成员信息
-            $users = User::whereIn('id', $pagedIds)
+            // 查询成员信息（resultset_type=array 时 select 已返回数组，无需 toArray）
+            $users = Db::name('user')
+                ->whereIn('id', $pagedIds)
                 ->field('id, nickname, avatar, logintime, createtime')
                 ->select();
-            
-            if ($users) {
-                $users = $users->toArray();
-            } else {
-                $users = [];
-            }
+            $users = $users ? (array)$users : [];
             
             // 查询每个成员对我的佣金贡献（使用Db::name避免Model层干扰聚合查询）
             $commissionMap = [];
@@ -405,21 +401,18 @@ class Invite extends Api
                 ->page($page, $limit)
                 ->select();
             
-            if ($list) {
-                $list = $list->toArray();
-            } else {
-                $list = [];
-            }
+            $list = $list ? (array)$list : [];
             
             // 获取下级用户信息
             $userIds = array_unique(array_column($list, 'user_id'));
             $userMap = [];
             if (!empty($userIds)) {
-                $users = User::whereIn('id', $userIds)
+                $users = Db::name('user')
+                    ->whereIn('id', $userIds)
                     ->field('id, nickname, avatar')
                     ->select();
                 if ($users) {
-                    foreach ($users as $u) {
+                    foreach ((array)$users as $u) {
                         $userMap[$u['id']] = [
                             'nickname' => $u['nickname'] ?: '未知用户',
                             'avatar'   => $u['avatar'] ?: '/static/image/avatar.png',
@@ -523,11 +516,7 @@ class Invite extends Api
                     ->select();
             }
             
-            if ($list) {
-                $list = $list->toArray();
-            } else {
-                $list = [];
-            }
+            $list = $list ? (array)$list : [];
             
             // 标记当前用户
             $myRank = 0;
