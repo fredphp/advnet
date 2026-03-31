@@ -170,16 +170,8 @@ class WithdrawService
                 'description' => "提现申请冻结，订单号: {$orderNo}",
             ], $tableName);
             
-            // 自动审核
-            $orderStatus = self::STATUS_PENDING;
-            if ($auditType == 0) {
-                $auditResult = $this->autoAuditFromTable($orderId, $tableName);
-                if ($auditResult['success']) {
-                    $orderStatus = $auditResult['status'];
-                }
-            }
-            $orderData['status'] = $orderStatus;
-            
+            // 所有提现订单统一进入待审核状态，由后台管理员审核后再打款
+            // 不再自动审核通过，确保资金安全
             Db::commit();
             
             $result['success'] = true;
@@ -190,8 +182,7 @@ class WithdrawService
                 'cash_amount' => $cashAmount,
                 'fee_amount' => $feeAmount,
                 'actual_amount' => $actualAmount,
-                'status' => $orderStatus,
-                'audit_type' => $auditType == 0 ? '自动审核' : '人工审核',
+                'status' => self::STATUS_PENDING,
             ];
             
             // 清除账户缓存
