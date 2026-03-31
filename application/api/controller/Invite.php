@@ -140,11 +140,13 @@ class Invite extends Api
             }
             
             // 计算钱包数据
+            // withdraw_commission 是"来自提现来源的佣金"(source_type=withdraw)，不是用户提现金额
+            // 可提现 = 累计佣金 - 待结算 - 冻结
             $totalCommission = floatval($commissionStat->total_commission);
-            $pendingCommission = floatval($commissionStat->pending_commission);
-            $withdrawCommission = floatval($commissionStat->withdraw_commission);
-            $incomeMoney = max(0, $totalCommission - $pendingCommission - $withdrawCommission); // 可提现
-            $settleMoney = $totalCommission - $pendingCommission; // 已结算
+            $pendingCommission = floatval($commissionStat->pending_commission ?? 0);
+            $frozenCommission = floatval($commissionStat->frozen_commission ?? 0);
+            $incomeMoney = max(0, $totalCommission - $pendingCommission - $frozenCommission);
+            $settleMoney = max(0, $totalCommission - $pendingCommission); // 已结算
             
             // 总订单数 = 所有类型分佣记录数
             $orderNums = intval($commissionStat->withdraw_count ?? 0)
@@ -179,7 +181,8 @@ class Invite extends Api
                 'income_money'      => round($incomeMoney, 2),
                 'nosettle_money'    => round($pendingCommission, 2),
                 'settle_money'      => round($settleMoney, 2),
-                'total_withdraw'    => round($withdrawCommission, 2),
+                // 注：当前项目佣金提现通过金币系统实现，无独立佣金提现记录
+                'total_withdraw'    => 0,
                 
                 // 今日/昨日
                 'today_commission'     => round(floatval($commissionStat->today_commission), 2),

@@ -53,6 +53,17 @@ class UserCommissionStat extends Model
             $stat->other_commission = 0;
             $stat->today_commission = 0;
             $stat->today_coin = 0;
+            $stat->yesterday_commission = 0;
+            $stat->yesterday_coin = 0;
+            $stat->week_commission = 0;
+            $stat->month_commission = 0;
+            $stat->pending_commission = 0;
+            $stat->frozen_commission = 0;
+            $stat->canceled_commission = 0;
+            $stat->withdraw_count = 0;
+            $stat->video_count = 0;
+            $stat->red_packet_count = 0;
+            $stat->game_count = 0;
             $stat->save();
         }
         
@@ -102,6 +113,12 @@ class UserCommissionStat extends Model
         // 更新今日统计
         $this->today_commission = $this->today_commission + $log->commission_amount;
         $this->today_coin = $this->today_coin + $log->coin_amount;
+        
+        // 更新本周统计
+        $this->week_commission = $this->week_commission + $log->commission_amount;
+        
+        // 更新本月统计
+        $this->month_commission = $this->month_commission + $log->commission_amount;
         
         $this->save();
         
