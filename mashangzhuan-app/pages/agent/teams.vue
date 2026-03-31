@@ -1,386 +1,378 @@
 <template>
-        <view class="team-page">
-                <!-- 顶部导航栏 -->
-                <!-- <fa-navbar title="我的团队" :border-bottom="false"></fa-navbar> -->
+	<view class="team-page">
+		<!-- 团队数据概览 -->
+		<view class="team-stats">
+			<view class="stat-item">
+				<text class="stat-value">{{ totalMembers }}</text>
+				<text class="stat-label">团队总人数</text>
+			</view>
+			<view class="stat-divider"></view>
+			<view class="stat-item">
+				<text class="stat-value">{{ firstLevelMembers }}</text>
+				<text class="stat-label">一级成员</text>
+			</view>
+			<view class="stat-divider"></view>
+			<view class="stat-item">
+				<text class="stat-value">{{ secondLevelMembers }}</text>
+				<text class="stat-label">二级成员</text>
+			</view>
+		</view>
 
+		<!-- 筛选区域 -->
+		<view class="filter-section">
+			<view class="filter-tabs">
+				<view class="tab-item" :class="{ active: activeFilter === 0 }" @click="handleFilterChange(0)">
+					<text>全部成员</text>
+				</view>
+				<view class="tab-item" :class="{ active: activeFilter === 1 }" @click="handleFilterChange(1)">
+					<text>一级成员</text>
+				</view>
+				<view class="tab-item" :class="{ active: activeFilter === 2 }" @click="handleFilterChange(2)">
+					<text>二级成员</text>
+				</view>
+			</view>
+		</view>
 
-                <!-- 搜索框 -->
-                <view class="search-box" v-if="false">
-                        <u-search placeholder="搜索团队成员" v-model="searchKeyword"
-                                :custom-style="{backgroundColor: '#F5F7FA', margin: '0 30rpx'}" @search="handleSearch"></u-search>
-                </view>
-                <!-- 团队数据概览 -->
-                <view class="team-stats">
-                        <view class="stat-item">
-                                <text class="stat-value">{{ totalMembers }}</text>
-                                <text class="stat-label">团队总人数</text>
-                        </view>
-                        <view class="stat-item">
-                                <text class="stat-value">{{ firstLevelMembers }}</text>
-                                <text class="stat-label">一级成员</text>
-                        </view>
-                        <view class="stat-item">
-                                <text class="stat-value">{{ secondLevelMembers }}</text>
-                                <text class="stat-label">二级成员</text>
-                        </view>
-                </view>
+		<!-- 团队列表 -->
+		<view class="team-list">
+			<view class="team-member" v-for="(member, index) in filteredMembers" :key="index"
+				@click="goToMemberDetail(member.user_id)">
+				<view class="member-info">
+					<u-avatar :src="member.user.avatar" size="80"></u-avatar>
+					<view class="member-detail">
+						<view class="member-row-top">
+							<text class="member-name">{{ member.user.nickname }}</text>
+							<view class="member-tag" :class="'level-' + member.ulevel">
+								<text>{{ member.level_name }}</text>
+							</view>
+						</view>
+						<text class="member-id">ID: {{ member.user_id }}</text>
+					</view>
+				</view>
+				<view class="member-right">
+					<text class="member-performance">¥{{ member.total_income }}</text>
+					<text class="member-join">{{ member.user.logintime_text }}</text>
+				</view>
+			</view>
 
-                <!-- 筛选区域 -->
-                <view class="filter-section">
-                        <u-subsection 
-                        :current="activeFilter" 
-                        :list="filterOptions" @change="handleFilterChange"
-                        bg-color="#fff" button-color="rgba(230,33,41,0.1)" active-color="#E62129" inactive-color="#000"   
-                        ></u-subsection>
-                </view>
+			<view class="no-data" v-if="filteredMembers.length === 0">
+				<text class="no-data-text">暂无团队成员</text>
+			</view>
+		</view>
 
-
-                <!-- 团队列表 -->
-                <view class="team-list">
-                        <view class="list-header" v-if="false">
-                                <view class="header-name">
-                                        <text>成员信息</text>
-                                        <view class="icons">
-                                                <u-icon name="arrow-down-fill" size="20"></u-icon>
-                                                <!-- <u-icon name="arrow-up-fill" size="20"></u-icon> -->
-                                        </view>
-                                </view>
-                                <view class="header-join">
-                                        <text>加入时间</text>
-                                        <view class="icons">
-                                                <u-icon name="arrow-down-fill" size="20"></u-icon>
-                                        </view>
-                                </view>
-                                <view class="header-performance">
-                                        <text>业绩</text>
-                                        <view class="icons">
-                                                <u-icon name="arrow-down-fill" size="20"></u-icon>
-                                        </view>
-                                </view>
-                        </view>
-
-                        <view class="team-member" v-for="(member, index) in filteredMembers" :key="index"
-                                @click="goToMemberDetail(member.user_id)">
-                                <view class="member-info">
-                                        <u-avatar :src="member.user.avatar" size="64"></u-avatar>
-                                        <view class="member-detail">
-                                                <view class="member-name-level">
-                                                        <text class="member-name">{{ member.user.nickname }}</text>
-                                                        <u-tag :text="member.level_name" size="mini" shape="circle" mode="dark"
-                                                                :bg-color="member.level_id === 1 ? '#FF3434' : member.level === 2 ? '#3485FF' : '#FFA634'"
-                                                                color="#FFFFFF" :custom-style="{marginLeft: '8px'}"></u-tag>
-                                                </view>
-                                                <text class="member-id">ID: {{ member.user_id }}</text>
-                                        </view>
-                                </view>
-                                <text class="member-join">{{ member.user.logintime_text }}</text>
-                                <text class="member-performance">¥{{ member.total_income }}</text>
-                        </view>
-
-                        <view class="no-data" v-if="filteredMembers.length === 0">
-                                <u-empty mode="list" text="暂无团队成员"></u-empty>
-                        </view>
-                </view>
-
-                <!-- 加载更多 -->
-                <view class="load-more" v-if="loading">
-                        <u-loading mode="circle" size="24"></u-loading>
-                        <text class="load-text">加载中...</text>
-                </view>
-                <view class="load-more" v-else-if="!hasMore && teamMembers.length > 0">
-                        <text class="load-text">— 没有更多了 —</text>
-                </view>
-        </view>
+		<!-- 加载更多 -->
+		<view class="load-more" v-if="loading">
+			<text class="load-text">加载中...</text>
+		</view>
+		<view class="load-more" v-else-if="!hasMore && teamMembers.length > 0">
+			<text class="load-text">— 没有更多了 —</text>
+		</view>
+	</view>
 </template>
 
 <script>
-        import uTag from '@/uview-ui/components/u-tag/u-tag.vue'
-        import uAvatar from '@/uview-ui/components/u-avatar/u-avatar.vue'
-        import uSubsection from '@/uview-ui/components/u-subsection/u-subsection.vue'
-        import uEmpty from '@/uview-ui/components/u-empty/u-empty.vue'
-        import uLoading from '@/uview-ui/components/u-loading/u-loading.vue'
+	import uTag from '@/uview-ui/components/u-tag/u-tag.vue'
+	import uAvatar from '@/uview-ui/components/u-avatar/u-avatar.vue'
 
-        export default {
-                components: {
-                        uTag,
-                        uAvatar,
-                        uSubsection,
-                        uEmpty,
-                        uLoading
-                },
-                data() {
-                        return {
-                                // 团队统计数据
-                                totalMembers: 0,
-                                firstLevelMembers: 0,
-                                secondLevelMembers: 0,
+	export default {
+		components: {
+			uTag,
+			uAvatar
+		},
+		data() {
+			return {
+				// 团队统计数据
+				totalMembers: 0,
+				firstLevelMembers: 0,
+				secondLevelMembers: 0,
 
-                                // 筛选选项
-                                filterOptions: [{
-                                                name: '全部成员'
-                                        },
-                                        {
-                                                name: '一级成员'
-                                        },
-                                        {
-                                                name: '二级成员'
-                                        }
-                                ],
-                                activeFilter: 0,
+				activeFilter: 0,
 
-                                // 搜索关键词
-                                searchKeyword: '',
+				// 搜索关键词
+				searchKeyword: '',
 
-                                // 团队成员列表
-                                teamMembers: [],
+				// 团队成员列表
+				teamMembers: [],
 
-                                // 分页
-                                currentPage: 1,
-                                pageSize: 50,
-                                loading: false,
-                                hasMore: false
-                        };
-                },
-                computed: {
-                        // 筛选后的成员列表
-                        filteredMembers() {
-                                return this.teamMembers;
-                        }
-                },
-                onLoad() {
-                        this.loadTeamData();
-                },
-                methods: {
-                        // 加载团队数据
-                        loadTeamData() {
-                                this.currentPage = 1;
-                                this.teamMembers = [];
-                                this._fetchTeamList();
-                        },
+				// 分页
+				currentPage: 1,
+				pageSize: 50,
+				loading: false,
+				hasMore: false
+			};
+		},
+		computed: {
+			filteredMembers() {
+				return this.teamMembers;
+			}
+		},
+		onLoad() {
+			this.loadTeamData();
+		},
+		methods: {
+			loadTeamData() {
+				this.currentPage = 1;
+				this.teamMembers = [];
+				this._fetchTeamList();
+			},
 
-                        // 请求API
-                        _fetchTeamList() {
-                                if (this.loading) return;
-                                this.loading = true;
+			_fetchTeamList() {
+				if (this.loading) return;
+				this.loading = true;
 
-                                this.$api.inviteTeamList({
-                                        level: this.activeFilter,
-                                        page: this.currentPage,
-                                        limit: this.pageSize
-                                }).then(res => {
-                                        if (res && res.code == 1) {
-                                                this.firstLevelMembers = res.data.team_1_count || 0;
-                                                this.secondLevelMembers = res.data.team_2_count || 0;
-                                                this.totalMembers = res.data.team_nums || 0;
+				this.$api.inviteTeamList({
+					level: this.activeFilter,
+					page: this.currentPage,
+					limit: this.pageSize
+				}).then(res => {
+					if (res && res.code == 1) {
+						this.firstLevelMembers = res.data.team_1_count || 0;
+						this.secondLevelMembers = res.data.team_2_count || 0;
+						this.totalMembers = res.data.team_nums || 0;
 
-                                                const newList = res.data.list || [];
-                                                this.teamMembers = this.currentPage === 1
-                                                        ? newList
-                                                        : this.teamMembers.concat(newList);
+						const newList = res.data.list || [];
+						this.teamMembers = this.currentPage === 1
+							? newList
+							: this.teamMembers.concat(newList);
 
-                                                // 使用当前筛选条件的 total（而非 team_nums 全部总数）判断是否还有更多
-                                                const currentTotal = res.data.total || 0;
-                                                this.hasMore = this.teamMembers.length < currentTotal;
-                                        }
-                                }).catch(err => {
-                                        console.error('[Teams] inviteTeamList接口异常:', err);
-                                }).finally(() => {
-                                        this.loading = false;
-                                });
-                        },
+						const currentTotal = res.data.total || 0;
+						this.hasMore = this.teamMembers.length < currentTotal;
+					}
+				}).catch(err => {
+					console.error('[Teams] inviteTeamList接口异常:', err);
+				}).finally(() => {
+					this.loading = false;
+				});
+			},
 
-                        // 筛选切换
-                        handleFilterChange(index) {
-                                this.activeFilter = index;
-                                this.loadTeamData();
-                        },
+			handleFilterChange(index) {
+				this.activeFilter = index;
+				this.loadTeamData();
+			},
 
-                        // 搜索处理
-                        handleSearch() {
-                                console.log('搜索关键词:', this.searchKeyword);
-                        },
+			goToMemberDetail(memberId) {
+				uni.navigateTo({
+					url: `/pages/distribution/member-detail?id=${memberId}`
+				});
+			},
 
-                        // 查看成员详情
-                        goToMemberDetail(memberId) {
-                                uni.navigateTo({
-                                        url: `/pages/distribution/member-detail?id=${memberId}`
-                                });
-                        },
-
-                        // 加载更多
-                        loadMoreData() {
-                                if (this.loading || !this.hasMore) return;
-                                this.currentPage++;
-                                this._fetchTeamList();
-                        }
-                },
-                onReachBottom() {
-                        this.loadMoreData();
-                }
-        };
+			loadMoreData() {
+				if (this.loading || !this.hasMore) return;
+				this.currentPage++;
+				this._fetchTeamList();
+			}
+		},
+		onReachBottom() {
+			this.loadMoreData();
+		}
+	};
 </script>
 
 <style scoped lang="scss">
-        .team-page {
-                background-color: #F5F7FA;
-                min-height: 100vh;
-                font-size: 28rpx;
-                color: #1D2129;
-        }
+	.team-page {
+		background-color: #F5F7FA;
+		min-height: 100vh;
+		font-size: 28rpx;
+		color: #1D2129;
+		padding-bottom: env(safe-area-inset-bottom);
+	}
 
-        // 团队数据概览
-        .team-stats {
-                margin: 32rpx;
-                display: flex;
-                padding: 32rpx 0;
-                border-radius: 20rpx;
-                color: #fff;
-                background: linear-gradient( to right, #FF8D3B 0%, #E62129 100%);
+	/* 团队数据概览 */
+	.team-stats {
+		margin: 24rpx 24rpx 0;
+		display: flex;
+		align-items: center;
+		padding: 36rpx 16rpx;
+		border-radius: 20rpx;
+		color: #fff;
+		background: linear-gradient(135deg, #FF8D3B 0%, #E62129 100%);
+		box-shadow: 0 8rpx 24rpx rgba(230, 33, 41, 0.25);
 
-                .stat-item {
-                        flex: 1;
-                        text-align: center;
+		.stat-item {
+			flex: 1;
+			text-align: center;
 
-                        .stat-value {
-                                font-size: 32rpx;
-                                font-weight: bold;
-                                display: block;
-                        }
+			.stat-value {
+				font-size: 44rpx;
+				font-weight: bold;
+				display: block;
+				line-height: 1.2;
+			}
 
-                        .stat-label {
-                                font-size: 24rpx;
-                                margin-top: 10rpx;
-                        }
-                }
-        }
+			.stat-label {
+				font-size: 22rpx;
+				margin-top: 8rpx;
+				display: block;
+				opacity: 0.85;
+			}
+		}
 
-        // 筛选区域
-        .filter-section {
-                 margin: 32rpx ;
-        }
+		.stat-divider {
+			width: 2rpx;
+			height: 60rpx;
+			background: rgba(255, 255, 255, 0.3);
+		}
+	}
 
-        // 搜索框
-        .search-box {
-                padding:16rpx 32rpx;
-                background-color: #FFFFFF;
-                margin-bottom: 20rpx;
-        }
+	/* 筛选区域 - 自定义Tab */
+	.filter-section {
+		margin: 20rpx 24rpx 0;
+		background: #fff;
+		border-radius: 16rpx;
+		padding: 6rpx;
+		box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.04);
 
-        // 团队列表
-        .team-list {
-                background-color: #FFFFFF;
-                border-radius: 20rpx;
-                margin: 0 30rpx;
+		.filter-tabs {
+			display: flex;
+			border-radius: 12rpx;
+			overflow: hidden;
+		}
 
-                .list-header {
-                        display: flex;
-                        padding: 25rpx 30rpx;
-                        border-bottom: 1px solid #eee;
-                        
-                        color: rgba(0,0,0,0.9);
-                        font-size: 28rpx;
+		.tab-item {
+			flex: 1;
+			text-align: center;
+			padding: 20rpx 0;
+			font-size: 28rpx;
+			color: #666;
+			position: relative;
+			transition: all 0.25s ease;
+			border-radius: 12rpx;
 
-                        .header-name {
-                                width: 40%;
-                                display: flex;
-                        }
+			&:active {
+				opacity: 0.7;
+			}
 
-                        .header-join {
-                                width: 30%;
-                                text-align: center;
-                                display: flex;
-                                justify-content: center;
-                        }
+			&.active {
+				color: #E62129;
+				font-weight: 600;
+				background: rgba(230, 33, 41, 0.08);
+			}
+		}
+	}
 
-                        .header-performance {
-                                width: 30%;
-                                text-align: right;
-                                display: flex;
-                                justify-content: flex-end;
-                        }
-                        .icons{
-                                margin-left: 8rpx;
-                                display: flex;
-                                align-items: center;
-                                justify-content: center;
-                        }
-                }
+	/* 团队列表 */
+	.team-list {
+		margin: 20rpx 24rpx 0;
+		background-color: #fff;
+		border-radius: 20rpx;
+		overflow: hidden;
+		box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.04);
 
-                .team-member {
-                        display: flex;
-                        align-items: center;
-                        padding: 25rpx 30rpx;
-                        border-bottom: 1px solid #F2F3F5;
-                        transition: background-color 0.2s;
+		.team-member {
+			display: flex;
+			align-items: center;
+			justify-content: space-between;
+			padding: 28rpx 30rpx;
+			border-bottom: 1rpx solid #F5F5F5;
+			transition: background-color 0.15s;
 
-                        &:last-child {
-                                border-bottom: none;
-                        }
+			&:last-child {
+				border-bottom: none;
+			}
 
-                        &:active {
-                                background-color: #F5F7FA;
-                        }
+			&:active {
+				background-color: #FAFAFA;
+			}
 
-                        .member-info {
-                                display: flex;
-                                align-items: center;
-                                width: 40%;
+			.member-info {
+				display: flex;
+				align-items: center;
+				flex: 1;
+				min-width: 0;
 
-                                .member-detail {
-                                        margin-left: 15rpx;
+				.member-detail {
+					margin-left: 20rpx;
+					flex: 1;
+					min-width: 0;
 
-                                        .member-name-level {
-                                                display: flex;
-                                                align-items: center;
+					.member-row-top {
+						display: flex;
+						align-items: center;
+						margin-bottom: 8rpx;
 
-                                                .member-name {
-                                                        font-size: 28rpx;
-                                                        color: #1D2129;
-                                                        margin-right: 8rpx;
-                                                }
-                                        }
+						.member-name {
+							font-size: 30rpx;
+							color: #1D2129;
+							font-weight: 500;
+							overflow: hidden;
+							text-overflow: ellipsis;
+							white-space: nowrap;
+							max-width: 240rpx;
+						}
 
-                                        .member-id {
-                                                font-size: 24rpx;
-                                                color: #86909C;
-                                                margin-top: 5rpx;
-                                                display: inline-block;
-                                        }
-                                }
-                        }
+						.member-tag {
+							margin-left: 12rpx;
+							padding: 4rpx 16rpx;
+							border-radius: 20rpx;
+							font-size: 20rpx;
+							flex-shrink: 0;
 
-                        .member-join {
-                                width: 30%;
-                                text-align: center;
-                                color: #86909C;
-                                font-size: 24rpx;
-                        }
+							text {
+								line-height: 1.4;
+							}
 
-                        .member-performance {
-                                width: 30%;
-                                text-align: right;
-                                font-weight: 500;
-                                color: #de0011;
-                        }
-                }
+							&.level-1 {
+								background: rgba(230, 33, 41, 0.1);
+								color: #E62129;
+							}
 
-                .no-data {
-                        padding: 100rpx 0;
-                        text-align: center;
-                }
-        }
+							&.level-2 {
+								background: rgba(52, 133, 255, 0.1);
+								color: #3485FF;
+							}
+						}
+					}
 
-        // 加载更多
-        .load-more {
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                padding: 40rpx 0;
-                color: #86909C;
+					.member-id {
+						font-size: 22rpx;
+						color: #C0C4CC;
+						display: block;
+					}
+				}
+			}
 
-                .load-text {
-                        margin-left: 15rpx;
-                        font-size: 26rpx;
-                }
-        }
+			.member-right {
+				text-align: right;
+				flex-shrink: 0;
+				margin-left: 16rpx;
+
+				.member-performance {
+					display: block;
+					font-size: 30rpx;
+					font-weight: 600;
+					color: #E62129;
+					margin-bottom: 6rpx;
+				}
+
+				.member-join {
+					display: block;
+					font-size: 20rpx;
+					color: #C0C4CC;
+				}
+			}
+		}
+
+		.no-data {
+			padding: 120rpx 0;
+			text-align: center;
+
+			.no-data-text {
+				color: #C0C4CC;
+				font-size: 28rpx;
+			}
+		}
+	}
+
+	/* 加载更多 */
+	.load-more {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		padding: 48rpx 0 60rpx;
+		color: #C0C4CC;
+
+		.load-text {
+			font-size: 24rpx;
+		}
+	}
 </style>
