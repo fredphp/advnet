@@ -28,7 +28,9 @@ class Withdraw extends Api
         // 获取用户账户信息
         $userId = $this->auth->id;
         $coinService = new CoinService();
-        $account = $coinService->getAccountInfo($userId);
+        $account = $coinService->getAccount($userId);
+        $balance = $account ? floatval($account['balance'] ?? 0) : 0;
+        $frozen = $account ? floatval($account['frozen'] ?? 0) : 0;
         
         // 获取可选提现金额
         $withdrawAmounts = SystemConfigService::getWithdrawAmounts();
@@ -50,8 +52,8 @@ class Withdraw extends Api
             'fee_rate' => $config['fee_rate'] ?? 0,
             'daily_limit' => $config['daily_withdraw_limit'] ?? 3,
             'daily_amount' => $config['daily_withdraw_amount'] ?? 500,
-            'balance' => $account['balance'] ?? 0,
-            'frozen' => $account['frozen'] ?? 0,
+            'balance' => round($balance, 2),
+            'frozen' => round($frozen, 2),
             'withdraw_amounts' => $withdrawAmounts,
             'amount_options' => $amountOptions,
             'withdraw_enabled' => $config['withdraw_enabled'] ?? 1,
