@@ -22,8 +22,10 @@
                                                 <text v-else-if="message.status === 'opened'" class="redbag-amount-final">
                                                         {{ message.claimedAmount || message.currentAmount || message.amount || 0 }} 金币
                                                 </text>
-                                                <!-- 已领取 -->
-                                                <text v-else-if="message.status === 'claimed'" class="redbag-claimed">已领取</text>
+                                                <!-- 已领取：显示金额+已领取 -->
+                                                <text v-else-if="message.status === 'claimed'" class="redbag-amount-final">
+                                                        {{ message.claimedAmount || message.currentAmount || message.amount || 0 }} 金币 · 已领取
+                                                </text>
                                                 <!-- 已过期 -->
                                                 <text v-else-if="message.status === 'expired'" class="redbag-expired">已过期</text>
                                         </view>
@@ -61,8 +63,8 @@ export default {
                 },
                 footerText() {
                         const taskData = this.message.taskData || {};
-                        if (this.message.status === 'expired') return '已领取';
-                        if (this.message.status === 'claimed') return '已完成';
+                        if (this.message.status === 'expired') return '已过期';
+                        if (this.message.status === 'claimed') return '已领取';
                         if (this.message.status === 'opened') return '已拆开 · 待领取';
                         const resourceName = taskData.resource && taskData.resource.name ? taskData.resource.name : '小程序红包';
                         return resourceName;
@@ -70,15 +72,12 @@ export default {
         },
         methods: {
                 handleClick() {
-                        // 已过期或已领取，不触发事件
+                        // 已过期，不触发事件
                         if (this.message.status === 'expired') {
-                                uni.showToast({ title: '已领取', icon: 'none' });
+                                uni.showToast({ title: '已过期', icon: 'none' });
                                 return;
                         }
-                        if (this.message.status === 'claimed') {
-                                uni.showToast({ title: '已领取', icon: 'none' });
-                                return;
-                        }
+                        // 所有其他状态（unopened / opened / claimed）都允许点击打开弹窗
                         this.$emit('open-redbag', this.message);
                 }
         }

@@ -98,6 +98,9 @@
                                         <text class="amount-hint" v-else-if="isClaimed">
                                                 已领取 {{ displayAmount }} 金币
                                         </text>
+                                        <text class="amount-hint" v-else-if="isExpired">
+                                                已过期
+                                        </text>
                                         <text class="amount-hint" v-else-if="currentAmount > 0">
                                                 恭喜获得 {{ displayAmount }} 金币
                                         </text>
@@ -126,9 +129,9 @@
                                         </view>
                                 </view>
 
-                                <!-- 关闭按钮（5秒内禁用） -->
-                                <view :class="['modal-close', { 'close-disabled': !canCloseModal }]" @click="tryCloseModal">
-                                        <text class="close-text">{{ canCloseModal ? '关闭' : '请等待 ' + closeCountdown + 's' }}</text>
+                                <!-- 关闭按钮（5秒内禁用，已领取可立即关闭） -->
+                                <view :class="['modal-close', { 'close-disabled': !canCloseModal && !isClaimed }]" @click="tryCloseModal">
+                                        <text class="close-text">{{ (canCloseModal || isClaimed) ? '关闭' : '请等待 ' + closeCountdown + 's' }}</text>
                                 </view>
                         </view>
                 </view>
@@ -204,6 +207,9 @@ export default {
         computed: {
                 displayAmount() {
                         return Number(this.currentAmount) || 0;
+                },
+                isExpired() {
+                        return this.currentRedbag && this.currentRedbag.status === 'expired';
                 }
         },
 
@@ -404,9 +410,21 @@ export default {
                  * 不再每 2 秒累加，只有点击新红包时才获取金额
                  */
                 handleRedbagClick(msg) {
-                        // 已领取 / 已过期 → 不可再点击
-                        if (msg.status === 'claimed' || msg.status === 'expired') {
-                                uni.showToast({ title: msg.status === 'expired' ? '已领取' : '已领取', icon: 'none' });
+                        // 已过期 → 不可再点击
+                        if (msg.status === 'expired') {
+                                uni.showToast({ title: '已过期', icon: 'none' });
+                                return;
+                        }
+
+                        // 已领取 → 打开弹窗显示已领取金额（不可再领取）
+                        if (msg.status === 'claimed') {
+                                this.currentRedbag = msg;
+                                this.currentAmount = msg.claimedAmount || msg.currentAmount || 0;
+                                this.isClaimed = true;
+                                this.isLoadingAmount = false;
+                                this.currentMsgRef = msg;
+                                this.showRedbagModal = true;
+                                this.startCloseLock();
                                 return;
                         }
 
@@ -594,13 +612,16 @@ export default {
                 },
 
                 tryCloseModal() {
-                        if (!this.canCloseModal) return;
+                        // 已领取状态可立即关闭，否则需要等待5秒
+                        if (!this.canCloseModal && !this.isClaimed) return;
                         this.closeRedbagModal();
                 },
 
                 closeRedbagModal() {
                         this.showRedbagModal = false;
                         this.isLoadingAmount = false;
+                        this.isClaimed = false;
+                        this.currentAmount = 0;
                         this.currentRedbag = {};
                         this.currentMsgRef = null;
                         this.stopCloseLock();
