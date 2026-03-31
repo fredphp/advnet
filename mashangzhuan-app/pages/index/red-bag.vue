@@ -428,16 +428,23 @@ export default {
                                 return;
                         }
 
-                        // 已拆开但未领取（金额已获取）
+                        // 已拆开但未领取（金额已获取）→ 允许继续点击累加
                         if (msg.status === 'opened') {
-                                // 直接打开弹窗显示已有金额，允许领取
                                 this.currentRedbag = msg;
                                 this.currentAmount = msg.currentAmount || msg.claimedAmount || 0;
                                 this.isClaimed = false;
-                                this.isLoadingAmount = false;
+                                this.isLoadingAmount = true;
                                 this.currentMsgRef = msg;
                                 this.showRedbagModal = true;
                                 this.startCloseLock();
+
+                                // ★ 继续累加：调用 click 接口，reset=0 累加金额
+                                const taskId = (msg.taskData && msg.taskData.taskId) || 0;
+                                if (taskId) {
+                                        this.doClickOnce(msg.id, taskId, false);
+                                } else {
+                                        this.isLoadingAmount = false;
+                                }
                                 return;
                         }
 
@@ -453,21 +460,24 @@ export default {
                         this.showRedbagModal = true;
                         this.startCloseLock();
 
-                        // 调用 click 接口（仅一次，reset=1 生成基础金额）
+                        // 调用 click 接口（reset=1 生成基础金额）
                         const taskId = (msg.taskData && msg.taskData.taskId) || 0;
                         if (taskId) {
-                                this.doClickOnce(msg.id, taskId);
+                                this.doClickOnce(msg.id, taskId, true);
                         } else {
                                 this.isLoadingAmount = false;
                         }
                 },
 
                 /**
-                 * 单次调用 click 接口获取红包金额
+                 * 调用 click 接口获取/累加红包金额
+                 * @param {string} msgId 消息ID
+                 * @param {number} taskId 任务ID
+                 * @param {boolean} reset true=首次点击(重置), false=继续累加
                  */
-                async doClickOnce(msgId, taskId) {
+                async doClickOnce(msgId, taskId, reset = true) {
                         try {
-                                const res = await this.$api.redpacketClick({ task_id: taskId, reset: 1 });
+                                const res = await this.$api.redpacketClick({ task_id: taskId, reset: reset ? 1 : 0 });
                                 if (res && res.code === 1 && res.data) {
                                         const amount = res.data.total_amount || 0;
                                         this.currentAmount = amount;

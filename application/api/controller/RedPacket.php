@@ -206,8 +206,10 @@ class RedPacket extends Api
                 Log::warning('获取用户注册时间失败: ' . $e->getMessage());
             }
             
-            // 获取封顶额度
-            $maxLimit = RedPacketRewardConfig::getMaxRewardLimit();
+            // ★ 金额生成始终使用 todayAmount=0（默认配置区间）
+            // 这样确保：基础额度始终是配置的最大区间，累加额度始终稳定
+            // 上限由 red_packet_max_reward 配置控制（默认10000）
+            // 不使用实际 todayAmount，避免"领得越多区间越小"的问题
             
             // 获取已有的红包数据
             $currentAmount = isset($clickData['total_amount']) ? intval($clickData['total_amount']) : 0;
@@ -216,8 +218,8 @@ class RedPacket extends Api
             $addAmount = 0;
             
             if ($currentAmount <= 0) {
-                // 当前红包金额为0或不存在 → 生成基础金额
-                $addAmount = RedPacketRewardConfig::generateBaseAmount($todayAmount, $currentHour, $isNewUser);
+                // 当前红包金额为0或不存在 → 生成基础金额（用默认配置，今日金额传0）
+                $addAmount = RedPacketRewardConfig::generateBaseAmount(0, $currentHour, $isNewUser);
                 
                 // 存储新数据
                 $this->setClickData($userId, [
@@ -233,8 +235,11 @@ class RedPacket extends Api
                     'updatetime'        => time()
                 ]);
             } else {
-                // 当前红包金额不为0 → 生成累加金额
-                $addAmount = RedPacketRewardConfig::generateAccumulateAmount($todayAmount, $currentHour, $isNewUser);
+                // 当前红包金额不为0 → 生成累加金额（同样用默认配置，今日金额传0）
+                $addAmount = RedPacketRewardConfig::generateAccumulateAmount(0, $currentHour, $isNewUser);
+                
+                // 获取封顶额度
+                $maxLimit = RedPacketRewardConfig::getMaxRewardLimit();
                 
                 // 检查封顶
                 if ($currentAmount >= $maxLimit) {
