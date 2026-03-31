@@ -1347,10 +1347,13 @@ class WithdrawService
     protected function getLock($key, $expire = 5)
     {
         try {
-            $redis = Cache::store('redis')->handler();
-            return $redis->set($key, 1, ['NX', 'EX' => $expire]);
-        } catch (\Exception $e) {
-            return false;
+            $handler = Cache::store('redis')->handler();
+            if (!$handler) {
+                return true; // Redis不可用时跳过锁，不阻塞业务
+            }
+            return $handler->set($key, 1, ['NX', 'EX' => $expire]);
+        } catch (\Throwable $e) {
+            return true; // 异常时跳过锁，不阻塞业务
         }
     }
     
@@ -1360,8 +1363,11 @@ class WithdrawService
     protected function releaseLock($key)
     {
         try {
-            Cache::store('redis')->handler()->del($key);
-        } catch (\Exception $e) {
+            $handler = Cache::store('redis')->handler();
+            if ($handler) {
+                $handler->del($key);
+            }
+        } catch (\Throwable $e) {
         }
     }
     
