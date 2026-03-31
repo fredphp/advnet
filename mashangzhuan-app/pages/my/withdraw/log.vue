@@ -76,8 +76,9 @@
                         }
                 },
                 onLoad() {
-                        const endDate = this.formatDate(new Date());
-                        const startDate = this.formatDate(new Date(new Date().setMonth(new Date().getMonth() - 1)));
+                        const now = new Date();
+                        const startDate = this.formatDate(new Date(now.getFullYear(), now.getMonth(), 1));
+                        const endDate = this.formatDate(now);
                         this.startDate = startDate;
                         this.endDate = endDate;
                         this.getList();

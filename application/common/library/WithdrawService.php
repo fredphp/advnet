@@ -1423,7 +1423,7 @@ class WithdrawService
         $unionQueries = [];
         foreach ($tables as $table) {
             if (WithdrawOrder::tableExists($table)) {
-                $unionQueries[] = "SELECT id, user_id, order_no, coin_amount, cash_amount, fee_amount, actual_amount, status, withdraw_type, createtime, remark FROM {$prefix}{$table}";
+                $unionQueries[] = "SELECT id, user_id, order_no, coin_amount, cash_amount, fee_amount, actual_amount, status, withdraw_type, createtime FROM {$prefix}{$table}";
             }
         }
         
@@ -1459,7 +1459,7 @@ class WithdrawService
         
         // 查询列表
         $offset = ($page - 1) * $limit;
-        $listSql = "SELECT wo.id, wo.user_id, wo.order_no, wo.coin_amount, wo.cash_amount, wo.fee_amount, wo.actual_amount, wo.status, wo.withdraw_type, wo.createtime, wo.remark FROM {$unionSql} WHERE {$whereStr} ORDER BY wo.id DESC LIMIT {$offset}, {$limit}";
+        $listSql = "SELECT wo.id, wo.user_id, wo.order_no, wo.coin_amount, wo.cash_amount, wo.fee_amount, wo.actual_amount, wo.status, wo.withdraw_type, wo.createtime FROM {$unionSql} WHERE {$whereStr} ORDER BY wo.id DESC LIMIT {$offset}, {$limit}";
         $list = Db::query($listSql, $bindParams);
         
         return [

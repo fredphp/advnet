@@ -154,7 +154,6 @@ class Withdraw extends Api
                 'withdraw_type'     => $item['withdraw_type'] ?? '',
                 'withdraw_type_text'=> $typeList[$item['withdraw_type']] ?? '',
                 'create_time_text'  => $item['createtime'] ? date('Y-m-d H:i:s', $item['createtime']) : '',
-                'remark'            => $item['remark'] ?? '',
             ];
         }
         
