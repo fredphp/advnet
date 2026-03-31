@@ -168,9 +168,8 @@ export default {
                 this.clearAllRedbagTimers();
                 // 清理关闭倒计时
                 this.stopCloseLock();
-                // ★ 不再调用 resetRedbag()：缓存已按 taskId 隔离，各任务独立累加
-                        // 用户再次进入页面点击同一任务时，前端会自动发 reset=1 开始新轮次
-                        // 各任务的缓存通过 1 小时 TTL 自然过期
+                // 离开页面时重置累加数据（per-user 共享，下次进入重新开始）
+                        this.resetRedbag();
         },
 
         data() {
@@ -404,11 +403,17 @@ export default {
                         this.redbagTimers = {};
                 },
 
-                // ==================== 红包点击（单次点击） ====================
+                // ==================== 红包点击 ====================
 
                 /**
-                 * 用户点击红包卡片 → 打开弹窗 → 调用一次 click 接口获取金额
-                 * 不再每 2 秒累加，只有点击新红包时才获取金额
+                 * 用户点击红包卡片 → 打开弹窗 → 调用 click 接口
+                 * 
+                 * ★ 核心：后端按用户共享累加，所有红包金额持续叠加
+                 *   - 用户第一次点任意红包 → 基础金额
+                 *   - 后续每次点任意红包 → 累加金额（在总额上递增，永不减少）
+                 *   - 领取后清零，下一轮从基础金额重新开始
+                 * 
+                 * 前端始终 reset=0，由后端判断是否有已有累加数据
                  */
                 handleRedbagClick(msg) {
                         // 已过期 → 不可再点击
@@ -429,27 +434,7 @@ export default {
                                 return;
                         }
 
-                        // 已拆开但未领取（金额已获取）→ 允许继续点击累加
-                        if (msg.status === 'opened') {
-                                this.currentRedbag = msg;
-                                this.currentAmount = msg.currentAmount || msg.claimedAmount || 0;
-                                this.isClaimed = false;
-                                this.isLoadingAmount = true;
-                                this.currentMsgRef = msg;
-                                this.showRedbagModal = true;
-                                this.startCloseLock();
-
-                                // ★ 继续累加：调用 click 接口，reset=0 累加金额
-                                const taskId = (msg.taskData && msg.taskData.taskId) || 0;
-                                if (taskId) {
-                                        this.doClickOnce(msg.id, taskId, false);
-                                } else {
-                                        this.isLoadingAmount = false;
-                                }
-                                return;
-                        }
-
-                        // ★ 新红包点击：取消过期计时器
+                        // ★ 新红包或已拆开的红包 → 取消过期计时器
                         this.cancelRedbagExpireTimer(msg.id);
 
                         // 记录当前操作的红包
@@ -461,10 +446,11 @@ export default {
                         this.showRedbagModal = true;
                         this.startCloseLock();
 
-                        // 调用 click 接口（reset=1 生成基础金额）
+                        // ★ 始终 reset=0，让后端自行判断是否有累加数据
+                        // 后端逻辑：有累加数据 → 生成累加金额加到 total 上；无累加数据 → 生成基础金额
                         const taskId = (msg.taskData && msg.taskData.taskId) || 0;
                         if (taskId) {
-                                this.doClickOnce(msg.id, taskId, true);
+                                this.doClickOnce(msg.id, taskId);
                         } else {
                                 this.isLoadingAmount = false;
                         }
@@ -474,11 +460,11 @@ export default {
                  * 调用 click 接口获取/累加红包金额
                  * @param {string} msgId 消息ID
                  * @param {number} taskId 任务ID
-                 * @param {boolean} reset true=首次点击(重置), false=继续累加
                  */
-                async doClickOnce(msgId, taskId, reset = true) {
+                async doClickOnce(msgId, taskId) {
                         try {
-                                const res = await this.$api.redpacketClick({ task_id: taskId, reset: reset ? 1 : 0 });
+                                // ★ 始终 reset=0，不传 reset 参数
+                                const res = await this.$api.redpacketClick({ task_id: taskId, reset: 0 });
                                 if (res && res.code === 1 && res.data) {
                                         const amount = res.data.total_amount || 0;
                                         this.currentAmount = amount;

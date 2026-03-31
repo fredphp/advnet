@@ -15,20 +15,21 @@ use think\exception\HttpResponseException;
 /**
  * 红包任务接口
  * 
- * ★ 核心改动：缓存键从 red_packet:click:{userId} 改为 red_packet:click:{userId}:{taskId}
- *   解决多个红包任务共享同一缓存导致金额互相覆盖的问题
- *   使用 raw Redis handler（与 RedPacketRewardConfig 一致），避免 ThinkPHP Cache 序列化问题
+ * ★ 核心设计：缓存按「用户」隔离（per-user），不按 taskId 隔离
+ *   同一个用户点击不同红包 → 金额持续累加（基础+累加+累加...）
+ *   只有用户「领取」之后 → 才清零，下一轮从基础金额重新开始
+ *   使用 raw Redis handler + json，避免 ThinkPHP Cache 序列化丢失问题
  */
 class RedPacket extends Api
 {
     protected $noNeedLogin = [];
     protected $noNeedRight = ['*'];
     
-    // 缓存键前缀（raw Redis key，不含 ThinkPHP prefix）
+    // 缓存键（raw Redis key，per-user 共享）
     const CACHE_CLICK_PREFIX = 'red_packet:click:';
     
-    // 过期时间：1小时
-    const CACHE_EXPIRE = 3600;
+    // 过期时间：2小时（防止用户长时间不领取占内存）
+    const CACHE_EXPIRE = 7200;
     
     protected $service = null;
     
@@ -38,7 +39,7 @@ class RedPacket extends Api
     protected $riskService;
     
     /**
-     * Redis 连接（与 RedPacketRewardConfig 使用相同模式）
+     * Redis 连接
      */
     private static $redis = null;
     private static $redisChecked = false;
@@ -56,8 +57,6 @@ class RedPacket extends Api
 
     /**
      * 在 catch(\Throwable) 中必须重新抛出 HttpResponseException
-     * 因为 $this->success() / $this->error() 内部通过抛出 HttpResponseException 来中断执行并返回 JSON
-     * 如果被 catch 吞掉，正常响应就会被替换为错误响应
      */
     private function rethrowHttpResponseException(\Throwable $e)
     {
@@ -67,8 +66,7 @@ class RedPacket extends Api
     }
     
     /**
-     * 获取 Redis 连接（与 RedPacketRewardConfig::getRedis() 完全一致的模式）
-     * 优先通过 ThinkPHP Cache store 获取，失败则直连
+     * 获取 Redis 连接（与 RedPacketRewardConfig::getRedis() 一致）
      */
     private function getRedis()
     {
@@ -106,18 +104,17 @@ class RedPacket extends Api
     }
     
     /**
-     * 读取红包点击数据（按 taskId 隔离）
-     * @param int $userId 用户ID
-     * @param int $taskId 任务ID
+     * 读取用户红包点击数据（per-user 共享）
+     * @param int $userId
      * @return array
      */
-    private function getClickData($userId, $taskId = 0)
+    private function getClickData($userId)
     {
         $redis = $this->getRedis();
+        $key = self::CACHE_CLICK_PREFIX . $userId;
         
         if ($redis) {
             try {
-                $key = self::CACHE_CLICK_PREFIX . $userId . ':' . $taskId;
                 $cached = $redis->get($key);
                 if ($cached !== false && $cached !== null) {
                     $data = json_decode($cached, true);
@@ -125,130 +122,93 @@ class RedPacket extends Api
                         return $data;
                     }
                 }
+                return [];
             } catch (\Exception $e) {
-                Log::warning('[RedPacket] getClickData Redis读取失败: ' . $e->getMessage());
+                Log::warning('[RedPacket] Redis get 失败: ' . $e->getMessage());
             }
         }
         
         // 降级到文件缓存
         try {
             $cache = Cache::store('file');
-            $key = self::CACHE_CLICK_PREFIX . $userId . ':' . $taskId;
             $data = $cache->get($key);
-            if (is_array($data)) {
-                return $data;
-            }
+            return is_array($data) ? $data : [];
         } catch (\Exception $e) {
-            Log::warning('[RedPacket] getClickData 文件缓存读取失败: ' . $e->getMessage());
+            return [];
         }
-        
-        return [];
     }
     
     /**
-     * 写入红包点击数据（按 taskId 隔离）
-     * @param int $userId 用户ID
-     * @param array $data 点击数据
-     * @param int $taskId 任务ID
+     * 写入用户红包点击数据
+     * @param int $userId
+     * @param array $data
      */
-    private function setClickData($userId, $data, $taskId = 0)
+    private function setClickData($userId, $data)
     {
         $redis = $this->getRedis();
+        $key = self::CACHE_CLICK_PREFIX . $userId;
+        $json = json_encode($data);
         
         if ($redis) {
             try {
-                $key = self::CACHE_CLICK_PREFIX . $userId . ':' . $taskId;
-                $redis->set($key, json_encode($data), self::CACHE_EXPIRE);
-                Log::info("[RedPacket] setClickData OK: userId={$userId}, taskId={$taskId}, total=" . ($data['total_amount'] ?? 0) . ", clicks=" . ($data['click_count'] ?? 0));
+                $redis->set($key, $json, self::CACHE_EXPIRE);
+                Log::info("[RedPacket] setClickData OK: userId={$userId}, total=" . ($data['total_amount'] ?? 0) . ", clicks=" . ($data['click_count'] ?? 0));
                 return;
             } catch (\Exception $e) {
-                Log::warning('[RedPacket] setClickData Redis写入失败: ' . $e->getMessage());
+                Log::warning('[RedPacket] Redis set 失败: ' . $e->getMessage());
             }
         }
         
         // 降级到文件缓存
         try {
             $cache = Cache::store('file');
-            $key = self::CACHE_CLICK_PREFIX . $userId . ':' . $taskId;
             $cache->set($key, $data, self::CACHE_EXPIRE);
         } catch (\Exception $e) {
-            Log::error('[RedPacket] setClickData 文件缓存写入失败: ' . $e->getMessage());
+            Log::error('[RedPacket] 文件缓存写入失败: ' . $e->getMessage());
         }
     }
     
     /**
-     * 删除红包点击数据（按 taskId 隔离）
-     * @param int $userId 用户ID
-     * @param int $taskId 任务ID
+     * 删除用户红包点击数据
+     * @param int $userId
      */
-    private function delClickData($userId, $taskId = 0)
+    private function delClickData($userId)
     {
         $redis = $this->getRedis();
+        $key = self::CACHE_CLICK_PREFIX . $userId;
         
         if ($redis) {
             try {
-                $key = self::CACHE_CLICK_PREFIX . $userId . ':' . $taskId;
                 $redis->del($key);
-                Log::info("[RedPacket] delClickData OK: userId={$userId}, taskId={$taskId}");
+                Log::info("[RedPacket] delClickData OK: userId={$userId}");
                 return;
             } catch (\Exception $e) {
-                Log::warning('[RedPacket] delClickData Redis删除失败: ' . $e->getMessage());
+                Log::warning('[RedPacket] Redis del 失败: ' . $e->getMessage());
             }
         }
         
-        // 降级到文件缓存
         try {
             $cache = Cache::store('file');
-            $key = self::CACHE_CLICK_PREFIX . $userId . ':' . $taskId;
             $cache->rm($key);
         } catch (\Exception $e) {
-            // 静默处理
         }
-    }
-    
-    /**
-     * 删除用户所有红包点击数据（用于页面离开清理）
-     * @param int $userId 用户ID
-     */
-    private function delAllClickData($userId)
-    {
-        $redis = $this->getRedis();
-        
-        if ($redis) {
-            try {
-                $pattern = self::CACHE_CLICK_PREFIX . $userId . ':*';
-                $iterator = null;
-                $count = 0;
-                do {
-                    $keys = $redis->scan($iterator, $pattern, 100);
-                    if ($keys !== false && is_array($keys)) {
-                        foreach ($keys as $key) {
-                            $redis->del($key);
-                            $count++;
-                        }
-                    }
-                } while ($iterator > 0);
-                Log::info("[RedPacket] delAllClickData OK: userId={$userId}, deleted={$count}");
-                return;
-            } catch (\Exception $e) {
-                Log::warning('[RedPacket] delAllClickData SCAN失败: ' . $e->getMessage());
-            }
-        }
-        
-        // 文件缓存无法按模式删除，各缓存将通过 TTL 自然过期
     }
     
     /**
      * 点击红包 - 生成/累加红包金额
      * 
-     * ★ 按 taskId 隔离缓存：每个红包任务的累加独立，互不干扰
-     * reset=1 → 清除该 taskId 的缓存，重新生成基础金额
-     * reset=0 → 在该 taskId 的已有基础上累加
+     * ★ per-user 共享累加：
+     *   - 第一次点击任意红包 → 生成基础金额（base_amount）
+     *   - 之后每次点击任意红包 → 生成累加金额（accumulate_amount）加到 total 上
+     *   - 点击「领取」→ 发放 total_amount 金币 → 清零
+     *   - 清零后下一次点击 → 从新的基础金额开始
+     *   - reset=1（前端首次点击新红包时发送）→ 仅当已有累加数据时保留，否则正常生成
      * 
      * @api {post} /api/redpacket/click 点击红包
-     * @apiParam {Number} [task_id] 任务ID(可选)
-     * @apiParam {Number} [reset] 是否重置：1=重置并生成新红包，0=正常累加
-     * @apiSuccess {Number} total_amount 当前红包总金额
+     * @apiParam {Number} [task_id] 任务ID(可选，记录用)
+     * @apiParam {Number} [reset] 1=前端认为这是新红包首次点击（不影响累加逻辑）
+     * @apiSuccess {Number} total_amount 当前红包总金额（所有点击累加）
+     * @apiSuccess {Number} click_count 已点击次数
      */
     public function click()
     {
@@ -284,14 +244,8 @@ class RedPacket extends Api
         }
         
         try {
-            // ★ 关键修复：按 taskId 隔离缓存
-            // 如果是重置模式，只清理该 taskId 的旧数据（不影响其他任务）
-            if ($reset == 1) {
-                $this->delClickData($userId, $taskId);
-                $clickData = [];
-            } else {
-                $clickData = $this->getClickData($userId, $taskId);
-            }
+            // ★ 读取该用户当前的红包累加数据（per-user 共享）
+            $clickData = $this->getClickData($userId);
             
             // 获取当前小时
             $currentHour = intval(date('H'));
@@ -325,23 +279,19 @@ class RedPacket extends Api
                 Log::warning('获取用户注册时间失败: ' . $e->getMessage());
             }
             
-            // ★ 金额生成始终使用 todayAmount=0（默认配置区间）
-            // 这样确保：基础额度始终是配置的最大区间，累加额度始终稳定
-            // 上限由 red_packet_max_reward 配置控制（默认10000）
-            // 不使用实际 todayAmount，避免"领得越多区间越小"的问题
-            
-            // 获取已有的红包数据（该 taskId 的独立数据）
+            // 获取已有的红包数据
             $currentAmount = isset($clickData['total_amount']) ? intval($clickData['total_amount']) : 0;
+            $currentClickCount = isset($clickData['click_count']) ? intval($clickData['click_count']) : 0;
             
             // 本次获得的金额
             $addAmount = 0;
             
-            if ($currentAmount <= 0) {
-                // 当前红包金额为0或不存在 → 生成基础金额（用默认配置，今日金额传0）
+            if ($currentAmount <= 0 || $currentClickCount <= 0) {
+                // ★ 没有累加数据 → 生成基础金额（新一轮开始）
                 $addAmount = RedPacketRewardConfig::generateBaseAmount(0, $currentHour, $isNewUser);
                 
-                // 存储新数据（按 taskId 隔离）
-                $this->setClickData($userId, [
+                // 存储新数据
+                $newData = [
                     'base_amount'      => $addAmount,
                     'accumulate_amount' => 0,
                     'total_amount'      => $addAmount,
@@ -352,9 +302,11 @@ class RedPacket extends Api
                     'today_amount'      => $todayAmount,
                     'createtime'        => time(),
                     'updatetime'        => time()
-                ], $taskId);
+                ];
+                $this->setClickData($userId, $newData);
+                $clickData = $newData;
             } else {
-                // 当前红包金额不为0 → 生成累加金额（同样用默认配置，今日金额传0）
+                // ★ 已有累加数据 → 生成累加金额，加到 total 上
                 $addAmount = RedPacketRewardConfig::generateAccumulateAmount(0, $currentHour, $isNewUser);
                 
                 // 获取封顶额度
@@ -367,27 +319,26 @@ class RedPacket extends Api
                     $addAmount = $maxLimit - $currentAmount;
                 }
                 
-                // 更新数据（按 taskId 隔离）
+                // 更新数据
                 $newTotal = $currentAmount + $addAmount;
-                $this->setClickData($userId, [
+                $clickData = [
                     'base_amount'      => $clickData['base_amount'] ?? 0,
                     'accumulate_amount' => intval($clickData['accumulate_amount'] ?? 0) + $addAmount,
                     'total_amount'      => $newTotal,
-                    'click_count'       => intval($clickData['click_count'] ?? 0) + 1,
+                    'click_count'       => $currentClickCount + 1,
                     'task_id'           => $taskId,
                     'base_hour'         => $clickData['base_hour'] ?? $currentHour,
                     'is_new_user'       => $clickData['is_new_user'] ?? 0,
                     'today_amount'      => $todayAmount,
                     'createtime'        => $clickData['createtime'] ?? time(),
                     'updatetime'        => time()
-                ], $taskId);
+                ];
+                $this->setClickData($userId, $clickData);
             }
             
-            // 获取最新数据（按 taskId）
-            $latestData = $this->getClickData($userId, $taskId);
-            
             $this->success('获取成功', [
-                'total_amount' => intval($latestData['total_amount'] ?? 0),
+                'total_amount' => intval($clickData['total_amount'] ?? 0),
+                'click_count'  => intval($clickData['click_count'] ?? 0),
             ]);
             
         } catch (\Throwable $e) {
@@ -400,7 +351,7 @@ class RedPacket extends Api
     /**
      * 领取红包金币 - 看完广告后领取
      * @api {post} /api/redpacket/claim 领取红包金币
-     * @apiParam {Number} [task_id] 任务ID(可选)
+     * @apiParam {Number} [task_id] 任务ID(可选，记录用)
      * @apiSuccess {Number} amount 领取到的金额
      * @apiSuccess {Number} balance 当前余额
      */
@@ -428,8 +379,8 @@ class RedPacket extends Api
         }
         
         try {
-            // ★ 修复：按 taskId 读取对应任务的累加数据
-            $clickData = $this->getClickData($userId, $taskId);
+            // ★ 读取用户共享累加数据
+            $clickData = $this->getClickData($userId);
             
             if (empty($clickData) || !isset($clickData['total_amount']) || $clickData['total_amount'] <= 0) {
                 $this->error('没有可领取的金币');
@@ -472,8 +423,8 @@ class RedPacket extends Api
             );
             
             if ($result['success']) {
-                // ★ 修复：领取后只清除该 taskId 的缓存（不影响其他任务的累加）
-                $this->delClickData($userId, $taskId);
+                // ★ 领取成功后清零，下一轮从基础金额重新累加
+                $this->delClickData($userId);
                 
                 $this->success('领取成功', [
                     'amount' => $totalAmount,
@@ -491,9 +442,8 @@ class RedPacket extends Api
     }
     
     /**
-     * 重置红包 - 清理缓存
+     * 重置红包 - 清理用户累加数据
      * @api {post} /api/redpacket/reset 重置红包
-     * @apiParam {Number} [task_id] 任务ID(可选，不传则清除所有)
      * @apiSuccess {Boolean} success 是否成功
      */
     public function reset()
@@ -503,23 +453,17 @@ class RedPacket extends Api
             $this->error('请先登录');
         }
         
-        $taskId = $this->request->post('task_id/d', 0);
-        
         try {
-            if ($taskId > 0) {
-                // 清理指定任务的缓存
-                $clickData = $this->getClickData($userId, $taskId);
-                $totalAmount = isset($clickData['total_amount']) ? intval($clickData['total_amount']) : 0;
-                $this->delClickData($userId, $taskId);
-                Log::info("红包已重置: 用户{$userId}, 任务{$taskId}, 原金额{$totalAmount}");
-            } else {
-                // 清理所有任务的缓存
-                $this->delAllClickData($userId);
-                Log::info("红包已全部重置: 用户{$userId}");
-            }
+            $clickData = $this->getClickData($userId);
+            $totalAmount = isset($clickData['total_amount']) ? intval($clickData['total_amount']) : 0;
+            
+            $this->delClickData($userId);
+            
+            Log::info("红包已重置: 用户{$userId}, 原金额{$totalAmount}");
             
             $this->success('重置成功', [
-                'success' => true
+                'success' => true,
+                'cleared_amount' => $totalAmount
             ]);
             
         } catch (\Throwable $e) {
@@ -532,7 +476,6 @@ class RedPacket extends Api
     /**
      * 获取当前累计金额
      * @api {get} /api/redpacket/amount 获取累计金额
-     * @apiParam {Number} [task_id] 任务ID(可选)
      */
     public function amount()
     {
@@ -541,10 +484,8 @@ class RedPacket extends Api
             $this->error('请先登录');
         }
         
-        $taskId = $this->request->get('task_id/d', 0);
-        
         try {
-            $clickData = $this->getClickData($userId, $taskId);
+            $clickData = $this->getClickData($userId);
             
             $totalAmount = isset($clickData['total_amount']) ? intval($clickData['total_amount']) : 0;
             
