@@ -203,15 +203,12 @@
                 margin: 20rpx 30rpx 0;
                 border-radius: 24rpx;
                 overflow: hidden;
+                background: linear-gradient(160deg, #FFF5F5 0%, #FFEDED 100%);
+                box-shadow: 0 4rpx 20rpx 0rpx rgba(230, 33, 41, 0.06);
         }
 
         .balance-card-bg {
-                position: absolute;
-                top: 0;
-                left: 0;
-                right: 0;
-                bottom: 0;
-                background: linear-gradient(135deg, #E62129 0%, #c41a22 50%, #a01520 100%);
+                display: none;
         }
 
         .balance-card-content {
@@ -238,7 +235,7 @@
         .coin-label {
                 display: block;
                 font-size: 26rpx;
-                color: rgba(255, 255, 255, 0.7);
+                color: #999;
                 margin-bottom: 8rpx;
         }
 
@@ -250,20 +247,20 @@
         .coin-amount {
                 font-size: 52rpx;
                 font-weight: 700;
-                color: #fff;
+                color: #333;
                 letter-spacing: 1rpx;
         }
 
         .coin-unit {
                 font-size: 24rpx;
-                color: rgba(255, 255, 255, 0.7);
+                color: #999;
                 margin-left: 8rpx;
         }
 
         /* 分割线 */
         .divider {
                 height: 1rpx;
-                background: rgba(255, 255, 255, 0.15);
+                background: rgba(230, 33, 41, 0.1);
                 margin: 28rpx 0;
         }
 
@@ -285,7 +282,7 @@
         .cash-label {
                 display: block;
                 font-size: 26rpx;
-                color: rgba(255, 255, 255, 0.7);
+                color: #999;
                 margin-bottom: 8rpx;
         }
 
@@ -297,20 +294,20 @@
         .cash-currency {
                 font-size: 28rpx;
                 font-weight: 600;
-                color: #FFD700;
+                color: #E62129;
                 margin-right: 4rpx;
         }
 
         .cash-amount {
                 font-size: 56rpx;
                 font-weight: 700;
-                color: #FFD700;
+                color: #E62129;
                 letter-spacing: 1rpx;
         }
 
         /* 汇率徽章 */
         .rate-badge {
-                background: rgba(255, 255, 255, 0.18);
+                background: rgba(230, 33, 41, 0.08);
                 border-radius: 20rpx;
                 padding: 8rpx 20rpx;
                 margin-left: 20rpx;
@@ -318,7 +315,7 @@
 
         .rate-text {
                 font-size: 22rpx;
-                color: rgba(255, 215, 0, 0.9);
+                color: #E62129;
                 white-space: nowrap;
         }
 
@@ -326,17 +323,17 @@
         .frozen-row {
                 margin-top: 20rpx;
                 padding-top: 20rpx;
-                border-top: 1rpx solid rgba(255, 255, 255, 0.1);
+                border-top: 1rpx solid rgba(230, 33, 41, 0.08);
         }
 
         .frozen-label {
                 font-size: 24rpx;
-                color: rgba(255, 255, 255, 0.6);
+                color: #bbb;
         }
 
         .frozen-value {
                 font-size: 24rpx;
-                color: rgba(255, 255, 255, 0.8);
+                color: #E62129;
         }
 
         /* ==================== 表单区域 ==================== */
