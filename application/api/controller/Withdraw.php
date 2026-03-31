@@ -134,11 +134,11 @@ class Withdraw extends Api
         $service = new WithdrawService();
         $result = $service->getUserOrders($userId, $status, $page, $limit);
         
-        // 格式化数据
-        foreach ($result['list'] as $item) {
-            $item->status_text = \app\common\model\WithdrawOrder::$statusList[$item->status] ?? '';
-            $item->withdraw_type_text = \app\common\model\WithdrawOrder::$typeList[$item->withdraw_type] ?? '';
-            $item->create_time_text = date('Y-m-d H:i:s', $item->createtime);
+        // 格式化数据（getUserOrders 使用 Db::query 返回纯数组，需用数组语法访问）
+        foreach ($result['list'] as $key => $item) {
+            $result['list'][$key]['status_text'] = \app\common\model\WithdrawOrder::$statusList[$item['status']] ?? '';
+            $result['list'][$key]['withdraw_type_text'] = \app\common\model\WithdrawOrder::$typeList[$item['withdraw_type']] ?? '';
+            $result['list'][$key]['create_time_text'] = date('Y-m-d H:i:s', $item['createtime']);
         }
         
         $this->success('获取成功', $result);
