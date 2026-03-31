@@ -370,7 +370,7 @@ class Order extends Backend
         // 风险信息
         $riskInfo = Db::name('user_risk_score')->where('user_id', $row['user_id'])->find();
         $riskInfoTags = [];
-        if ($riskInfo && $riskInfo['risk_tags']) {
+        if ($riskInfo && !empty($riskInfo['risk_tags'])) {
             $riskInfoTags = json_decode($riskInfo['risk_tags'], true) ?: [];
         }
         
