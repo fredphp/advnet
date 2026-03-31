@@ -2,6 +2,7 @@
 
 namespace app\common\model;
 
+use app\common\library\SystemConfigService;
 use think\Model;
 
 /**
@@ -221,6 +222,22 @@ class Config extends Model
             CONF_PATH . 'extra' . DS . 'site.php',
             '<?php' . "\n\nreturn " . var_export($config, true) . ";\n"
         );
+
+        // 同步更新当前请求的内存配置，确保后续 config() 调用能拿到最新值
+        try {
+            \think\Config::set('site', array_merge(\think\Config::get('site', []), $config));
+        } catch (\Throwable $e) {
+            // 忽略，不影响主流程
+        }
+
+        // 清除 SystemConfigService 的所有缓存（静态内存缓存 + Cache持久缓存）
+        // 避免配置更新后 API 接口仍返回旧数据（持久缓存TTL最长1小时）
+        try {
+            SystemConfigService::clearCache();
+        } catch (\Throwable $e) {
+            // 忽略，不影响主流程
+        }
+
         return true;
     }
 
