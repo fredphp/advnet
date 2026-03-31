@@ -305,7 +305,7 @@ class AutoPushService
         $resource = $this->getRandomResource('chat');
         $content = '';
         if ($resource) {
-            $content = $resource['display_description'] ?: $resource['description'] ?: $resource['name'] ?: '';
+            $content = $resource['description'] ?: $resource['name'] ?: '';
         }
         if (empty($content)) {
             $content = $this->chatTemplates[array_rand($this->chatTemplates)];
