@@ -177,6 +177,13 @@ const install = (Vue, vm) => {
         vm.$api.inviteRanking            = async (params = {}) => await vm.$u.get('/api/invite/ranking', params);
         vm.$api.inviteMyCode             = async (params = {}) => await vm.$u.get('/api/invite/myCode', params);
         vm.$api.inviteBind               = async (params = {}) => await vm.$u.post('/api/invite/bind', params);
+
+        // 提现
+        vm.$api.withdrawList             = async (params = {}) => await vm.$u.get('/api/withdraw/list', params);
+        vm.$api.withdrawConfig           = async (params = {}) => await vm.$u.get('/api/withdraw/config', params);
+        vm.$api.withdrawApply            = async (params = {}) => await vm.$u.post('/api/withdraw/apply', params);
+        vm.$api.withdrawCancel           = async (params = {}) => await vm.$u.post('/api/withdraw/cancel', params);
+        vm.$api.withdrawStat             = async (params = {}) => await vm.$u.get('/api/withdraw/stat', params);
 }
 
 export default {

@@ -1,6 +1,6 @@
 <template>
 	<view class="fui-wrap recharge-detail-container">
-		<fa-navbar title="收益明细" :border-bottom="false"></fa-navbar>
+		<fa-navbar title="提现日志" :border-bottom="false"></fa-navbar>
 
 		<!-- 筛选区域 -->
 		<view class="search-section">
@@ -24,20 +24,19 @@
 		<scroll-view scroll-y class="list-container" @scrolltolower="loadMore" refresher-enabled
 			:refresher-triggered="refreshing" @refresherrefresh="onRefresh">
 
-			<u-empty text="暂无收益记录" mode="data" v-if="list.length === 0 && !loading"></u-empty>
+			<u-empty text="暂无提现记录" mode="data" v-if="list.length === 0 && !loading"></u-empty>
 
-			<!-- 记录列表 -->
+			<!-- 提现记录列表 -->
 			<view class="list-item" v-for="(item, index) in list" :key="index">
 				<view class="item-left">
-					<view class="item-title">{{ item.goods ? item.goods.title : item.remark || '收益' }}</view>
-					<view class="item-sub" v-if="item.user_info">
-						<text>{{ item.user_info.nickname }}</text>
-						<text class="item-sub-sep" v-if="item.source_amount > 0">· 提现 ¥{{ item.source_amount }}</text>
+					<view class="item-title">{{ item.withdraw_type_text || '提现' }}</view>
+					<view class="item-sub" v-if="item.order_no">
+						<text>单号: {{ item.order_no }}</text>
 					</view>
-					<view class="item-time">{{ item.createtime }}</view>
+					<view class="item-time">{{ item.create_time_text }}</view>
 				</view>
 				<view class="item-right">
-					<view class="item-amount">+¥{{ item.reward_money }}</view>
+					<view class="item-amount">{{ item.cash_amount }}元</view>
 					<view class="item-status" :class="getStatusClass(item.status)">
 						{{ item.status_text }}
 					</view>
@@ -56,7 +55,12 @@
 </template>
 
 <script>
+	import uEmpty from '@/uview-ui/components/u-empty/u-empty.vue'
+
 	export default {
+		components: {
+			uEmpty
+		},
 		data() {
 			return {
 				startDate: '',
@@ -67,7 +71,8 @@
 				total: 0,
 				loading: false,
 				refreshing: false,
-				hasMore: false
+				hasMore: false,
+				filterStatus: '' // 状态筛选
 			}
 		},
 		onLoad() {
@@ -111,9 +116,10 @@
 				if (this.loading) return;
 				this.loading = true;
 
-				this.$api.inviteCommissionList({
+				this.$api.withdrawList({
 					page: this.page,
-					limit: this.pageSize
+					limit: this.pageSize,
+					status: this.filterStatus || undefined
 				}).then(res => {
 					if (res && res.code == 1) {
 						const newList = res.data.list || [];
@@ -124,7 +130,7 @@
 						this.hasMore = this.list.length < this.total;
 					}
 				}).catch(err => {
-					console.error('[WithdrawLog] inviteCommissionList异常:', err);
+					console.error('[WithdrawLog] withdrawList异常:', err);
 				}).finally(() => {
 					this.loading = false;
 					this.refreshing = false;
@@ -132,9 +138,16 @@
 			},
 
 			getStatusClass(status) {
-				if (status === 'completed') return 'success';
-				if (status === 'pending') return 'processing';
-				return '';
+				const map = {
+					0: 'processing',  // 待审核
+					1: 'processing',  // 审核通过
+					2: 'processing',  // 打款中
+					3: 'success',     // 提现成功
+					4: 'failed',      // 审核拒绝
+					5: 'failed',      // 打款失败
+					6: 'failed',      // 已取消
+				};
+				return map[status] || '';
 			},
 
 			onRefresh() {
@@ -222,20 +235,15 @@
 					color: #333;
 					font-weight: 500;
 					margin-bottom: 8rpx;
-					overflow: hidden;
-					text-overflow: ellipsis;
-					white-space: nowrap;
 				}
 
 				.item-sub {
-					font-size: 24rpx;
+					font-size: 22rpx;
 					color: #999;
 					margin-bottom: 6rpx;
-
-					.item-sub-sep {
-						margin-left: 12rpx;
-						color: #bbb;
-					}
+					overflow: hidden;
+					text-overflow: ellipsis;
+					white-space: nowrap;
 				}
 
 				.item-time {
@@ -252,7 +260,7 @@
 				.item-amount {
 					font-size: 34rpx;
 					font-weight: 600;
-					color: #E62129;
+					color: #ff6a00;
 					margin-bottom: 8rpx;
 				}
 
