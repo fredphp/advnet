@@ -124,7 +124,7 @@
                                 return (parseFloat(this.balance) / rate).toFixed(2);
                         },
                         canSubmit() {
-                                return this.selectedAmount && !this.amountError && this.withdrawEnabled;
+                                return this.selectedAmount && this.selectedCoinAmount > 0 && !this.amountError && this.withdrawEnabled;
                         }
                 },
                 onLoad() {
@@ -157,6 +157,11 @@
                         selectAmount(option) {
                                 this.selectedAmount = option.cash_amount;
                                 this.selectedCoinAmount = option.coin_amount;
+                                // 校验金币数量是否有效
+                                if (!option.coin_amount || option.coin_amount <= 0) {
+                                        this.amountError = '提现金额配置异常，请联系客服';
+                                        return;
+                                }
                                 // 校验余额（金币对比金币）
                                 if (this.balance < option.coin_amount) {
                                         this.amountError = '金币余额不足，无法提现';
@@ -166,6 +171,19 @@
                         },
 
                         submitWithdraw() {
+                                // 前端校验
+                                if (!this.selectedAmount) {
+                                        uni.showToast({ title: '请先选择提现金额', icon: 'none' });
+                                        return;
+                                }
+                                if (!this.selectedCoinAmount || this.selectedCoinAmount <= 0) {
+                                        uni.showToast({ title: '提现金额异常，请刷新页面重试', icon: 'none' });
+                                        return;
+                                }
+                                if (this.amountError) {
+                                        uni.showToast({ title: this.amountError, icon: 'none' });
+                                        return;
+                                }
                                 if (!this.canSubmit || this.submitting) return;
                                 this.submitting = true;
 

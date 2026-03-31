@@ -501,7 +501,9 @@ class SystemConfigService
      */
     public static function getCoinRate()
     {
-        return self::get('coin.coin_rate', 10000);
+        // 必须传 null 作为第二个参数($key)，10000 作为第三个参数($default)
+        // 否则 10000 会被当作 $key 而非 $default，导致 config() 解析路径错误返回 0
+        return self::get('coin.coin_rate', null, 10000);
     }
     
     /**
@@ -539,7 +541,7 @@ class SystemConfigService
         if ($value !== null && $value !== '') {
             return self::castValue($value, true);
         }
-        return self::get('wechat.wechat_app_enabled', false);
+        return self::get('wechat.wechat_app_enabled', null, false);
     }
     
     /**
@@ -551,7 +553,7 @@ class SystemConfigService
         if ($value !== null && $value !== '') {
             return self::castValue($value, true);
         }
-        return self::get('wechat.wechat_mini_enabled', false);
+        return self::get('wechat.wechat_mini_enabled', null, false);
     }
     
     /**
@@ -563,7 +565,7 @@ class SystemConfigService
         if ($value !== null && $value !== '') {
             return self::castValue($value, true);
         }
-        return self::get('wechat.wechat_official_enabled', false);
+        return self::get('wechat.wechat_official_enabled', null, false);
     }
     
     /**
@@ -573,8 +575,8 @@ class SystemConfigService
     public static function getWechatAppConfig()
     {
         return [
-            'appid' => Config::get('site.wechat_app_appid') ?: self::get('wechat.wechat_app_appid', ''),
-            'secret' => Config::get('site.wechat_app_secret') ?: self::get('wechat.wechat_app_secret', ''),
+            'appid' => Config::get('site.wechat_app_appid') ?: self::get('wechat.wechat_app_appid', null, ''),
+            'secret' => Config::get('site.wechat_app_secret') ?: self::get('wechat.wechat_app_secret', null, ''),
             'enabled' => self::isWechatAppEnabled(),
         ];
     }
@@ -586,8 +588,8 @@ class SystemConfigService
     public static function getWechatMiniConfig()
     {
         return [
-            'appid' => Config::get('site.wechat_mini_appid') ?: self::get('wechat.wechat_mini_appid', ''),
-            'secret' => Config::get('site.wechat_mini_secret') ?: self::get('wechat.wechat_mini_secret', ''),
+            'appid' => Config::get('site.wechat_mini_appid') ?: self::get('wechat.wechat_mini_appid', null, ''),
+            'secret' => Config::get('site.wechat_mini_secret') ?: self::get('wechat.wechat_mini_secret', null, ''),
             'enabled' => self::isWechatMiniEnabled(),
         ];
     }
@@ -599,8 +601,8 @@ class SystemConfigService
     public static function getWechatOfficialConfig()
     {
         return [
-            'appid' => Config::get('site.wechat_official_appid') ?: self::get('wechat.wechat_official_appid', ''),
-            'secret' => Config::get('site.wechat_official_secret') ?: self::get('wechat.wechat_official_secret', ''),
+            'appid' => Config::get('site.wechat_official_appid') ?: self::get('wechat.wechat_official_appid', null, ''),
+            'secret' => Config::get('site.wechat_official_secret') ?: self::get('wechat.wechat_official_secret', null, ''),
             'enabled' => self::isWechatOfficialEnabled(),
         ];
     }
@@ -612,12 +614,12 @@ class SystemConfigService
     public static function getWechatPayConfig()
     {
         return [
-            'enabled' => self::castValue(Config::get('site.wechat_pay_enabled') ?: self::get('wechat.wechat_pay_enabled', 0), true),
-            'mchid' => Config::get('site.wechat_pay_mchid') ?: self::get('wechat.wechat_pay_mchid', ''),
-            'key' => Config::get('site.wechat_pay_key') ?: self::get('wechat.wechat_pay_key', ''),
-            'cert_pem' => Config::get('site.wechat_pay_cert_pem') ?: self::get('wechat.wechat_pay_cert_pem', ''),
-            'key_pem' => Config::get('site.wechat_pay_key_pem') ?: self::get('wechat.wechat_pay_key_pem', ''),
-            'notify_url' => Config::get('site.wechat_pay_notify_url') ?: self::get('wechat.wechat_pay_notify_url', ''),
+            'enabled' => self::castValue(Config::get('site.wechat_pay_enabled') ?: self::get('wechat.wechat_pay_enabled', null, 0), true),
+            'mchid' => Config::get('site.wechat_pay_mchid') ?: self::get('wechat.wechat_pay_mchid', null, ''),
+            'key' => Config::get('site.wechat_pay_key') ?: self::get('wechat.wechat_pay_key', null, ''),
+            'cert_pem' => Config::get('site.wechat_pay_cert_pem') ?: self::get('wechat.wechat_pay_cert_pem', null, ''),
+            'key_pem' => Config::get('site.wechat_pay_key_pem') ?: self::get('wechat.wechat_pay_key_pem', null, ''),
+            'notify_url' => Config::get('site.wechat_pay_notify_url') ?: self::get('wechat.wechat_pay_notify_url', null, ''),
         ];
     }
     
@@ -628,11 +630,11 @@ class SystemConfigService
     public static function getWechatTransferConfig()
     {
         return [
-            'enabled' => self::castValue(Config::get('site.wechat_transfer_enabled') ?: self::get('wechat.wechat_transfer_enabled', 0), true),
-            'mchid' => Config::get('site.wechat_transfer_mchid') ?: self::get('wechat.wechat_transfer_mchid', ''),
-            'key' => Config::get('site.wechat_transfer_key') ?: self::get('wechat.wechat_transfer_key', ''),
-            'cert_pem' => Config::get('site.wechat_transfer_cert_pem') ?: self::get('wechat.wechat_transfer_cert_pem', ''),
-            'key_pem' => Config::get('site.wechat_transfer_key_pem') ?: self::get('wechat.wechat_transfer_key_pem', ''),
+            'enabled' => self::castValue(Config::get('site.wechat_transfer_enabled') ?: self::get('wechat.wechat_transfer_enabled', null, 0), true),
+            'mchid' => Config::get('site.wechat_transfer_mchid') ?: self::get('wechat.wechat_transfer_mchid', null, ''),
+            'key' => Config::get('site.wechat_transfer_key') ?: self::get('wechat.wechat_transfer_key', null, ''),
+            'cert_pem' => Config::get('site.wechat_transfer_cert_pem') ?: self::get('wechat.wechat_transfer_cert_pem', null, ''),
+            'key_pem' => Config::get('site.wechat_transfer_key_pem') ?: self::get('wechat.wechat_transfer_key_pem', null, ''),
         ];
     }
     
@@ -645,7 +647,7 @@ class SystemConfigService
         if ($value !== null && $value !== '') {
             return self::castValue($value, true);
         }
-        return self::get('wechat.wechat_auto_register', true);
+        return self::get('wechat.wechat_auto_register', null, true);
     }
     
     /**
@@ -657,6 +659,6 @@ class SystemConfigService
         if ($value !== null && $value !== '') {
             return self::castValue($value, true);
         }
-        return self::get('wechat.wechat_bind_mobile', false);
+        return self::get('wechat.wechat_bind_mobile', null, false);
     }
 }
