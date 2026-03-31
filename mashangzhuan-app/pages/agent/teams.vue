@@ -84,7 +84,7 @@
 
                 <!-- 加载更多 -->
                 <view class="load-more" v-if="loading">
-                        <u-loading-icon mode="circle" size="24"></u-loading-icon>
+                        <u-loading mode="circle" size="24"></u-loading>
                         <text class="load-text">加载中...</text>
                 </view>
                 <view class="load-more" v-else-if="!hasMore && teamMembers.length > 0">
@@ -96,11 +96,17 @@
 <script>
         import uTag from '@/uview-ui/components/u-tag/u-tag.vue'
         import uAvatar from '@/uview-ui/components/u-avatar/u-avatar.vue'
+        import uSubsection from '@/uview-ui/components/u-subsection/u-subsection.vue'
+        import uEmpty from '@/uview-ui/components/u-empty/u-empty.vue'
+        import uLoading from '@/uview-ui/components/u-loading/u-loading.vue'
 
         export default {
                 components: {
                         uTag,
-                        uAvatar
+                        uAvatar,
+                        uSubsection,
+                        uEmpty,
+                        uLoading
                 },
                 data() {
                         return {
