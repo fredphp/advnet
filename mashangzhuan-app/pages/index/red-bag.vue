@@ -168,8 +168,9 @@ export default {
                 this.clearAllRedbagTimers();
                 // 清理关闭倒计时
                 this.stopCloseLock();
-                // 重置红包（清理服务端缓存）
-                this.resetRedbag();
+                // ★ 不再调用 resetRedbag()：缓存已按 taskId 隔离，各任务独立累加
+                        // 用户再次进入页面点击同一任务时，前端会自动发 reset=1 开始新轮次
+                        // 各任务的缓存通过 1 小时 TTL 自然过期
         },
 
         data() {
