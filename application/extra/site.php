@@ -126,7 +126,7 @@ return array (
   'wechat_bind_mobile' => '0',
   'min_withdraw' => '1',
   'max_withdraw' => '500',
-  'withdraw_amounts' => '10,20,50,100',
+  'withdraw_amounts' => '5,10,20,30,50,100',
   'daily_withdraw_limit' => '3',
   'daily_withdraw_amount' => '500',
   'fee_rate' => '0',

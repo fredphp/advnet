@@ -28,7 +28,7 @@
 								:class="{ active: selectedAmount === option.cash_amount }"
 								@click="selectAmount(option)"
 							>
-								<view class="amount-tag">{{ option.coin_amount }}金币</view>
+								<view class="amount-tag">每日一次</view>
 								<text class="amount-value">{{ option.cash_amount }}元</text>
 								<text class="amount-desc">立即提现</text>
 							</view>

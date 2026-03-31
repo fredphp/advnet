@@ -224,7 +224,6 @@ class SystemConfigService
         if ($key === null && strpos($group, '.') !== false) {
             list($group, $key) = explode('.', $group, 2);
         }
-        
         // 如果指定了 key，直接用 config() helper 读取（用户确认 config('withdraw.withdraw_amounts') 可用）
         // 这是最高优先级的读取方式，因为 ThinkPHP 的 config() 能覆盖所有加载来源
         if ($key !== null) {
@@ -464,7 +463,7 @@ class SystemConfigService
      */
     public static function getWithdrawAmounts()
     {
-        $amountsStr = self::get('withdraw.withdraw_amounts', '10,20,50,100');
+        $amountsStr = self::get('withdraw.withdraw_amounts',null, '10,20,50,100');
         $amounts = array_map('floatval', array_filter(explode(',', $amountsStr)));
         sort($amounts);
         return $amounts;
