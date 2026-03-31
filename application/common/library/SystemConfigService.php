@@ -225,6 +225,19 @@ class SystemConfigService
             list($group, $key) = explode('.', $group, 2);
         }
         
+        // 如果指定了 key，直接用 config() helper 读取（用户确认 config('withdraw.withdraw_amounts') 可用）
+        // 这是最高优先级的读取方式，因为 ThinkPHP 的 config() 能覆盖所有加载来源
+        if ($key !== null) {
+            try {
+                $directValue = config($group . '.' . $key);
+                if ($directValue !== null && $directValue !== '') {
+                    return self::castValue($directValue, $default);
+                }
+            } catch (\Throwable $e) {
+                // config() 调用失败，继续走原有逻辑
+            }
+        }
+        
         // 获取分组配置
         $groupConfig = self::getGroupConfig($group);
         
