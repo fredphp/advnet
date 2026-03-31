@@ -1399,20 +1399,31 @@ class WithdrawService
     /**
      * 获取用户提现记录（支持按年分表）
      */
-    public function getUserOrders($userId, $status = null, $page = 1, $limit = 20)
+    public function getUserOrders($userId, $status = null, $page = 1, $limit = 20, $startDate = '', $endDate = '')
     {
-        // 查询最近3年的数据
+        // 根据日期范围确定要查询的年份表
         $startTime = strtotime('-3 years');
         $endTime = time();
+        
+        if ($startDate) {
+            $startTime = strtotime($startDate . ' 00:00:00');
+        }
+        if ($endDate) {
+            $endTime = strtotime($endDate . ' 23:59:59');
+        }
+        
+        if ($startTime > $endTime) {
+            return ['total' => 0, 'list' => []];
+        }
         
         $tables = WithdrawOrder::ensureTablesExistByRange($startTime, $endTime);
         $prefix = \think\Config::get('database.prefix');
         
-        // 构建UNION ALL查询
+        // 构建UNION ALL查询（只查需要的字段）
         $unionQueries = [];
         foreach ($tables as $table) {
             if (WithdrawOrder::tableExists($table)) {
-                $unionQueries[] = "SELECT * FROM {$prefix}{$table}";
+                $unionQueries[] = "SELECT id, user_id, order_no, coin_amount, cash_amount, fee_amount, actual_amount, status, withdraw_type, createtime, remark FROM {$prefix}{$table}";
             }
         }
         
@@ -1429,9 +1440,14 @@ class WithdrawService
         $whereParts = ['wo.user_id = ?'];
         $bindParams = [$userId];
         
-        if ($status !== null) {
+        // 日期范围筛选
+        $whereParts[] = 'wo.createtime BETWEEN ? AND ?';
+        $bindParams[] = $startTime;
+        $bindParams[] = $endTime;
+        
+        if ($status !== null && $status !== '') {
             $whereParts[] = 'wo.status = ?';
-            $bindParams[] = $status;
+            $bindParams[] = intval($status);
         }
         
         $whereStr = implode(' AND ', $whereParts);
@@ -1443,7 +1459,7 @@ class WithdrawService
         
         // 查询列表
         $offset = ($page - 1) * $limit;
-        $listSql = "SELECT wo.* FROM {$unionSql} WHERE {$whereStr} ORDER BY wo.id DESC LIMIT {$offset}, {$limit}";
+        $listSql = "SELECT wo.id, wo.user_id, wo.order_no, wo.coin_amount, wo.cash_amount, wo.fee_amount, wo.actual_amount, wo.status, wo.withdraw_type, wo.createtime, wo.remark FROM {$unionSql} WHERE {$whereStr} ORDER BY wo.id DESC LIMIT {$offset}, {$limit}";
         $list = Db::query($listSql, $bindParams);
         
         return [

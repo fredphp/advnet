@@ -130,18 +130,38 @@ class Withdraw extends Api
         $status = $this->request->get('status');
         $page = (int) $this->request->get('page', 1);
         $limit = (int) $this->request->get('limit', 20);
+        $startDate = $this->request->get('start_date', '');
+        $endDate = $this->request->get('end_date', '');
         
         $service = new WithdrawService();
-        $result = $service->getUserOrders($userId, $status, $page, $limit);
+        $result = $service->getUserOrders($userId, $status, $page, $limit, $startDate, $endDate);
         
-        // 格式化数据（getUserOrders 使用 Db::query 返回纯数组，需用数组语法访问）
-        foreach ($result['list'] as $key => $item) {
-            $result['list'][$key]['status_text'] = \app\common\model\WithdrawOrder::$statusList[$item['status']] ?? '';
-            $result['list'][$key]['withdraw_type_text'] = \app\common\model\WithdrawOrder::$typeList[$item['withdraw_type']] ?? '';
-            $result['list'][$key]['create_time_text'] = date('Y-m-d H:i:s', $item['createtime']);
+        // 精简输出字段
+        $statusList = \app\common\model\WithdrawOrder::$statusList;
+        $typeList = \app\common\model\WithdrawOrder::$typeList;
+        $list = [];
+        foreach ($result['list'] as $item) {
+            $item = (array)$item;
+            $list[] = [
+                'id'                => $item['id'],
+                'order_no'          => $item['order_no'] ?? '',
+                'cash_amount'       => round(floatval($item['cash_amount'] ?? 0), 2),
+                'coin_amount'       => intval($item['coin_amount'] ?? 0),
+                'fee_amount'        => round(floatval($item['fee_amount'] ?? 0), 2),
+                'actual_amount'     => round(floatval($item['actual_amount'] ?? 0), 2),
+                'status'            => intval($item['status'] ?? 0),
+                'status_text'       => $statusList[$item['status']] ?? '',
+                'withdraw_type'     => $item['withdraw_type'] ?? '',
+                'withdraw_type_text'=> $typeList[$item['withdraw_type']] ?? '',
+                'create_time_text'  => $item['createtime'] ? date('Y-m-d H:i:s', $item['createtime']) : '',
+                'remark'            => $item['remark'] ?? '',
+            ];
         }
         
-        $this->success('获取成功', $result);
+        $this->success('获取成功', [
+            'total' => $result['total'],
+            'list'  => $list,
+        ]);
     }
     
     /**
