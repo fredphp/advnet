@@ -20,6 +20,7 @@ return [
     'app\admin\command\GenerateMockData',
     'app\admin\command\CreateSplitTables',
     'app\admin\command\InstallAutoPush',
+    'app\admin\command\ResourceMigrate',
     'app\command\DataMigration',
     'app\command\Websocket',
     'app\command\AutoPush',

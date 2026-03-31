@@ -493,9 +493,10 @@ class Task extends Backend
             $this->error('该任务已发送，请勿重复发送');
         }
 
-        // 加载关联资源
+        // 加载关联资源（转为数组，防止视图模板直接访问 Model 属性报错）
         if (!empty($rowData['resource_id'])) {
-            $rowData['resource'] = RedPacketResource::where('id', $rowData['resource_id'])->find();
+            $resourceModel = RedPacketResource::where('id', $rowData['resource_id'])->find();
+            $rowData['resource'] = $resourceModel ? $resourceModel->toArray() : null;
         } else {
             $rowData['resource'] = null;
         }
@@ -513,9 +514,9 @@ class Task extends Backend
         // 根据任务类型获取聊天内容
         $chatContent = '';
         if ($rowData['type'] === 'chat') {
-            if ($rowData['resource']) {
+            if (!empty($rowData['resource'])) {
                 // 有关联资源，使用资源的聊天要求
-                $chatContent = $rowData['resource']['chat_requirement'] ?? ($rowData['description'] ?? '');
+                $chatContent = $rowData['resource']['chat_requirement'] ?: ($rowData['description'] ?? '');
             } else {
                 // 无关联资源，使用任务描述作为聊天内容
                 $chatContent = $rowData['description'] ?? '';
@@ -555,9 +556,10 @@ class Task extends Backend
         }
 
         try {
-            // 加载关联资源
+            // 加载关联资源（转为数组，防止访问不存在的属性）
             if (!empty($rowData['resource_id'])) {
-                $rowData['resource'] = RedPacketResource::where('id', $rowData['resource_id'])->find();
+                $resourceModel = RedPacketResource::where('id', $rowData['resource_id'])->find();
+                $rowData['resource'] = $resourceModel ? $resourceModel->toArray() : null;
             }
             
             // 调用推送服务
@@ -603,9 +605,10 @@ class Task extends Backend
         }
 
         try {
-            // 加载关联资源
+            // 加载关联资源（转为数组，防止访问不存在的属性）
             if (!empty($rowData['resource_id'])) {
-                $rowData['resource'] = RedPacketResource::where('id', $rowData['resource_id'])->find();
+                $resourceModel = RedPacketResource::where('id', $rowData['resource_id'])->find();
+                $rowData['resource'] = $resourceModel ? $resourceModel->toArray() : null;
             }
             
             // 调用推送服务
