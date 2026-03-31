@@ -9,6 +9,8 @@ use app\common\model\UserInviteStat;
 use app\common\model\UserCommissionStat;
 use app\common\model\InviteRelation;
 use app\common\model\InviteCommissionLog;
+use app\common\library\SystemConfigService;
+use app\common\model\WithdrawOrder;
 use think\Db;
 use think\Log;
 use think\exception\HttpResponseException;
@@ -139,14 +141,46 @@ class Invite extends Api
                 }
             }
             
-            // 计算钱包数据
-            // withdraw_commission 是"来自提现来源的佣金"(source_type=withdraw)，不是用户提现金额
-            // 可提现 = 累计佣金 - 待结算 - 冻结
-            $totalCommission = floatval($commissionStat->total_commission);
-            $pendingCommission = floatval($commissionStat->pending_commission ?? 0);
-            $frozenCommission = floatval($commissionStat->frozen_commission ?? 0);
-            $incomeMoney = max(0, $totalCommission - $pendingCommission - $frozenCommission);
-            $settleMoney = max(0, $totalCommission - $pendingCommission); // 已结算
+            // ========== 钱包数据（从真实金币账户和提现订单获取） ==========
+            $coinRate = SystemConfigService::getCoinRate() ?: 10000;
+            $coinAccount = Db::name('coin_account')->where('user_id', $userId)->find();
+            $coinBalance = $coinAccount ? floatval($coinAccount['balance'] ?? 0) : 0;
+            $coinFrozen = $coinAccount ? floatval($coinAccount['frozen'] ?? 0) : 0;
+            
+            // 可提现余额 = 金币余额 / 汇率
+            $incomeMoney = round($coinBalance / $coinRate, 2);
+            
+            // 冻结金额 = 冻结金币 / 汇率（提现审核中的金额）
+            $frozenMoney = round($coinFrozen / $coinRate, 2);
+            
+            // 查询提现订单统计（跨分表）
+            $tables = WithdrawOrder::ensureTablesExistByRange(strtotime('-12 months'), time());
+            $totalWithdrawCash = 0;   // 累计提现成功金额
+            $totalWithdrawCount = 0;  // 累计提现次数
+            $pendingWithdrawCash = 0; // 待审核金额
+            foreach ($tables as $table) {
+                if (!WithdrawOrder::tableExists($table)) {
+                    continue;
+                }
+                // 已提现成功金额
+                $totalWithdrawCash += Db::name($table)
+                    ->where('user_id', $userId)
+                    ->where('status', WithdrawOrder::STATUS_SUCCESS)
+                    ->sum('actual_amount');
+                $totalWithdrawCount += Db::name($table)
+                    ->where('user_id', $userId)
+                    ->where('status', WithdrawOrder::STATUS_SUCCESS)
+                    ->count();
+                // 待审核金额（含审核通过待打款的）
+                $pendingWithdrawCash += Db::name($table)
+                    ->where('user_id', $userId)
+                    ->whereIn('status', [WithdrawOrder::STATUS_PENDING, WithdrawOrder::STATUS_APPROVED, WithdrawOrder::STATUS_TRANSFERING])
+                    ->sum('actual_amount');
+            }
+            
+            $settleMoney = round($totalWithdrawCash, 2);
+            $nosettleMoney = round($pendingWithdrawCash, 2);
+            $totalWithdrawn = round($totalWithdrawCash, 2);
             
             // 总订单数 = 所有类型分佣记录数
             $orderNums = intval($commissionStat->withdraw_count ?? 0)
@@ -177,12 +211,14 @@ class Invite extends Api
                 'order_nums'    => $orderNums,
                 'team_nums'     => intval($inviteStat->total_invite_count),
                 
-                // 钱包
-                'income_money'      => round($incomeMoney, 2),
-                'nosettle_money'    => round($pendingCommission, 2),
-                'settle_money'      => round($settleMoney, 2),
-                // 注：当前项目佣金提现通过金币系统实现，无独立佣金提现记录
-                'total_withdraw'    => 0,
+                // 钱包（数据来源：coin_account + withdraw_order 分表）
+                'income_money'      => $incomeMoney,
+                'frozen_money'      => $frozenMoney,
+                'nosettle_money'    => $nosettleMoney,
+                'settle_money'      => $settleMoney,
+                'total_withdraw'    => $totalWithdrawn,
+                'withdraw_count'    => $totalWithdrawCount,
+                'exchange_rate'     => $coinRate,
                 
                 // 今日/昨日
                 'today_commission'     => round(floatval($commissionStat->today_commission), 2),

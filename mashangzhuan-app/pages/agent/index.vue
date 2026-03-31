@@ -79,16 +79,16 @@
 
                                 <view class="wallet-info">
                                         <view class="wallet-item">
-                                                <text class="info-label">待结算金额</text>
-                                                <text class="info-value">¥{{ userInfo.nosettle_money }}</text>
+                                                <text class="info-label">冻结中</text>
+                                                <text class="info-value">¥{{ userInfo.frozen_money }}</text>
                                         </view>
                                         <view class="wallet-item">
-                                                <text class="info-label">已结算金额</text>
-                                                <text class="info-value">¥{{ userInfo.settle_money }}</text>
-                                        </view>
-                                        <view class="wallet-item">
-                                                <text class="info-label">累计提现</text>
+                                                <text class="info-label">已提现</text>
                                                 <text class="info-value">¥{{ userInfo.total_withdraw }}</text>
+                                        </view>
+                                        <view class="wallet-item">
+                                                <text class="info-label">提现次数</text>
+                                                <text class="info-value">{{ userInfo.withdraw_count || 0 }}次</text>
                                         </view>
                                 </view>
                         </view>
@@ -216,9 +216,11 @@
                                         order_nums: 0,
                                         team_nums: 0,
                                         income_money: '0.00',
+                                        frozen_money: '0.00',
                                         nosettle_money: '0.00',
                                         settle_money: '0.00',
                                         total_withdraw: '0.00',
+                                        withdraw_count: 0,
                                         parent_name: '无',
                                         parent_user_id: 0,
                                         parent_avatar: '',
@@ -296,9 +298,11 @@
                                                         order_nums: d.order_nums || 0,
                                                         team_nums: d.team_nums || 0,
                                                         income_money: d.income_money || '0.00',
+                                                        frozen_money: d.frozen_money || '0.00',
                                                         nosettle_money: d.nosettle_money || '0.00',
                                                         settle_money: d.settle_money || '0.00',
                                                         total_withdraw: d.total_withdraw || '0.00',
+                                                        withdraw_count: d.withdraw_count || 0,
                                                         level_name: d.level_name || '普通会员',
                                                         parent_name: d.parent_name || '无',
                                                         parent_user_id: d.parent_user_id || 0,
