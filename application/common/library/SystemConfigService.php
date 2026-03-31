@@ -239,7 +239,7 @@ class SystemConfigService
     
     /**
      * 获取分组配置
-     * 从 config('site.xxx') 读取配置
+     * 优先从 Config::get('site.xxx') 读取，失败则回退到 config() helper
      * 
      * @param string $group 分组名
      * @return array
@@ -251,7 +251,7 @@ class SystemConfigService
             return self::$configCache[$group];
         }
         
-        // 尝试从缓存获取
+        // 尝试从缓存获取（但不信任旧缓存，如果缓存不完整则跳过）
         $cacheKey = self::CACHE_PREFIX . $group;
         $cached = Cache::get($cacheKey);
         
@@ -260,16 +260,20 @@ class SystemConfigService
             return $cached;
         }
         
-        // 从 config('site.xxx') 加载配置
+        // 从 site config 加载配置
         $config = self::loadFromSiteConfig($group);
         
-        // 合并默认值
+        // 合并默认值（默认值作为基底，确保所有 key 都存在）
         $defaultConfig = self::$defaultConfig[$group] ?? [];
         $config = array_merge($defaultConfig, $config);
         
         // 缓存结果
         self::$configCache[$group] = $config;
-        Cache::set($cacheKey, $config, self::CACHE_TTL);
+        try {
+            Cache::set($cacheKey, $config, self::CACHE_TTL);
+        } catch (\Throwable $e) {
+            // 缓存写入失败不影响配置读取
+        }
         
         return $config;
     }
@@ -286,13 +290,47 @@ class SystemConfigService
         $config = [];
         $defaultConfig = self::$defaultConfig[$group] ?? [];
         
-        // 遍历该分组的所有配置项，从 site config 读取
+        // 优先一次性获取整个 site 配置（性能更好，避免 N 次调用 Config::get）
+        $allSiteConfig = null;
+        try {
+            $allSiteConfig = Config::get('site');
+        } catch (\Throwable $e) {
+            // Config::get 异常时忽略
+        }
+        
+        // 如果 site 全局配置不可用，逐个 key 尝试 config() helper（兼容性更强）
+        if (empty($allSiteConfig) || !is_array($allSiteConfig)) {
+            foreach ($defaultConfig as $key => $defaultValue) {
+                try {
+                    // 直接用 config() helper 逐个读取，兼容不同加载方式
+                    $siteValue = config('site.' . $key);
+                    if ($siteValue === null) {
+                        // 回退：尝试无 site 前缀（如 config('withdraw_amounts')）
+                        $siteValue = config($key);
+                    }
+                } catch (\Throwable $e) {
+                    $siteValue = null;
+                }
+                
+                if ($siteValue !== null && $siteValue !== '') {
+                    $config[$key] = self::castValue($siteValue, $defaultValue);
+                }
+            }
+            return $config;
+        }
+        
+        // 从全量 site 配置中提取当前分组的值
         foreach ($defaultConfig as $key => $defaultValue) {
-            $siteValue = Config::get('site.' . $key);
+            // 先尝试 site 全局配置中的直接 key
+            $siteValue = $allSiteConfig[$key] ?? null;
+            
+            // 兼容：如果全局没有，尝试带分组前缀的 key（如 withdraw_min_withdraw）
+            if (($siteValue === null || $siteValue === '') && isset($allSiteConfig[$group . '_' . $key])) {
+                $siteValue = $allSiteConfig[$group . '_' . $key];
+            }
             
             // 如果 site config 中有值，使用它
             if ($siteValue !== null && $siteValue !== '') {
-                // 根据默认值类型进行转换
                 $config[$key] = self::castValue($siteValue, $defaultValue);
             }
         }
