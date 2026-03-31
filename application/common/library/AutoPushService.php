@@ -631,29 +631,54 @@ class AutoPushService
      */
     private function loadCdnUrl()
     {
-        // 优先从 ThinkPHP Config 读取
-        $cdn = \think\Config::get('upload.cdnurl');
-        if (!empty($cdn) && strpos($cdn, 'http') === 0) {
-            $this->cdnUrl = rtrim($cdn, '/');
-            return;
-        }
-        // 兜底：从数据库 advn_config 表读取
+        $cdn = '';
+
+        // 方式1: 从 ThinkPHP Config 读取（可能需要先加载缓存文件）
         try {
-            $row = Db::name('config')
-                ->where('name', 'upload')
-                ->where('group', 'basic')
-                ->value('value');
-            if ($row) {
-                $uploadConfig = json_decode($row, true);
-                if (!empty($uploadConfig['cdnurl']) && strpos($uploadConfig['cdnurl'], 'http') === 0) {
-                    $this->cdnUrl = rtrim($uploadConfig['cdnurl'], '/');
-                    return;
+            // CLI 模式 ThinkPHP5 不会自动加载 config/extra/site.php
+            $cacheFile = RUNTIME_PATH . 'cache' . DS . 'config' . DS . 'site.php';
+            if (file_exists($cacheFile)) {
+                $siteConfig = include $cacheFile;
+                if (is_array($siteConfig) && !empty($siteConfig['upload']['cdnurl'])) {
+                    $cdn = $siteConfig['upload']['cdnurl'];
                 }
             }
-        } catch (\Exception $e) {
-            // 忽略
+        } catch (\Exception $e) {}
+
+        // 方式2: 直接查数据库，宽松匹配
+        if (empty($cdn) || strpos($cdn, 'http') !== 0) {
+            try {
+                // 先尝试 name=upload, group=basic
+                $row = Db::name('config')
+                    ->where('name', 'upload')
+                    ->value('value');
+                if ($row) {
+                    $cfg = is_array($row) ? $row : json_decode($row, true);
+                    if (!empty($cfg['cdnurl']) && strpos($cfg['cdnurl'], 'http') === 0) {
+                        $cdn = $cfg['cdnurl'];
+                    }
+                }
+            } catch (\Exception $e) {}
         }
-        $this->cdnUrl = '';
+
+        // 方式3: 查 site 配置获取网站域名
+        if (empty($cdn) || strpos($cdn, 'http') !== 0) {
+            try {
+                $row = Db::name('config')
+                    ->where('name', 'site')
+                    ->value('value');
+                if ($row) {
+                    $cfg = is_array($row) ? $row : json_decode($row, true);
+                    if (!empty($cfg['siteurl']) && strpos($cfg['siteurl'], 'http') === 0) {
+                        $cdn = $cfg['siteurl'];
+                    }
+                }
+            } catch (\Exception $e) {}
+        }
+
+        $this->cdnUrl = (!empty($cdn) && strpos($cdn, 'http') === 0) ? rtrim($cdn, '/') : '';
+
+        echo "[AutoPush] CDN域名: " . ($this->cdnUrl ?: '(未配置，URL将使用相对路径)') . "\n";
     }
 
     /**
