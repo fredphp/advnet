@@ -90,12 +90,15 @@ class Withdraw extends Api
             $this->error('请选择有效的提现金额，可选金额：' . implode('、', $withdrawAmounts) . '元');
         }
         
-        if (empty($withdrawAccount)) {
-            $this->error('请填写提现账号');
-        }
-        
-        if (empty($withdrawName)) {
-            $this->error('请填写收款人姓名');
+        // 微信提现不需要手动填写账号，后台审核后通过微信openid自动转账
+        // 非微信提现方式才需要手动填写账号
+        if ($withdrawType !== 'wechat') {
+            if (empty($withdrawAccount)) {
+                $this->error('请填写提现账号');
+            }
+            if (empty($withdrawName)) {
+                $this->error('请填写收款人姓名');
+            }
         }
         
         $userId = $this->auth->id;
@@ -103,8 +106,8 @@ class Withdraw extends Api
         $service = new WithdrawService();
         $result = $service->apply($userId, $coinAmount, [
             'withdraw_type' => $withdrawType,
-            'withdraw_account' => $withdrawAccount,
-            'withdraw_name' => $withdrawName,
+            'withdraw_account' => $withdrawAccount ?: '',
+            'withdraw_name' => $withdrawName ?: '',
             'bank_name' => $bankName,
             'bank_branch' => $bankBranch,
             'ip' => $this->request->ip(),
