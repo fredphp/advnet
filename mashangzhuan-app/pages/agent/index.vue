@@ -150,7 +150,7 @@
                 <view class="share-popup-mask" v-if="showSharePopup" @click="closeSharePopup">
                         <view class="share-popup-mask-inner"></view>
                 </view>
-                <view class="share-popup" :class="{ 'share-popup-show': showSharePopup }" @click.stop>
+                <view class="share-popup" v-if="showSharePopup" @click.stop>
                         <!-- 手柄条 -->
                         <view class="share-popup-bar">
                                 <view class="bar-inner"></view>
@@ -206,6 +206,7 @@
                                                 <text class="icon-svg">
                                                 </text>
                                         </view>
+                                        <text class="share-action-label">朋友圈</text>
                                 </view>
                                 <view class="share-action-item" @click="copyInviteLink">
                                         <view class="share-icon share-icon-link">
@@ -1065,15 +1066,19 @@
                 background: #F7F8FA;
                 border-radius: 36rpx 36rpx 0 0;
                 z-index: 999;
-                transform: translateY(100%);
-                transition: transform 0.35s cubic-bezier(0.32, 0.72, 0, 1);
                 padding-bottom: env(safe-area-inset-bottom);
                 max-height: 85vh;
                 overflow-y: auto;
+                animation: shareSlideUp 0.35s cubic-bezier(0.32, 0.72, 0, 1) forwards;
         }
 
-        .share-popup-show {
-                transform: translateY(0);
+        @keyframes shareSlideUp {
+                from {
+                        transform: translateY(100%);
+                }
+                to {
+                        transform: translateY(0);
+                }
         }
 
         // 顶部手柄条
