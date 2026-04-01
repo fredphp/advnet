@@ -103,7 +103,7 @@
 
                         <!-- 推广卡片 -->
                         <view class="promotion-cards">
-                                <coco-grid-simple :gridList="gridList"></coco-grid-simple>
+                                <coco-grid-simple :gridList="gridList" @itemclick="handleGridClick"></coco-grid-simple>
                         </view>
                 </view>
 
@@ -146,21 +146,86 @@
 
 
 
-                <!-- 邀请选项底部弹窗 -->
-                <u-action-sheet v-model="showActionSheet" :list="actionSheetList" @click="handleActionClick"
-                        title="选择邀请方式"></u-action-sheet>
-
-                <!-- 邀请海报弹窗 -->
-                <u-modal v-model="showInviteModal" title="邀请好友" :show-confirm-button="false">
-                        <view class="invite-modal-content">
-                                <view class="invite-qrcode">
-                                        <image :src="inviteQrcode" mode="widthFix" class="qrcode-image"></image>
-                                </view>
-                                <text class="invite-desc">扫码邀请好友加入分销</text>
-                                <u-button text="保存图片" @click="saveQrcode"
-                                        :custom-style="{width: '100%', marginTop: '20rpx', backgroundColor: '#de0011', borderColor: '#de0011'}"></u-button>
+                <!-- 分享邀请弹窗 -->
+                <view class="share-popup-mask" v-if="showSharePopup" @click="closeSharePopup">
+                        <view class="share-popup-mask-inner"></view>
+                </view>
+                <view class="share-popup" :class="{ 'share-popup-show': showSharePopup }" @click.stop>
+                        <!-- 手柄条 -->
+                        <view class="share-popup-bar">
+                                <view class="bar-inner"></view>
                         </view>
-                </u-modal>
+                        <!-- 标题 -->
+                        <view class="share-popup-header">
+                                <text class="share-popup-title">邀请好友一起赚</text>
+                                <view class="share-popup-close" @click="closeSharePopup">
+                                        <text class="close-icon">✕</text>
+                                </view>
+                        </view>
+
+                        <!-- 邀请卡片 -->
+                        <view class="invite-card">
+                                <view class="invite-card-bg"></view>
+                                <view class="invite-card-content">
+                                        <!-- 用户信息 -->
+                                        <view class="invite-user-row">
+                                                <u-avatar :src="vuex_user.avatar" size="80"></u-avatar>
+                                                <view class="invite-user-info">
+                                                        <text class="invite-user-name">{{ vuex_user.nickname }}</text>
+                                                        <text class="invite-user-level">{{ userInfo.level_name }}</text>
+                                                </view>
+                                        </view>
+
+                                        <!-- 邀请码 -->
+                                        <view class="invite-code-section">
+                                                <text class="invite-code-title">我的邀请码</text>
+                                                <view class="invite-code-box" @click="copyInviteCode" @longpress="copyInviteCode">
+                                                        <text class="invite-code-value">{{ userInfo.invite_code || '--' }}</text>
+                                                        <view class="invite-code-copy">
+                                                                <text class="copy-btn-text">复制</text>
+                                                        </view>
+                                                </view>
+                                        </view>
+
+                                        <!-- 提示文字 -->
+                                        <text class="invite-card-desc">扫码或输入邀请码，加入我的团队一起赚</text>
+                                </view>
+                        </view>
+
+                        <!-- 分享按钮区域 -->
+                        <view class="share-popup-actions">
+                                <view class="share-action-item" @click="shareToWechat">
+                                        <view class="share-icon share-icon-wechat">
+                                                <text class="icon-svg">
+                                                </text>
+                                        </view>
+                                        <text class="share-action-label">微信好友</text>
+                                </view>
+                                <view class="share-action-item" @click="shareToMoments">
+                                        <view class="share-icon share-icon-moments">
+                                                <text class="icon-svg">
+                                                </text>
+                                        </view>
+                                </view>
+                                <view class="share-action-item" @click="copyInviteLink">
+                                        <view class="share-icon share-icon-link">
+                                                <text class="icon-text-link">链</text>
+                                        </view>
+                                        <text class="share-action-label">复制链接</text>
+                                </view>
+                                <view class="share-action-item" @click="shareMore">
+                                        <view class="share-icon share-icon-more">
+                                                <text class="icon-dots">•••</text>
+                                        </view>
+                                        <text class="share-action-label">更多</text>
+                                </view>
+                        </view>
+
+                        <!-- 取消按钮 -->
+                        <view class="share-popup-cancel" @click="closeSharePopup">
+                                <text class="cancel-text">取消</text>
+                        </view>
+                </view>
 
                 <!-- 提示组件 -->
                 <u-toast ref="uToast" />
@@ -266,19 +331,10 @@
                                 pendingBalance: '1,250.00',
                                 totalWithdrawn: '7,880.00',
 
-                                // 邀请相关
-                                inviteQrcode: 'https://picsum.photos/300/300?random=10',
-                                showInviteModal: false,
-                                showActionSheet: false,
-                                actionSheetList: [{
-                                                text: '邀请链接',
-                                                icon: 'link'
-                                        },
-                                        {
-                                                text: '邀请海报',
-                                                icon: 'qrcode'
-                                        }
-                                ]
+                                // 分享弹窗
+                                showSharePopup: false,
+                                posterBase64: '',
+                                posterLoading: false,
                         };
                 },
                 onLoad() {
@@ -417,63 +473,141 @@
                                 });
                         },
 
-                        // 推广相关操作
-                        shareGoods() {
-                                // 分享商品逻辑
-                                this.$refs.uToast.show({
-                                        title: '正在打开分享面板',
-                                        type: 'info'
-                                });
-                        },
+                        // ==================== 分享邀请 ====================
 
-                        // 显示邀请选项
-                        showInviteOptions() {
-                                this.showActionSheet = true;
-                        },
-
-                        // 处理邀请选项点击
-                        handleActionClick(index) {
-                                this.showActionSheet = false;
-                                if (index === 0) {
-                                        // 邀请链接
-                                        this.copyInviteLink();
-                                } else if (index === 1) {
-                                        // 邀请海报
-                                        this.showInviteModal = true;
+                        // 处理推广工具点击
+                        handleGridClick(item) {
+                                if (item.path === 'wxshare') {
+                                        this.showSharePopup = true;
+                                } else {
+                                        uni.navigateTo({ url: item.path });
                                 }
                         },
 
-                        // 复制邀请链接
-                        copyInviteLink() {
-                                const link = this.userInfo.invite_link || 'https://example.com/invite';
+                        closeSharePopup() {
+                                this.showSharePopup = false;
+                        },
+
+                        // 复制邀请码
+                        copyInviteCode() {
+                                const code = this.userInfo.invite_code;
+                                if (!code) {
+                                        uni.showToast({ title: '邀请码不存在', icon: 'none' });
+                                        return;
+                                }
                                 uni.setClipboardData({
-                                        data: link,
+                                        data: code,
                                         success: () => {
-                                                this.$refs.uToast.show({
-                                                        title: '邀请链接已复制',
-                                                        type: 'success'
-                                                });
+                                                uni.showToast({ title: '邀请码已复制', icon: 'success' });
                                         }
                                 });
                         },
 
-                        // 保存二维码
-                        saveQrcode() {
-                                uni.saveImageToPhotosAlbum({
-                                        filePath: this.inviteQrcode,
+                        // 复制邀请链接
+                        copyInviteLink() {
+                                const link = this.userInfo.invite_link;
+                                if (!link) {
+                                        uni.showToast({ title: '邀请链接不存在', icon: 'none' });
+                                        return;
+                                }
+                                const shareText = '我正在使用马上赚APP，邀请你一起赚钱！';
+                                uni.setClipboardData({
+                                        data: shareText + '\n' + link,
                                         success: () => {
-                                                this.$refs.uToast.show({
-                                                        title: '二维码已保存到相册',
-                                                        type: 'success'
+                                                uni.showToast({ title: '邀请链接已复制', icon: 'success' });
+                                        }
+                                });
+                        },
+
+                        // APP端分享 - 微信好友
+                        shareToWechat() {
+                                this.doAppShare('weixin');
+                        },
+
+                        // APP端分享 - 朋友圈
+                        shareToMoments() {
+                                this.doAppShare('weixin_moments');
+                        },
+
+                        // 更多分享
+                        shareMore() {
+                                this.closeSharePopup();
+                                const href = this.userInfo.invite_link || '';
+                                const shareText = '我正在使用马上赚APP，邀请你一起赚钱！快来看看吧';
+
+                                // #ifdef APP-PLUS
+                                plus.share.sendWithSystem({
+                                        type: 'text',
+                                        content: shareText + '\n' + href,
+                                }, () => {
+                                        console.log('系统分享成功');
+                                }, (err) => {
+                                        console.log('系统分享失败:', JSON.stringify(err));
+                                        this.copyInviteLink();
+                                });
+                                // #endif
+
+                                // #ifdef H5
+                                this.copyInviteLink();
+                                // #endif
+                        },
+
+                        // 统一分享方法
+                        doAppShare(provider) {
+                                const shareText = '我正在使用马上赚APP，邀请你一起赚钱！快来看看吧';
+                                const href = this.userInfo.invite_link || '';
+
+                                // #ifdef APP-PLUS
+                                plus.share.getServices((services) => {
+                                        let targetService = null;
+                                        for (let i = 0; i < services.length; i++) {
+                                                if (services[i].id === provider) {
+                                                        targetService = services[i];
+                                                        break;
+                                                }
+                                        }
+
+                                        if (!targetService) {
+                                                uni.showToast({
+                                                        title: '未安装' + (provider === 'weixin' ? '微信' : '相关应用'),
+                                                        icon: 'none'
                                                 });
-                                                this.showInviteModal = false;
-                                        },
-                                        fail: (err) => {
-                                                console.log('保存失败', err);
-                                                this.$refs.uToast.show({
-                                                        title: '保存失败，请重试',
-                                                        type: 'error'
+                                                return;
+                                        }
+
+                                        if (targetService.authenticated) {
+                                                this._doSendShare(targetService, shareText, href);
+                                        } else {
+                                                targetService.authorize(() => {
+                                                        this._doSendShare(targetService, shareText, href);
+                                                }, (err) => {
+                                                        uni.showToast({ title: '授权失败，请稍后重试', icon: 'none' });
                                                 });
+                                        }
+                                }, (err) => {
+                                        uni.showToast({ title: '获取分享服务失败', icon: 'none' });
+                                });
+                                // #endif
+
+                                // #ifdef H5
+                                this.copyInviteLink();
+                                // #endif
+                        },
+
+                        // 执行分享
+                        _doSendShare(service, shareText, href) {
+                                service.send({
+                                        type: 0,
+                                        title: '马上赚 - 邀请你一起赚钱',
+                                        summary: shareText,
+                                        href: href,
+                                        imageUrl: '',
+                                }, () => {
+                                        this.closeSharePopup();
+                                        uni.showToast({ title: '分享成功', icon: 'success' });
+                                }, (err) => {
+                                        if (err.code !== -2) {
+                                                uni.showToast({ title: '分享失败', icon: 'none' });
                                         }
                                 });
                         }
@@ -905,29 +1039,261 @@
                 }
         }
 
-        // 邀请弹窗
-        .invite-modal-content {
+        // ==================== 分享邀请弹窗 ====================
+        .share-popup-mask {
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                z-index: 998;
+                background: rgba(0, 0, 0, 0);
+
+                .share-popup-mask-inner {
+                        width: 100%;
+                        height: 100%;
+                        background: rgba(0, 0, 0, 0.55);
+                        transition: opacity 0.3s ease;
+                }
+        }
+
+        .share-popup {
+                position: fixed;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background: #F7F8FA;
+                border-radius: 36rpx 36rpx 0 0;
+                z-index: 999;
+                transform: translateY(100%);
+                transition: transform 0.35s cubic-bezier(0.32, 0.72, 0, 1);
+                padding-bottom: env(safe-area-inset-bottom);
+                max-height: 85vh;
+                overflow-y: auto;
+        }
+
+        .share-popup-show {
+                transform: translateY(0);
+        }
+
+        // 顶部手柄条
+        .share-popup-bar {
+                display: flex;
+                justify-content: center;
+                padding: 20rpx 0 8rpx;
+
+                .bar-inner {
+                        width: 80rpx;
+                        height: 8rpx;
+                        border-radius: 4rpx;
+                        background: #DDD;
+                }
+        }
+
+        .share-popup-header {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                padding: 16rpx 40rpx 24rpx;
+
+                .share-popup-title {
+                        font-size: 34rpx;
+                        font-weight: bold;
+                        color: #1A1A1A;
+                }
+
+                .share-popup-close {
+                        width: 56rpx;
+                        height: 56rpx;
+                        border-radius: 50%;
+                        background: #EEE;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+
+                        .close-icon {
+                                font-size: 28rpx;
+                                color: #888;
+                                line-height: 1;
+                        }
+                }
+        }
+
+        // 邀请卡片
+        .invite-card {
+                margin: 0 32rpx 28rpx;
+                border-radius: 24rpx;
+                position: relative;
+                overflow: hidden;
+
+                .invite-card-bg {
+                        position: absolute;
+                        top: 0;
+                        left: 0;
+                        right: 0;
+                        bottom: 0;
+                        background: linear-gradient(145deg, #E62129 0%, #FF6B35 50%, #FF9A56 100%);
+                }
+
+                .invite-card-content {
+                        position: relative;
+                        z-index: 2;
+                        padding: 36rpx 32rpx;
+                }
+        }
+
+        .invite-user-row {
+                display: flex;
+                align-items: center;
+                margin-bottom: 28rpx;
+
+                .invite-user-info {
+                        margin-left: 20rpx;
+                        flex: 1;
+
+                        .invite-user-name {
+                                font-size: 32rpx;
+                                font-weight: bold;
+                                color: #FFF;
+                                display: block;
+                                margin-bottom: 6rpx;
+                        }
+
+                        .invite-user-level {
+                                font-size: 22rpx;
+                                color: rgba(255, 255, 255, 0.85);
+                                background: rgba(255, 255, 255, 0.2);
+                                padding: 4rpx 16rpx;
+                                border-radius: 20rpx;
+                        }
+                }
+        }
+
+        .invite-code-section {
+                margin-bottom: 24rpx;
+
+                .invite-code-title {
+                        font-size: 24rpx;
+                        color: rgba(255, 255, 255, 0.8);
+                        display: block;
+                        margin-bottom: 12rpx;
+                }
+
+                .invite-code-box {
+                        display: flex;
+                        align-items: center;
+                        background: rgba(255, 255, 255, 0.2);
+                        border-radius: 16rpx;
+                        padding: 16rpx 20rpx;
+                        backdrop-filter: blur(10px);
+
+                        .invite-code-value {
+                                flex: 1;
+                                font-size: 36rpx;
+                                font-weight: 800;
+                                color: #FFF;
+                                letter-spacing: 4rpx;
+                                font-family: 'Courier New', monospace;
+                        }
+
+                        .invite-code-copy {
+                                background: #FFF;
+                                border-radius: 24rpx;
+                                padding: 8rpx 28rpx;
+
+                                .copy-btn-text {
+                                        color: #E62129;
+                                        font-size: 24rpx;
+                                        font-weight: 600;
+                                }
+                        }
+                }
+        }
+
+        .invite-card-desc {
+                font-size: 24rpx;
+                color: rgba(255, 255, 255, 0.7);
+                text-align: center;
+                display: block;
+        }
+
+        // 分享按钮区域
+        .share-popup-actions {
+                display: flex;
+                justify-content: space-around;
+                padding: 8rpx 40rpx 20rpx;
+        }
+
+        .share-action-item {
                 display: flex;
                 flex-direction: column;
                 align-items: center;
 
-                .invite-qrcode {
-                        padding: 20rpx;
-                        background-color: #FFFFFF;
-                        border-radius: 8rpx;
-                        margin-top: 10rpx;
+                .share-icon {
+                        width: 100rpx;
+                        height: 100rpx;
+                        border-radius: 24rpx;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        margin-bottom: 14rpx;
+                        transition: transform 0.2s ease;
 
-                        .qrcode-image {
-                                width: 300rpx;
-                                height: 300rpx;
+                        &:active {
+                                transform: scale(0.92);
+                        }
+
+                        .icon-svg {
+                                font-size: 1rpx;
+                        }
+
+                        .icon-text-link {
+                                font-size: 32rpx;
+                                font-weight: 700;
+                                color: #FFF;
+                        }
+
+                        .icon-dots {
+                                font-size: 28rpx;
+                                font-weight: 700;
+                                color: #FFF;
+                                letter-spacing: 4rpx;
                         }
                 }
 
-                .invite-desc {
-                        font-size: 28rpx;
-                        color: #1D2129;
-                        margin-top: 25rpx;
-                        margin-bottom: 10rpx;
+                .share-action-label {
+                        font-size: 24rpx;
+                        color: #555;
+                }
+        }
+
+        .share-icon-wechat {
+                background: linear-gradient(145deg, #07C160, #06AD56);
+        }
+
+        .share-icon-moments {
+                background: linear-gradient(145deg, #FA9D3B, #F07C23);
+        }
+
+        .share-icon-link {
+                background: linear-gradient(145deg, #E62129, #C41A21);
+        }
+
+        .share-icon-more {
+                background: linear-gradient(145deg, #8C8C8C, #6B6B6B);
+        }
+
+        // 取消按钮
+        .share-popup-cancel {
+                margin: 12rpx 32rpx 24rpx;
+                padding: 20rpx 0;
+                text-align: center;
+                background: #FFFFFF;
+                border-radius: 16rpx;
+
+                .cancel-text {
+                        font-size: 30rpx;
+                        color: #666;
                 }
         }
 </style>
