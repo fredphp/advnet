@@ -167,11 +167,14 @@ export default {
                         videoCurrent: 0,
                         showNoticePopup: false,
                         noticeInfo: {},
-                        boardFalling: false
+                        boardFalling: false,
+                        noticeShown: false
                 };
         },
         onShow() {
                 this.getGoodsIndex();
+        },
+        onLoad() {
                 this.getPopupNotice();
         },
         computed: {
@@ -252,12 +255,17 @@ export default {
                                 }
                         });
                 },
-                // 获取弹窗公告
+                // 获取弹窗公告（仅首次加载时调用一次）
                 getPopupNotice() {
+                        if (this.noticeShown) return;
                         const readId = uni.getStorageSync('popup_notice_read_id') || 0;
+                        if (readId) return;
                         this.$api.getPopupNotice({ read_id: readId }).then(res => {
                                 if (res.code && res.data) {
+                                        this.noticeShown = true;
                                         this.noticeInfo = res.data;
+                                        // 立即记录已读，避免重复弹出
+                                        uni.setStorageSync('popup_notice_read_id', res.data.id);
                                         this.showNoticePopup = true;
                                 }
                         });
@@ -268,9 +276,6 @@ export default {
                         setTimeout(() => {
                                 this.showNoticePopup = false;
                                 this.boardFalling = false;
-                                if (this.noticeInfo && this.noticeInfo.id) {
-                                        uni.setStorageSync('popup_notice_read_id', this.noticeInfo.id);
-                                }
                         }, 500);
                 }
         },
