@@ -399,7 +399,7 @@ page {
         display: flex;
         flex-direction: column;
         align-items: center;
-        margin-top: 160rpx;
+        margin-top: 35%;
         animation: boardIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
         transform-origin: top center;
 }
@@ -522,7 +522,7 @@ page {
 
 .frame-content {
         max-height: 420rpx;
-        padding: 4rpx 36rpx 36rpx;
+        padding: 4rpx 8rpx 20rpx 12rpx;
         font-size: 25rpx;
         color: #5a4a3a;
         line-height: 1.9;
