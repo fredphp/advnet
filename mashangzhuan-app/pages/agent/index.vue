@@ -293,7 +293,7 @@
                                                 const d = res.data;
                                                 this.userInfo = {
                                                         ...this.userInfo,
-                                                        total_withdraw: d.total_withdraw_amount || '0.00',
+                                                        total_withdraw: parseFloat(d.total_withdraw_amount || 0).toFixed(2),
                                                         withdraw_count: d.success_count || 0,
                                                 };
                                         }
