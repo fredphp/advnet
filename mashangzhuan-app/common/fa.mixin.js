@@ -298,28 +298,41 @@ export const loginfunc = {
                 // #ifdef H5
                 // 公众号授权
                 async goAuth(page, scope) {
-                        if (this.$util.isWeiXinBrowser()) {
-                                page = page ? page : '/pages/login/auth';
+                        // #ifdef H5
+                        if (!this.$util.isWeiXinBrowser()) {
+                                uni.showModal({
+                                        title: '提示',
+                                        content: '请在微信中打开此页面进行微信授权登录',
+                                        showCancel: false
+                                });
+                                return;
+                        }
+                        // #endif
+                        page = page ? page : '/pages/login/auth';
 
-                                let url = window.location.origin + (window.location.hash != '' ?
-                                        window.location.pathname + '?hashpath=' + page :
-                                        window.location.pathname.replace(/\/pages\/.*/, page));
+                        // 构造回调URL（当前域名下的auth页面）
+                        let redirectUrl = window.location.origin + window.location.pathname;
+                        if (window.location.hash != '') {
+                                redirectUrl += '?hashpath=' + encodeURIComponent(page);
+                        } else {
+                                redirectUrl = redirectUrl.replace(/\/pages\/.*/, page);
+                        }
 
-                                let res = await this.$api.getAuthUrl({
-                                        platform: 'wechat',
-                                        url: url,
-                                        scope: scope || "",
+                        try {
+                                let res = await this.$api.getOfficialAuthUrl({
+                                        redirect_url: redirectUrl,
+                                        scope: scope || 'snsapi_userinfo'
                                 });
                                 if (!res.code) {
                                         this.$u.toast(res.msg);
                                         return;
                                 }
+                                // 记录上一个非登录页面的路径，用于登录后返回
                                 var pages = getCurrentPages();
                                 let len = pages.length;
                                 if (len > 1) {
                                         let url = pages[len - 1].route;
                                         if (url.indexOf('/login/') != -1) {
-                                                //找到上一个不是登录页面
                                                 for (let i = len - 1; i >= 0; i--) {
                                                         if (pages[i].route.indexOf('/login/') == -1) {
                                                                 this.$u.vuex('vuex_lasturl', '/' + pages[i].route + this.$u.queryParams(pages[i].options));
@@ -330,7 +343,10 @@ export const loginfunc = {
                                                 this.$u.vuex('vuex_lasturl', '/' + url + this.$u.queryParams(pages[pages.length - 1].options))
                                         }
                                 }
-                                window.location.href = res.data;
+                                window.location.href = res.data.auth_url;
+                        } catch (e) {
+                                console.error('获取微信授权URL失败:', e);
+                                this.$u.toast('获取微信授权链接失败，请稍后重试');
                         }
                 },
                 // #endif
@@ -402,34 +418,43 @@ export const loginfunc = {
                                                         Service = all[key];
                                                 }
                                         });
+                                        if (!Service) {
+                                                that.$u.toast('未检测到微信客户端，请先安装微信');
+                                                return;
+                                        }
                                         Service.authorize(
                                                 async function(e) {
-                                                                let res = await that.$api.goAppLogin({
-                                                                        code: e.code,
-                                                                        scope: e.scope
-                                                                });
-                                                                if (!res.code) {
-                                                                        that.$u.toast(res.msg);
-                                                                        return;
-                                                                }
-                                                                if (res.data.user) {
-                                                                        that.$u.vuex('vuex_token', res.data.user.token);
-                                                                        that.$u.vuex('vuex_user', res.data.user || {});
-                                                                        that.success();
-                                                                        return;
-                                                                }
-                                                                that.$u.vuex('vuex_third', res.data.third);
-                                                                that.$u.vuex('vuex_openid', res.data.openid);
-                                                                that.$u.route('/pages/login/register?bind=bind');
-                                                        },
-                                                        function(e) {
-                                                                that.$u.toast('授权失败！');
+                                                try {
+                                                        let res = await that.$api.goWechatAppLogin({
+                                                                code: e.code,
+                                                                scope: e.scope,
+                                                                invite_code: that.vuex_invitecode || ''
+                                                        });
+                                                        if (!res.code) {
+                                                                that.$u.toast(res.msg);
+                                                                return;
                                                         }
+                                                        // 新接口返回 {user_id, token, userinfo, is_new}
+                                                        if (res.data.token) {
+                                                                that.$u.vuex('vuex_token', res.data.token);
+                                                                that.$u.vuex('vuex_user', res.data.userinfo || {});
+                                                                that.success();
+                                                                return;
+                                                        }
+                                                        that.$u.toast('登录失败，请重试');
+                                                } catch (err) {
+                                                        console.error('App微信登录失败:', err);
+                                                        that.$u.toast('登录失败，请重试');
+                                                }
+                                                },
+                                                function(e) {
+                                                        that.$u.toast('授权失败！');
+                                                }
                                         );
                                 },
                                 function(err) {
                                         console.log(err);
-                                        that.$u.toast('授权失败！');
+                                        that.$u.toast('获取微信服务失败！');
                                 }
                         );
                 },

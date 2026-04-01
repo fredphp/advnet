@@ -88,7 +88,7 @@
                                 if(!this.agreeChecked){
                                         uni.showModal({
                                                 title:"系统提醒",
-                                                content:"请阅读并同意会员协议后在操作",
+                                                content:"请阅读并同意会员协议后再操作",
                                                 showCancel:false
                                         })
                                         return false;

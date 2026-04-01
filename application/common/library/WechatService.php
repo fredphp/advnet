@@ -211,6 +211,28 @@ class WechatService
     // ==================== 微信公众号登录 ====================
     
     /**
+     * 构建微信公众号网页授权URL
+     * 
+     * @param string $appid 公众号AppID
+     * @param string $redirectUri 授权后重定向的回调链接
+     * @param string $scope 应用授权作用域: snsapi_base（静默）/ snsapi_userinfo（弹窗）
+     * @param string $state 重定向后会带上state参数
+     * @return string
+     */
+    public static function buildOfficialAuthUrl($appid, $redirectUri, $scope = 'snsapi_userinfo', $state = 'wechat_auth')
+    {
+        $params = [
+            'appid' => $appid,
+            'redirect_uri' => urlencode($redirectUri),
+            'response_type' => 'code',
+            'scope' => $scope,
+            'state' => $state,
+        ];
+        
+        return self::API_OAUTH2_AUTHORIZE . '?' . http_build_query($params) . '#wechat_redirect';
+    }
+    
+    /**
      * 微信公众号网页授权登录
      * 
      * @param string $code 授权code

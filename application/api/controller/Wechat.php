@@ -12,12 +12,49 @@ use think\Config;
  */
 class Wechat extends Api
 {
-    protected $noNeedLogin = ['appLogin', 'miniLogin', 'officialLogin', 'bindWechat', 'getMiniPhone'];
+    protected $noNeedLogin = ['appLogin', 'miniLogin', 'officialLogin', 'bindWechat', 'getMiniPhone', 'getOfficialAuthUrl', 'loginStatus'];
     protected $noNeedRight = '*';
 
     public function _initialize()
     {
         parent::_initialize();
+    }
+
+    /**
+     * 获取微信公众号授权URL
+     *
+     * @ApiMethod (GET)
+     * @ApiParams (name="redirect_url", type="string", required=true, description="授权后回调URL")
+     * @ApiParams (name="scope", type="string", required=false, description="snsapi_base或snsapi_userinfo")
+     * @ApiParams (name="state", type="string", required=false, description="自定义state参数")
+     */
+    public function getOfficialAuthUrl()
+    {
+        $redirectUrl = $this->request->get('redirect_url');
+        $scope = $this->request->get('scope', 'snsapi_userinfo');
+        $state = $this->request->get('state', 'wechat_auth');
+
+        if (!$redirectUrl) {
+            $this->error(__('Invalid parameters'), 'redirect_url参数不能为空');
+        }
+
+        if (!SystemConfigService::isWechatOfficialEnabled()) {
+            $this->error('微信公众号登录未开启');
+        }
+
+        $config = SystemConfigService::getWechatOfficialConfig();
+        if (empty($config['appid'])) {
+            $this->error('微信公众号AppID未配置');
+        }
+
+        $authUrl = WechatService::buildOfficialAuthUrl(
+            $config['appid'],
+            $redirectUrl,
+            $scope,
+            $state
+        );
+
+        $this->success('', ['auth_url' => $authUrl]);
     }
 
     /**

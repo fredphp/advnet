@@ -21,7 +21,7 @@
 			if (this.state && this.code) {
 				this.goWxAuth();
 			} else {
-				this.content = '授权登录失败！';
+				this.content = '授权登录失败！未获取到授权参数';
 			}
 			
 			this.si = setTimeout(() => {
@@ -33,34 +33,39 @@
 				state: '',
 				code: '',
 				show: false,
-				show: false,
+				si: null,
 				content: '授权登录中...'
 			};
 		},
 		methods: {
 			goWxAuth: async function() {
-				let data = {
-					code: this.code,
-					state: this.state,
-					platform: 'wechat',
-					base: 1 //仅返回用户信息，不绑定账号
-				};
-				let res = await this.$api.goAuthCallback(data);
-				if (!res) {
-					this.content = '授权登录失败！';
-					return;
+				try {
+					let res = await this.$api.goOfficialLogin({
+						code: this.code,
+						state: this.state,
+						invite_code: this.vuex_invitecode || ''
+					});
+					if (!res || !res.code) {
+						clearTimeout(this.si);
+						this.content = res && res.msg ? res.msg : '授权登录失败！';
+						return;
+					}
+					clearTimeout(this.si);
+					this.show = false;
+					
+					// 如果返回了token，直接登录
+					if (res.data.token) {
+						this.$u.vuex('vuex_token', res.data.token);
+						this.$u.vuex('vuex_user', res.data.userinfo || {});
+						this.success();
+						return;
+					}
+					this.content = '授权登录失败：未获取到登录凭证';
+				} catch (e) {
+					clearTimeout(this.si);
+					console.error('微信授权登录异常:', e);
+					this.content = '授权登录失败：网络异常';
 				}
-				clearTimeout(this.si);
-				
-				this.$u.vuex('vuex_openid', res.data.openid);
-				let url = this.vuex_lasturl || '/pages/index/index';
-				
-				//清空最后页面
-				this.$u.vuex('vuex_lasturl', '');
-				uni.reLaunch({
-					url: url + (url.indexOf("?") > -1 ? "&" : "?") + "from=openid"
-				});
-				// this.success();
 			},
 			confirm() {
 				window.history.go(-2);

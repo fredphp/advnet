@@ -91,11 +91,16 @@ const install = (Vue, vm) => {
         vm.$api.goAppLogin                      = async (params = {}) => await vm.$u.post('/addons/shop/api.login/appLogin', params);
         vm.$api.getWechatOpenid = async (params = {}) => await vm.$u.post('/addons/shop/api.login/getWechatOpenid', params);
         vm.$api.getWechatMobile         = async (params = {}) => await vm.$u.post('/addons/shop/api.login/getWechatMobile', params);
-        //第三方
-        vm.$api.getAuthUrl                      = async (params = {}) => await vm.$u.get('/addons/third/api/getAuthUrl', params);
-        vm.$api.goAuthCallback          = async (params = {}) => await vm.$u.post('/addons/third/api/callback', params);
-        vm.$api.goOpenidCallback        = async (params = {}) => await vm.$u.post('/addons/third/api/getOpenidCallback', params);
-        vm.$api.goThirdAccount          = async (params = {}) => await vm.$u.post('/addons/third/api/account', params);
+        // 微信登录（新接口）
+        vm.$api.getOfficialAuthUrl      = async (params = {}) => await vm.$u.get('/api/wechat/getOfficialAuthUrl', params);
+        vm.$api.goOfficialLogin         = async (params = {}) => await vm.$u.post('/api/wechat/officialLogin', params);
+        vm.$api.goWechatAppLogin        = async (params = {}) => await vm.$u.post('/api/wechat/appLogin', params);
+        vm.$api.getWechatLoginStatus    = async (params = {}) => await vm.$u.get('/api/wechat/loginStatus', params);
+        //第三方（旧接口，已废弃）
+        // vm.$api.getAuthUrl            = async (params = {}) => await vm.$u.get('/addons/third/api/getAuthUrl', params);
+        // vm.$api.goAuthCallback        = async (params = {}) => await vm.$u.post('/addons/third/api/callback', params);
+        // vm.$api.goOpenidCallback      = async (params = {}) => await vm.$u.post('/addons/third/api/getOpenidCallback', params);
+        // vm.$api.goThirdAccount        = async (params = {}) => await vm.$u.post('/addons/third/api/account', params);
         // 签到   
         vm.$api.signinConfig            = async (params = {}) => await vm.$u.get('/addons/signin/api.index/index',params);
         vm.$api.monthSign                       = async (params = {}) => await vm.$u.get('/addons/signin/api.index/monthSign',params);
