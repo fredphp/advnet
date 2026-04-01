@@ -92,19 +92,34 @@
                 <!-- 底部导航 -->
                 <fa-tabbar></fa-tabbar>
 
-                <!-- 弹窗公告 -->
-                <u-popup v-model="showNoticePopup" mode="center" :mask-close-able="true" border-radius="20" :closeable="true" @close="closeNoticePopup">
-                        <view class="notice-popup">
-                                <view class="notice-popup__title">{{ noticeInfo.title }}</view>
-                                <scroll-view class="notice-popup__content" scroll-y>
-                                        <u-parse
-                                                :html="noticeInfo.content"
-                                                :tag-style="vuex_parse_style"
-                                                :domain="vuex_config && vuex_config.upload && vuex_config.upload.cdnurl ? vuex_config.upload.cdnurl : ''"
-                                        ></u-parse>
-                                </scroll-view>
-                                <view class="notice-popup__btn" @click="closeNoticePopup">
-                                        <text>我知道了</text>
+                <!-- 弹窗公告 - 钉子墙风格 -->
+                <u-popup v-model="showNoticePopup" mode="center" :mask-close-able="false" :closeable="false" @close="closeNoticePopup">
+                        <view class="notice-board">
+                                <!-- 钉子（点击关闭） -->
+                                <view class="notice-board__pin" @click="closeNoticePopup">
+                                        <view class="pin-head"></view>
+                                        <view class="pin-needle"></view>
+                                        <view class="pin-shadow"></view>
+                                </view>
+                                <!-- 公告纸张 -->
+                                <view class="notice-board__paper">
+                                        <view class="paper-title">{{ noticeInfo.title }}</view>
+                                        <view class="paper-divider">
+                                                <view class="divider-line"></view>
+                                        </view>
+                                        <scroll-view class="paper-content" scroll-y>
+                                                <u-parse
+                                                        :html="noticeInfo.content"
+                                                        :tag-style="vuex_parse_style"
+                                                        :domain="vuex_config && vuex_config.upload && vuex_config.upload.cdnurl ? vuex_config.upload.cdnurl : ''"
+                                                ></u-parse>
+                                        </scroll-view>
+                                        <view class="paper-footer">
+                                                <view class="paper-tape"></view>
+                                                <view class="paper-btn" @click="closeNoticePopup">
+                                                        <text>我知道了</text>
+                                                </view>
+                                        </view>
                                 </view>
                         </view>
                 </u-popup>
@@ -356,40 +371,133 @@ page {
                 }
         }
 }
-/* 弹窗公告 */
-.notice-popup {
-        width: 600rpx;
-        background-color: #ffffff;
-        border-radius: 20rpx;
+/* ========== 弹窗公告 - 钉子墙风格 ========== */
+.notice-board {
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        width: 620rpx;
+}
+
+/* 钉子 */
+.notice-board__pin {
+        position: relative;
+        z-index: 10;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        margin-bottom: -16rpx;
+        cursor: pointer;
+}
+.pin-head {
+        width: 40rpx;
+        height: 40rpx;
+        border-radius: 50%;
+        background: linear-gradient(145deg, #e8e8e8, #b0b0b0);
+        box-shadow: 0 4rpx 8rpx rgba(0, 0, 0, 0.3), inset 0 2rpx 4rpx rgba(255, 255, 255, 0.5);
+        border: 2rpx solid #999;
+}
+.pin-needle {
+        width: 8rpx;
+        height: 24rpx;
+        background: linear-gradient(to bottom, #888, #666);
+        border-radius: 0 0 4rpx 4rpx;
+        margin-top: -2rpx;
+}
+.pin-shadow {
+        width: 30rpx;
+        height: 6rpx;
+        background: rgba(0, 0, 0, 0.15);
+        border-radius: 50%;
+        margin-top: -2rpx;
+        filter: blur(2rpx);
+}
+
+/* 纸张 */
+.notice-board__paper {
+        width: 100%;
+        background: linear-gradient(180deg, #fffef9 0%, #fefcf3 100%);
+        border-radius: 6rpx;
+        box-shadow:
+                4rpx 6rpx 16rpx rgba(0, 0, 0, 0.15),
+                0 0 0 1rpx rgba(0, 0, 0, 0.05);
+        padding-top: 24rpx;
+        overflow: hidden;
+        /* 纸张纹理感 */
+        background-image:
+                repeating-linear-gradient(
+                        0deg,
+                        transparent,
+                        transparent 58rpx,
+                        rgba(0, 0, 0, 0.02) 58rpx,
+                        rgba(0, 0, 0, 0.02) 60rpx
+                );
+}
+
+.paper-title {
+        text-align: center;
+        font-size: 36rpx;
+        font-weight: bold;
+        color: #2c1810;
+        padding: 0 40rpx 16rpx;
+        letter-spacing: 4rpx;
+}
+
+.paper-divider {
+        display: flex;
+        justify-content: center;
+        padding: 0 50rpx 8rpx;
+}
+.divider-line {
+        width: 80rpx;
+        height: 4rpx;
+        background: linear-gradient(to right, transparent, #c8a96e, transparent);
+        border-radius: 2rpx;
+}
+
+.paper-content {
+        max-height: 520rpx;
+        padding: 12rpx 36rpx 20rpx;
+        font-size: 26rpx;
+        color: #5a4a3a;
+        line-height: 2;
         overflow: hidden;
 }
-.notice-popup__title {
-        text-align: center;
-        font-size: 34rpx;
-        font-weight: bold;
-        color: #333;
-        padding: 40rpx 30rpx 20rpx;
+
+.paper-footer {
+        padding: 0 36rpx 30rpx;
+        position: relative;
 }
-.notice-popup__content {
-        max-height: 600rpx;
-        padding: 0 30rpx;
-        font-size: 28rpx;
-        color: #666;
-        line-height: 1.8;
+
+/* 胶带装饰 */
+.paper-tape {
+        position: absolute;
+        top: -20rpx;
+        left: 50%;
+        transform: translateX(-50%) rotate(-2deg);
+        width: 100rpx;
+        height: 30rpx;
+        background: rgba(255, 235, 170, 0.55);
+        border-radius: 2rpx;
+        z-index: 2;
 }
-.notice-popup__btn {
-        padding: 30rpx;
+
+.paper-btn {
+        margin-top: 10rpx;
         text-align: center;
-        border-top: 1rpx solid #f0f0f0;
         text {
                 display: inline-block;
-                background-color: #f93110;
-                color: #ffffff;
-                font-size: 30rpx;
-                padding: 16rpx 80rpx;
+                background: linear-gradient(135deg, #e8b960, #c8952a);
+                color: #fff;
+                font-size: 28rpx;
+                padding: 14rpx 72rpx;
                 border-radius: 40rpx;
+                letter-spacing: 4rpx;
+                box-shadow: 0 4rpx 12rpx rgba(200, 149, 42, 0.35);
         }
 }
+
 .hots-list{     
         margin-top: 30rpx;
         padding: 0 30rpx 30rpx;
