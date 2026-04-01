@@ -480,6 +480,7 @@
                         handleGridClick(item) {
                                 if (item.path === 'wxshare') {
                                         this.showSharePopup = true;
+                                        uni.showToast({ title: '弹窗已打开', icon: 'none' });
                                 } else {
                                         uni.navigateTo({ url: item.path });
                                 }
@@ -1069,16 +1070,6 @@
                 padding-bottom: env(safe-area-inset-bottom);
                 max-height: 85vh;
                 overflow-y: auto;
-                animation: shareSlideUp 0.35s cubic-bezier(0.32, 0.72, 0, 1) forwards;
-        }
-
-        @keyframes shareSlideUp {
-                from {
-                        transform: translateY(100%);
-                }
-                to {
-                        transform: translateY(0);
-                }
         }
 
         // 顶部手柄条
