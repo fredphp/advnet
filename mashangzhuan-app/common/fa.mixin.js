@@ -298,25 +298,12 @@ export const loginfunc = {
                 // #ifdef H5
                 // 公众号授权
                 async goAuth(page, scope) {
-                        // #ifdef H5
-                        if (!this.$util.isWeiXinBrowser()) {
-                                uni.showModal({
-                                        title: '提示',
-                                        content: '请在微信中打开此页面进行微信授权登录',
-                                        showCancel: false
-                                });
-                                return;
-                        }
-                        // #endif
                         page = page ? page : '/pages/login/auth';
 
-                        // 构造回调URL（当前域名下的auth页面）
+                        // 构造回调URL：当前域名 + hashpath参数
+                        // 微信回调后会带上 ?code=xxx&state=xxx，App.vue会自动将其转为 hash 路由
                         let redirectUrl = window.location.origin + window.location.pathname;
-                        if (window.location.hash != '') {
-                                redirectUrl += '?hashpath=' + encodeURIComponent(page);
-                        } else {
-                                redirectUrl = redirectUrl.replace(/\/pages\/.*/, page);
-                        }
+                        redirectUrl += '?hashpath=' + page;
 
                         try {
                                 let res = await this.$api.getOfficialAuthUrl({
@@ -324,7 +311,7 @@ export const loginfunc = {
                                         scope: scope || 'snsapi_userinfo'
                                 });
                                 if (!res.code) {
-                                        this.$u.toast(res.msg);
+                                        this.$u.toast(res.msg || '获取微信授权链接失败');
                                         return;
                                 }
                                 // 记录上一个非登录页面的路径，用于登录后返回
@@ -343,6 +330,7 @@ export const loginfunc = {
                                                 this.$u.vuex('vuex_lasturl', '/' + url + this.$u.queryParams(pages[pages.length - 1].options))
                                         }
                                 }
+                                // 跳转到微信授权页面
                                 window.location.href = res.data.auth_url;
                         } catch (e) {
                                 console.error('获取微信授权URL失败:', e);

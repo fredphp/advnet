@@ -223,12 +223,13 @@ class WechatService
     {
         $params = [
             'appid' => $appid,
-            'redirect_uri' => urlencode($redirectUri),
+            'redirect_uri' => $redirectUri,
             'response_type' => 'code',
             'scope' => $scope,
             'state' => $state,
         ];
         
+        // http_build_query 已自动对值进行URL编码，无需再手动urlencode
         return self::API_OAUTH2_AUTHORIZE . '?' . http_build_query($params) . '#wechat_redirect';
     }
     
