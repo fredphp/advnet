@@ -189,6 +189,9 @@ const install = (Vue, vm) => {
         vm.$api.withdrawApply            = async (params = {}) => await vm.$u.post('/api/withdraw/apply', params);
         vm.$api.withdrawCancel           = async (params = {}) => await vm.$u.post('/api/withdraw/cancel', params);
         vm.$api.withdrawStat             = async (params = {}) => await vm.$u.get('/api/withdraw/stat', params);
+
+        // 单页/弹窗公告
+        vm.$api.getPopupNotice           = async (params = {}) => await vm.$u.get('/api/singlepage/notice', params);
 }
 
 export default {
