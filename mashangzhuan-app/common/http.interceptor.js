@@ -40,8 +40,10 @@ let noLoginUrl = [
         '/addons/shop/api.page/index',
         '/addons/shop/api.page/lists',
         '/addons/shop/api.score/exchangeList',
-        '/addons/shop/api.attribute/index'
-                
+        '/addons/shop/api.attribute/index',
+
+        // 弹窗公告
+        '/api/singlepage/notice'
 ];
 
 //设置session_id
