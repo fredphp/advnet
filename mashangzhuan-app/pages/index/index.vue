@@ -458,29 +458,32 @@ page {
         margin-top: -4rpx;
 }
 
-/* 绳子 */
+/* 绳子（从钉子连接到相框上两个角） */
 .board-string {
         position: absolute;
-        top: 58rpx;
-        width: 3rpx;
+        top: 54rpx;
+        width: 2rpx;
         height: 50rpx;
         background: linear-gradient(to bottom, #a0886a, #8b7355);
-        z-index: 15;
-        border-radius: 2rpx;
-        box-shadow: 1rpx 1rpx 2rpx rgba(0, 0, 0, 0.1);
+        z-index: 5;
+        border-radius: 1rpx;
 }
 .board-string--left {
-        left: 80rpx;
+        left: 16rpx;
+        transform-origin: top center;
+        transform: rotate(12deg);
 }
 .board-string--right {
-        right: 80rpx;
+        right: 16rpx;
+        transform-origin: top center;
+        transform: rotate(-12deg);
 }
 
 /* 相框 */
 .board-frame {
-        width: 580rpx;
-        border-radius: 8rpx;
-        padding: 14rpx;
+        width: 560rpx;
+        border-radius: 6rpx;
+        padding: 16rpx;
         background: linear-gradient(145deg, #d4b896, #a0886a, #c4a882, #8b7355);
         box-shadow:
                 0 8rpx 30rpx rgba(0, 0, 0, 0.3),
@@ -491,7 +494,7 @@ page {
 /* 相框内部 */
 .frame-inner {
         background: linear-gradient(180deg, #faf6ef 0%, #f5efe4 50%, #faf7f0 100%);
-        border-radius: 4rpx;
+        border-radius: 2rpx;
         padding: 0;
         overflow: hidden;
         box-shadow: inset 0 0 20rpx rgba(0, 0, 0, 0.05);
@@ -499,29 +502,54 @@ page {
 
 .frame-title {
         text-align: center;
-        font-size: 34rpx;
+        font-size: 32rpx;
         font-weight: bold;
         color: #3d2b1f;
-        padding: 30rpx 30rpx 16rpx;
-        letter-spacing: 6rpx;
+        padding: 40rpx 36rpx 14rpx;
+        letter-spacing: 4rpx;
 }
 
 .frame-divider {
-        margin: 0 40rpx 16rpx;
+        margin: 0 50rpx 14rpx;
         height: 2rpx;
         background: linear-gradient(to right, transparent, #c4a67a, transparent);
 }
 
 .frame-content {
-        max-height: 480rpx;
-        padding: 0 30rpx 30rpx;
-        font-size: 26rpx;
+        max-height: 420rpx;
+        padding: 4rpx 36rpx 36rpx;
+        font-size: 25rpx;
         color: #5a4a3a;
-        line-height: 2;
+        line-height: 1.9;
         overflow: hidden;
         word-break: break-all;
         word-wrap: break-word;
         overflow-wrap: break-word;
+}
+/* 修复富文本内元素溢出 */
+.frame-content >>> view,
+.frame-content >>> p,
+.frame-content >>> div,
+.frame-content >>> span,
+.frame-content >>> img,
+.frame-content >>> h1,
+.frame-content >>> h2,
+.frame-content >>> h3,
+.frame-content >>> h4,
+.frame-content >>> h5,
+.frame-content >>> h6,
+.frame-content >>> ul,
+.frame-content >>> ol {
+        max-width: 100% !important;
+        overflow: hidden;
+        word-break: break-all !important;
+        box-sizing: border-box;
+}
+.frame-content >>> img {
+        max-width: 100% !important;
+        height: auto !important;
+        display: block;
+        margin: 10rpx auto;
 }
 
 .hots-list{     
