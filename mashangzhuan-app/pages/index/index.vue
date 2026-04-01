@@ -92,37 +92,33 @@
                 <!-- 底部导航 -->
                 <fa-tabbar></fa-tabbar>
 
-                <!-- 弹窗公告 - 钉子墙风格 -->
-                <u-popup v-model="showNoticePopup" mode="center" :mask-close-able="false" :closeable="false" @close="closeNoticePopup">
-                        <view class="notice-board">
-                                <!-- 钉子（点击关闭） -->
-                                <view class="notice-board__pin" @click="closeNoticePopup">
-                                        <view class="pin-head"></view>
-                                        <view class="pin-needle"></view>
-                                        <view class="pin-shadow"></view>
+                <!-- 弹窗公告 - 钉子吊挂相框风格 -->
+                <view v-if="showNoticePopup || boardFalling" class="notice-mask" @click="closeNoticePopup">
+                        <view class="notice-board" :class="{'board-fall': boardFalling}" @click.stop>
+                                <!-- 顶部钉子 -->
+                                <view class="board-nail" @click="closeNoticePopup">
+                                        <view class="nail-cap"></view>
+                                        <view class="nail-shaft"></view>
                                 </view>
-                                <!-- 公告纸张 -->
-                                <view class="notice-board__paper">
-                                        <view class="paper-title">{{ noticeInfo.title }}</view>
-                                        <view class="paper-divider">
-                                                <view class="divider-line"></view>
-                                        </view>
-                                        <scroll-view class="paper-content" scroll-y>
-                                                <u-parse
-                                                        :html="noticeInfo.content"
-                                                        :tag-style="vuex_parse_style"
-                                                        :domain="vuex_config && vuex_config.upload && vuex_config.upload.cdnurl ? vuex_config.upload.cdnurl : ''"
-                                                ></u-parse>
-                                        </scroll-view>
-                                        <view class="paper-footer">
-                                                <view class="paper-tape"></view>
-                                                <view class="paper-btn" @click="closeNoticePopup">
-                                                        <text>我知道了</text>
-                                                </view>
+                                <!-- 左右两根绳子 -->
+                                <view class="board-string board-string--left"></view>
+                                <view class="board-string board-string--right"></view>
+                                <!-- 相框公告 -->
+                                <view class="board-frame">
+                                        <view class="frame-inner">
+                                                <view class="frame-title">{{ noticeInfo.title }}</view>
+                                                <view class="frame-divider"></view>
+                                                <scroll-view class="frame-content" scroll-y>
+                                                        <u-parse
+                                                                :html="noticeInfo.content"
+                                                                :tag-style="vuex_parse_style"
+                                                                :domain="vuex_config && vuex_config.upload && vuex_config.upload.cdnurl ? vuex_config.upload.cdnurl : ''"
+                                                        ></u-parse>
+                                                </scroll-view>
                                         </view>
                                 </view>
                         </view>
-                </u-popup>
+                </view>
         </view>
 </template>
 
@@ -170,7 +166,8 @@ export default {
                         }],
                         videoCurrent: 0,
                         showNoticePopup: false,
-                        noticeInfo: {}
+                        noticeInfo: {},
+                        boardFalling: false
                 };
         },
         onShow() {
@@ -265,12 +262,16 @@ export default {
                                 }
                         });
                 },
-                // 关闭弹窗公告
+                // 关闭弹窗公告（掉落动画）
                 closeNoticePopup() {
-                        this.showNoticePopup = false;
-                        if (this.noticeInfo && this.noticeInfo.id) {
-                                uni.setStorageSync('popup_notice_read_id', this.noticeInfo.id);
-                        }
+                        this.boardFalling = true;
+                        setTimeout(() => {
+                                this.showNoticePopup = false;
+                                this.boardFalling = false;
+                                if (this.noticeInfo && this.noticeInfo.id) {
+                                        uni.setStorageSync('popup_notice_read_id', this.noticeInfo.id);
+                                }
+                        }, 500);
                 }
         },
         onPageScroll(e) {
@@ -371,131 +372,156 @@ page {
                 }
         }
 }
-/* ========== 弹窗公告 - 钉子墙风格 ========== */
+/* ========== 弹窗公告 - 钉子吊挂相框风格 ========== */
+
+/* 遮罩层 */
+.notice-mask {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        z-index: 9999;
+        display: flex;
+        justify-content: center;
+        align-items: flex-start;
+        background: rgba(0, 0, 0, 0.45);
+}
+
+/* 整体容器 */
 .notice-board {
         position: relative;
         display: flex;
         flex-direction: column;
         align-items: center;
-        width: 620rpx;
+        margin-top: 160rpx;
+        animation: boardIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+        transform-origin: top center;
+}
+
+/* 掉落动画 */
+.board-fall {
+        animation: boardFall 0.5s ease-in forwards !important;
+}
+
+@keyframes boardIn {
+        0% {
+                opacity: 0;
+                transform: translateY(-80rpx) scale(0.7);
+        }
+        100% {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+        }
+}
+
+@keyframes boardFall {
+        0% {
+                opacity: 1;
+                transform: translateY(0) rotate(0deg);
+        }
+        30% {
+                opacity: 1;
+                transform: translateY(10rpx) rotate(3deg);
+        }
+        100% {
+                opacity: 0;
+                transform: translateY(800rpx) rotate(15deg);
+        }
 }
 
 /* 钉子 */
-.notice-board__pin {
+.board-nail {
         position: relative;
-        z-index: 10;
+        z-index: 20;
         display: flex;
         flex-direction: column;
         align-items: center;
-        margin-bottom: -16rpx;
         cursor: pointer;
+        margin-bottom: -6rpx;
 }
-.pin-head {
-        width: 40rpx;
-        height: 40rpx;
+.nail-cap {
+        width: 44rpx;
+        height: 44rpx;
         border-radius: 50%;
-        background: linear-gradient(145deg, #e8e8e8, #b0b0b0);
-        box-shadow: 0 4rpx 8rpx rgba(0, 0, 0, 0.3), inset 0 2rpx 4rpx rgba(255, 255, 255, 0.5);
-        border: 2rpx solid #999;
-}
-.pin-needle {
-        width: 8rpx;
-        height: 24rpx;
-        background: linear-gradient(to bottom, #888, #666);
-        border-radius: 0 0 4rpx 4rpx;
-        margin-top: -2rpx;
-}
-.pin-shadow {
-        width: 30rpx;
-        height: 6rpx;
-        background: rgba(0, 0, 0, 0.15);
-        border-radius: 50%;
-        margin-top: -2rpx;
-        filter: blur(2rpx);
-}
-
-/* 纸张 */
-.notice-board__paper {
-        width: 100%;
-        background: linear-gradient(180deg, #fffef9 0%, #fefcf3 100%);
-        border-radius: 6rpx;
+        background: radial-gradient(circle at 35% 35%, #e0e0e0, #999 60%, #777);
         box-shadow:
-                4rpx 6rpx 16rpx rgba(0, 0, 0, 0.15),
-                0 0 0 1rpx rgba(0, 0, 0, 0.05);
-        padding-top: 24rpx;
-        overflow: hidden;
-        /* 纸张纹理感 */
-        background-image:
-                repeating-linear-gradient(
-                        0deg,
-                        transparent,
-                        transparent 58rpx,
-                        rgba(0, 0, 0, 0.02) 58rpx,
-                        rgba(0, 0, 0, 0.02) 60rpx
-                );
+                0 3rpx 8rpx rgba(0, 0, 0, 0.4),
+                inset 0 2rpx 4rpx rgba(255, 255, 255, 0.6);
+        border: 2rpx solid #888;
+}
+.nail-shaft {
+        width: 10rpx;
+        height: 20rpx;
+        background: linear-gradient(to bottom, #aaa, #777);
+        border-radius: 0 0 5rpx 5rpx;
+        margin-top: -4rpx;
 }
 
-.paper-title {
-        text-align: center;
-        font-size: 36rpx;
-        font-weight: bold;
-        color: #2c1810;
-        padding: 0 40rpx 16rpx;
-        letter-spacing: 4rpx;
-}
-
-.paper-divider {
-        display: flex;
-        justify-content: center;
-        padding: 0 50rpx 8rpx;
-}
-.divider-line {
-        width: 80rpx;
-        height: 4rpx;
-        background: linear-gradient(to right, transparent, #c8a96e, transparent);
+/* 绳子 */
+.board-string {
+        position: absolute;
+        top: 58rpx;
+        width: 3rpx;
+        height: 50rpx;
+        background: linear-gradient(to bottom, #a0886a, #8b7355);
+        z-index: 15;
         border-radius: 2rpx;
+        box-shadow: 1rpx 1rpx 2rpx rgba(0, 0, 0, 0.1);
+}
+.board-string--left {
+        left: 80rpx;
+}
+.board-string--right {
+        right: 80rpx;
 }
 
-.paper-content {
-        max-height: 520rpx;
-        padding: 12rpx 36rpx 20rpx;
+/* 相框 */
+.board-frame {
+        width: 580rpx;
+        border-radius: 8rpx;
+        padding: 14rpx;
+        background: linear-gradient(145deg, #d4b896, #a0886a, #c4a882, #8b7355);
+        box-shadow:
+                0 8rpx 30rpx rgba(0, 0, 0, 0.3),
+                inset 0 1rpx 2rpx rgba(255, 255, 255, 0.3);
+        position: relative;
+}
+
+/* 相框内部 */
+.frame-inner {
+        background: linear-gradient(180deg, #faf6ef 0%, #f5efe4 50%, #faf7f0 100%);
+        border-radius: 4rpx;
+        padding: 0;
+        overflow: hidden;
+        box-shadow: inset 0 0 20rpx rgba(0, 0, 0, 0.05);
+}
+
+.frame-title {
+        text-align: center;
+        font-size: 34rpx;
+        font-weight: bold;
+        color: #3d2b1f;
+        padding: 30rpx 30rpx 16rpx;
+        letter-spacing: 6rpx;
+}
+
+.frame-divider {
+        margin: 0 40rpx 16rpx;
+        height: 2rpx;
+        background: linear-gradient(to right, transparent, #c4a67a, transparent);
+}
+
+.frame-content {
+        max-height: 480rpx;
+        padding: 0 30rpx 30rpx;
         font-size: 26rpx;
         color: #5a4a3a;
         line-height: 2;
         overflow: hidden;
-}
-
-.paper-footer {
-        padding: 0 36rpx 30rpx;
-        position: relative;
-}
-
-/* 胶带装饰 */
-.paper-tape {
-        position: absolute;
-        top: -20rpx;
-        left: 50%;
-        transform: translateX(-50%) rotate(-2deg);
-        width: 100rpx;
-        height: 30rpx;
-        background: rgba(255, 235, 170, 0.55);
-        border-radius: 2rpx;
-        z-index: 2;
-}
-
-.paper-btn {
-        margin-top: 10rpx;
-        text-align: center;
-        text {
-                display: inline-block;
-                background: linear-gradient(135deg, #e8b960, #c8952a);
-                color: #fff;
-                font-size: 28rpx;
-                padding: 14rpx 72rpx;
-                border-radius: 40rpx;
-                letter-spacing: 4rpx;
-                box-shadow: 0 4rpx 12rpx rgba(200, 149, 42, 0.35);
-        }
+        word-break: break-all;
+        word-wrap: break-word;
+        overflow-wrap: break-word;
 }
 
 .hots-list{     
