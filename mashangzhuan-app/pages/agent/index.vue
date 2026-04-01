@@ -282,27 +282,41 @@
                         };
                 },
                 onLoad() {
-                        // 页面加载时可以调用接口获取真实数据
                         this.loadDistributionData();
                         this.getAgentInfo();
+                        this.getWithdrawStat();
                 },
                 methods: {
+                        getWithdrawStat() {
+                                this.$api.withdrawStat().then(res => {
+                                        if (res && res.code == 1) {
+                                                const d = res.data;
+                                                this.userInfo = {
+                                                        ...this.userInfo,
+                                                        total_withdraw: d.total_withdraw_amount || '0.00',
+                                                        withdraw_count: d.success_count || 0,
+                                                };
+                                        }
+                                }).catch(err => {
+                                        console.error('[Agent] withdrawStat接口异常:', err);
+                                });
+                        },
                         getAgentInfo() {
                                 this.$api.inviteOverview().then(res => {
                                         if (res && res.code == 1) {
                                                 const d = res.data;
+                                                const rate = parseFloat(d.exchange_rate) || 10000;
+                                                const coinBalance = parseFloat(d.coin_balance) || 0;
+                                                const coinFrozen = parseFloat(d.coin_frozen) || 0;
                                                 this.userInfo = {
+                                                        ...this.userInfo,
                                                         ...d,
                                                         month_reward: d.month_reward || '0.00',
                                                         total_income: d.total_income || '0.00',
                                                         order_nums: d.order_nums || 0,
                                                         team_nums: d.team_nums || 0,
-                                                        income_money: d.income_money || '0.00',
-                                                        frozen_money: d.frozen_money || '0.00',
-                                                        nosettle_money: d.nosettle_money || '0.00',
-                                                        settle_money: d.settle_money || '0.00',
-                                                        total_withdraw: d.total_withdraw || '0.00',
-                                                        withdraw_count: d.withdraw_count || 0,
+                                                        income_money: (coinBalance / rate).toFixed(2),
+                                                        frozen_money: (coinFrozen / rate).toFixed(2),
                                                         level_name: d.level_name || '普通会员',
                                                         parent_name: d.parent_name || '无',
                                                         parent_user_id: d.parent_user_id || 0,
