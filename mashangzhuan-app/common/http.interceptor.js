@@ -18,6 +18,13 @@ let noLoginUrl = [
         '/addons/third/api/getAuthUrl',
         '/addons/third/api/callback',
         '/addons/third/api/account',
+        // 微信登录接口（新）
+        '/api/wechat/getOfficialAuthUrl',
+        '/api/wechat/officialLogin',
+        '/api/wechat/appLogin',
+        '/api/wechat/miniLogin',
+        '/api/wechat/loginStatus',
+        '/api/wechat/getMiniPhone',
                 
         '/addons/shop/api.goods/category',
         '/addons/shop/api.goods/index',

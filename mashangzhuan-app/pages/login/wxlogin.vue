@@ -80,8 +80,7 @@
                                 this.isThreeLogin = true;
                         }
                         // #endif
-                        // 页面加载时检查微信登录状态
-                        this.checkWechatLoginStatus();
+                        // 页面加载完成
                 },
                 methods: {
                         goThreeLogin: async function() {
@@ -105,12 +104,6 @@
                                 this.goAppLogin();
                                 // #endif
                         },
-                        // 检查微信登录状态
-                        checkWechatLoginStatus() {
-                                // 实际项目中调用微信登录状态检查接口
-                                console.log('检查微信登录状态');
-                        },
-
                         // 微信登录处理
                         handleWechatLogin(userInfo) {
                                 if (userInfo.detail.userInfo) {
