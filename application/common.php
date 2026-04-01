@@ -478,6 +478,32 @@ if (!function_exists('check_url_allowed')) {
     }
 }
 
+if (!function_exists('str_to_byte')) {
+    /**
+     * 将文件大小字符串转换为字节数
+     * @param string $val 大小字符串，如 "10mb", "512kb", "1gb"
+     * @return int
+     */
+    function str_to_byte($val)
+    {
+        $val = trim($val);
+        $last = strtolower($val[strlen($val) - 1]);
+        $val = (int) $val;
+        switch ($last) {
+            case 'g':
+                $val *= 1024 * 1024 * 1024;
+                break;
+            case 'm':
+                $val *= 1024 * 1024;
+                break;
+            case 'k':
+                $val *= 1024;
+                break;
+        }
+        return $val;
+    }
+}
+
 if (!function_exists('build_suffix_image')) {
     /**
      * 生成文件后缀图片
