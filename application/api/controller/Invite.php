@@ -386,6 +386,9 @@ class Invite extends Api
         $level = (int) $this->request->get('level', 0);
         $page = (int) $this->request->get('page', 1);
         $limit = (int) $this->request->get('limit', 20);
+        $limit = min($limit, 50);
+        $startTime = $this->request->get('start_time', '');
+        $endTime = $this->request->get('end_time', '');
         
         try {
             $query = InviteCommissionLog::where('parent_id', $userId);
@@ -396,6 +399,15 @@ class Invite extends Api
             
             if ($level > 0) {
                 $query->where('level', $level);
+            }
+            
+            // 日期范围筛选
+            if ($startTime) {
+                $query->where('createtime', '>=', strtotime($startTime));
+            }
+            if ($endTime) {
+                // 结束日期包含当天，所以加一天
+                $query->where('createtime', '<', strtotime($endTime) + 86400);
             }
             
             $total = $query->count();

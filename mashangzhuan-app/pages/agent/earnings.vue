@@ -1,575 +1,616 @@
 <template>
-        <view class="earnings-page">
-                <!-- 顶部导航栏 -->
-                <fa-navbar title="收益明细" :border-bottom="false"></fa-navbar>
+	<view class="earnings-page">
+		<!-- 顶部导航栏 -->
+		<fa-navbar title="收益明细" :border-bottom="false"></fa-navbar>
 
-                <!-- 收益概览 -->
-                <u-gap height="32"></u-gap>
-                <view class="earnings-overview">
-                        <view class="overview-item">
-                                <text class="overview-label">累计收益</text>
-                                <text class="overview-value">¥{{userInfo.total_income}}</text>
-                        </view>
-                        <view class="overview-item">
-                                <text class="overview-label">本月收益</text>
-                                <text class="overview-value">¥{{userInfo.month_reward}}</text>
-                        </view>
-                        <view class="overview-item">
-                                <text class="overview-label">待结算</text>
-                                <text class="overview-value">¥{{ userInfo.nosettle_money }}</text>
-                        </view>
-                </view>
+		<!-- 收益概览 -->
+		<view class="earnings-overview">
+			<view class="overview-item">
+				<text class="overview-label">累计收益</text>
+				<text class="overview-value">¥{{ userInfo.total_income || '0.00' }}</text>
+			</view>
+			<view class="overview-divider"></view>
+			<view class="overview-item">
+				<text class="overview-label">本月收益</text>
+				<text class="overview-value">¥{{ userInfo.month_reward || '0.00' }}</text>
+			</view>
+			<view class="overview-divider"></view>
+			<view class="overview-item">
+				<text class="overview-label">待结算</text>
+				<text class="overview-value">¥{{ pendingMoney }}</text>
+			</view>
+		</view>
 
-                <!-- 筛选 -->
-                <!-- <view class="subsection-filter">
-                        <u-subsection 
-                        :current="activeType" 
-                        :list="earningTypes" 
-                        @change="handleTypeChange" 
-                        bg-color="#fff" button-color="rgba(230,33,41,0.1)" active-color="#E62129" inactive-color="#000"
-                        ></u-subsection>
-                </view> -->
-                <!-- 时间筛选 -->
-                <!-- <view class="date-filter">
-                        <view class="filter-button" @click="timeShow = true">
-                                <text class="button-text">{{ currentDateText }}</text>
-                                <u-icon name="calendar" color="#86909C" size="28"></u-icon>
-                        </view>
-                        <u-picker v-model="timeShow" mode="time" @confirm="handleDateConfirm" @cancel="handleDateCancel">
+		<!-- 来源类型筛选 -->
+		<view class="filter-section">
+			<view class="filter-tabs">
+				<view class="tab-item" :class="{ active: activeSource === '' }" @click="handleSourceChange('')">
+					<text>全部</text>
+				</view>
+				<view class="tab-item" :class="{ active: activeSource === 'withdraw' }" @click="handleSourceChange('withdraw')">
+					<text>提现分佣</text>
+				</view>
+				<view class="tab-item" :class="{ active: activeSource === 'video' }" @click="handleSourceChange('video')">
+					<text>视频分佣</text>
+				</view>
+				<view class="tab-item" :class="{ active: activeSource === 'red_packet' }" @click="handleSourceChange('red_packet')">
+					<text>红包分佣</text>
+				</view>
+				<view class="tab-item" :class="{ active: activeSource === 'game' }" @click="handleSourceChange('game')">
+					<text>游戏分佣</text>
+				</view>
+			</view>
+		</view>
 
-                        </u-picker>
+		<!-- 日期筛选 -->
+		<view class="search-section">
+			<view class="time-picker">
+				<picker mode="date" :value="startDate" @change="bindStartDateChange" fields="month">
+					<view class="picker">{{ startDate || '开始月份' }}</view>
+				</picker>
+				<text class="separator">至</text>
+				<picker mode="date" :value="endDate" @change="bindEndDateChange" fields="month">
+					<view class="picker">{{ endDate || '结束月份' }}</view>
+				</picker>
+			</view>
+			<view class="search-actions">
+				<view class="reset-btn" @click="handleReset" v-if="startDate || endDate">
+					<text>重置</text>
+				</view>
+				<view class="search-btn" @click="handleSearch">
+					<text>搜索</text>
+				</view>
+			</view>
+		</view>
 
-                </view> -->
+		<!-- 收益明细列表 -->
+		<view class="earnings-list">
+			<view class="list-header">
+				<text class="header-title">收益明细</text>
+				<text class="header-count" v-if="total > 0">共{{ total }}条</text>
+			</view>
 
-                <!-- 收益图表 -->
-                <view class="earnings-chart" v-if="false">
-                        <view class="chart-header">
-                                <text class="chart-title">收益趋势</text>
-                                <view class="chart-subsection">
-                                        <u-subsection
-                                        :current="chartPeriod" 
-                                        :list="periodOptions" 
-                                        @change="handleChartPeriodChange" 
-                                        font-size="24" height="60"
-                                        bg-color="#F7F8FA" button-color="rgba(230,33,41,1)" active-color="#fff" inactive-color="#666"></u-subsection>
-                                </view>
-                        </view>
+			<!-- 列表项 -->
+			<view class="earning-item" v-for="(item, index) in earnings" :key="index">
+				<view class="item-left">
+					<u-avatar :src="item.user_info && item.user_info.avatar ? item.user_info.avatar : '/static/image/avatar.png'" size="80" mode="circle"></u-avatar>
+					<view class="item-detail">
+						<view class="item-title">{{ item.goods ? item.goods.title : '佣金收益' }}</view>
+						<view class="item-meta">
+							<text class="item-time">{{ item.createtime }}</text>
+							<text class="item-status" :class="'status-' + item.status">{{ item.status_text }}</text>
+						</view>
+						<view class="item-sub" v-if="item.user_info">
+							<text class="item-nickname">来自: {{ item.user_info.nickname }}</text>
+							<text class="item-level" v-if="item.level">· {{ item.level == 1 ? '一级' : '二级' }}</text>
+						</view>
+					</view>
+				</view>
+				<view class="item-right">
+					<text class="item-amount" :class="{'amount-positive': item.status === 'completed'}">
+						{{ item.status === 'completed' ? '+' : '' }}¥{{ Number(item.reward_money || 0).toFixed(2) }}
+					</text>
+				</view>
+			</view>
 
-                        <view class="chart-container">
-                                <canvas canvas-id="earningsChart" type="line" :canvas-data="chartData" :force-use-old-canvas="true"
-                                        class="chart"></canvas>
-                        </view>
-                </view>
-                
-                <view class="search-section">
-                        <view class="time-picker">
-                                <view style="width: 40%;">
-                                        <picker mode="date" :value="startDate" @change="bindStartDateChange">
-                                                <view class="picker">{{ startDate || '开始日期' }}</view>
-                                        </picker>
-                                </view>
-                                <text class="separator">至</text>
-                                <view style="width: 40%;">
-                                        <picker mode="date" :value="endDate" @change="bindEndDateChange">
-                                                <view class="picker">{{ endDate || '结束日期' }}</view>
-                                        </picker>
-                                </view>
-                        </view>
-                        <button class="search-btn" @click="handleSearch">搜索</button>
-                </view>
+			<!-- 加载中 -->
+			<view class="load-more" v-if="loading && page > 1">
+				<view class="loading-spinner"></view>
+				<text class="load-text">加载中...</text>
+			</view>
 
-                <!-- 收益明细列表 -->
-                <view class="earnings-list">
-                        <view class="list-header">
-                                <text class="header-title">收益明细</text>
-                        </view>
+			<!-- 首次加载中 -->
+			<view class="first-loading" v-if="loading && page === 1 && earnings.length === 0">
+				<view class="loading-spinner"></view>
+				<text class="load-text">加载中...</text>
+			</view>
 
-                        <view class="earning-item" v-for="(item, index) in filteredEarnings" :key="index" v-if="item.goods">
-                                <view class="item-info">
-                                        <view class="item-icon icon-order">
-                                                <u-icon name="red-packet-fill" color="#FFFFFF" size="36"></u-icon>
-                                        </view>
-                                        <view class="item-detail">
-                                                <view class="item-title">{{ item.goods.title }}</view>
-                                                <view class="item-time">{{ item.createtime }}</view>
-                                        </view>
-                                </view>
-                                <text class="item-amount"
-                                        :class="{'amount-positive': item.reward_money >= 0, 'amount-negative': item.reward_money < 0}">
-                                        {{ item.reward_money >= 0 ? '+' : '' }}¥{{ Math.abs(item.reward_money).toFixed(2) }}
-                                </text>
-                        </view>
+			<!-- 没有更多 -->
+			<view class="load-more" v-else-if="!hasMore && earnings.length > 0">
+				<text class="load-text">— 没有更多了 —</text>
+			</view>
 
-                        <view class="no-data" v-if="filteredEarnings.length === 0">
-                                <u-empty mode="list" text="暂无收益记录"></u-empty>
-                        </view>
-                </view>
+			<!-- 空状态 -->
+			<view class="no-data" v-if="!loading && earnings.length === 0">
+				<u-empty mode="list" text="暂无收益记录"></u-empty>
+			</view>
+		</view>
 
-                <!-- 加载更多 -->
-                <view class="load-more" v-if="hasMore">
-                        <!-- <u-loading-icon mode="circle" size="24"></u-loading-icon> -->
-                        <text class="load-text">加载更多</text>
-                </view>
-        </view>
+		<!-- 底部安全区域 -->
+		<view class="safe-bottom"></view>
+	</view>
 </template>
 
 <script>
-        export default {
-                data() {
-                        return {
-                                // 收益概览数据
-                                totalEarnings: '12,560.00',
-                                monthlyEarnings: '3,280.00',
-                                pendingEarnings: '1,250.00',
+	import uAvatar from '@/uview-ui/components/u-avatar/u-avatar.vue';
 
-                                // 时间筛选
-                                selectedDateRange: ['2023-08-01', '2023-08-31'],
-                                currentDateText: '2023-08-01 至 2023-08-31',
-                                dateRangeText: ['开始日期', '结束日期'],
-                                timeShow: false,
-                                // 收益类型筛选
-                                earningTypes: [{
-                                                name: '全部'
-                                        },
-                                        {
-                                                name: '订单佣金'
-                                        },
-                                        {
-                                                name: '团队奖励'
-                                        },
-                                        {
-                                                name: '其他奖励'
-                                        },
+	export default {
+		components: {
+			uAvatar
+		},
+		data() {
+			return {
+				// 用户概览信息
+				userInfo: {},
+				// 待结算金额
+				pendingMoney: '0.00',
 
-                                ],
-                                periodOptions: [{
-                                                name: '本周'
-                                        },
-                                        {
-                                                name: '本月'
-                                        },
-                                        {
-                                                name: '本季度'
-                                        },
-                                        {
-                                                name: '本年'
-                                        },
+				// 分佣来源类型筛选
+				activeSource: '',
 
-                                ],
-                                activeType: 0,
+				// 日期筛选
+				startDate: '',
+				endDate: '',
 
-                                // 图表周期
-                                chartPeriod: 1, // 0:周, 1:月, 2:年
+				// 收益列表
+				earnings: [],
 
-                                // 图表数据
-                                chartData: {
-                                        categories: ['1日', '5日', '10日', '15日', '20日', '25日', '30日'],
-                                        series: [{
-                                                name: '收益',
-                                                data: [150, 320, 280, 450, 380, 520, 410],
-                                                color: '#de0011',
-                                                lineWidth: 2
-                                        }]
-                                },
+				// 分页
+				page: 1,
+				pageSize: 20,
+				total: 0,
+				loading: false,
+				hasMore: false,
 
-                                // 收益明细数据
-                                earnings: [
-                                ],
+				// 来源类型名称映射
+				sourceTypeNames: {
+					'withdraw': '提现分佣',
+					'video': '视频分佣',
+					'red_packet': '红包分佣',
+					'game': '游戏分佣',
+					'sign': '签到分佣',
+					'other': '其他分佣',
+				},
+			};
+		},
+		onLoad() {
+			this.loadOverview();
+			this.loadEarnings(true);
+		},
+		onPullDownRefresh() {
+			// 下拉刷新
+			this.resetAndLoad();
+		},
+		onReachBottom() {
+			// 上拉加载更多
+			this.loadMore();
+		},
+		methods: {
+			// 加载概览数据
+			loadOverview() {
+				this.$api.inviteOverview().then(res => {
+					if (res && res.code == 1) {
+						this.userInfo = {
+							...res.data,
+							total_income: res.data.total_income || '0.00',
+							month_reward: res.data.month_reward || '0.00',
+						};
+						// 待结算 = 冻结金币 / 汇率
+						const coinFrozen = parseFloat(res.data.coin_frozen || 0);
+						const exchangeRate = parseFloat(res.data.exchange_rate || 10000);
+						if (exchangeRate > 0) {
+							this.pendingMoney = (coinFrozen / exchangeRate).toFixed(2);
+						}
+					}
+				}).catch(err => {
+					console.error('[Earnings] overview接口异常:', err);
+				});
+			},
 
-                                // 是否有更多数据
-                                hasMore: true,
-                                startDate:'',
-                                endDate:'',
-                                userInfo:{}
-                        };
-                },
-                computed: {
-                        // 筛选后的收益列表
-                        filteredEarnings() {
-                                let result = [...this.earnings];
+			// 加载收益列表（reset=true时重置列表）
+			loadEarnings(reset) {
+				if (this.loading) return;
+				if (reset) {
+					this.page = 1;
+					this.earnings = [];
+					this.hasMore = false;
+				}
+				this.loading = true;
 
-                                // 根据类型筛选
-                                if (this.activeType > 0) {
-                                        const typeMap = ['', 'order', 'team', 'reward'];
-                                        result = result.filter(item => item.type === typeMap[this.activeType]);
-                                }
+				const params = {
+					page: this.page,
+					limit: this.pageSize,
+				};
+				if (this.activeSource) {
+					params.source_type = this.activeSource;
+				}
+				if (this.startDate) {
+					params.start_time = this.startDate + '-01';
+				}
+				if (this.endDate) {
+					// 获取结束月份的最后一天
+					const endDateParts = this.endDate.split('-');
+					const year = parseInt(endDateParts[0]);
+					const month = parseInt(endDateParts[1]);
+					const lastDay = new Date(year, month, 0).getDate();
+					params.end_time = this.endDate + '-' + String(lastDay).padStart(2, '0');
+				}
 
-                                // 这里可以添加日期范围筛选逻辑
+				this.$api.inviteCommissionList(params).then(res => {
+					if (res && res.code == 1) {
+						const newList = res.data.list || [];
+						this.total = res.data.total || 0;
 
-                                return result;
-                        }
-                },
-                onLoad() {
-                        const endDate = this.formatDate(new Date());
-                        const startDate = this.formatDate(new Date(new Date().setMonth(new Date().getMonth() - 1)));
-                        
-                        this.startDate = startDate;
-                        this.endDate = endDate;
-                        // 加载收益数据
-                        this.loadEarningsData();
-                        // 初始化图表
-                        this.initChart();
-                },
-                methods: {
-                        // 格式化日期
-                        formatDate(date) {
-                                const year = date.getFullYear();
-                                const month = (date.getMonth() + 1).toString().padStart(2, '0');
-                                const day = date.getDate().toString().padStart(2, '0');
-                                return `${year}-${month}-${day}`;
-                        },
-                        
-                        // 格式化时间
-                        formatTime(timestamp) {
-                                const date = new Date(timestamp);
-                                return `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}-${date.getDate().toString().padStart(2, '0')} ${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
-                        },
-                        
-                        // 开始日期选择
-                        bindStartDateChange(e) {
-                                this.startDate = e.detail.value;
-                        },
-                        
-                        // 结束日期选择
-                        bindEndDateChange(e) {
-                                this.endDate = e.detail.value;
-                        },
-                        // 加载收益数据
-                        loadEarningsData() {
-                                this.$api.inviteOverview().then(res => {
-                                        if (res && res.code == 1) {
-                                                this.userInfo = {
-                                                        ...res.data,
-                                                        total_income: res.data.total_income || '0.00',
-                                                        month_reward: res.data.month_reward || '0.00',
-                                                        nosettle_money: res.data.nosettle_money || '0.00',
-                                                };
-                                                this.getEarningsList();
-                                        }
-                                }).catch(err => {
-                                        console.error('[Earnings] overview接口异常:', err);
-                                });
-                        },
-                        getEarningsList() {
-                                this.$api.inviteCommissionList({ page: 1, limit: 20 }).then(res => {
-                                        if (res && res.code == 1) {
-                                                this.earnings = res.data.list || [];
-                                        }
-                                }).catch(err => {
-                                        console.error('[Earnings] commissionList接口异常:', err);
-                                });
-                        },
+						if (reset) {
+							this.earnings = newList;
+						} else {
+							this.earnings = this.earnings.concat(newList);
+						}
+						this.hasMore = this.earnings.length < this.total;
+					}
+				}).catch(err => {
+					console.error('[Earnings] commissionList接口异常:', err);
+					uni.showToast({ title: '加载失败', icon: 'none' });
+				}).finally(() => {
+					this.loading = false;
+					uni.stopPullDownRefresh();
+				});
+			},
 
-                        // 初始化图表
-                        initChart() {
-                                // 这里可以根据需要初始化图表数据
-                                console.log('图表初始化完成');
-                        },
+			// 重置并加载
+			resetAndLoad() {
+				this.loadOverview();
+				this.loadEarnings(true);
+			},
 
-                        // 日期选择确认
-                        handleDateConfirm(e) {
-                                this.selectedDateRange = e.value;
-                                this.currentDateText = `${e.value[0]} 至 ${e.value[1]}`;
-                                // 执行日期筛选逻辑
-                                console.log('选择日期范围:', this.selectedDateRange);
-                        },
+			// 上拉加载更多
+			loadMore() {
+				if (this.loading || !this.hasMore) return;
+				this.page++;
+				this.loadEarnings(false);
+			},
 
-                        // 日期选择取消
-                        handleDateCancel() {
-                                console.log('取消日期选择');
-                        },
+			// 来源类型切换
+			handleSourceChange(sourceType) {
+				if (this.activeSource === sourceType) return;
+				this.activeSource = sourceType;
+				this.loadEarnings(true);
+			},
 
-                        // 收益类型切换
-                        handleTypeChange(index) {
-                                this.activeType = index;
-                        },
+			// 开始日期选择
+			bindStartDateChange(e) {
+				this.startDate = e.detail.value;
+			},
 
-                        // 图表周期切换
-                        handleChartPeriodChange(index) {
-                                this.chartPeriod = index;
-                                // 更新图表数据
-                                if (index === 0) {
-                                        // 周数据
-                                        this.chartData.categories = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'];
-                                        this.chartData.series[0].data = [120, 180, 250, 190, 320, 450, 380];
-                                } else if (index === 1) {
-                                        // 月数据
-                                        this.chartData.categories = ['1日', '5日', '10日', '15日', '20日', '25日', '30日'];
-                                        this.chartData.series[0].data = [150, 320, 280, 450, 380, 520, 410];
-                                } else {
-                                        // 年数据
-                                        this.chartData.categories = ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月',
-                                                '12月'
-                                        ];
-                                        this.chartData.series[0].data = [850, 1200, 980, 1500, 1800, 2100, 1950, 3280, 0, 0, 0, 0];
-                                }
-                        },
+			// 结束日期选择
+			bindEndDateChange(e) {
+				this.endDate = e.detail.value;
+			},
 
-                        // 加载更多
-                        loadMoreData() {
-                                // 模拟加载更多数据
-                                if (this.hasMore) {
-                                        setTimeout(() => {
-                                                // 复制现有数据并修改部分信息作为新数据
-                                                const newEarnings = this.earnings.slice(0, 3).map(item => ({
-                                                        ...item,
-                                                        id: `E${Math.floor(Math.random() * 1000000000)}`,
-                                                        time: '2023-08-15 10:30',
-                                                        amount: (Math.random() * 100).toFixed(2)
-                                                }));
+			// 搜索
+			handleSearch() {
+				this.loadEarnings(true);
+			},
 
-                                                this.earnings = [...this.earnings, ...newEarnings];
-
-                                                // 控制加载更多次数
-                                                if (this.earnings.length >= 15) {
-                                                        this.hasMore = false;
-                                                }
-                                        }, 1000);
-                                }
-                        }
-                },
-                onReachBottom() {
-                        // 页面滚动到底部时加载更多
-                        this.loadMoreData();
-                }
-        };
+			// 重置筛选
+			handleReset() {
+				this.startDate = '';
+				this.endDate = '';
+				this.loadEarnings(true);
+			},
+		}
+	};
 </script>
 
 <style scoped lang="scss">
-        .earnings-page {
-                background-color: #F5F7FA;
-                min-height: 100vh;
-                font-size: 28rpx;
-                padding-bottom: 32rpx;
-                color: #333;
-        }
+	.earnings-page {
+		background-color: #F5F7FA;
+		min-height: 100vh;
+		font-size: 28rpx;
+		color: #333;
+	}
 
-        // 收益概览
-        .earnings-overview {
-                margin: 0 32rpx 32rpx 32rpx;
-                border-radius: 20rpx;
-                display: flex;
-                padding: 32rpx 0;
-                color: #fff;
-                background: linear-gradient(to right, #FF8D3B 0%, #E62129 100%);
-                margin-bottom: 20rpx;
+	/* 收益概览 */
+	.earnings-overview {
+		margin: 24rpx 24rpx 0;
+		border-radius: 20rpx;
+		display: flex;
+		padding: 36rpx 0;
+		color: #fff;
+		background: linear-gradient(135deg, #FF8D3B 0%, #E62129 100%);
+		box-shadow: 0 8rpx 24rpx rgba(230, 33, 41, 0.25);
 
-                .overview-item {
-                        flex: 1;
-                        text-align: center;
+		.overview-item {
+			flex: 1;
+			text-align: center;
 
-                        .overview-label {
-                                font-size: 24rpx;
-                        }
+			.overview-label {
+				font-size: 22rpx;
+				opacity: 0.85;
+			}
 
-                        .overview-value {
-                                font-size: 32rpx;
-                                font-weight: bold;
+			.overview-value {
+				font-size: 34rpx;
+				font-weight: bold;
+				margin-top: 10rpx;
+				display: block;
+			}
+		}
 
-                                margin-top: 10rpx;
-                                display: block;
-                        }
-                }
-        }
-        
-        .subsection-filter{
-                margin: 32rpx;
-                margin-bottom: 24rpx;
-        }
+		.overview-divider {
+			width: 2rpx;
+			height: 60rpx;
+			background: rgba(255, 255, 255, 0.3);
+		}
+	}
 
-        // 时间筛选
-        .date-filter {
-                display: flex;
-                align-items: center;
-                padding: 0 32rpx 24rpx;
-                .filter-button {
-                        display: flex;
-                        align-items: center;
-                        justify-content: space-between;
-                        color: #000000;
-                        .button-text {
-                                font-size: 26rpx;
-                                margin-right: 4rpx;
-                        }
-                }
-        }
+	/* 来源类型筛选 */
+	.filter-section {
+		margin: 20rpx 24rpx 0;
+		background: #fff;
+		border-radius: 16rpx;
+		padding: 6rpx;
+		box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.04);
+		overflow-x: auto;
+		white-space: nowrap;
 
-        // 收益图表
-        .earnings-chart {
-                background-color: #FFFFFF;
-                border-radius: 20rpx;
-                margin: 0 32rpx 24rpx;
-                padding: 24rpx;
+		.filter-tabs {
+			display: flex;
+			-webkit-overflow-scrolling: touch;
+		}
 
-                .chart-header {
-                        display: flex;
-                        justify-content: space-between;
-                        align-items: center;
-                        margin-bottom: 20rpx;
+		.tab-item {
+			flex-shrink: 0;
+			text-align: center;
+			padding: 18rpx 20rpx;
+			font-size: 26rpx;
+			color: #666;
+			border-radius: 12rpx;
+			transition: all 0.25s ease;
 
-                        .chart-title {
-                                flex: 1;
-                                font-size: 32rpx;
-                                 
-                                color: #111;
-                        }
-                        .chart-subsection{
-                                width: 360rpx;
-                        }
-                }
+			&:active {
+				opacity: 0.7;
+			}
 
-                .chart-container {
-                        width: 100%;
-                        height: 360rpx;
+			&.active {
+				color: #E62129;
+				font-weight: 600;
+				background: rgba(230, 33, 41, 0.08);
+			}
+		}
+	}
 
-                        .chart {
-                                width: 100%;
-                                height: 100%;
-                        }
-                }
-        }
+	/* 日期筛选 */
+	.search-section {
+		display: flex;
+		align-items: center;
+		background-color: #fff;
+		border-radius: 16rpx;
+		padding: 16rpx 20rpx;
+		margin: 20rpx 24rpx 0;
+		box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.04);
 
-        // 收益明细列表
-        .earnings-list {
-                background-color: #FFFFFF;
-                border-radius: 20rpx;
-                margin: 0 32rpx;
+		.time-picker {
+			flex: 1;
+			display: flex;
+			align-items: center;
 
-                .list-header {
-                        padding: 24rpx 32rpx;
-                        border-bottom: 1px solid #F2F3F5;
+			.picker {
+				padding: 14rpx 20rpx;
+				background-color: #F5F7FA;
+				border-radius: 10rpx;
+				font-size: 26rpx;
+				color: #333;
+				min-width: 160rpx;
+				text-align: center;
+			}
 
-                        .header-title {
-                                font-size: 32rpx;
-                                color: #111;
-                        }
-                }
+			.separator {
+				margin: 0 16rpx;
+				font-size: 26rpx;
+				color: #999;
+				flex-shrink: 0;
+			}
+		}
 
-                .earning-item {
-                        display: flex;
-                        justify-content: space-between;
-                        align-items: center;
-                        padding: 24rpx 28rpx;
-                        border-bottom: 1px solid #F2F3F5;
+		.search-actions {
+			display: flex;
+			align-items: center;
+			flex-shrink: 0;
+			margin-left: 16rpx;
 
-                        &:last-child {
-                                border-bottom: none;
-                        }
+			.reset-btn {
+				padding: 14rpx 24rpx;
+				background-color: #F5F7FA;
+				border-radius: 10rpx;
+				font-size: 26rpx;
+				color: #666;
+				margin-right: 12rpx;
 
-                        .item-info {
-                                flex: 1;
-                                display: flex;
+				&:active {
+					opacity: 0.7;
+				}
+			}
 
-                                .item-icon {
-                                        width: 72rpx;
-                                        height: 72rpx;
-                                        border-radius: 50%;
-                                        display: flex;
-                                        align-items: center;
-                                        justify-content: center;
+			.search-btn {
+				padding: 14rpx 32rpx;
+				background-color: #E62129;
+				color: #fff;
+				font-size: 26rpx;
+				border-radius: 10rpx;
 
-                                        &.icon-order {
-                                                background-color: #E62129;
-                                        }
+				&:active {
+					opacity: 0.8;
+				}
+			}
+		}
+	}
 
-                                        &.icon-team {
-                                                background-color: #FE5D44;
-                                        }
+	/* 收益明细列表 */
+	.earnings-list {
+		margin: 20rpx 24rpx 0;
+		background-color: #fff;
+		border-radius: 20rpx;
+		overflow: hidden;
+		box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.04);
 
-                                        &.icon-reward {
-                                                background-color: #00bcd4;
-                                        }
-                                }
+		.list-header {
+			display: flex;
+			align-items: center;
+			justify-content: space-between;
+			padding: 28rpx 30rpx 20rpx;
+			border-bottom: 1rpx solid #F5F5F5;
 
-                                .item-detail {
-                                        margin-left: 20rpx;
-                                        flex: 1;
+			.header-title {
+				font-size: 32rpx;
+				color: #111;
+				font-weight: 600;
+			}
 
-                                        .item-title {
-                                                font-size: 28rpx;
-                                                color: #333;
-                                        }
+			.header-count {
+				font-size: 24rpx;
+				color: #C0C4CC;
+			}
+		}
 
-                                        .item-time {
-                                                font-size: 24rpx;
-                                                color: #999;
-                                                margin-top: 5rpx;
-                                                display: inline-block;
-                                        }
-                                }
-                        }
+		.earning-item {
+			display: flex;
+			align-items: center;
+			justify-content: space-between;
+			padding: 24rpx 30rpx;
+			border-bottom: 1rpx solid #F7F8FA;
 
-                        .item-amount {
-                                font-size: 32rpx;
-                                font-weight: 500;
+			&:last-child {
+				border-bottom: none;
+			}
 
-                                &.amount-positive {
-                                        color: #FE5D44;
-                                }
+			&:active {
+				background-color: #FAFAFA;
+			}
 
-                                &.amount-negative {
-                                        color: #00B42A;
-                                }
-                        }
-                }
+			.item-left {
+				display: flex;
+				align-items: center;
+				flex: 1;
+				min-width: 0;
 
-                .no-data {
-                        padding: 100rpx 0;
-                        text-align: center;
-                }
-        }
+				.item-detail {
+					margin-left: 20rpx;
+					flex: 1;
+					min-width: 0;
 
-        // 加载更多
-        .load-more {
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                padding: 40rpx 0;
-                color: #86909C;
+					.item-title {
+						font-size: 28rpx;
+						color: #1D2129;
+						font-weight: 500;
+						overflow: hidden;
+						text-overflow: ellipsis;
+						white-space: nowrap;
+					}
 
-                .load-text {
-                        margin-left: 15rpx;
-                        font-size: 26rpx;
-                }
-        }
-        .search-section {
-                display: flex;
-                align-items: center;
-                background-color: #fff;
-                border-radius: 16rpx;
-                padding: 20rpx;
-                margin: 20rpx 30rpx;
-                box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.05);
-        
-                .time-picker {
-                        flex: 1;
-                        display: flex;
-                        align-items: center;
-        
-                        .picker {
-                                padding: 10rpx 20rpx;
-                                background-color: #f9f9f9;
-                                border-radius: 8rpx;
-                                font-size: 28rpx;
-                                color: #333;
-                        }
-        
-                        .separator {
-                                margin: 0 20rpx;
-                                font-size: 28rpx;
-                                color: #999;
-                        }
-                }
-        
-                .search-btn {
-                        margin-left: 20rpx;
-                        background-color: #d30010;
-                        color: #fff;
-                        font-size: 26rpx;
-                        height: 50rpx;
-                        line-height: 50rpx;
-                        border-radius: 8rpx;
-                        padding: 0 30rpx;
-                }
-        }
+					.item-meta {
+						display: flex;
+						align-items: center;
+						margin-top: 6rpx;
+
+						.item-time {
+							font-size: 22rpx;
+							color: #C0C4CC;
+						}
+
+						.item-status {
+							font-size: 20rpx;
+							margin-left: 16rpx;
+							padding: 2rpx 12rpx;
+							border-radius: 6rpx;
+
+							&.status-completed {
+								color: #00B42A;
+								background: rgba(0, 180, 42, 0.08);
+							}
+
+							&.status-pending {
+								color: #FF7D00;
+								background: rgba(255, 125, 0, 0.08);
+							}
+						}
+					}
+
+					.item-sub {
+						margin-top: 6rpx;
+						display: flex;
+						align-items: center;
+
+						.item-nickname {
+							font-size: 22rpx;
+							color: #86909C;
+							overflow: hidden;
+							text-overflow: ellipsis;
+							white-space: nowrap;
+							max-width: 240rpx;
+						}
+
+						.item-level {
+							font-size: 22rpx;
+							color: #C0C4CC;
+							margin-left: 8rpx;
+							flex-shrink: 0;
+						}
+					}
+				}
+			}
+
+			.item-right {
+				flex-shrink: 0;
+				margin-left: 16rpx;
+
+				.item-amount {
+					font-size: 32rpx;
+					font-weight: 600;
+
+					&.amount-positive {
+						color: #E62129;
+					}
+				}
+			}
+		}
+
+		.first-loading {
+			display: flex;
+			flex-direction: column;
+			align-items: center;
+			justify-content: center;
+			padding: 100rpx 0;
+			color: #C0C4CC;
+		}
+
+		.no-data {
+			padding: 100rpx 0;
+			text-align: center;
+		}
+
+		.load-more {
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			padding: 36rpx 0;
+			color: #C0C4CC;
+
+			.load-text {
+				margin-left: 12rpx;
+				font-size: 24rpx;
+			}
+		}
+	}
+
+	/* 加载动画 */
+	.loading-spinner {
+		width: 32rpx;
+		height: 32rpx;
+		border: 4rpx solid #E0E0E0;
+		border-top-color: #E62129;
+		border-radius: 50%;
+		animation: spin 0.7s linear infinite;
+	}
+
+	@keyframes spin {
+		to {
+			transform: rotate(360deg);
+		}
+	}
+
+	/* 底部安全区域 */
+	.safe-bottom {
+		height: calc(env(safe-area-inset-bottom) + 40rpx);
+	}
 </style>
