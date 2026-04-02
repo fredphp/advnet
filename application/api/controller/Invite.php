@@ -401,13 +401,17 @@ class Invite extends Api
                 $query->where('level', $level);
             }
             
-            // 日期范围筛选
+            // 日期范围筛选（显式指定Asia/Shanghai时区，避免服务器PHP时区不一致导致偏移）
             if ($startTime) {
-                $query->where('createtime', '>=', strtotime($startTime));
+                $dt = new \DateTime($startTime . ' 00:00:00', new \DateTimeZone('Asia/Shanghai'));
+                $startTs = $dt->getTimestamp();
+                $query->where('createtime', '>=', $startTs);
             }
             if ($endTime) {
-                // 结束日期包含当天，所以加一天
-                $query->where('createtime', '<', strtotime($endTime) + 86400);
+                $dt = new \DateTime($endTime . ' 23:59:59', new \DateTimeZone('Asia/Shanghai'));
+                $endTs = $dt->getTimestamp();
+                // 结束日期包含当天最后一秒
+                $query->where('createtime', '<=', $endTs);
             }
             
             $total = $query->count();
