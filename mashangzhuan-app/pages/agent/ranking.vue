@@ -1,99 +1,76 @@
 <template>
 	<view class="ranking-page">
-		<fa-navbar title="业绩排行" :border-bottom="false"></fa-navbar>
-
-		<!-- 排行类型筛选 -->
-		<!-- <view class="type-filter">
-			<u-tabs 
-			:current="activeType" 
-			:list="typeOptions" 
-			@change="handleTypeChange"
-			:is-scroll="false"
-			font-size="28"
-			:bar-style="{'background-color': '#E62129'}"
-			active-color="#111111" inactive-color="#999999" :show-bar="true"
-			></u-tabs>
-		</view> -->
-
-		<!-- 排行周期筛选 -->
-		<!-- <view class="period-filter">
-			<u-subsection 
-			:current="activePeriod" 
-			:list="periodOptions" 
-			@change="handlePeriodChange"
-			font-size="26" 
-			bg-color="#fff" button-color="rgba(230,33,41,1)" active-color="#fff" inactive-color="#666" 
-			></u-subsection>
-		</view> -->
+		<fa-navbar title="邀请排行" :border-bottom="false"></fa-navbar>
 
 		<!-- 前三名展示 -->
-		<view style="margin-top:44rpx;">
-			<view class="top-three">
-				<view class="second-place">
-					<view class="rank-item rank-2">
-						<text class="rank-name">{{ secondPlace.user.nickname }}</text>
-						<u-avatar :src="secondPlace.user.avatar" size="72"></u-avatar>
-						<text class="rank-amount">¥{{ secondPlace.total_income }}</text>
-						<image :src="$IMG_URL+'/images/rank-silver.png'" mode="widthFix" class="rank-medal"></image>
-					</view>
-				</view>
-
-				<view class="first-place">
-					<view class="rank-item rank-1">
-						<text class="rank-name">{{ firstPlace.user.nickname }}</text>
-						<u-avatar :src="firstPlace.user.avatar" size="88"></u-avatar>
-						<text class="rank-amount">¥{{ firstPlace.total_income }}</text>
-						<image :src="$IMG_URL+'/images/rank-gold.png'" mode="widthFix" class="rank-medal"></image>
-					</view>
-				</view>
-
-				<view class="third-place">
-					<view class="rank-item rank-3" v-if="thirdPlace">
-						<text class="rank-name">{{ thirdPlace.user.nickname }}</text>
-						<u-avatar :src="thirdPlace.user.avatar" size="72"></u-avatar>
-						<text class="rank-amount">¥{{ thirdPlace.total_income }}</text>
-						<image :src="$IMG_URL+'/images/rank-bronze.png'" mode="widthFix" class="rank-medal"></image>
-					</view>
+		<view class="top-three" v-if="rankingList.length > 0">
+			<view class="second-place" v-if="secondPlace">
+				<view class="rank-item rank-2">
+					<text class="rank-name">{{ secondPlace.nickname }}</text>
+					<u-avatar :src="secondPlace.avatar || '/static/image/avatar.png'" size="72"></u-avatar>
+					<text class="rank-amount">{{ secondPlace.total_income }}人</text>
+					<view class="rank-badge badge-2">2</view>
 				</view>
 			</view>
 
-			<!-- 排行榜列表 -->
-			<view class="ranking-list">
-				<view class="list-header">
-					<text class="header-rank">排名</text>
-					<text class="header-name">分销商</text>
-					<text class="header-amount">业绩(元)</text>
-				</view>
-
-				<view class="rank-item" v-for="(item, index) in rankingList" :key="index"
-					:class="{'current-user': item.isCurrentUser}" v-if="index > 2">
-					<text class="item-rank">{{ index + 1 }}</text>
-					<view class="item-user">
-						<u-avatar :src="item.user.avatar" size="60"></u-avatar>
-						<text class="item-name">{{ item.user.nickname }}</text>
-						<u-tag text="我" size="mini" mode="dark" shape="circle" bg-color="#de0011" color="#FFFFFF"
-							:custom-style="{marginLeft: '8px'}" v-if="item.isCurrentUser"></u-tag>
-					</view>
-					<text class="item-amount">¥{{ item.total_income }}</text>
-				</view>
-
-				<view class="no-data" v-if="rankingList.length === 0">
-					<u-empty mode="list" text="暂无排行数据"></u-empty>
+			<view class="first-place" v-if="firstPlace">
+				<view class="rank-item rank-1">
+					<text class="rank-name">{{ firstPlace.nickname }}</text>
+					<u-avatar :src="firstPlace.avatar || '/static/image/avatar.png'" size="88"></u-avatar>
+					<text class="rank-amount">{{ firstPlace.total_income }}人</text>
+					<view class="rank-badge badge-1">1</view>
 				</view>
 			</view>
 
-			<!-- 我的排名 -->
-			<u-gap height="132"></u-gap>
-			<view class="my-rank" v-if="myRank > 0">
-				<u-avatar size="82"></u-avatar>
-				<view class="u-flex-1 u-m-l-20">
-					<view class="rank-text">我的排名</view>
-					<view class="rank-amount">¥{{ myAmount }}</view>
+			<view class="third-place" v-if="thirdPlace">
+				<view class="rank-item rank-3">
+					<text class="rank-name">{{ thirdPlace.nickname }}</text>
+					<u-avatar :src="thirdPlace.avatar || '/static/image/avatar.png'" size="72"></u-avatar>
+					<text class="rank-amount">{{ thirdPlace.total_income }}人</text>
+					<view class="rank-badge badge-3">3</view>
 				</view>
-
-				<view class="rank-value">{{ myRank }}名</view>
-
 			</view>
+		</view>
+
+		<!-- 排行榜列表 -->
+		<view class="ranking-list" v-if="rankingList.length > 0">
+			<view class="list-header">
+				<text class="header-rank">排名</text>
+				<text class="header-name">分销商</text>
+				<text class="header-amount">邀请人数</text>
+			</view>
+
+			<view class="rank-item" v-for="(item, index) in rankingList" :key="index"
+				:class="{'current-user': item.isCurrentUser}" v-if="index >= 3">
+				<text class="item-rank">{{ index + 1 }}</text>
+				<view class="item-user">
+					<u-avatar :src="item.avatar || '/static/image/avatar.png'" size="60"></u-avatar>
+					<text class="item-name">{{ item.nickname }}</text>
+					<u-tag text="我" size="mini" mode="dark" shape="circle" bg-color="#de0011" color="#FFFFFF"
+						:custom-style="{marginLeft: '8rpx'}" v-if="item.isCurrentUser"></u-tag>
+				</view>
+				<text class="item-amount">{{ item.total_income }}人</text>
+			</view>
+		</view>
+
+		<!-- 加载中 -->
+		<view class="loading-wrap" v-if="loading">
+			<view class="loading-spinner"></view>
+			<text class="loading-text">加载中...</text>
+		</view>
+
+		<!-- 空状态 -->
+		<view class="empty-wrap" v-if="!loading && rankingList.length === 0">
+			<u-empty mode="list" text="暂无排行数据"></u-empty>
+		</view>
+
+		<!-- 我的排名 -->
+		<view class="my-rank" v-if="myRank > 0">
+			<view class="my-rank-left">
+				<text class="rank-text">我的排名</text>
+				<text class="rank-count">邀请 {{ myAmount }} 人</text>
+			</view>
+			<view class="my-rank-value">第{{ myRank }}名</view>
 		</view>
 	</view>
 </template>
@@ -102,129 +79,49 @@
 	export default {
 		data() {
 			return {
-				// 排行周期选项
-				periodOptions: [{
-						name: '本周'
-					},
-					{
-						name: '本月'
-					},
-					{
-						name: '本季度'
-					},
-					{
-						name: '本年'
-					},
+				// 前三名
+				firstPlace: null,
+				secondPlace: null,
+				thirdPlace: null,
 
-				],
-				activePeriod: 1, // 默认本月
+				// 排行列表
+				rankingList: [],
 
-				// 排行类型选项
-				typeOptions: [{
-						name: '团队业绩'
-					},
-					{
-						name: '个人业绩'
-					},
-					{
-						name: '邀请人数'
-					}
-				],
-				activeType: 0, // 默认团队业绩
+				// 我的排名
+				myRank: 0,
+				myAmount: 0,
 
-				// 前三名数据
-				firstPlace: {
-					avatar: 'https://picsum.photos/200/200?random=20',
-					name: '王大锤',
-					amount: '25,680.00'
-				},
-				secondPlace: {
-					avatar: 'https://picsum.photos/200/200?random=21',
-					name: '李晓华',
-					amount: '18,950.00'
-				},
-				thirdPlace: {
-					avatar: 'https://picsum.photos/200/200?random=22',
-					name: '张小红',
-					amount: '15,320.00'
-				},
-
-				// 排行榜列表数据
-				rankingList: [{
-						avatar: 'https://picsum.photos/200/200?random=23',
-						name: '赵小刚',
-						amount: '12,850.00',
-						isCurrentUser: false
-					},
-					{
-						avatar: 'https://picsum.photos/200/200?random=24',
-						name: '陈思思',
-						amount: '11,630.00',
-						isCurrentUser: false
-					},
-					{
-						avatar: 'https://picsum.photos/200/200?random=25',
-						name: '分销达人', // 当前用户
-						amount: '10,560.00',
-						isCurrentUser: true
-					},
-					{
-						avatar: 'https://picsum.photos/200/200?random=26',
-						name: '刘建国',
-						amount: '9,870.00',
-						isCurrentUser: false
-					},
-					{
-						avatar: 'https://picsum.photos/200/200?random=27',
-						name: '黄小丽',
-						amount: '8,450.00',
-						isCurrentUser: false
-					},
-					{
-						avatar: 'https://picsum.photos/200/200?random=28',
-						name: '吴志强',
-						amount: '7,620.00',
-						isCurrentUser: false
-					}
-				],
-
-				// 我的排名和业绩
-				myRank: 6,
-				myAmount: '10,560.00'
+				loading: false,
 			};
 		},
 		onLoad() {
-			// 加载排行数据
+			this.loadRankingData();
+		},
+		onPullDownRefresh() {
 			this.loadRankingData();
 		},
 		methods: {
-			// 加载排行数据
 			loadRankingData() {
-				this.$u.get("/addons/coagent/api/get_rank_list").then(res => {
-					if (res.code == 1) {
-						this.firstPlace = res.data.list[0]
-						this.secondPlace = res.data.list[1]
-						this.thirdPlace = res.data.list[2]
-						this.rankingList = res.data.list
-						this.myRank = res.data.my_rank
-						this.myAmount = res.data.my_amount
+				if (this.loading) return;
+				this.loading = true;
+
+				this.$api.inviteRanking({ type: 'invite', limit: 20 }).then(res => {
+					if (res && res.code == 1) {
+						this.firstPlace = res.data.firstPlace || null;
+						this.secondPlace = res.data.secondPlace || null;
+						this.thirdPlace = res.data.thirdPlace || null;
+						this.rankingList = res.data.list || [];
+						this.myRank = res.data.myRank || 0;
+						this.myAmount = res.data.myAmount || 0;
 					}
-				})
+				}).catch(err => {
+					console.error('[Ranking] 接口异常:', err);
+					uni.showToast({ title: '加载失败', icon: 'none' });
+				}).finally(() => {
+					this.loading = false;
+					uni.stopPullDownRefresh();
+				});
 			},
-
-			// 周期切换
-			handlePeriodChange(index) {
-				this.activePeriod = index;
-				// 加载对应周期的排行数据
-				console.log('切换到', this.periodOptions[index]);
-			},
-
-			// 类型切换
-			handleTypeChange(index) {
-				this.activeType = index;
-				// 加载对应类型的排行数据
-				console.log('切换到', this.typeOptions[index].name);
-			}
 		}
 	};
 </script>
@@ -233,33 +130,18 @@
 	.ranking-page {
 		background-color: #F5F7FA;
 		min-height: 100vh;
-		// font-size: 28rpx;
-		// color: #1D2129;
-		// padding-bottom: 30rpx;
+		padding-bottom: calc(env(safe-area-inset-bottom) + 140rpx);
 	}
 
-	// 排行周期筛选
-	.period-filter {
-		margin: 32rpx;
-
-	}
-
-	// 排行类型筛选
-	.type-filter {
-		background-color: #FFFFFF;
-
-	}
-
-	// 前三名展示
+	/* 前三名展示 */
 	.top-three {
 		display: flex;
 		justify-content: space-around;
 		align-items: flex-end;
 		background-color: #FFFFFF;
-		padding: 48rpx 32rpx 40rpx 32rpx;
+		padding: 60rpx 32rpx 40rpx 32rpx;
 		border-radius: 32rpx 32rpx 0 0;
-		margin: 0 32rpx;
-		margin-bottom: 0;
+		margin: 24rpx 24rpx 0;
 		gap: 16rpx;
 		color: #333;
 
@@ -270,8 +152,8 @@
 			display: flex;
 			flex-direction: column;
 			align-items: center;
-			border-top: 2px solid transparent;
-			border-radius: 16rpx;
+			position: relative;
+			border-top: 2rpx solid transparent;
 		}
 
 		.first-place {
@@ -279,18 +161,21 @@
 			margin-bottom: 30rpx;
 			border-top-color: #FBD568;
 			background: linear-gradient(to bottom, #FFFAEA 0%, #FFFFFF 100%);
+			padding-top: 40rpx;
 		}
 
 		.second-place {
 			order: 1;
 			border-top-color: #D8DFE7;
 			background: linear-gradient(to bottom, #F4F9FF 0%, #FFFFFF 100%);
+			padding-top: 20rpx;
 		}
 
 		.third-place {
 			order: 3;
 			border-top-color: #E6A668;
 			background: linear-gradient(to bottom, #FEF3ED 0%, #FFFFFF 100%);
+			padding-top: 20rpx;
 		}
 
 		.rank-item {
@@ -300,27 +185,15 @@
 			position: relative;
 			padding-top: 32rpx;
 
-			.rank-number {
-				position: absolute;
-				top: -20rpx;
-				right: -10rpx;
-				width: 40rpx;
-				height: 40rpx;
-				border-radius: 50%;
-				background-color: #FFFFFF;
-				color: #E62129;
-				font-weight: bold;
-				display: flex;
-				align-items: center;
-				justify-content: center;
-				font-size: 24rpx;
-				z-index: 2;
-			}
-
 			.rank-name {
-
+				font-size: 26rpx;
 				font-weight: 500;
 				margin-bottom: 12rpx;
+				overflow: hidden;
+				text-overflow: ellipsis;
+				white-space: nowrap;
+				max-width: 160rpx;
+				text-align: center;
 			}
 
 			.rank-amount {
@@ -330,38 +203,42 @@
 				font-weight: bold;
 			}
 
-			.rank-medal {
-				width: 80rpx;
-				height: 80rpx;
+			.rank-badge {
+				width: 48rpx;
+				height: 48rpx;
+				border-radius: 50%;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				font-size: 24rpx;
+				font-weight: bold;
+				color: #fff;
 				position: absolute;
-				top: -40rpx;
+				top: -24rpx;
 				left: 50%;
 				transform: translateX(-50%);
 				z-index: 1;
+				box-shadow: 0 4rpx 8rpx rgba(0, 0, 0, 0.15);
 			}
+
+			.badge-1 { background: linear-gradient(135deg, #FFD700, #FFA500); }
+			.badge-2 { background: linear-gradient(135deg, #C0C0C0, #A0A0A0); }
+			.badge-3 { background: linear-gradient(135deg, #CD7F32, #A0522D); }
 		}
 
-		.rank-1 {
-			.rank-name {
-
-				font-weight: bold;
-			}
-		}
-	}
-
-	// 排行榜列表
+	/* 排行榜列表 */
 	.ranking-list {
 		background-color: #FFFFFF;
 		border-radius: 0 0 32rpx 32rpx;
-		margin: 0 32rpx;
+		margin: 0 24rpx;
 
 		.list-header {
 			display: flex;
-			padding: 25rpx 30rpx;
-			border-bottom: 1px solid #F2F3F5;
+			padding: 24rpx 30rpx;
+			border-bottom: 1rpx solid #F2F3F5;
 			font-weight: bold;
 			color: #86909C;
-			font-size: 26rpx;
+			font-size: 24rpx;
 
 			.header-rank {
 				width: 15%;
@@ -380,21 +257,22 @@
 		.rank-item {
 			display: flex;
 			align-items: center;
-			padding: 25rpx 30rpx;
-			border-bottom: 1px solid #F2F3F5;
+			padding: 24rpx 30rpx;
+			border-bottom: 1rpx solid #F7F8FA;
 
 			&:last-child {
 				border-bottom: none;
 			}
 
 			&.current-user {
-				background-color: rgba(222, 0, 17, 0.05);
+				background-color: rgba(230, 33, 41, 0.04);
 			}
 
 			.item-rank {
 				width: 15%;
 				color: #86909C;
 				font-weight: 500;
+				font-size: 26rpx;
 			}
 
 			.item-user {
@@ -403,26 +281,62 @@
 				align-items: center;
 
 				.item-name {
-					margin-left: 15rpx;
-					margin-right: 4rpx;
+					margin-left: 14rpx;
+					font-size: 26rpx;
+					color: #333;
+					overflow: hidden;
+					text-overflow: ellipsis;
+					white-space: nowrap;
+					max-width: 200rpx;
 				}
 			}
 
 			.item-amount {
 				width: 30%;
 				text-align: right;
-				font-weight: 500;
-				color: #1D2129;
+				font-weight: 600;
+				color: #E62129;
+				font-size: 26rpx;
 			}
-		}
-
-		.no-data {
-			padding: 100rpx 0;
-			text-align: center;
 		}
 	}
 
-	// 我的排名
+	/* 加载中 */
+	.loading-wrap {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		justify-content: center;
+		padding: 200rpx 0;
+	}
+
+	.loading-spinner {
+		width: 40rpx;
+		height: 40rpx;
+		border: 4rpx solid #E0E0E0;
+		border-top-color: #E62129;
+		border-radius: 50%;
+		animation: spin 0.7s linear infinite;
+	}
+
+	.loading-text {
+		margin-top: 16rpx;
+		font-size: 26rpx;
+		color: #C0C4CC;
+	}
+
+	@keyframes spin {
+		to {
+			transform: rotate(360deg);
+		}
+	}
+
+	/* 空状态 */
+	.empty-wrap {
+		padding: 200rpx 0;
+	}
+
+	/* 我的排名 */
 	.my-rank {
 		position: fixed;
 		bottom: 0;
@@ -430,24 +344,32 @@
 		right: 0;
 		background-color: #FFFFFF;
 		padding: 24rpx 36rpx;
+		padding-bottom: calc(24rpx + env(safe-area-inset-bottom));
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
+		box-shadow: 0 -2rpx 20rpx rgba(0, 0, 0, 0.05);
+
+		.my-rank-left {
+			display: flex;
+			flex-direction: column;
+		}
 
 		.rank-text {
-			font-size: 32rpx;
+			font-size: 26rpx;
+			color: #999;
 		}
 
-		.rank-value {
-			color: #FD587F;
+		.rank-count {
+			font-size: 24rpx;
+			color: #666;
+			margin-top: 4rpx;
+		}
+
+		.my-rank-value {
+			color: #E62129;
 			font-weight: bold;
-			font-size: 32rpx;
-		}
-
-		.rank-amount {
-			color: #999999;
-			font-size: 28rpx;
-
+			font-size: 34rpx;
 		}
 	}
 </style>
