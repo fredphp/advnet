@@ -71,7 +71,7 @@ class Config extends Backend
     /**
      * 添加奖励规则
      */
-    public function addRule()
+    public function add()
     {
         if ($this->request->isPost()) {
             $params = $this->request->post('row/a');
@@ -114,7 +114,7 @@ class Config extends Backend
     /**
      * 编辑奖励规则
      */
-    public function editRule($ids = null)
+    public function edit($ids = null)
     {
         $row = Db::name('signin_rule')->where('id', $ids)->find();
         if (!$row) {
@@ -151,7 +151,7 @@ class Config extends Backend
     /**
      * 删除奖励规则
      */
-    public function delRule($ids = null)
+    public function del($ids = null)
     {
         if (!$ids) {
             $this->error('缺少参数');

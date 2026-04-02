@@ -78,6 +78,6 @@ SET @signin_config_id = LAST_INSERT_ID();
 INSERT INTO `__PREFIX__auth_rule` (`pid`, `name`, `title`, `icon`, `condition`, `remark`, `ismenu`, `createtime`, `updatetime`, `weigh`, `status`) VALUES
 (@signin_config_id, 'signin/config/index', '查看', '', '', '', 0, UNIX_TIMESTAMP(), UNIX_TIMESTAMP(), 0, 'normal'),
 (@signin_config_id, 'signin/config/save', '保存配置', '', '', '', 0, UNIX_TIMESTAMP(), UNIX_TIMESTAMP(), 0, 'normal'),
-(@signin_config_id, 'signin/config/addRule', '添加规则', '', '', '', 0, UNIX_TIMESTAMP(), UNIX_TIMESTAMP(), 0, 'normal'),
-(@signin_config_id, 'signin/config/editRule', '编辑规则', '', '', '', 0, UNIX_TIMESTAMP(), UNIX_TIMESTAMP(), 0, 'normal'),
-(@signin_config_id, 'signin/config/delRule', '删除规则', '', '', '', 0, UNIX_TIMESTAMP(), UNIX_TIMESTAMP(), 0, 'normal');
+(@signin_config_id, 'signin/config/add', '添加规则', '', '', '', 0, UNIX_TIMESTAMP(), UNIX_TIMESTAMP(), 0, 'normal'),
+(@signin_config_id, 'signin/config/edit', '编辑规则', '', '', '', 0, UNIX_TIMESTAMP(), UNIX_TIMESTAMP(), 0, 'normal'),
+(@signin_config_id, 'signin/config/del', '删除规则', '', '', '', 0, UNIX_TIMESTAMP(), UNIX_TIMESTAMP(), 0, 'normal');

@@ -6,9 +6,9 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
             Table.api.init({
                 extend: {
                     index_url: 'signin/config/index',
-                    add_url: 'signin/config/addRule',
-                    edit_url: 'signin/config/editRule',
-                    del_url: 'signin/config/delRule',
+                    add_url: 'signin/config/add',
+                    edit_url: 'signin/config/edit',
+                    del_url: 'signin/config/del',
                     table: '',
                 }
             });
@@ -50,10 +50,10 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
             // 绑定配置表单事件
             Controller.api.bindevent();
         },
-        addrule: function () {
+        add: function () {
             Controller.api.bindevent();
         },
-        editrule: function () {
+        edit: function () {
             Controller.api.bindevent();
         },
         api: {
