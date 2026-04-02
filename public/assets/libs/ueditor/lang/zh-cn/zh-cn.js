@@ -5,6 +5,9 @@
  * Time: 下午5:02
  * To change this template use File | Settings | File Templates.
  */
+// 防止在UE对象未初始化时报错（RequireJS异步加载顺序问题）
+window.UE = window.UE || {};
+window.UE.I18N = window.UE.I18N || {};
 UE.I18N['zh-cn'] = {
     'labelMap':{
         'anchor':'锚点', 'undo':'撤销', 'redo':'重做', 'bold':'加粗', 'indent':'首行缩进', 'snapscreen':'截图',
@@ -20,7 +23,7 @@ UE.I18N['zh-cn'] = {
         'emotion':'表情', 'spechars':'特殊字符', 'searchreplace':'查询替换', 'map':'Baidu地图', 'gmap':'Google地图',
         'insertvideo':'视频', 'help':'帮助', 'justifyleft':'居左对齐', 'justifyright':'居右对齐', 'justifycenter':'居中对齐',
         'justifyjustify':'两端对齐', 'forecolor':'字体颜色', 'backcolor':'背景色', 'insertorderedlist':'有序列表',
-        'insertunorderedlist':'无序列表', 'fullscreen':'全屏', 'directionalityltr':'从左向右输入', 'directionalityrtl':'从右向左输入',
+        'insertunorderedlist':'无序列表', 'fullscreen':'全屏', 'directionalityltr':'从左向右输入', 'directionalityrtl':'从右向右输入',
         'rowspacingtop':'段前距', 'rowspacingbottom':'段后距',  'pagebreak':'分页', 'insertframe':'插入Iframe', 'imagenone':'默认',
         'imageleft':'左浮动', 'imageright':'右浮动', 'attachment':'附件', 'imagecenter':'居中', 'wordimage':'图片转存',
         'lineheight':'行间距','edittip' :'编辑提示','customstyle':'自定义标题', 'autotypeset':'自动排版',
@@ -580,8 +583,8 @@ UE.I18N['zh-cn'] = {
             lang_search1:"查找",
             lang_search2:"查找",
             lang_replace:"替换",
-            lang_searchReg:'支持正则表达式，添加前后斜杠标示为正则表达式，例如“/表达式/”',
-            lang_searchReg1:'支持正则表达式，添加前后斜杠标示为正则表达式，例如“/表达式/”',
+            lang_searchReg:'支持正则表达式，添加前后斜杠标示为正则表达式，例如"/表达式/"',
+            lang_searchReg1:'支持正则表达式，添加前后斜杠标示为正则表达式，例如"/表达式/"',
             lang_case_sensitive1:"区分大小写",
             lang_case_sensitive2:"区分大小写",
             nextFindBtn:{value:"下一个"},
