@@ -391,31 +391,30 @@ class Invite extends Api
         $endTime = $this->request->get('end_time', '');
         
         try {
-            $query = InviteCommissionLog::where('parent_id', $userId);
+            // 构建查询条件数组（避免链式调用count后query状态被污染）
+            $where = [['parent_id', '=', $userId]];
             
             if ($sourceType) {
-                $query->where('source_type', $sourceType);
+                $where[] = ['source_type', '=', $sourceType];
             }
             
             if ($level > 0) {
-                $query->where('level', $level);
+                $where[] = ['level', '=', $level];
             }
             
             // 日期范围筛选（显式指定Asia/Shanghai时区，避免服务器PHP时区不一致导致偏移）
             if ($startTime) {
                 $dt = new \DateTime($startTime . ' 00:00:00', new \DateTimeZone('Asia/Shanghai'));
-                $startTs = $dt->getTimestamp();
-                $query->where('createtime', '>=', $startTs);
+                $where[] = ['createtime', '>=', $dt->getTimestamp()];
             }
             if ($endTime) {
                 $dt = new \DateTime($endTime . ' 23:59:59', new \DateTimeZone('Asia/Shanghai'));
-                $endTs = $dt->getTimestamp();
-                // 结束日期包含当天最后一秒
-                $query->where('createtime', '<=', $endTs);
+                $where[] = ['createtime', '<=', $dt->getTimestamp()];
             }
             
-            $total = $query->count();
-            $list = $query->order('id', 'desc')
+            $total = InviteCommissionLog::where($where)->count();
+            $list = InviteCommissionLog::where($where)
+                ->order('id', 'desc')
                 ->page($page, $limit)
                 ->select();
             
