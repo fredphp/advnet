@@ -27,6 +27,8 @@ class CoinLog extends Model
         'video_share' => '分享视频',
         'task_reward' => '任务奖励',
         'sign_in' => '签到奖励',
+        'sign_fillup' => '补签消耗',
+        'sign_fillup_reward' => '补签奖励',
         'invite_level1' => '一级邀请奖励',
         'invite_level2' => '二级邀请奖励',
         'commission_level1' => '一级佣金',
