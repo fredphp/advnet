@@ -390,7 +390,7 @@ class Invite extends Api
         $month = $this->request->get('month', '');
         
         try {
-            // 构建查询条件
+            // 构建查询条件（关联数组格式）
             $where = ['parent_id' => $userId];
             
             if ($sourceType) {
@@ -402,6 +402,7 @@ class Invite extends Api
             }
             
             // 月份筛选：传入 2026-03 自动计算该月起止时间戳
+            $timeWhere = '';
             if ($month && preg_match('/^\d{4}-\d{2}$/', $month)) {
                 $dt = new \DateTime($month . '-01 00:00:00', new \DateTimeZone('Asia/Shanghai'));
                 $startTs = $dt->getTimestamp();
@@ -410,25 +411,23 @@ class Invite extends Api
                 $dt->setDate((int) $dt->format('Y'), (int) $dt->format('m'), $lastDay);
                 $dt->setTime(23, 59, 59);
                 $endTs = $dt->getTimestamp();
-                
-                $total = Db::name('invite_commission_log')
-                    ->where($where)
-                    ->where('createtime', 'between', [$startTs, $endTs])
-                    ->count();
-                $list = Db::name('invite_commission_log')
-                    ->where($where)
-                    ->where('createtime', 'between', [$startTs, $endTs])
-                    ->order('id', 'desc')
-                    ->page($page, $limit)
-                    ->select();
-            } else {
-                $total = Db::name('invite_commission_log')->where($where)->count();
-                $list = Db::name('invite_commission_log')
-                    ->where($where)
-                    ->order('id', 'desc')
-                    ->page($page, $limit)
-                    ->select();
+                $timeWhere = ['createtime', 'between', [$startTs, $endTs]];
             }
+            
+            // count 和 select 使用独立的 Model 实例，避免 query 状态污染
+            $countQuery = InviteCommissionLog::where($where);
+            if ($timeWhere) {
+                $countQuery->where($timeWhere[0], $timeWhere[1], $timeWhere[2]);
+            }
+            $total = $countQuery->count();
+            
+            $listQuery = InviteCommissionLog::where($where);
+            if ($timeWhere) {
+                $listQuery->where($timeWhere[0], $timeWhere[1], $timeWhere[2]);
+            }
+            $list = $listQuery->order('id', 'desc')
+                ->page($page, $limit)
+                ->select();
             
             $list = $list ? (array)$list : [];
             
