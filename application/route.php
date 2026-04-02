@@ -17,15 +17,6 @@ return [
     //变量规则
     '__pattern__' => [
     ],
-
-    // 签到系统路由映射
-    // 前端调用 /api/signin/xxx 映射到 api/signin.Index/xxx
-    'api/signin/index'     => 'api/signin.Index/index',
-    'api/signin/monthSign' => 'api/signin.Index/monthSign',
-    'api/signin/dosign'    => 'api/signin.Index/dosign',
-    'api/signin/fillup'    => 'api/signin.Index/fillup',
-    'api/signin/rank'      => 'api/signin.Index/rank',
-    'api/signin/signLog'   => 'api/signin.Index/signLog',
 //        域名绑定到模块
 //        '__domain__'  => [
 //            'admin' => 'admin',

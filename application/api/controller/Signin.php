@@ -1,6 +1,6 @@
 <?php
 
-namespace app\api\controller\signin;
+namespace app\api\controller;
 
 use app\common\controller\Api;
 use app\common\library\CoinService;
@@ -10,7 +10,7 @@ use think\Exception;
 /**
  * 签到接口
  */
-class Index extends Api
+class Signin extends Api
 {
     // 无需登录的接口
     protected $noNeedLogin = [];
@@ -97,7 +97,7 @@ class Index extends Api
             $this->error('缺少日期参数');
         }
         
-        // 验证并格式化日期为 YYYY-MM
+        // 验证并格式化日期为 YYYY-MM（兼容 2026-4 和 2026-04）
         $dateParts = explode('-', $date);
         if (count($dateParts) != 2 || !is_numeric($dateParts[0]) || !is_numeric($dateParts[1])) {
             $this->error('日期格式错误');
@@ -202,7 +202,7 @@ class Index extends Api
                 'createtime'  => time(),
             ]);
             
-            // 通过 CoinService 增加金币
+            // 通过 CoinService 增加金币（自动记录到金币流水日志）
             $coinService = new CoinService();
             $coinResult = $coinService->addCoin($userId, $rewardCoins, 'sign_in', '', 0, '每日签到奖励（连续' . $successions . '天）');
             
@@ -305,7 +305,7 @@ class Index extends Api
                 'createtime'  => time(),
             ]);
             
-            // 通过 CoinService 扣除补签消耗金币
+            // 通过 CoinService 扣除补签消耗金币（自动记录到金币流水日志）
             $coinService = new CoinService();
             $deductResult = $coinService->deductCoin($userId, $fillupCost, 'sign_fillup', '', 0, '补签' . $date . '消耗');
             
@@ -313,7 +313,7 @@ class Index extends Api
                 throw new Exception($deductResult['message']);
             }
             
-            // 增加签到奖励金币
+            // 增加签到奖励金币（自动记录到金币流水日志）
             if ($rewardCoins > 0) {
                 $addResult = $coinService->addCoin($userId, $rewardCoins, 'sign_fillup_reward', '', 0, '补签' . $date . '奖励');
                 if (!$addResult['success']) {
