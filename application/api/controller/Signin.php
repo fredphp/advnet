@@ -9,6 +9,7 @@ use think\Exception;
 
 /**
  * 签到接口
+ * 所有金币操作统一通过 CoinService，不操作 user.score 字段
  */
 class Signin extends Api
 {
@@ -56,9 +57,9 @@ class Signin extends Api
         // 计算连续签到天数
         $successions = $this->getSuccessions($userId);
         
-        // 获取用户积分(score)
-        $user = Db::name('user')->where('id', $userId)->field('score')->find();
-        $score = $user ? (int)$user['score'] : 0;
+        // 通过 CoinService 获取用户金币余额
+        $coinService = new CoinService();
+        $score = $coinService->getBalance($userId);
         
         // 计算用户签到排名（按连续签到天数降序）
         $selfRank = $this->getSelfRank($userId, $successions);
@@ -202,16 +203,13 @@ class Signin extends Api
                 'createtime'  => time(),
             ]);
             
-            // 通过 CoinService 增加金币（自动记录到金币流水日志）
+            // 通过 CoinService 增加金币（自动记录到金币流水日志 coin_log_YYYYMM）
             $coinService = new CoinService();
             $coinResult = $coinService->addCoin($userId, $rewardCoins, 'sign_in', '', 0, '每日签到奖励（连续' . $successions . '天）');
             
             if (!$coinResult['success']) {
                 throw new Exception($coinResult['message']);
             }
-            
-            // 更新用户 score 字段
-            Db::name('user')->where('id', $userId)->setInc('score', $rewardCoins);
             
             Db::commit();
         } catch (Exception $e) {
@@ -283,12 +281,12 @@ class Signin extends Api
             $this->error('该日期已签到');
         }
         
-        // 获取用户积分余额
-        $user = Db::name('user')->where('id', $userId)->field('score')->find();
-        $score = $user ? (int)$user['score'] : 0;
+        // 通过 CoinService 检查用户金币余额（读取 coin_account.balance）
+        $coinService = new CoinService();
+        $balance = $coinService->getBalance($userId);
         
-        if ($score < $fillupCost) {
-            $this->error('积分不足，补签需要' . $fillupCost . '积分');
+        if ($balance < $fillupCost) {
+            $this->error('金币不足，补签需要' . $fillupCost . '金币');
         }
         
         // 获取奖励规则
@@ -297,9 +295,12 @@ class Signin extends Api
         
         Db::startTrans();
         try {
-            // 扣除积分
-            Db::name('user')->where('id', $userId)->setDec('score', $fillupCost);
-            
+            // 通过 CoinService 扣除补签消耗金币（自动记录到金币流水日志）
+            $deductResult = $coinService->deductCoin($userId, $fillupCost, 'sign_fillup', '', 0, '补签' . $date . '消耗');
+            if (!$deductResult['success']) {
+                throw new Exception($deductResult['message']);
+            }
+
             // 计算补签后的连续签到天数（补签不影响连续天数记录，设为0表示非连续）
             $successions = 0;
             
@@ -313,21 +314,12 @@ class Signin extends Api
                 'createtime'  => time(),
             ]);
             
-            // 通过 CoinService 扣除补签消耗金币（自动记录到金币流水日志）
-            $coinService = new CoinService();
-            $deductResult = $coinService->deductCoin($userId, $fillupCost, 'sign_fillup', '', 0, '补签' . $date . '消耗');
-            
-            if (!$deductResult['success']) {
-                throw new Exception($deductResult['message']);
-            }
-            
             // 增加签到奖励金币（自动记录到金币流水日志）
             if ($rewardCoins > 0) {
                 $addResult = $coinService->addCoin($userId, $rewardCoins, 'sign_fillup_reward', '', 0, '补签' . $date . '奖励');
                 if (!$addResult['success']) {
                     throw new Exception($addResult['message']);
                 }
-                Db::name('user')->where('id', $userId)->setInc('score', $rewardCoins);
             }
             
             Db::commit();
@@ -421,15 +413,10 @@ class Signin extends Api
     
     /**
      * 获取用户连续签到天数
-     * 
-     * @param int $userId
-     * @return int
      */
     private function getSuccessions($userId)
     {
         $today = date('Y-m-d');
-        
-        // 从今天开始往前逐天检查连续签到
         $successions = 0;
         $checkDate = $today;
         
@@ -453,10 +440,6 @@ class Signin extends Api
     
     /**
      * 获取用户签到排名
-     * 
-     * @param int $userId
-     * @param int $mySuccessions
-     * @return int
      */
     private function getSelfRank($userId, $mySuccessions)
     {
@@ -464,8 +447,6 @@ class Signin extends Api
             return 0;
         }
         
-        // 统计连续签到天数大于当前用户的用户数
-        // 获取每个用户的最大连续签到天数
         $subSql = Db::name('signin_record')
             ->where('type', 'daily')
             ->where('successions', '>', 0)
@@ -477,7 +458,6 @@ class Signin extends Api
             ->where('t.max_successions', '>', $mySuccessions)
             ->count();
         
-        // 如果有相同连续天数的，取排名最靠后的
         $sameCount = Db::table($subSql . ' t')
             ->where('t.max_successions', '=', $mySuccessions)
             ->where('t.user_id', '<', $userId)
