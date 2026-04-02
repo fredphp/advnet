@@ -4,96 +4,203 @@
     <div class="panel-body">
         <div id="myTabContent" class="tab-content">
             <div class="tab-pane fade active in" id="one">
-                <div class="widget-body no-padding">
 
-                    <!-- 基础配置表单 -->
-                    <div class="panel panel-default" style="margin-bottom:15px;border-top:3px solid #18bc9c;">
-                        <div class="panel-heading"><strong><i class="fa fa-cog"></i> 基础配置</strong></div>
-                        <div class="panel-body">
-                            <form id="config-form" class="form-horizontal" role="form" data-toggle="validator" method="POST" action="{:url('signin/config/save')}">
-                                {:token()}
-                                <div class="form-group">
-                                    <label class="control-label col-xs-12 col-sm-2">签到开关:</label>
-                                    <div class="col-xs-12 col-sm-8">
-                                        <select name="row[enabled]" class="form-control" style="max-width:200px;">
-                                            <option value="1" {if condition="$config['enabled'] == 1"}selected{/if}>开启</option>
-                                            <option value="0" {if condition="$config['enabled'] == 0"}selected{/if}>关闭</option>
-                                        </select>
-                                        <span class="help-block">关闭后用户端签到功能将不可用</span>
-                                    </div>
+                <!-- 隐藏的刷新按钮，供弹窗关闭后触发刷新 -->
+                <a href="javascript:;" class="btn btn-refresh" id="btn-refresh-rules" style="display:none;"></a>
+
+                <!-- 基础配置表单 -->
+                <div class="panel panel-default" style="margin-bottom:15px;border-top:3px solid #18bc9c;">
+                    <div class="panel-heading"><strong><i class="fa fa-cog"></i> 基础配置</strong></div>
+                    <div class="panel-body">
+                        <form id="config-form" class="form-horizontal" role="form" data-toggle="validator" method="POST" action="">
+                            {:token()}
+                            <div class="form-group">
+                                <label class="control-label col-xs-12 col-sm-2">签到开关:</label>
+                                <div class="col-xs-12 col-sm-8">
+                                    <select name="row[enabled]" class="form-control" style="max-width:200px;">
+                                        <option value="1" {if condition="$config['enabled'] == 1"}selected{/if}>开启</option>
+                                        <option value="0" {if condition="$config['enabled'] == 0"}selected{/if}>关闭</option>
+                                    </select>
+                                    <span class="help-block">关闭后用户端签到功能将不可用</span>
                                 </div>
-                                <div class="form-group">
-                                    <label class="control-label col-xs-12 col-sm-2">每月可补签天数:</label>
-                                    <div class="col-xs-12 col-sm-8">
-                                        <input type="number" name="row[fillup_days]" class="form-control" value="{$config.fillup_days|default=3}" min="0" max="31" style="max-width:200px;">
-                                        <span class="help-block">用户每月最多可以补签多少天，0表示不允许补签</span>
-                                    </div>
+                            </div>
+                            <div class="form-group">
+                                <label class="control-label col-xs-12 col-sm-2">每月可补签天数:</label>
+                                <div class="col-xs-12 col-sm-8">
+                                    <input type="number" name="row[fillup_days]" class="form-control" value="{$config.fillup_days|default=3}" min="0" max="31" style="max-width:200px;">
+                                    <span class="help-block">用户每月最多可以补签多少天，0表示不允许补签</span>
                                 </div>
-                                <div class="form-group">
-                                    <label class="control-label col-xs-12 col-sm-2">补签消耗金币:</label>
-                                    <div class="col-xs-12 col-sm-8">
-                                        <input type="number" name="row[fillup_cost]" class="form-control" value="{$config.fillup_cost|default=50}" min="0" style="max-width:200px;">
-                                        <span class="help-block">用户每次补签需要消耗的金币数量</span>
-                                    </div>
+                            </div>
+                            <div class="form-group">
+                                <label class="control-label col-xs-12 col-sm-2">补签消耗金币:</label>
+                                <div class="col-xs-12 col-sm-8">
+                                    <input type="number" name="row[fillup_cost]" class="form-control" value="{$config.fillup_cost|default=50}" min="0" style="max-width:200px;">
+                                    <span class="help-block">用户每次补签需要消耗的金币数量</span>
                                 </div>
-                                <div class="form-group layer-footer">
-                                    <label class="control-label col-xs-12 col-sm-2"></label>
-                                    <div class="col-xs-12 col-sm-8">
-                                        <button type="submit" class="btn btn-primary btn-embossed"><i class="fa fa-save"></i> {:__('Save')}</button>
-                                        <button type="reset" class="btn btn-default btn-embossed">{:__('Reset')}</button>
-                                    </div>
+                            </div>
+                            <div class="form-group">
+                                <label class="control-label col-xs-12 col-sm-2"></label>
+                                <div class="col-xs-12 col-sm-8">
+                                    <button type="button" class="btn btn-primary btn-embossed" id="btn-save-config"><i class="fa fa-save"></i> {:__('Save')}</button>
+                                    <button type="reset" class="btn btn-default btn-embossed">{:__('Reset')}</button>
                                 </div>
-                            </form>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- 奖励规则列表 -->
+                <div class="panel panel-default" style="border-top:3px solid #e9573f;">
+                    <div class="panel-heading" style="overflow:hidden;">
+                        <strong style="line-height:34px;"><i class="fa fa-gift"></i> 每日签到奖励规则（按周期天数循环）</strong>
+                        <div class="pull-right">
+                            <a href="javascript:;" class="btn btn-success btn-sm" onclick="addSigninRule()"><i class="fa fa-plus"></i> 添加规则</a>
                         </div>
                     </div>
-
-                    <!-- 奖励规则列表 -->
-                    <div class="panel panel-default" style="border-top:3px solid #e9573f;">
-                        <div class="panel-heading">
-                            <strong><i class="fa fa-gift"></i> 每日签到奖励规则（按周期天数循环）</strong>
-                        </div>
-                        <div class="widget-body no-padding">
-                            <div id="toolbar" class="toolbar">
-                                {:build_toolbar('refresh,add,del')}
-                            </div>
-                            <table id="table" class="table table-striped table-bordered table-hover table-nowrap"
-                                   data-operate-edit="{:$auth->check('signin/config/edit')}"
-                                   data-operate-del="{:$auth->check('signin/config/del')}"
-                                   width="100%">
+                    <div class="panel-body">
+                        <div class="table-responsive">
+                            <table class="table table-striped table-bordered table-hover">
+                                <thead>
+                                    <tr>
+                                        <th width="80">ID</th>
+                                        <th width="120">周期天数</th>
+                                        <th width="150">奖励金币</th>
+                                        <th>规则描述</th>
+                                        <th width="180">创建时间</th>
+                                        <th width="120">操作</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="rule-list-body">
+                                    <tr><td colspan="6" class="text-center" style="padding:30px;">加载中...</td></tr>
+                                </tbody>
                             </table>
                         </div>
                     </div>
+                </div>
 
-                    <!-- 配置说明 -->
-                    <div class="panel panel-info" style="margin-top:15px;">
-                        <div class="panel-heading">
-                            <h4 class="panel-title"><i class="fa fa-info-circle"></i> 规则说明</h4>
-                        </div>
-                        <div class="panel-body">
-                            <div class="row">
-                                <div class="col-md-6">
-                                    <h5><strong>奖励规则说明</strong></h5>
-                                    <ul style="padding-left:20px;">
-                                        <li>奖励规则按<strong>周期天数</strong>循环生效，例如设置1-7天，第8天签到将获得第1天的奖励</li>
-                                        <li>连续签到天数在周期内对应的天数奖励</li>
-                                        <li>补签不影响连续签到天数的计算</li>
-                                        <li>可自由调整周期天数和对应的金币奖励</li>
-                                    </ul>
-                                </div>
-                                <div class="col-md-6">
-                                    <h5><strong>补签规则说明</strong></h5>
-                                    <ul style="padding-left:20px;">
-                                        <li>用户可对当月未签到的日期进行补签</li>
-                                        <li>补签需消耗金币，补签成功后按对应周期天数发放奖励金币</li>
-                                        <li>每月补签次数由"每月可补签天数"控制</li>
-                                    </ul>
-                                </div>
+                <!-- 配置说明 -->
+                <div class="panel panel-info" style="margin-top:15px;">
+                    <div class="panel-heading">
+                        <h4 class="panel-title"><i class="fa fa-info-circle"></i> 规则说明</h4>
+                    </div>
+                    <div class="panel-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <h5><strong>奖励规则说明</strong></h5>
+                                <ul style="padding-left:20px;">
+                                    <li>奖励规则按<strong>周期天数</strong>循环生效，例如设置1-7天，第8天签到将获得第1天的奖励</li>
+                                    <li>连续签到天数在周期内对应的天数奖励</li>
+                                    <li>补签不影响连续签到天数的计算</li>
+                                    <li>可自由调整周期天数和对应的金币奖励</li>
+                                </ul>
+                            </div>
+                            <div class="col-md-6">
+                                <h5><strong>补签规则说明</strong></h5>
+                                <ul style="padding-left:20px;">
+                                    <li>用户可对当月未签到的日期进行补签</li>
+                                    <li>补签需消耗金币，补签成功后按对应周期天数发放奖励金币</li>
+                                    <li>每月补签次数由"每月可补签天数"控制</li>
+                                </ul>
                             </div>
                         </div>
                     </div>
-
                 </div>
+
             </div>
         </div>
     </div>
 </div>
+
+<script>
+// 全局函数：加载规则列表
+function loadRuleList() {
+    $.ajax({
+        url: 'signin/config/index',
+        type: 'GET',
+        dataType: 'json',
+        success: function(ret) {
+            var html = '';
+            if (ret.rows && ret.rows.length > 0) {
+                for (var i = 0; i < ret.rows.length; i++) {
+                    var row = ret.rows[i];
+                    var timeStr = row.createtime > 0 ? new Date(row.createtime * 1000).toLocaleString('zh-CN') : '-';
+                    html += '<tr>';
+                    html += '<td>' + row.id + '</td>';
+                    html += '<td align="center"><span class="label label-primary">第 ' + row.day + ' 天</span></td>';
+                    html += '<td align="center"><span class="text-success" style="font-size:16px;font-weight:bold;">+' + row.coins + '</span> <small>金币</small></td>';
+                    html += '<td>' + (row.description || '-') + '</td>';
+                    html += '<td align="center">' + timeStr + '</td>';
+                    html += '<td align="center">';
+                    html += '<a href="javascript:;" class="btn btn-xs btn-success" onclick="editSigninRule(' + row.id + ')"><i class="fa fa-pencil"></i> 编辑</a> ';
+                    html += '<a href="javascript:;" class="btn btn-xs btn-danger" onclick="delSigninRule(' + row.id + ')"><i class="fa fa-trash"></i> 删除</a>';
+                    html += '</td>';
+                    html += '</tr>';
+                }
+            } else {
+                html = '<tr><td colspan="6" class="text-center" style="padding:30px;color:#999;">暂无规则，请点击"添加规则"按钮</td></tr>';
+            }
+            $('#rule-list-body').html(html);
+        },
+        error: function() {
+            $('#rule-list-body').html('<tr><td colspan="6" class="text-center text-danger">加载失败，请刷新页面重试</td></tr>');
+        }
+    });
+}
+
+// 全局函数：添加规则
+function addSigninRule() {
+    Fast.api.open('signin/config/add', '添加规则', {
+        area: ['600px', '450px'],
+        callback: function() {
+            loadRuleList();
+        }
+    });
+}
+
+// 全局函数：编辑规则
+function editSigninRule(id) {
+    Fast.api.open('signin/config/edit/ids/' + id, '编辑规则', {
+        area: ['600px', '450px'],
+        callback: function() {
+            loadRuleList();
+        }
+    });
+}
+
+// 全局函数：删除规则
+function delSigninRule(id) {
+    Layer.confirm('确定要删除该规则吗？', function(index) {
+        Backend.api.ajax({
+            url: 'signin/config/del/ids/' + id
+        }, function() {
+            Layer.close(index);
+            Toastr.success('删除成功');
+            loadRuleList();
+        });
+    });
+}
+
+// 页面加载完成后执行
+$(function() {
+    loadRuleList();
+
+    // 弹窗保存成功后会触发 parent.$(".btn-refresh").trigger("click")
+    // 所以需要监听 .btn-refresh 来刷新规则列表
+    $(document).on('click', '.btn-refresh', function() {
+        loadRuleList();
+    });
+
+    // 绑定保存配置按钮
+    $('#btn-save-config').on('click', function() {
+        var form = $('#config-form');
+        var formData = form.serialize();
+
+        Backend.api.ajax({
+            url: 'signin/config/save',
+            data: formData
+        }, function() {
+            Toastr.success('保存成功');
+        });
+    });
+});
+</script>
