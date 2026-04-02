@@ -14,6 +14,11 @@ class Config extends Backend
      * 不启用数据限制
      */
     protected $dataLimit = false;
+
+    /**
+     * 无需鉴权的方法（getRuleList是AJAX内部接口）
+     */
+    protected $noNeedRight = ['getRuleList'];
     
     /**
      * 签到配置首页 - 显示规则列表和配置
@@ -35,7 +40,7 @@ class Config extends Backend
             ->order('day', 'asc')
             ->select();
 
-        $this->success('', '', [
+        $this->success('', null, [
             'rows'  => $list,
             'total' => count($list)
         ]);

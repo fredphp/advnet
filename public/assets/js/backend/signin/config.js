@@ -1,16 +1,19 @@
-define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefined, Backend, Table, Form) {
+define(['jquery', 'bootstrap', 'backend', 'table', 'form', 'layer'], function ($, undefined, Backend, Table, Form, Layer) {
 
     var Controller = {
 
         index: function () {
+            console.log('[signin/config] Controller.index() 开始执行');
 
             // ========== 加载规则列表 ==========
             function loadRuleList() {
+                console.log('[signin/config] loadRuleList() 请求开始');
                 $.ajax({
                     url: 'signin/config/getRuleList',
                     type: 'GET',
                     dataType: 'json',
                     success: function (ret) {
+                        console.log('[signin/config] getRuleList 返回:', ret);
                         var html = '';
                         if (ret.code === 1 && ret.data && ret.data.rows && ret.data.rows.length > 0) {
                             for (var i = 0; i < ret.data.rows.length; i++) {
@@ -33,8 +36,9 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
                         }
                         $('#rule-list-body').html(html);
                     },
-                    error: function () {
-                        $('#rule-list-body').html('<tr><td colspan="6" class="text-center text-danger">加载失败，请刷新页面重试</td></tr>');
+                    error: function (xhr, status, error) {
+                        console.log('[signin/config] getRuleList 请求失败:', status, error);
+                        $('#rule-list-body').html('<tr><td colspan="6" class="text-center text-danger">加载失败(' + status + ')，请刷新页面重试</td></tr>');
                     }
                 });
             }
@@ -45,6 +49,7 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
             // ========== 添加规则按钮 ==========
             $('#btn-add-rule').on('click', function (e) {
                 e.preventDefault();
+                console.log('[signin/config] 点击添加规则');
                 Backend.api.open('signin/config/add', '添加规则', {
                     area: ['600px', '450px']
                 });
@@ -54,6 +59,7 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
             $(document).on('click', '.btn-edit-rule', function (e) {
                 e.preventDefault();
                 var id = $(this).data('id');
+                console.log('[signin/config] 编辑规则 id=', id);
                 Backend.api.open('signin/config/edit/ids/' + id, '编辑规则', {
                     area: ['600px', '450px']
                 });
@@ -63,6 +69,7 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
             $(document).on('click', '.btn-del-rule', function (e) {
                 e.preventDefault();
                 var id = $(this).data('id');
+                console.log('[signin/config] 删除规则 id=', id);
                 Layer.confirm('确定要删除该规则吗？', function (index) {
                     Backend.api.ajax({
                         url: 'signin/config/del/ids/' + id
@@ -75,13 +82,14 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
             });
 
             // ========== 弹窗关闭后刷新列表 ==========
-            // Form.api.bindevent 成功后会触发 parent.$(".btn-refresh").trigger("click")
             $(document).on('click', '.btn-refresh', function () {
+                console.log('[signin/config] btn-refresh 触发');
                 loadRuleList();
             });
 
             // ========== 保存基础配置 ==========
             $('#btn-save-config').on('click', function () {
+                console.log('[signin/config] 保存配置');
                 var formData = $('#config-form').serialize();
                 Backend.api.ajax({
                     url: 'signin/config/save',
