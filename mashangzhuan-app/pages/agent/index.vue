@@ -459,6 +459,7 @@
                         this.loadDistributionData();
                         this.getAgentInfo();
                         this.getWithdrawStat();
+                        this.getAgentOrder();
                         this.detectPlatform();
                 },
 
