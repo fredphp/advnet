@@ -387,36 +387,48 @@ class Invite extends Api
         $page = (int) $this->request->get('page', 1);
         $limit = (int) $this->request->get('limit', 20);
         $limit = min($limit, 50);
-        $startTime = $this->request->get('start_time', '');
-        $endTime = $this->request->get('end_time', '');
+        $month = $this->request->get('month', '');
         
         try {
-            // 构建查询条件数组（避免链式调用count后query状态被污染）
-            $where = [['parent_id', '=', $userId]];
+            // 构建查询条件
+            $where = ['parent_id' => $userId];
             
             if ($sourceType) {
-                $where[] = ['source_type', '=', $sourceType];
+                $where['source_type'] = $sourceType;
             }
             
             if ($level > 0) {
-                $where[] = ['level', '=', $level];
+                $where['level'] = $level;
             }
             
-            // 日期范围筛选（显式指定Asia/Shanghai时区，避免服务器PHP时区不一致导致偏移）
-            if ($startTime) {
-                $dt = new \DateTime($startTime . ' 00:00:00', new \DateTimeZone('Asia/Shanghai'));
-                $where[] = ['createtime', '>=', $dt->getTimestamp()];
+            // 月份筛选：传入 2026-03 自动计算该月起止时间戳
+            if ($month && preg_match('/^\d{4}-\d{2}$/', $month)) {
+                $dt = new \DateTime($month . '-01 00:00:00', new \DateTimeZone('Asia/Shanghai'));
+                $startTs = $dt->getTimestamp();
+                // 获取该月最后一天23:59:59
+                $lastDay = (int) $dt->format('t');
+                $dt->setDate((int) $dt->format('Y'), (int) $dt->format('m'), $lastDay);
+                $dt->setTime(23, 59, 59);
+                $endTs = $dt->getTimestamp();
+                
+                $total = Db::name('invite_commission_log')
+                    ->where($where)
+                    ->where('createtime', 'between', [$startTs, $endTs])
+                    ->count();
+                $list = Db::name('invite_commission_log')
+                    ->where($where)
+                    ->where('createtime', 'between', [$startTs, $endTs])
+                    ->order('id', 'desc')
+                    ->page($page, $limit)
+                    ->select();
+            } else {
+                $total = Db::name('invite_commission_log')->where($where)->count();
+                $list = Db::name('invite_commission_log')
+                    ->where($where)
+                    ->order('id', 'desc')
+                    ->page($page, $limit)
+                    ->select();
             }
-            if ($endTime) {
-                $dt = new \DateTime($endTime . ' 23:59:59', new \DateTimeZone('Asia/Shanghai'));
-                $where[] = ['createtime', '<=', $dt->getTimestamp()];
-            }
-            
-            $total = InviteCommissionLog::where($where)->count();
-            $list = InviteCommissionLog::where($where)
-                ->order('id', 'desc')
-                ->page($page, $limit)
-                ->select();
             
             $list = $list ? (array)$list : [];
             

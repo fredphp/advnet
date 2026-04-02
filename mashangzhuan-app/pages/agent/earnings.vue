@@ -42,25 +42,15 @@
                         </view>
                 </view> -->
 
-                <!-- 日期筛选 -->
+                <!-- 月份筛选 -->
                 <view class="search-section">
-                        <view class="time-picker">
-                                <picker mode="date" :value="startDate" @change="bindStartDateChange" fields="month">
-                                        <view class="picker">{{ startDate || '开始月份' }}</view>
-                                </picker>
-                                <text class="separator">至</text>
-                                <picker mode="date" :value="endDate" @change="bindEndDateChange" fields="month">
-                                        <view class="picker">{{ endDate || '结束月份' }}</view>
-                                </picker>
-                        </view>
-                        <view class="search-actions">
-                                <view class="reset-btn" @click="handleReset" v-if="startDate || endDate">
-                                        <text>重置</text>
+                        <picker mode="date" :value="currentMonth" @change="bindMonthChange" fields="month">
+                                <view class="month-picker">
+                                        <u-icon name="calendar" color="#86909C" size="28"></u-icon>
+                                        <text class="month-text">{{ currentMonth }}</text>
+                                        <u-icon name="arrow-down" color="#86909C" size="24"></u-icon>
                                 </view>
-                                <view class="search-btn" @click="handleSearch">
-                                        <text>搜索</text>
-                                </view>
-                        </view>
+                        </picker>
                 </view>
 
                 <!-- 收益明细列表 -->
@@ -138,9 +128,8 @@
                                 // 分佣来源类型筛选
                                 activeSource: '',
 
-                                // 日期筛选
-                                startDate: '',
-                                endDate: '',
+                                // 月份筛选
+                                currentMonth: '',
 
                                 // 收益列表
                                 earnings: [],
@@ -168,9 +157,7 @@
                         const now = new Date();
                         const year = now.getFullYear();
                         const month = String(now.getMonth() + 1).padStart(2, '0');
-                        const currentMonth = year + '-' + month;
-                        this.startDate = currentMonth;
-                        this.endDate = currentMonth;
+                        this.currentMonth = year + '-' + month;
                         // 加载数据
                         this.loadOverview();
                         this.loadEarnings(true);
@@ -222,16 +209,8 @@
                                 if (this.activeSource) {
                                         params.source_type = this.activeSource;
                                 }
-                                if (this.startDate) {
-                                        params.start_time = this.startDate + '-01';
-                                }
-                                if (this.endDate) {
-                                        // 获取结束月份的最后一天
-                                        const endDateParts = this.endDate.split('-');
-                                        const year = parseInt(endDateParts[0]);
-                                        const month = parseInt(endDateParts[1]);
-                                        const lastDay = new Date(year, month, 0).getDate();
-                                        params.end_time = this.endDate + '-' + String(lastDay).padStart(2, '0');
+                                if (this.currentMonth) {
+                                        params.month = this.currentMonth;
                                 }
 
                                 this.$api.inviteCommissionList(params).then(res => {
@@ -275,25 +254,9 @@
                                 this.loadEarnings(true);
                         },
 
-                        // 开始日期选择
-                        bindStartDateChange(e) {
-                                this.startDate = e.detail.value;
-                        },
-
-                        // 结束日期选择
-                        bindEndDateChange(e) {
-                                this.endDate = e.detail.value;
-                        },
-
-                        // 搜索
-                        handleSearch() {
-                                this.loadEarnings(true);
-                        },
-
-                        // 重置筛选
-                        handleReset() {
-                                this.startDate = '';
-                                this.endDate = '';
+                        // 月份选择
+                        bindMonthChange(e) {
+                                this.currentMonth = e.detail.value;
                                 this.loadEarnings(true);
                         },
                 }
@@ -378,68 +341,25 @@
                 }
         }
 
-        /* 日期筛选 */
+        /* 月份筛选 */
         .search-section {
-                display: flex;
-                align-items: center;
+                margin: 20rpx 24rpx 0;
                 background-color: #fff;
                 border-radius: 16rpx;
-                padding: 16rpx 20rpx;
-                margin: 20rpx 24rpx 0;
+                padding: 6rpx 20rpx;
                 box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.04);
 
-                .time-picker {
-                        flex: 1;
+                .month-picker {
                         display: flex;
                         align-items: center;
+                        padding: 16rpx 12rpx;
 
-                        .picker {
-                                padding: 14rpx 20rpx;
-                                background-color: #F5F7FA;
-                                border-radius: 10rpx;
-                                font-size: 26rpx;
+                        .month-text {
+                                flex: 1;
+                                font-size: 28rpx;
                                 color: #333;
-                                min-width: 160rpx;
+                                font-weight: 500;
                                 text-align: center;
-                        }
-
-                        .separator {
-                                margin: 0 16rpx;
-                                font-size: 26rpx;
-                                color: #999;
-                                flex-shrink: 0;
-                        }
-                }
-
-                .search-actions {
-                        display: flex;
-                        align-items: center;
-                        flex-shrink: 0;
-                        margin-left: 16rpx;
-
-                        .reset-btn {
-                                padding: 14rpx 24rpx;
-                                background-color: #F5F7FA;
-                                border-radius: 10rpx;
-                                font-size: 26rpx;
-                                color: #666;
-                                margin-right: 12rpx;
-
-                                &:active {
-                                        opacity: 0.7;
-                                }
-                        }
-
-                        .search-btn {
-                                padding: 14rpx 32rpx;
-                                background-color: #E62129;
-                                color: #fff;
-                                font-size: 26rpx;
-                                border-radius: 10rpx;
-
-                                &:active {
-                                        opacity: 0.8;
-                                }
                         }
                 }
         }
