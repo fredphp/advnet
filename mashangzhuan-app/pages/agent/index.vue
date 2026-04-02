@@ -107,7 +107,7 @@
                         </view>
                 </view>
 
-                <!-- 最近订单 -->
+                <!-- 最近佣金 -->
                 <view class="recent-orders">
                         <view class="section-title">
                                 <text class="title-text">最近佣金</text>
@@ -115,32 +115,31 @@
                         </view>
 
                         <view class="order-list">
-                                <view class="order-item" v-for="(order, index) in recentOrders" :key="index" v-if="order.goods">
-                                        <view class="order-product">
-                                                <image :src="order.goods.image" mode="widthFix" class="product-image"></image>
-                                                <view class="product-info">
-                                                        <text class="product-name">{{ order.goods.title }}</text>
-                                                        <text class="product-spec">{{ order.goods.attrdata }}</text>
+                                <view class="commission-item" v-for="(order, index) in recentOrders" :key="index">
+                                        <!-- 用户头像 -->
+                                        <image class="commission-avatar"
+                                                :src="order.user_info && order.user_info.avatar ? order.user_info.avatar : '/static/image/avatar.png'"
+                                                mode="aspectFill"></image>
+                                        <!-- 佣金信息 -->
+                                        <view class="commission-body">
+                                                <view class="commission-row">
+                                                        <text class="commission-title">{{ order.goods.title }}</text>
+                                                        <text class="commission-amount">+¥{{ order.reward_money }}</text>
                                                 </view>
-
-                                                <view class="order-status-commission">
-                                                        <view class="u-m-b-20">
-                                                                <text class="order-status"
-                                                                        :class="{'status-pending': order.status === 'pending', 'status-completed': order.status === 'completed'}">
-                                                                        {{ order.status_text }}
-                                                                </text>
-                                                        </view>
-                                                        <view class="">
-                                                                <text class="order-commission">+¥{{ order.reward_money }}</text>
-                                                        </view>
+                                                <view class="commission-meta">
+                                                        <text class="commission-type">{{ order.goods.attrdata }}</text>
+                                                        <text class="commission-time">{{ order.createtime }}</text>
+                                                        <text class="commission-status"
+                                                                :class="{'status-pending': order.status === 'pending', 'status-completed': order.status === 'completed'}">
+                                                                {{ order.status_text }}
+                                                        </text>
                                                 </view>
                                         </view>
-
                                 </view>
+                        </view>
 
-                                <view class="no-orders" v-if="recentOrders.length === 0">
-                                        <u-empty mode="order" text="暂无推广订单"></u-empty>
-                                </view>
+                        <view class="no-orders" v-if="recentOrders.length === 0">
+                                <u-empty mode="order" text="暂无佣金记录"></u-empty>
                         </view>
                 </view>
 
@@ -1274,95 +1273,99 @@
         // 最近订单
         .recent-orders {
                 margin: 32rpx;
-
                 background-color: #FFFFFF;
                 border-radius: 20rpx;
+                overflow: hidden;
 
                 .order-list {
-                        .order-item {
-
-                                padding: 24rpx 32rpx;
-
+                        .commission-item {
                                 display: flex;
-                                flex-direction: column;
+                                align-items: center;
+                                padding: 20rpx 32rpx;
+                                border-bottom: 1rpx solid #F2F3F5;
 
-                                .order-product {
-                                        display: flex;
-                                        align-items: center;
-
-                                        .product-image {
-                                                width: 128rpx;
-                                                height: 128rpx;
-                                                border-radius: 8rpx;
-                                                object-fit: cover;
-                                        }
-
-                                        .product-info {
-                                                margin-left: 20rpx;
-                                                flex: 1;
-                                                display: flex;
-                                                flex-direction: column;
-                                                justify-content: center;
-
-                                                .product-name {
-                                                        font-size: 26rpx;
-                                                        color: #333;
-                                                        display: -webkit-box;
-                                                        -webkit-line-clamp: 2;
-                                                        -webkit-box-orient: vertical;
-                                                        overflow: hidden;
-                                                        line-height: 1.4;
-                                                }
-
-                                                .product-spec {
-                                                        font-size: 24rpx;
-                                                        color: #999999;
-                                                        margin-top: 8rpx;
-                                                }
-                                        }
+                                &:last-child {
+                                        border-bottom: none;
                                 }
 
-                                .order-status-commission {
+                                .commission-avatar {
+                                        width: 72rpx;
+                                        height: 72rpx;
+                                        border-radius: 50%;
+                                        flex-shrink: 0;
+                                        background: #F2F3F5;
+                                }
+
+                                .commission-body {
+                                        flex: 1;
                                         margin-left: 20rpx;
-                                        display: flex;
-                                        flex-direction: column;
-                                        align-items: flex-end;
-                                        justify-content: flex-end;
+                                        overflow: hidden;
 
-                                        .order-status {
-                                                display: inline-flex;
+                                        .commission-row {
+                                                display: flex;
                                                 align-items: center;
-                                                vertical-align: middle;
-                                                justify-content: center;
-                                                padding: 0 16rpx;
-                                                font-size: 24rpx;
-                                                height: 48rpx;
-                                                border-radius: 4rpx 4rpx 4rpx 4rpx;
+                                                justify-content: space-between;
+
+                                                .commission-title {
+                                                        font-size: 28rpx;
+                                                        color: #333;
+                                                        font-weight: 500;
+                                                        overflow: hidden;
+                                                        white-space: nowrap;
+                                                        text-overflow: ellipsis;
+                                                        flex: 1;
+                                                        margin-right: 16rpx;
+                                                }
+
+                                                .commission-amount {
+                                                        font-size: 30rpx;
+                                                        font-weight: bold;
+                                                        color: #E62129;
+                                                        flex-shrink: 0;
+                                                }
                                         }
 
-                                        .status-pending {
-                                                color: #FF7D00;
-                                                background: rgba(255, 141, 40, 0.1);
-                                        }
+                                        .commission-meta {
+                                                display: flex;
+                                                align-items: center;
+                                                margin-top: 6rpx;
 
-                                        .status-completed {
-                                                color: #34C759;
-                                                background: rgba(52, 199, 89, 0.1);
-                                        }
+                                                .commission-type {
+                                                        font-size: 22rpx;
+                                                        color: #999;
+                                                        flex-shrink: 0;
+                                                }
 
-                                        .order-commission {
-                                                font-size: 32rpx;
-                                                font-weight: bold;
-                                                color: #E62129;
+                                                .commission-time {
+                                                        font-size: 22rpx;
+                                                        color: #C0C0C0;
+                                                        margin-left: 16rpx;
+                                                        flex-shrink: 0;
+                                                }
+
+                                                .commission-status {
+                                                        font-size: 20rpx;
+                                                        padding: 2rpx 12rpx;
+                                                        border-radius: 6rpx;
+                                                        margin-left: 16rpx;
+                                                        flex-shrink: 0;
+                                                }
+
+                                                .status-pending {
+                                                        color: #FF7D00;
+                                                        background: rgba(255, 141, 40, 0.1);
+                                                }
+
+                                                .status-completed {
+                                                        color: #34C759;
+                                                        background: rgba(52, 199, 89, 0.1);
+                                                }
                                         }
                                 }
                         }
 
                         .no-orders {
-                                background-color: #FFFFFF;
-                                border-radius: 16rpx;
                                 padding: 60rpx 0;
-                                text-align: center;
                         }
                 }
         }
