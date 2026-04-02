@@ -534,68 +534,89 @@ class Invite extends Api
         }
         
         $type = $this->request->get('type', 'commission');
-        $limit = (int) $this->request->get('limit', 50);
+        $limit = (int) $this->request->get('limit', 20);
+        $cdnDomain = 'http://advnet.cocos2026.cn';
         
         try {
+            $list = [];
+            
             if ($type == 'invite') {
-                // 邀请人数排行
-                $list = Db::name('user_invite_stat')
-                    ->alias('s')
-                    ->join('user u', 's.user_id = u.id', 'LEFT')
-                    ->field('s.user_id, u.nickname, u.avatar, s.total_invite_count as total_income, s.level1_count')
-                    ->where('s.total_invite_count', '>', 0)
-                    ->order('s.total_invite_count', 'desc')
+                // 邀请人数排行（一二级邀请总人数）
+                $stats = (new UserInviteStat())
+                    ->where('total_invite_count', '>', 0)
+                    ->order('total_invite_count', 'desc')
                     ->limit($limit)
                     ->select();
+                
+                if ($stats) {
+                    foreach ($stats as $stat) {
+                        $user = User::find($stat->user_id);
+                        $list[] = [
+                            'user_id'     => $stat->user_id,
+                            'nickname'    => $user ? $user->nickname : '未知用户',
+                            'avatar'      => ($user && $user->avatar) ? $cdnDomain . $user->avatar : '/static/image/avatar.png',
+                            'total_income'=> intval($stat->total_invite_count),
+                            'level1_count'=> intval($stat->level1_count),
+                            'isCurrentUser'=> ($stat->user_id == $userId) ? true : false,
+                        ];
+                    }
+                }
             } else {
                 // 佣金排行
-                $list = Db::name('user_commission_stat')
-                    ->alias('s')
-                    ->join('user u', 's.user_id = u.id', 'LEFT')
-                    ->field('s.user_id, u.nickname, u.avatar, s.total_commission as total_income')
-                    ->where('s.total_commission', '>', 0)
-                    ->order('s.total_commission', 'desc')
+                $stats = (new UserCommissionStat())
+                    ->where('total_commission', '>', 0)
+                    ->order('total_commission', 'desc')
                     ->limit($limit)
                     ->select();
+                
+                if ($stats) {
+                    foreach ($stats as $stat) {
+                        $user = User::find($stat->user_id);
+                        $list[] = [
+                            'user_id'     => $stat->user_id,
+                            'nickname'    => $user ? $user->nickname : '未知用户',
+                            'avatar'      => ($user && $user->avatar) ? $cdnDomain . $user->avatar : '/static/image/avatar.png',
+                            'total_income'=> round(floatval($stat->total_commission), 2),
+                            'isCurrentUser'=> ($stat->user_id == $userId) ? true : false,
+                        ];
+                    }
+                }
             }
             
-            $list = $list ? (array)$list : [];
-            
-            // 标记当前用户
+            // 查找我的排名
             $myRank = 0;
             $myAmount = 0;
-            foreach ($list as $index => &$item) {
-                $item['total_income'] = round(floatval($item['total_income']), 2);
-                $item['isCurrentUser'] = ($item['user_id'] == $userId);
-                
+            foreach ($list as $index => $item) {
                 if ($item['user_id'] == $userId) {
                     $myRank = $index + 1;
                     $myAmount = $item['total_income'];
+                    break;
                 }
             }
-            unset($item);
             
             // 如果当前用户不在列表中，查找其排名
             if ($myRank == 0) {
                 if ($type == 'invite') {
-                    $myCount = Db::name('user_invite_stat')->where('user_id', $userId)->value('total_invite_count');
-                    if ($myCount > 0) {
-                        $myRank = Db::name('user_invite_stat')->where('total_invite_count', '>', $myCount)->count() + 1;
+                    $myStat = (new UserInviteStat())->where('user_id', $userId)->find();
+                    if ($myStat && $myStat->total_invite_count > 0) {
+                        $myCount = intval($myStat->total_invite_count);
+                        $myRank = (new UserInviteStat())->where('total_invite_count', '>', $myCount)->count() + 1;
                         $myAmount = $myCount;
                     }
                 } else {
-                    $myCommission = Db::name('user_commission_stat')->where('user_id', $userId)->value('total_commission');
-                    if ($myCommission > 0) {
-                        $myRank = Db::name('user_commission_stat')->where('total_commission', '>', $myCommission)->count() + 1;
-                        $myAmount = round(floatval($myCommission), 2);
+                    $myStat = (new UserCommissionStat())->where('user_id', $userId)->find();
+                    if ($myStat && $myStat->total_commission > 0) {
+                        $myCommission = round(floatval($myStat->total_commission), 2);
+                        $myRank = (new UserCommissionStat())->where('total_commission', '>', $myCommission)->count() + 1;
+                        $myAmount = $myCommission;
                     }
                 }
             }
             
             // 分离前三名
-            $firstPlace = $list[0] ?? ['user' => ['nickname' => '', 'avatar' => '/static/image/avatar.png'], 'total_income' => 0];
-            $secondPlace = $list[1] ?? ['user' => ['nickname' => '', 'avatar' => '/static/image/avatar.png'], 'total_income' => 0];
-            $thirdPlace = $list[2] ?? ['user' => ['nickname' => '', 'avatar' => '/static/image/avatar.png'], 'total_income' => 0];
+            $firstPlace = $list[0] ?? null;
+            $secondPlace = $list[1] ?? null;
+            $thirdPlace = $list[2] ?? null;
             
             $this->success('获取成功', [
                 'firstPlace'   => $firstPlace,

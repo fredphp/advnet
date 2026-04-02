@@ -386,7 +386,8 @@
                         {
                                 "navigationBarTitleText" : "业绩排行",
                                 "navigationBarBackgroundColor": "#fff",
-                                "navigationStyle": "custom"
+                                "navigationStyle": "custom",
+                                "enablePullDownRefresh": true
                         }
                 },
                 {

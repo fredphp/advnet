@@ -232,6 +232,7 @@
                         .badge-2 { background: linear-gradient(135deg, #C0C0C0, #A0A0A0); }
                         .badge-3 { background: linear-gradient(135deg, #CD7F32, #A0522D); }
                 }
+        }
 
         /* 排行榜列表 */
         .ranking-list {
