@@ -4,7 +4,6 @@ namespace app\admin\controller\signin;
 
 use app\common\controller\Backend;
 use think\Db;
-use think\Exception;
 
 /**
  * 签到配置管理
@@ -21,21 +20,25 @@ class Config extends Backend
      */
     public function index()
     {
-        if ($this->request->isAjax()) {
-            // 获取奖励规则列表
-            $total = Db::name('signin_rule')->count();
-            $list = Db::name('signin_rule')
-                ->order('day', 'asc')
-                ->select();
-            
-            $result = ['total' => $total, 'rows' => $list];
-            return json($result);
-        }
-        
         // 获取签到配置
         $config = Db::name('signin_config')->find(1);
         $this->view->assign('config', $config);
         return $this->view->fetch();
+    }
+
+    /**
+     * 获取奖励规则列表（AJAX接口，返回JSON）
+     */
+    public function getRuleList()
+    {
+        $list = Db::name('signin_rule')
+            ->order('day', 'asc')
+            ->select();
+
+        $this->success('', '', [
+            'rows'  => $list,
+            'total' => count($list)
+        ]);
     }
     
     /**

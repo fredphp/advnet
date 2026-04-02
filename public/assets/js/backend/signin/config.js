@@ -7,14 +7,14 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
             // ========== 加载规则列表 ==========
             function loadRuleList() {
                 $.ajax({
-                    url: 'signin/config/index',
+                    url: 'signin/config/getRuleList',
                     type: 'GET',
                     dataType: 'json',
                     success: function (ret) {
                         var html = '';
-                        if (ret.rows && ret.rows.length > 0) {
-                            for (var i = 0; i < ret.rows.length; i++) {
-                                var row = ret.rows[i];
+                        if (ret.code === 1 && ret.data && ret.data.rows && ret.data.rows.length > 0) {
+                            for (var i = 0; i < ret.data.rows.length; i++) {
+                                var row = ret.data.rows[i];
                                 var timeStr = row.createtime > 0 ? new Date(row.createtime * 1000).toLocaleString('zh-CN') : '-';
                                 html += '<tr>';
                                 html += '<td>' + row.id + '</td>';
@@ -43,9 +43,9 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
             loadRuleList();
 
             // ========== 添加规则按钮 ==========
-            $(document).on('click', '#btn-add-rule', function (e) {
+            $('#btn-add-rule').on('click', function (e) {
                 e.preventDefault();
-                Fast.api.open('signin/config/add', '添加规则', {
+                Backend.api.open('signin/config/add', '添加规则', {
                     area: ['600px', '450px']
                 });
             });
@@ -54,7 +54,7 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
             $(document).on('click', '.btn-edit-rule', function (e) {
                 e.preventDefault();
                 var id = $(this).data('id');
-                Fast.api.open('signin/config/edit/ids/' + id, '编辑规则', {
+                Backend.api.open('signin/config/edit/ids/' + id, '编辑规则', {
                     area: ['600px', '450px']
                 });
             });
@@ -93,12 +93,10 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
         },
 
         add: function () {
-            // 添加规则弹窗中的表单绑定
             Form.api.bindevent($("form[role=form]"));
         },
 
         edit: function () {
-            // 编辑规则弹窗中的表单绑定
             Form.api.bindevent($("form[role=form]"));
         },
 
