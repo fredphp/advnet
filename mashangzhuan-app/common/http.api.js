@@ -192,6 +192,7 @@ const install = (Vue, vm) => {
 
         // 单页/弹窗公告
         vm.$api.getPopupNotice           = async (params = {}) => await vm.$u.get('/api/singlepage/notice', params);
+        vm.$api.singlepageDetail         = async (params = {}) => await vm.$u.get('/api/singlepage/detail', params);
 }
 
 export default {
