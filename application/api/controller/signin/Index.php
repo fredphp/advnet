@@ -97,10 +97,17 @@ class Index extends Api
             $this->error('缺少日期参数');
         }
         
-        // 验证日期格式 YYYY-MM
-        if (!preg_match('/^\d{4}-\d{2}$/', $date)) {
+        // 验证并格式化日期为 YYYY-MM
+        $dateParts = explode('-', $date);
+        if (count($dateParts) != 2 || !is_numeric($dateParts[0]) || !is_numeric($dateParts[1])) {
             $this->error('日期格式错误');
         }
+        $year = intval($dateParts[0]);
+        $month = intval($dateParts[1]);
+        if ($year < 2020 || $year > 2100 || $month < 1 || $month > 12) {
+            $this->error('日期范围错误');
+        }
+        $date = sprintf('%04d-%02d', $year, $month);
         
         // 查询该月的签到记录
         $monthPrefix = $date . '-';
