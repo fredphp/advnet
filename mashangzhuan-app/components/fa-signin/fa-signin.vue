@@ -153,7 +153,8 @@ export default {
                         //可以补签
                         let chaDay = this.dateminus(e);//大于0为过去日期，小于0为未来日期                      
                         if (chaDay > 0 && chaDay < parseInt(this.vuex_signin.fillupdays) && !e.isSign) {
-                                this.fill_date = `${e.year}-${e.month}-${e.day}`;
+                                let m = e.month < 10 ? '0' + e.month : '' + e.month;
+                                this.fill_date = `${e.year}-${m}-${e.day}`;
                                 this.show = true;
                                 return;
                         }

@@ -238,10 +238,18 @@ class Signin extends Api
             $this->error('缺少日期参数');
         }
         
-        // 验证日期格式 YYYY-MM-DD
-        if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) {
+        // 验证并格式化日期为 YYYY-MM-DD（兼容不补零格式）
+        $dateParts = explode('-', $date);
+        if (count($dateParts) != 3 || !is_numeric($dateParts[0]) || !is_numeric($dateParts[1]) || !is_numeric($dateParts[2])) {
             $this->error('日期格式错误');
         }
+        $year = intval($dateParts[0]);
+        $month = intval($dateParts[1]);
+        $day = intval($dateParts[2]);
+        if ($year < 2020 || $year > 2100 || $month < 1 || $month > 12 || $day < 1 || $day > 31) {
+            $this->error('日期范围错误');
+        }
+        $date = sprintf('%04d-%02d-%02d', $year, $month, $day);
         
         $today = date('Y-m-d');
         
