@@ -27,6 +27,7 @@ class SystemConfigService
     const GROUP_REDPACKET = 'redpacket';
     const GROUP_RISK = 'risk';
     const GROUP_SYSTEM = 'system';
+    const GROUP_SIGNIN = 'signin';
     const GROUP_WECHAT = 'wechat';
     
     /**
@@ -126,6 +127,16 @@ class SystemConfigService
             'min_grab_interval' => 0.5,
             // 红包过期时间(秒)
             'expire_time' => 86400,
+        ],
+        
+        // ==================== 签到配置 ====================
+        'signin' => [
+            // 是否开启签到
+            'signin_enabled' => 1,
+            // 补签天数限制
+            'fillup_days' => 3,
+            // 补签消耗金币
+            'fillup_cost' => 50,
         ],
         
         // ==================== 风控配置 ====================
@@ -494,6 +505,14 @@ class SystemConfigService
     public static function getRiskConfig()
     {
         return self::getGroupConfig(self::GROUP_RISK);
+    }
+    
+    /**
+     * 获取签到配置
+     */
+    public static function getSigninConfig()
+    {
+        return self::getGroupConfig(self::GROUP_SIGNIN);
     }
     
     /**

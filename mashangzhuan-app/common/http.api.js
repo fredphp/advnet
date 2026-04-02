@@ -105,7 +105,7 @@ const install = (Vue, vm) => {
         vm.$api.signinConfig            = async (params = {}) => await vm.$u.get('/addons/signin/api.index/index',params);
         vm.$api.monthSign                       = async (params = {}) => await vm.$u.get('/addons/signin/api.index/monthSign',params);
         vm.$api.dosign                  = async (params = {}) => await vm.$u.post('/addons/signin/api.index/dosign',params);
-        vm.$api.fillup                          = async (params = {}) => await vm.$u.get('/addons/signin/api.index/fillup',params);
+        vm.$api.fillup                          = async (params = {}) => await vm.$u.post('/addons/signin/api.index/fillup',params);
         vm.$api.signRank                        = async (params = {}) => await vm.$u.get('/addons/signin/api.index/rank',params);
         vm.$api.signLog                         = async (params = {}) => await vm.$u.get('/addons/signin/api.index/signLog',params);
         //shop  
