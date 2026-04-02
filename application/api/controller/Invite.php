@@ -405,6 +405,16 @@ class Invite extends Api
             
             $list = $list ? (array)$list : [];
             
+            // 获取CDN域名，用于补全头像等资源的完整URL
+            $cdnUrl = '';
+            try {
+                $cdnUrl = \think\Config::get('upload.cdnurl');
+            } catch (\Exception $e) {}
+            if (empty($cdnUrl)) {
+                $cdnUrl = $this->request->domain();
+            }
+            $cdnUrl = rtrim($cdnUrl, '/');
+
             // 获取下级用户信息
             $userIds = array_unique(array_column($list, 'user_id'));
             $userMap = [];
@@ -415,9 +425,14 @@ class Invite extends Api
                     ->select();
                 if ($users) {
                     foreach ((array)$users as $u) {
+                        $avatar = $u['avatar'] ?: '/static/image/avatar.png';
+                        // 补全CDN域名
+                        if ($avatar && strpos($avatar, 'http') !== 0 && strpos($avatar, '//') !== 0) {
+                            $avatar = $cdnUrl . $avatar;
+                        }
                         $userMap[$u['id']] = [
                             'nickname' => $u['nickname'] ?: '未知用户',
-                            'avatar'   => $u['avatar'] ?: '/static/image/avatar.png',
+                            'avatar'   => $avatar,
                         ];
                     }
                 }
