@@ -58,17 +58,17 @@ class Singlepage extends Api
 
     /**
      * 获取单页详情
-     * 支持按ID或分类名获取
+     * 支持按ID、tpl标识、分类名获取
      * @method GET
      * @param int $id 单页ID
+     * @param string $tpl 按自定义标识获取（对应数据库tpl字段）
      * @param string $category 按分类名称获取最新一篇
-     * @param string $diyname 按自定义标识获取
      */
     public function detail()
     {
         $id = $this->request->get('id', 0, 'intval');
+        $tpl = $this->request->get('tpl', '');
         $category = $this->request->get('category', '');
-        $diyname = $this->request->get('diyname', '');
 
         $page = null;
 
@@ -79,13 +79,11 @@ class Singlepage extends Api
                 ->where('status', 1)
                 ->find();
         }
-        // 其次按diyname查询（需查询custom字段或title）
-        elseif ($diyname) {
-            // 尝试通过自定义标识查询
+        // 其次按tpl标识查询
+        elseif ($tpl) {
             $page = Db::name('singlepage')
-                ->where('title', $diyname)
+                ->where('tpl', $tpl)
                 ->where('status', 1)
-                ->order('id', 'desc')
                 ->find();
         }
         // 最后按分类名查询最新一篇
@@ -109,8 +107,10 @@ class Singlepage extends Api
             $this->error('页面不存在');
         }
 
-        // 浏览量+1
-        Db::name('singlepage')->where('id', $page['id'])->setInc('views');
+        // 浏览量+1（忽略软删除和字段不存在的情况）
+        try {
+            Db::name('singlepage')->where('id', $page['id'])->setInc('views');
+        } catch (\Exception $e) {}
 
         $this->success('获取成功', $page);
     }

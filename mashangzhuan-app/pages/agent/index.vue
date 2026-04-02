@@ -360,7 +360,7 @@
                                         {
                                                 name: '分销规则',
                                                 image: '/images/agic-rule.png',
-                                                path: '/pages/page/page?id=3',
+                                                path: '/pages/page/page?tpl=distribution-rules',
                                         },
                                         {
                                                 name: '业绩排行',
