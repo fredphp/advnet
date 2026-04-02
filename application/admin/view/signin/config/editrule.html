@@ -1,0 +1,29 @@
+<form id="edit-form" class="form-horizontal" role="form" data-toggle="validator" method="POST" action="{:url('signin/config/editRule', ['ids' => $row.id])}">
+    {:token()}
+    <div class="form-group">
+        <label class="control-label col-xs-12 col-sm-2">周期第几天:</label>
+        <div class="col-xs-12 col-sm-8">
+            <input type="number" class="form-control" value="{$row.day}" disabled>
+            <span class="help-block">天数创建后不可修改，如需更改请删除后重新添加</span>
+        </div>
+    </div>
+    <div class="form-group">
+        <label class="control-label col-xs-12 col-sm-2">奖励金币:</label>
+        <div class="col-xs-12 col-sm-8">
+            <input type="number" name="row[coins]" class="form-control" value="{$row.coins}" min="0" required>
+        </div>
+    </div>
+    <div class="form-group">
+        <label class="control-label col-xs-12 col-sm-2">规则描述:</label>
+        <div class="col-xs-12 col-sm-8">
+            <input type="text" name="row[description]" class="form-control" value="{$row.description}">
+        </div>
+    </div>
+    <div class="form-group layer-footer">
+        <label class="control-label col-xs-12 col-sm-2"></label>
+        <div class="col-xs-12 col-sm-8">
+            <button type="submit" class="btn btn-primary btn-embossed">{:__('OK')}</button>
+            <button type="reset" class="btn btn-default btn-embossed">{:__('Reset')}</button>
+        </div>
+    </div>
+</form>

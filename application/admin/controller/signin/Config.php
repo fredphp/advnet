@@ -108,7 +108,7 @@ class Config extends Backend
             
             $this->success('添加成功');
         }
-        $this->error('非法请求');
+        return $this->view->fetch();
     }
     
     /**
