@@ -102,12 +102,12 @@ const install = (Vue, vm) => {
         // vm.$api.goOpenidCallback      = async (params = {}) => await vm.$u.post('/addons/third/api/getOpenidCallback', params);
         // vm.$api.goThirdAccount        = async (params = {}) => await vm.$u.post('/addons/third/api/account', params);
         // 签到   
-        vm.$api.signinConfig            = async (params = {}) => await vm.$u.get('/addons/signin/api.index/index',params);
-        vm.$api.monthSign                       = async (params = {}) => await vm.$u.get('/addons/signin/api.index/monthSign',params);
-        vm.$api.dosign                  = async (params = {}) => await vm.$u.post('/addons/signin/api.index/dosign',params);
-        vm.$api.fillup                          = async (params = {}) => await vm.$u.post('/addons/signin/api.index/fillup',params);
-        vm.$api.signRank                        = async (params = {}) => await vm.$u.get('/addons/signin/api.index/rank',params);
-        vm.$api.signLog                         = async (params = {}) => await vm.$u.get('/addons/signin/api.index/signLog',params);
+        vm.$api.signinConfig            = async (params = {}) => await vm.$u.get('/api/signin/index',params);
+        vm.$api.monthSign                       = async (params = {}) => await vm.$u.get('/api/signin/monthSign',params);
+        vm.$api.dosign                  = async (params = {}) => await vm.$u.post('/api/signin/dosign',params);
+        vm.$api.fillup                          = async (params = {}) => await vm.$u.post('/api/signin/fillup',params);
+        vm.$api.signRank                        = async (params = {}) => await vm.$u.get('/api/signin/rank',params);
+        vm.$api.signLog                         = async (params = {}) => await vm.$u.get('/api/signin/signLog',params);
         //shop  
         vm.$api.getGoodsIndex           = async (params = {}) => await vm.$u.get('/addons/shop/api.goods/index',params);
         vm.$api.getGoodsInfo            = async (params = {}) => await vm.$u.get('/addons/shop/api.goods/detail',params);

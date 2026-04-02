@@ -20,7 +20,7 @@ class Index extends Api
     
     /**
      * 签到首页 - 获取签到配置和用户签到状态
-     * GET /addons/signin/api.index/index
+     * GET /api/signin/index
      */
     public function index()
     {
@@ -86,7 +86,7 @@ class Index extends Api
     
     /**
      * 获取月度签到数据
-     * GET /addons/signin/api.index/monthSign
+     * GET /api/signin/monthSign
      */
     public function monthSign()
     {
@@ -122,7 +122,7 @@ class Index extends Api
     
     /**
      * 执行签到
-     * POST /addons/signin/api.index/dosign
+     * POST /api/signin/dosign
      */
     public function dosign()
     {
@@ -220,7 +220,7 @@ class Index extends Api
     
     /**
      * 补签
-     * POST /addons/signin/api.index/fillup
+     * POST /api/signin/fillup
      */
     public function fillup()
     {
@@ -326,7 +326,7 @@ class Index extends Api
     
     /**
      * 签到排行榜
-     * GET /addons/signin/api.index/rank
+     * GET /api/signin/rank
      */
     public function rank()
     {
@@ -372,7 +372,7 @@ class Index extends Api
     
     /**
      * 签到日志（分页）
-     * GET /addons/signin/api.index/signLog
+     * GET /api/signin/signLog
      */
     public function signLog()
     {
@@ -390,10 +390,10 @@ class Index extends Api
             ->page($page, $limit)
             ->select();
         
-        // 格式化日志数据
+        // 格式化日志数据，匹配前端显示需求
         foreach ($list as &$item) {
-            $item['type_text'] = $item['type'] == 'fillup' ? '补签' : '签到';
-            $item['createtime_text'] = date('Y-m-d H:i', $item['createtime']);
+            $item['type'] = $item['type'] == 'fillup' ? '补签' : '签到';
+            $item['createtime'] = date('m-d H:i', $item['createtime']);
         }
         unset($item);
         

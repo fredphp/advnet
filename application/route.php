@@ -19,13 +19,13 @@ return [
     ],
 
     // 签到系统路由映射
-    // 前端调用 /addons/signin/api.index/xxx 映射到 api/signin.Index/xxx
-    'addons/signin/api.index/index'     => 'api/signin.Index/index',
-    'addons/signin/api.index/monthSign' => 'api/signin.Index/monthSign',
-    'addons/signin/api.index/dosign'    => 'api/signin.Index/dosign',
-    'addons/signin/api.index/fillup'    => 'api/signin.Index/fillup',
-    'addons/signin/api.index/rank'      => 'api/signin.Index/rank',
-    'addons/signin/api.index/signLog'   => 'api/signin.Index/signLog',
+    // 前端调用 /api/signin/xxx 映射到 api/signin.Index/xxx
+    'api/signin/index'     => 'api/signin.Index/index',
+    'api/signin/monthSign' => 'api/signin.Index/monthSign',
+    'api/signin/dosign'    => 'api/signin.Index/dosign',
+    'api/signin/fillup'    => 'api/signin.Index/fillup',
+    'api/signin/rank'      => 'api/signin.Index/rank',
+    'api/signin/signLog'   => 'api/signin.Index/signLog',
 //        域名绑定到模块
 //        '__domain__'  => [
 //            'admin' => 'admin',
