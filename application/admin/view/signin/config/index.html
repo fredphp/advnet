@@ -15,8 +15,8 @@
                                 <label class="control-label col-xs-12 col-sm-2">签到开关:</label>
                                 <div class="col-xs-12 col-sm-8">
                                     <select name="row[enabled]" class="form-control" style="max-width:200px;">
-                                        <option value="1" {if condition="$config['enabled'] == 1"}selected{/if}>开启</option>
-                                        <option value="0" {if condition="$config['enabled'] == 0"}selected{/if}>关闭</option>
+                                        <option value="1" {if condition="$signinConfig['enabled'] == 1"}selected{/if}>开启</option>
+                                        <option value="0" {if condition="$signinConfig['enabled'] == 0"}selected{/if}>关闭</option>
                                     </select>
                                     <span class="help-block">关闭后用户端签到功能将不可用</span>
                                 </div>
@@ -24,14 +24,14 @@
                             <div class="form-group">
                                 <label class="control-label col-xs-12 col-sm-2">每月可补签天数:</label>
                                 <div class="col-xs-12 col-sm-8">
-                                    <input type="number" name="row[fillup_days]" class="form-control" value="{$config.fillup_days|default=3}" min="0" max="31" style="max-width:200px;">
+                                    <input type="number" name="row[fillup_days]" class="form-control" value="{$signinConfig.fillup_days|default=3}" min="0" max="31" style="max-width:200px;">
                                     <span class="help-block">用户每月最多可以补签多少天，0表示不允许补签</span>
                                 </div>
                             </div>
                             <div class="form-group">
                                 <label class="control-label col-xs-12 col-sm-2">补签消耗金币:</label>
                                 <div class="col-xs-12 col-sm-8">
-                                    <input type="number" name="row[fillup_cost]" class="form-control" value="{$config.fillup_cost|default=50}" min="0" style="max-width:200px;">
+                                    <input type="number" name="row[fillup_cost]" class="form-control" value="{$signinConfig.fillup_cost|default=50}" min="0" style="max-width:200px;">
                                     <span class="help-block">用户每次补签需要消耗的金币数量</span>
                                 </div>
                             </div>

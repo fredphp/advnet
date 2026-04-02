@@ -26,8 +26,8 @@ class Config extends Backend
     public function index()
     {
         // 获取签到配置
-        $config = Db::name('signin_config')->find(1);
-        $this->view->assign('config', $config);
+        $signinConfig = Db::name('signin_config')->find(1);
+        $this->view->assign('signinConfig', $signinConfig);
         return $this->view->fetch();
     }
 
