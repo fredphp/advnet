@@ -17,15 +17,15 @@ import uView from 'uview-ui'
 Vue.use(uView);
 
 Vue.filter('formatreceive',function(value){
-	console.log(value)
-	if(!value){
-		return '';
-	}
-	let arr = value.replace(/\s\d{2}:\d{2}:\d{2}/g,'').split(' - ');
-	if (arr.length == 2) {		
-		return arr[0] + '至' + arr[1] + '有效';
-	}
-	return '';
+        console.log(value)
+        if(!value){
+                return '';
+        }
+        let arr = value.replace(/\s\d{2}:\d{2}:\d{2}/g,'').split(' - ');
+        if (arr.length == 2) {          
+                return arr[0] + '至' + arr[1] + '有效';
+        }
+        return '';
 })
 
 import {tools} from '@/common/fa.mixin.js'
@@ -35,6 +35,15 @@ Vue.mixin(tools)
 let mpShare = require('uview-ui/libs/mixin/mpShare.js');
 Vue.mixin(mpShare)
 
+// 引入微信网页分享JSSDK mixin（H5端微信浏览器内使用）
+// #ifdef H5
+import { weixinShare } from '@/common/fa.weixin.mixin.js';
+Vue.mixin(weixinShare);
+// #endif
+
+// 挂载分享工具
+import * as ShareUtils from '@/common/share.utils.js';
+Vue.prototype.$shareUtils = ShareUtils;
 
 //皮肤色处理
 let styleMixin = require('@/common/fa.style.mixin.js')
@@ -49,7 +58,7 @@ Vue.mixin(vuexStore)
 
 
 const app = new Vue({
-	store,
+        store,
     ...App
 })
 

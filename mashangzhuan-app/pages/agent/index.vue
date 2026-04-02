@@ -192,33 +192,115 @@
                                 </view>
                         </view>
 
+                        <!-- 平台标识 -->
+                        <view class="platform-badge" v-if="currentPlatform">
+                                <text class="platform-badge-text">{{ platformLabel }}</text>
+                        </view>
+
                         <!-- 分享按钮区域 -->
                         <view class="share-popup-actions">
+                                <!-- #ifdef APP-PLUS || MP-WEIXIN -->
                                 <view class="share-action-item" @click="shareToWechat">
                                         <view class="share-icon share-icon-wechat">
-                                                <text class="icon-svg">
-                                                </text>
+                                                <text class="icon-svg"></text>
                                         </view>
                                         <text class="share-action-label">微信好友</text>
                                 </view>
                                 <view class="share-action-item" @click="shareToMoments">
                                         <view class="share-icon share-icon-moments">
-                                                <text class="icon-svg">
-                                                </text>
+                                                <text class="icon-svg"></text>
                                         </view>
                                         <text class="share-action-label">朋友圈</text>
                                 </view>
+                                <!-- #endif -->
+
+                                <!-- #ifdef H5 -->
+                                <!-- H5 - 微信浏览器内 -->
+                                <template v-if="isInWechat">
+                                        <view class="share-action-item" @click="h5ShareToFriend">
+                                                <view class="share-icon share-icon-wechat">
+                                                        <text class="icon-svg"></text>
+                                                </view>
+                                                <text class="share-action-label">微信好友</text>
+                                        </view>
+                                        <view class="share-action-item" @click="h5ShareToTimeline">
+                                                <view class="share-icon share-icon-moments">
+                                                        <text class="icon-svg"></text>
+                                                </view>
+                                                <text class="share-action-label">朋友圈</text>
+                                        </view>
+                                </template>
+                                <!-- H5 - 非微信浏览器 -->
+                                <template v-else>
+                                        <view class="share-action-item" @click="copyInviteLink">
+                                                <view class="share-icon share-icon-link">
+                                                        <text class="icon-text-link">链</text>
+                                                </view>
+                                                <text class="share-action-label">复制链接</text>
+                                        </view>
+                                        <view class="share-action-item" @click="generatePoster">
+                                                <view class="share-icon share-icon-poster">
+                                                        <text class="icon-text-poster">海</text>
+                                                </view>
+                                                <text class="share-action-label">保存海报</text>
+                                        </view>
+                                </template>
+                                <!-- #endif -->
+
                                 <view class="share-action-item" @click="copyInviteLink">
                                         <view class="share-icon share-icon-link">
                                                 <text class="icon-text-link">链</text>
                                         </view>
                                         <text class="share-action-label">复制链接</text>
                                 </view>
+
+                                <!-- #ifdef APP-PLUS -->
                                 <view class="share-action-item" @click="shareMore">
                                         <view class="share-icon share-icon-more">
                                                 <text class="icon-dots">•••</text>
                                         </view>
                                         <text class="share-action-label">更多</text>
+                                </view>
+                                <!-- #endif -->
+
+                                <!-- #ifdef MP-WEIXIN -->
+                                <view class="share-action-item" @click="shareToMiniprogram">
+                                        <view class="share-icon share-icon-miniprogram">
+                                                <text class="icon-text-mp">程</text>
+                                        </view>
+                                        <text class="share-action-label">转发好友</text>
+                                </view>
+                                <!-- #endif -->
+                        </view>
+
+                        <!-- H5 微信内分享引导提示 -->
+                        <!-- #ifdef H5 -->
+                        <view class="h5-share-tip" v-if="isInWechat">
+                                <text class="h5-share-tip-text">点击右上角 "..." 可分享给好友或朋友圈</text>
+                        </view>
+                        <!-- #endif -->
+
+                        <!-- 海报预览区域 -->
+                        <view class="poster-preview-section" v-if="showPosterPreview">
+                                <view class="poster-preview-title">
+                                        <text>分享海报</text>
+                                        <text class="poster-close" @click="showPosterPreview = false">✕</text>
+                                </view>
+                                <view class="poster-image-wrap">
+                                        <image v-if="posterBase64" :src="posterBase64" mode="widthFix" class="poster-image"
+                                                @longpress="savePosterImage" show-menu-by-longpress></image>
+                                        <view v-else class="poster-placeholder">
+                                                <u-loading mode="circle" v-if="posterLoading"></u-loading>
+                                                <text v-else class="poster-placeholder-text">海报生成中...</text>
+                                        </view>
+                                </view>
+                                <view class="poster-actions">
+                                        <view class="poster-action-btn poster-action-save" @click="savePosterImage">
+                                                <text>保存海报</text>
+                                        </view>
+                                        <view class="poster-action-btn poster-action-copy" @click="copyInviteLink">
+                                                <text>复制链接</text>
+                                        </view>
                                 </view>
                         </view>
 
@@ -228,6 +310,28 @@
                         </view>
                 </view>
 
+                <!-- H5 微信内分享引导蒙层 -->
+                <!-- #ifdef H5 -->
+                <view class="wx-share-guide-overlay" v-if="showWxShareGuide" @click="showWxShareGuide = false">
+                        <view class="wx-guide-arrow">
+                                <image :src="$IMG_URL+'/images/wx-guide-arrow.png'" mode="aspectFit" class="wx-guide-arrow-img"></image>
+                        </view>
+                        <view class="wx-guide-content">
+                                <view class="wx-guide-step">
+                                        <text class="wx-guide-step-num">1</text>
+                                        <text class="wx-guide-step-text">点击右上角 "<text class="wx-guide-icon">...</text>" 按钮</text>
+                                </view>
+                                <view class="wx-guide-step">
+                                        <text class="wx-guide-step-num">2</text>
+                                        <text class="wx-guide-step-text">选择 "发送给朋友" 或 "分享到朋友圈"</text>
+                                </view>
+                        </view>
+                        <view class="wx-guide-close" @click.stop="showWxShareGuide = false">
+                                <text class="wx-guide-close-text">我知道了</text>
+                        </view>
+                </view>
+                <!-- #endif -->
+
                 <!-- 提示组件 -->
                 <u-toast ref="uToast" />
                 <fa-tabbar></fa-tabbar>
@@ -236,6 +340,12 @@
 
 <script>
         import cocoGridSimple from '@/components/coco/coco-grid-simple.vue';
+        // #ifdef H5
+        import { isWechatBrowser, getShareData, h5WechatShare, h5DownloadImage } from '@/common/share.utils.js';
+        // #endif
+        // #ifdef MP-WEIXIN
+        import { getMiniProgramSharePath } from '@/common/share.utils.js';
+        // #endif
         export default {
                 components: {
                         cocoGridSimple
@@ -336,13 +446,47 @@
                                 showSharePopup: false,
                                 posterBase64: '',
                                 posterLoading: false,
+                                showPosterPreview: false,
+                                showWxShareGuide: false,
+                                // #ifdef H5
+                                isInWechat: false,
+                                currentPlatform: '',
+                                platformLabel: '',
+                                // #endif
                         };
                 },
                 onLoad() {
                         this.loadDistributionData();
                         this.getAgentInfo();
                         this.getWithdrawStat();
+                        this.detectPlatform();
                 },
+
+                // #ifdef MP-WEIXIN
+                // 小程序分享 - 用户点击右上角转发时触发
+                onShareAppMessage() {
+                        return {
+                                title: '马上赚 - 邀请你一起赚钱',
+                                path: getMiniProgramSharePath(this.userInfo.invite_code),
+                                imageUrl: this.vuex_user.avatar || '',
+                                success: () => {
+                                        console.log('[Agent] 小程序分享成功');
+                                },
+                                fail: (err) => {
+                                        console.log('[Agent] 小程序分享失败:', err);
+                                }
+                        };
+                },
+
+                // 小程序分享到朋友圈
+                onShareTimeline() {
+                        return {
+                                title: '马上赚 - 邀请你一起赚钱',
+                                query: 'invite_code=' + (this.userInfo.invite_code || ''),
+                                imageUrl: this.vuex_user.avatar || ''
+                        };
+                },
+                // #endif
                 methods: {
                         getWithdrawStat() {
                                 this.$api.withdrawStat().then(res => {
@@ -474,13 +618,36 @@
                                 });
                         },
 
+                        // ==================== 平台检测 ====================
+
+                        // 检测当前运行平台
+                        detectPlatform() {
+                                // #ifdef H5
+                                this.isInWechat = isWechatBrowser();
+                                this.currentPlatform = 'h5';
+                                this.platformLabel = this.isInWechat ? '微信公众号' : 'H5浏览器';
+
+                                // 微信浏览器内自动配置JSSDK分享
+                                if (this.isInWechat && this.initJssdk) {
+                                        this.initH5WxShare();
+                                }
+                                // #endif
+                                // #ifdef MP-WEIXIN
+                                this.currentPlatform = 'mp-weixin';
+                                this.platformLabel = '微信小程序';
+                                // #endif
+                                // #ifdef APP-PLUS
+                                this.currentPlatform = 'app';
+                                this.platformLabel = 'APP';
+                                // #endif
+                        },
+
                         // ==================== 分享邀请 ====================
 
                         // 处理推广工具点击
                         handleGridClick(item) {
                                 if (item.path === 'wxshare') {
                                         this.showSharePopup = true;
-                                        uni.showToast({ title: '弹窗已打开', icon: 'none' });
                                 } else {
                                         uni.navigateTo({ url: item.path });
                                 }
@@ -488,6 +655,7 @@
 
                         closeSharePopup() {
                                 this.showSharePopup = false;
+                                this.showPosterPreview = false;
                         },
 
                         // 复制邀请码
@@ -513,14 +681,54 @@
                                         return;
                                 }
                                 const shareText = '我正在使用马上赚APP，邀请你一起赚钱！';
+                                // #ifdef H5
+                                if (this.isInWechat) {
+                                        // 微信浏览器内，引导用户使用右上角分享
+                                        this.showWxShareGuide = true;
+                                        return;
+                                }
+                                // 非微信浏览器使用 navigator.clipboard
+                                if (navigator.clipboard && navigator.clipboard.writeText) {
+                                        navigator.clipboard.writeText(shareText + '\n' + link).then(() => {
+                                                uni.showToast({ title: '邀请链接已复制', icon: 'success' });
+                                        }).catch(() => {
+                                                this._fallbackCopy(shareText + '\n' + link);
+                                        });
+                                } else {
+                                        this._fallbackCopy(shareText + '\n' + link);
+                                }
+                                // #endif
+                                // #ifndef H5
                                 uni.setClipboardData({
                                         data: shareText + '\n' + link,
                                         success: () => {
                                                 uni.showToast({ title: '邀请链接已复制', icon: 'success' });
                                         }
                                 });
+                                // #endif
                         },
 
+                        // #ifdef H5
+                        _fallbackCopy(text) {
+                                const textarea = document.createElement('textarea');
+                                textarea.value = text;
+                                textarea.style.position = 'fixed';
+                                textarea.style.left = '-9999px';
+                                document.body.appendChild(textarea);
+                                textarea.select();
+                                try {
+                                        document.execCommand('copy');
+                                        uni.showToast({ title: '邀请链接已复制', icon: 'success' });
+                                } catch (e) {
+                                        uni.showToast({ title: '复制失败，请手动复制', icon: 'none' });
+                                }
+                                document.body.removeChild(textarea);
+                        },
+                        // #endif
+
+                        // ==================== APP端分享 ====================
+
+                        // #ifdef APP-PLUS
                         // APP端分享 - 微信好友
                         shareToWechat() {
                                 this.doAppShare('weixin');
@@ -536,8 +744,6 @@
                                 this.closeSharePopup();
                                 const href = this.userInfo.invite_link || '';
                                 const shareText = '我正在使用马上赚APP，邀请你一起赚钱！快来看看吧';
-
-                                // #ifdef APP-PLUS
                                 plus.share.sendWithSystem({
                                         type: 'text',
                                         content: shareText + '\n' + href,
@@ -547,19 +753,12 @@
                                         console.log('系统分享失败:', JSON.stringify(err));
                                         this.copyInviteLink();
                                 });
-                                // #endif
-
-                                // #ifdef H5
-                                this.copyInviteLink();
-                                // #endif
                         },
 
-                        // 统一分享方法
+                        // APP端统一分享方法
                         doAppShare(provider) {
                                 const shareText = '我正在使用马上赚APP，邀请你一起赚钱！快来看看吧';
                                 const href = this.userInfo.invite_link || '';
-
-                                // #ifdef APP-PLUS
                                 plus.share.getServices((services) => {
                                         let targetService = null;
                                         for (let i = 0; i < services.length; i++) {
@@ -568,7 +767,6 @@
                                                         break;
                                                 }
                                         }
-
                                         if (!targetService) {
                                                 uni.showToast({
                                                         title: '未安装' + (provider === 'weixin' ? '微信' : '相关应用'),
@@ -576,7 +774,6 @@
                                                 });
                                                 return;
                                         }
-
                                         if (targetService.authenticated) {
                                                 this._doSendShare(targetService, shareText, href);
                                         } else {
@@ -589,14 +786,8 @@
                                 }, (err) => {
                                         uni.showToast({ title: '获取分享服务失败', icon: 'none' });
                                 });
-                                // #endif
-
-                                // #ifdef H5
-                                this.copyInviteLink();
-                                // #endif
                         },
 
-                        // 执行分享
                         _doSendShare(service, shareText, href) {
                                 service.send({
                                         type: 0,
@@ -612,6 +803,219 @@
                                                 uni.showToast({ title: '分享失败', icon: 'none' });
                                         }
                                 });
+                        },
+                        // #endif
+
+                        // ==================== H5端分享（微信公众号） ====================
+
+                        // #ifdef H5
+                        // 初始化H5微信JSSDK自动分享
+                        initH5WxShare() {
+                                const shareData = getShareData(this.userInfo);
+                                // 先设置默认分享数据
+                                this._pendingShareData = shareData;
+                                // 调用 weixinShare mixin 的 initJssdk
+                                if (typeof this.initJssdk === 'function') {
+                                        this.initJssdk(() => {
+                                                // JSSDK 初始化完成后，设置自定义分享
+                                                this._updateWxShareData(shareData);
+                                        });
+                                }
+                        },
+
+                        // 更新微信JSSDK分享数据
+                        _updateWxShareData(shareData) {
+                                if (typeof jweixin === 'undefined') return;
+                                jweixin.ready(function() {
+                                        const wxData = {
+                                                title: shareData.title,
+                                                desc: shareData.desc,
+                                                link: shareData.link,
+                                                imgUrl: shareData.imgUrl || '',
+                                                success: function() {},
+                                                cancel: function() {}
+                                        };
+                                        jweixin.updateAppMessageShareData(wxData);
+                                        jweixin.updateTimelineShareData(wxData);
+                                });
+                        },
+
+                        // H5 微信浏览器 - 分享给好友（显示引导蒙层）
+                        h5ShareToFriend() {
+                                if (!this.isInWechat) {
+                                        this.copyInviteLink();
+                                        return;
+                                }
+                                // 更新JSSDK分享数据后显示引导蒙层
+                                const shareData = getShareData(this.userInfo);
+                                this._updateWxShareData(shareData);
+                                this.closeSharePopup();
+                                this.showWxShareGuide = true;
+                        },
+
+                        // H5 微信浏览器 - 分享到朋友圈（显示引导蒙层）
+                        h5ShareToTimeline() {
+                                if (!this.isInWechat) {
+                                        this.copyInviteLink();
+                                        return;
+                                }
+                                // 更新JSSDK分享数据后显示引导蒙层
+                                const shareData = getShareData(this.userInfo);
+                                this._updateWxShareData(shareData);
+                                this.closeSharePopup();
+                                this.showWxShareGuide = true;
+                        },
+
+                        // H5 生成分享海报
+                        generatePoster() {
+                                this.posterLoading = true;
+                                this.showPosterPreview = true;
+                                // 尝试使用后端API生成海报
+                                this.$api.inviteMyCode().then(res => {
+                                        if (res && res.code == 1 && res.data && res.data.poster) {
+                                                this.posterBase64 = res.data.poster;
+                                                this.posterLoading = false;
+                                                return;
+                                        }
+                                        // 如果后端没有返回海报，使用本地生成
+                                        this._generateLocalPoster();
+                                }).catch(() => {
+                                        this._generateLocalPoster();
+                                });
+                        },
+
+                        // 本地生成简单海报
+                        _generateLocalPoster() {
+                                // 使用canvas绘制海报（小程序方案）
+                                // #ifdef H5
+                                // H5端使用DOM生成海报
+                                setTimeout(() => {
+                                        try {
+                                                const canvas = document.createElement('canvas');
+                                                const ctx = canvas.getContext('2d');
+                                                canvas.width = 600;
+                                                canvas.height = 900;
+
+                                                // 背景
+                                                const gradient = ctx.createLinearGradient(0, 0, 600, 900);
+                                                gradient.addColorStop(0, '#E62129');
+                                                gradient.addColorStop(0.5, '#FF6B35');
+                                                gradient.addColorStop(1, '#FF9A56');
+                                                ctx.fillStyle = gradient;
+                                                ctx.fillRect(0, 0, 600, 900);
+
+                                                // 标题
+                                                ctx.fillStyle = '#FFFFFF';
+                                                ctx.font = 'bold 36px sans-serif';
+                                                ctx.textAlign = 'center';
+                                                ctx.fillText('马上赚 - 邀请你一起赚钱', 300, 80);
+
+                                                // 用户名
+                                                ctx.font = '28px sans-serif';
+                                                ctx.fillText(this.vuex_user.nickname || '好友', 300, 160);
+
+                                                // 邀请码
+                                                ctx.font = 'bold 48px Courier New, monospace';
+                                                ctx.fillText(this.userInfo.invite_code || '', 300, 280);
+
+                                                ctx.font = '20px sans-serif';
+                                                ctx.fillText('我的邀请码', 300, 230);
+
+                                                // 分隔线
+                                                ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+                                                ctx.lineWidth = 1;
+                                                ctx.beginPath();
+                                                ctx.moveTo(100, 340);
+                                                ctx.lineTo(500, 340);
+                                                ctx.stroke();
+
+                                                // 说明文字
+                                                ctx.font = '22px sans-serif';
+                                                ctx.fillStyle = 'rgba(255,255,255,0.9)';
+                                                ctx.fillText('扫码或输入邀请码', 300, 420);
+                                                ctx.fillText('加入我的团队一起赚', 300, 460);
+
+                                                // 邀请链接
+                                                ctx.font = '18px sans-serif';
+                                                ctx.fillStyle = 'rgba(255,255,255,0.7)';
+                                                const linkText = this.userInfo.invite_link || '马上赚APP';
+                                                const displayLink = linkText.length > 40 ? linkText.substring(0, 40) + '...' : linkText;
+                                                ctx.fillText(displayLink, 300, 540);
+
+                                                // 底部
+                                                ctx.font = '16px sans-serif';
+                                                ctx.fillStyle = 'rgba(255,255,255,0.5)';
+                                                ctx.fillText('长按保存图片 · 分享给好友', 300, 850);
+
+                                                this.posterBase64 = canvas.toDataURL('image/png');
+                                                this.posterLoading = false;
+                                        } catch (e) {
+                                                console.error('[Agent] 海报生成失败:', e);
+                                                this.posterLoading = false;
+                                        }
+                                }, 300);
+                                // #endif
+                        },
+
+                        // H5 保存海报图片
+                        savePosterImage() {
+                                if (!this.posterBase64) {
+                                        uni.showToast({ title: '海报未生成', icon: 'none' });
+                                        return;
+                                }
+                                h5DownloadImage(this.posterBase64, 'invite-poster.png');
+                                uni.showToast({ title: '海报已保存', icon: 'success' });
+                        },
+                        // #endif
+
+                        // ==================== 小程序分享 ====================
+
+                        // #ifdef MP-WEIXIN
+                        // 小程序 - 转发给好友（触发微信原生转发面板）
+                        shareToMiniprogram() {
+                                // 微信小程序的转发需要触发右上角的转发按钮
+                                // 这里通过引导提示用户
+                                this.closeSharePopup();
+                                uni.showModal({
+                                        title: '转发给好友',
+                                        content: '请点击右上角 "..." 按钮，选择 "转发" 将邀请链接发送给好友',
+                                        showCancel: false,
+                                        confirmText: '我知道了'
+                                });
+                        },
+
+                        // 小程序分享到朋友圈
+                        shareToMoments() {
+                                this.closeSharePopup();
+                                uni.showModal({
+                                        title: '分享到朋友圈',
+                                        content: '请点击右上角 "..." 按钮，选择 "分享到朋友圈"',
+                                        showCancel: false,
+                                        confirmText: '我知道了'
+                                });
+                        },
+
+                        // 小程序生成海报
+                        shareToWechat() {
+                                // 小程序端调用微信好友分享
+                                this.closeSharePopup();
+                                uni.showModal({
+                                        title: '转发给好友',
+                                        content: '请点击右上角 "..." 按钮，选择 "转发" 将邀请链接发送给好友',
+                                        showCancel: false,
+                                        confirmText: '我知道了'
+                                });
+                        },
+                        // #endif
+
+                        // 当用户信息更新时，同步更新H5 JSSDK分享数据
+                        _syncH5ShareData() {
+                                // #ifdef H5
+                                if (this.isInWechat) {
+                                        const shareData = getShareData(this.userInfo);
+                                        this._updateWxShareData(shareData);
+                                }
+                                // #endif
                         }
                 },
                 onPageScroll(e) {
@@ -1290,6 +1694,208 @@
                 .cancel-text {
                         font-size: 30rpx;
                         color: #666;
+                }
+        }
+
+        // ==================== 新增分享样式 ====================
+
+        // 平台标识
+        .platform-badge {
+                display: flex;
+                justify-content: center;
+                padding: 8rpx 0 16rpx;
+
+                .platform-badge-text {
+                        font-size: 22rpx;
+                        color: #999;
+                        background: #F0F0F0;
+                        padding: 4rpx 20rpx;
+                        border-radius: 20rpx;
+                }
+        }
+
+        // 小程序分享图标
+        .share-icon-miniprogram {
+                background: linear-gradient(145deg, #07C160, #06AD56);
+        }
+
+        // 海报分享图标
+        .share-icon-poster {
+                background: linear-gradient(145deg, #E62129, #C41A21);
+
+                .icon-text-poster {
+                        font-size: 32rpx;
+                        font-weight: 700;
+                        color: #FFF;
+                }
+        }
+
+        // H5 微信内分享提示
+        .h5-share-tip {
+                display: flex;
+                justify-content: center;
+                padding: 12rpx 32rpx;
+                margin: 0 32rpx 16rpx;
+                background: rgba(7, 193, 96, 0.08);
+                border-radius: 12rpx;
+                border: 1rpx solid rgba(7, 193, 96, 0.2);
+
+                .h5-share-tip-text {
+                        font-size: 22rpx;
+                        color: #07C160;
+                }
+        }
+
+        // ==================== 海报预览 ====================
+        .poster-preview-section {
+                margin: 24rpx 32rpx;
+                background: #FFFFFF;
+                border-radius: 16rpx;
+                overflow: hidden;
+
+                .poster-preview-title {
+                        display: flex;
+                        justify-content: space-between;
+                        align-items: center;
+                        padding: 20rpx 24rpx;
+                        font-size: 28rpx;
+                        font-weight: bold;
+                        color: #333;
+
+                        .poster-close {
+                                font-size: 28rpx;
+                                color: #999;
+                                width: 48rpx;
+                                height: 48rpx;
+                                text-align: center;
+                                line-height: 48rpx;
+                        }
+                }
+
+                .poster-image-wrap {
+                        padding: 0 24rpx;
+                        display: flex;
+                        justify-content: center;
+                        min-height: 200rpx;
+
+                        .poster-image {
+                                width: 100%;
+                                border-radius: 12rpx;
+                        }
+
+                        .poster-placeholder {
+                                width: 400rpx;
+                                height: 400rpx;
+                                display: flex;
+                                align-items: center;
+                                justify-content: center;
+
+                                .poster-placeholder-text {
+                                        font-size: 26rpx;
+                                        color: #999;
+                                }
+                        }
+                }
+
+                .poster-actions {
+                        display: flex;
+                        padding: 20rpx 24rpx;
+                        gap: 20rpx;
+
+                        .poster-action-btn {
+                                flex: 1;
+                                text-align: center;
+                                padding: 20rpx 0;
+                                border-radius: 12rpx;
+                                font-size: 26rpx;
+                                font-weight: 500;
+                        }
+
+                        .poster-action-save {
+                                background: #E62129;
+                                color: #FFFFFF;
+                        }
+
+                        .poster-action-copy {
+                                background: #F5F5F5;
+                                color: #333;
+                        }
+                }
+        }
+
+        // ==================== 微信分享引导蒙层 ====================
+        .wx-share-guide-overlay {
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                z-index: 9999;
+                background: rgba(0, 0, 0, 0.8);
+                display: flex;
+                flex-direction: column;
+                align-items: flex-end;
+                padding: 60rpx 60rpx 0 0;
+
+                .wx-guide-arrow {
+                        margin-bottom: 40rpx;
+                        margin-right: 20rpx;
+
+                        .wx-guide-arrow-img {
+                                width: 200rpx;
+                                height: 200rpx;
+                        }
+                }
+
+                .wx-guide-content {
+                        width: 100%;
+                        padding: 0 40rpx;
+
+                        .wx-guide-step {
+                                display: flex;
+                                align-items: center;
+                                margin-bottom: 32rpx;
+
+                                .wx-guide-step-num {
+                                        width: 56rpx;
+                                        height: 56rpx;
+                                        border-radius: 50%;
+                                        background: rgba(255, 255, 255, 0.2);
+                                        color: #FFFFFF;
+                                        font-size: 28rpx;
+                                        font-weight: bold;
+                                        text-align: center;
+                                        line-height: 56rpx;
+                                        margin-right: 20rpx;
+                                        flex-shrink: 0;
+                                }
+
+                                .wx-guide-step-text {
+                                        font-size: 30rpx;
+                                        color: #FFFFFF;
+
+                                        .wx-guide-icon {
+                                                font-size: 36rpx;
+                                                font-weight: bold;
+                                        }
+                                }
+                        }
+                }
+
+                .wx-guide-close {
+                        width: 100%;
+                        display: flex;
+                        justify-content: center;
+                        padding-top: 60rpx;
+
+                        .wx-guide-close-text {
+                                font-size: 30rpx;
+                                color: rgba(255, 255, 255, 0.8);
+                                background: rgba(255, 255, 255, 0.15);
+                                padding: 20rpx 80rpx;
+                                border-radius: 44rpx;
+                                border: 1rpx solid rgba(255, 255, 255, 0.3);
+                        }
                 }
         }
 </style>
