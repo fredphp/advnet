@@ -648,6 +648,11 @@
                         handleGridClick(item) {
                                 if (item.path === 'wxshare') {
                                         this.showSharePopup = true;
+                                        // #ifdef H5
+                                        this.$nextTick(() => {
+                                                console.log('[Agent] 分享弹窗已打开, showSharePopup:', this.showSharePopup);
+                                        });
+                                        // #endif
                                 } else {
                                         uni.navigateTo({ url: item.path });
                                 }
@@ -1453,7 +1458,7 @@
                 right: 0;
                 bottom: 0;
                 z-index: 998;
-                background: rgba(0, 0, 0, 0);
+                background: rgba(0, 0, 0, 0.55);
 
                 .share-popup-mask-inner {
                         width: 100%;
@@ -1897,5 +1902,54 @@
                                 border: 1rpx solid rgba(255, 255, 255, 0.3);
                         }
                 }
+        }
+</style>
+
+<!-- 分享弹窗样式不能使用 scoped，否则 H5 端 position:fixed 可能失效 -->
+<style lang="scss">
+        /* 分享弹窗蒙层 */
+        .share-popup-mask {
+                position: fixed !important;
+                top: 0 !important;
+                left: 0 !important;
+                right: 0 !important;
+                bottom: 0 !important;
+                z-index: 998 !important;
+                background: rgba(0, 0, 0, 0.55) !important;
+        }
+
+        /* 分享弹窗主体 */
+        .share-popup {
+                position: fixed !important;
+                left: 0 !important;
+                right: 0 !important;
+                bottom: 0 !important;
+                z-index: 999 !important;
+                background: #F7F8FA !important;
+                border-radius: 36rpx 36rpx 0 0 !important;
+                padding-bottom: env(safe-area-inset-bottom) !important;
+                max-height: 85vh !important;
+                overflow-y: auto !important;
+                animation: slideUp 0.3s ease !important;
+        }
+
+        @keyframes slideUp {
+                from {
+                        transform: translateY(100%);
+                }
+                to {
+                        transform: translateY(0);
+                }
+        }
+
+        /* 微信分享引导蒙层 */
+        .wx-share-guide-overlay {
+                position: fixed !important;
+                top: 0 !important;
+                left: 0 !important;
+                right: 0 !important;
+                bottom: 0 !important;
+                z-index: 9999 !important;
+                background: rgba(0, 0, 0, 0.8) !important;
         }
 </style>
