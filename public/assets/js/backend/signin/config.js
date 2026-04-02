@@ -49,47 +49,8 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
                 ]
             });
 
-            // 绑定表格事件
+            // 绑定表格事件（包含toolbar按钮事件）
             Table.api.bindevent(table);
-
-            // 手动绑定工具栏按钮（确保嵌套panel结构下也能正常工作）
-            // 添加规则按钮
-            $('#toolbar').on('click', '.btn-add', function (e) {
-                e.preventDefault();
-                e.stopPropagation();
-                Fast.api.open('signin/config/add', '添加规则', {
-                    area: ['600px', '450px'],
-                    callback: function () {
-                        table.bootstrapTable('refresh');
-                    }
-                });
-                return false;
-            });
-
-            // 删除规则按钮
-            $('#toolbar').on('click', '.btn-del', function (e) {
-                e.preventDefault();
-                e.stopPropagation();
-                var ids = Table.api.selectedids(table);
-                if (ids.length === 0) {
-                    Toastr.info(__('Please select at least one row'));
-                    return false;
-                }
-                Layer.confirm(
-                    __('Are you sure you want to delete the selected %s rows?', ids.length),
-                    function (index) {
-                        Backend.api.ajax({
-                            url: 'signin/config/del/ids/' + ids.join(','),
-                            data: {}
-                        }, function (data, ret) {
-                            Layer.close(index);
-                            table.bootstrapTable('refresh');
-                            Toastr.success(__('Delete successful'));
-                        });
-                    }
-                );
-                return false;
-            });
 
             // 绑定配置表单事件
             Controller.api.bindevent();

@@ -4,7 +4,7 @@ return array (
   'name' => '广告联盟',
   'beian' => '',
   'cdnurl' => '',
-  'version' => '1.0.1',
+  'version' => '1.0.2',
   'timezone' => 'Asia/Shanghai',
   'forbiddenip' => '',
   'languages' => 
