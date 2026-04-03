@@ -6,11 +6,8 @@ use app\common\controller\Api;
 use app\common\library\CoinService;
 use app\common\library\Ems;
 use app\common\library\Sms;
-use app\common\model\User;
 use app\common\model\UserCommissionStat;
 use fast\Random;
-use think\Config;
-use think\Db;
 use think\Validate;
 
 /**
@@ -34,7 +31,7 @@ class User extends Api
     {
         $userId = $this->auth->id;
         
-        $user = User::find($userId);
+        $user = \app\common\model\User::find($userId);
         if (!$user) {
             $this->error('用户不存在');
         }
@@ -45,7 +42,7 @@ class User extends Api
             $prefix = strtoupper(substr(md5($userId), 0, 4));
             $suffix = str_pad($userId, 6, '0', STR_PAD_LEFT);
             $inviteCode = $prefix . $suffix;
-            User::where('id', $userId)->update(['invite_code' => $inviteCode]);
+            \app\common\model\User::where('id', $userId)->update(['invite_code' => $inviteCode]);
         }
         
         // 金币余额
