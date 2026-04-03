@@ -50,15 +50,21 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
             dataType: 'json',
             type: 'GET',
             success: function (res) {
+                // 更新概览卡片
+                var overview = (res.code === 1 && res.data && res.data.overview) ? res.data.overview : {};
+                $('#stat-records').text(overview.total_records || 0);
+                $('#stat-users').text(overview.user_count || 0);
+                $('#stat-user-coin').text(parseInt(overview.user_coin || 0).toLocaleString());
+                $('#stat-platform-coin').text(parseInt(overview.platform_coin || 0).toLocaleString());
+
+                // 处理表格
+                var emptyRank = '<tr><td colspan="4" class="text-center text-muted">暂无数据</td></tr>';
+                var emptyType = '<tr><td colspan="3" class="text-center text-muted">暂无数据</td></tr>';
+                var errRank = '<tr><td colspan="4" class="text-center text-danger">' + (res.msg || '未知错误') + '</td></tr>';
+                var errType = '<tr><td colspan="3" class="text-center text-danger">' + (res.msg || '未知错误') + '</td></tr>';
+
                 if (res.code === 1 && res.data) {
                     var data = res.data;
-
-                    // 更新概览卡片
-                    var overview = data.overview || {};
-                    $('#stat-records').text(overview.total_records || 0);
-                    $('#stat-users').text(overview.user_count || 0);
-                    $('#stat-user-coin').text(parseInt(overview.user_coin || 0).toLocaleString());
-                    $('#stat-platform-coin').text(parseInt(overview.platform_coin || 0).toLocaleString());
 
                     // 用户排行
                     var rankingHtml = '';
@@ -70,7 +76,7 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
                             rankingHtml += '<tr><td>' + (i + 1) + '</td><td>' + name + '</td><td>' + item.count + '</td><td class="text-success">' + parseInt(item.total_coin || 0).toLocaleString() + '</td></tr>';
                         }
                     } else {
-                        rankingHtml = '<tr><td colspan="4" class="text-center text-muted">暂无数据</td></tr>';
+                        rankingHtml = emptyRank;
                     }
                     $('#user-ranking').html(rankingHtml);
 
@@ -84,19 +90,26 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
                             typeHtml += '<tr><td>' + typeLabel + '</td><td>' + row.count + '</td><td class="text-success">' + parseInt(row.user_coin || 0).toLocaleString() + '</td></tr>';
                         }
                     } else {
-                        typeHtml = '<tr><td colspan="3" class="text-center text-muted">暂无数据</td></tr>';
+                        typeHtml = emptyType;
                     }
                     $('#type-stats').html(typeHtml);
                 } else {
-                    // 接口返回错误
-                    var errorMsg = res.msg || '未知错误';
-                    $('#user-ranking').html('<tr><td colspan="4" class="text-center text-danger">' + errorMsg + '</td></tr>');
-                    $('#type-stats').html('<tr><td colspan="3" class="text-center text-danger">' + errorMsg + '</td></tr>');
+                    // 接口返回业务错误(code !== 1)
+                    $('#user-ranking').html(errRank);
+                    $('#type-stats').html(errType);
                 }
             },
             error: function (xhr, status, error) {
-                $('#user-ranking').html('<tr><td colspan="4" class="text-center text-danger">请求失败: ' + (error || status) + '</td></tr>');
-                $('#type-stats').html('<tr><td colspan="3" class="text-center text-danger">请求失败: ' + (error || status) + '</td></tr>');
+                var msg = '网络请求失败';
+                if (xhr && xhr.responseJSON && xhr.responseJSON.msg) {
+                    msg = xhr.responseJSON.msg;
+                } else if (error) {
+                    msg = error;
+                } else if (status) {
+                    msg = status;
+                }
+                $('#user-ranking').html('<tr><td colspan="4" class="text-center text-danger">' + msg + '</td></tr>');
+                $('#type-stats').html('<tr><td colspan="3" class="text-center text-danger">' + msg + '</td></tr>');
             }
         });
     }

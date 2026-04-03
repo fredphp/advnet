@@ -13,30 +13,17 @@ class Stat extends Backend
     protected $dataLimit = false;
 
     /**
-     * 检查广告收益表是否存在
-     */
-    protected function checkTableExists()
-    {
-        static $exists = null;
-        if ($exists === null) {
-            try {
-                Db::query("SELECT 1 FROM " . config('database.prefix') . "ad_income_log LIMIT 1");
-                $exists = true;
-            } catch (\Exception $e) {
-                $exists = false;
-            }
-        }
-        return $exists;
-    }
-
-    /**
      * 统计面板
      */
     public function index()
     {
         if ($this->request->isAjax()) {
-            // 检查表是否存在
-            if (!$this->checkTableExists()) {
+            $prefix = config('database.prefix');
+
+            // 检查广告收益表是否存在
+            try {
+                Db::query("SELECT 1 FROM {$prefix}ad_income_log LIMIT 1");
+            } catch (\Exception $e) {
                 $this->error('广告收益表不存在，请先执行数据库迁移: sql/add_ad_income_tables.sql');
             }
 
@@ -84,34 +71,50 @@ class Stat extends Backend
                     ->field('COUNT(*) as total_records, SUM(amount_coin) as total_coin, SUM(user_amount_coin) as user_coin, SUM(platform_amount_coin) as platform_coin, COUNT(DISTINCT user_id) as user_count')
                     ->find();
 
-                $overview = $overview ? $overview : [
-                    'total_records' => 0,
-                    'total_coin' => 0,
-                    'user_coin' => 0,
-                    'platform_coin' => 0,
-                    'user_count' => 0,
-                ];
+                if (empty($overview)) {
+                    $overview = [
+                        'total_records' => 0,
+                        'total_coin' => 0,
+                        'user_coin' => 0,
+                        'platform_coin' => 0,
+                        'user_count' => 0,
+                    ];
+                }
 
-                // 按类型统计 - 转为普通数组
-                $typeStats = Db::name('ad_income_log')
+                // 按类型统计
+                $typeList = Db::name('ad_income_log')
                     ->where('status', 'in', [1, 2])
                     ->where('createtime', 'between', [$startTime, $endTime])
                     ->group('ad_type')
                     ->field('ad_type, COUNT(*) as count, SUM(user_amount_coin) as user_coin')
                     ->select();
-                $typeStats = $typeStats ? json_decode(json_encode($typeStats), true) : [];
+                $typeStats = [];
+                foreach ($typeList as $row) {
+                    $typeStats[] = [
+                        'ad_type' => $row['ad_type'],
+                        'count' => intval($row['count']),
+                        'user_coin' => intval($row['user_coin']),
+                    ];
+                }
 
                 // 按平台统计
-                $providerStats = Db::name('ad_income_log')
+                $providerList = Db::name('ad_income_log')
                     ->where('status', 'in', [1, 2])
                     ->where('createtime', 'between', [$startTime, $endTime])
                     ->group('ad_provider')
                     ->field('ad_provider, COUNT(*) as count, SUM(user_amount_coin) as user_coin')
                     ->select();
-                $providerStats = $providerStats ? json_decode(json_encode($providerStats), true) : [];
+                $providerStats = [];
+                foreach ($providerList as $row) {
+                    $providerStats[] = [
+                        'ad_provider' => $row['ad_provider'],
+                        'count' => intval($row['count']),
+                        'user_coin' => intval($row['user_coin']),
+                    ];
+                }
 
-                // 用户排行 - 转为普通数组并填充用户信息
-                $userRanking = Db::name('ad_income_log')
+                // 用户排行
+                $rankList = Db::name('ad_income_log')
                     ->where('status', 'in', [1, 2])
                     ->where('createtime', 'between', [$startTime, $endTime])
                     ->group('user_id')
@@ -119,19 +122,41 @@ class Stat extends Backend
                     ->order('total_coin', 'desc')
                     ->limit(10)
                     ->select();
-                $userRanking = $userRanking ? json_decode(json_encode($userRanking), true) : [];
+                $userRanking = [];
+                foreach ($rankList as $row) {
+                    $userRanking[] = [
+                        'user_id' => intval($row['user_id']),
+                        'count' => intval($row['count']),
+                        'total_coin' => intval($row['total_coin']),
+                        'nickname' => '',
+                        'username' => '',
+                    ];
+                }
 
-                // 填充用户昵称
+                // 批量查询用户信息
                 if (!empty($userRanking)) {
-                    $userIds = array_column($userRanking, 'user_id');
-                    $users = Db::name('user')
-                        ->where('id', 'in', $userIds)
-                        ->column('nickname,username', 'id');
-                    foreach ($userRanking as &$rank) {
-                        $rank['nickname'] = $users[$rank['user_id']]['nickname'] ?? '';
-                        $rank['username'] = $users[$rank['user_id']]['username'] ?? '';
+                    $userIds = [];
+                    foreach ($userRanking as $item) {
+                        $userIds[] = $item['user_id'];
                     }
-                    unset($rank);
+                    $userIds = array_unique($userIds);
+                    if (!empty($userIds)) {
+                        $userMap = Db::name('user')
+                            ->where('id', 'in', $userIds)
+                            ->field('id, nickname, username')
+                            ->select();
+                        $map = [];
+                        foreach ($userMap as $u) {
+                            $map[$u['id']] = $u;
+                        }
+                        foreach ($userRanking as &$rank) {
+                            if (isset($map[$rank['user_id']])) {
+                                $rank['nickname'] = $map[$rank['user_id']]['nickname'] ?: '';
+                                $rank['username'] = $map[$rank['user_id']]['username'] ?: '';
+                            }
+                        }
+                        unset($rank);
+                    }
                 }
 
                 $this->success('', null, [
