@@ -129,9 +129,11 @@ export default {
                         if (this.refreshing) return;
                         try {
                                 const localVersion = this.readVersion();
-                                const res = await this.$api.helpList({
-                                        version: localVersion || 0
-                                });
+                                const params = {};
+                                if (localVersion) {
+                                        params.version = localVersion;
+                                }
+                                const res = await this.$api.helpList(params);
                                 if (res.code == 1 && !res.data.not_modified) {
                                         // 有更新，刷新数据
                                         this.list = res.data.list || [];
@@ -205,9 +207,9 @@ export default {
                 readVersion() {
                         try {
                                 const v = uni.getStorageSync(VERSION_KEY);
-                                return v ? parseInt(v) : 0;
+                                return v ? String(v) : '';
                         } catch (e) {
-                                return 0;
+                                return '';
                         }
                 }
         },
