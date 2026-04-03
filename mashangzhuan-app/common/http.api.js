@@ -73,6 +73,7 @@ const install = (Vue, vm) => {
         vm.$api.area                            = async (params = {}) => await vm.$u.get('/addons/shop/api.common/area', params);       
         vm.$api.goUpload                        = async (params = {}) => await upload(vm, params);
         //用户
+        vm.$api.getMyIndex              = async (params = {}) => await vm.$u.get('/api/user/index', params);
         vm.$api.getUserIndex            = async (params = {}) => await vm.$u.get('/addons/shop/api.user/index', params);
         vm.$api.getUserProfile          = async (params = {}) => await vm.$u.post('/addons/shop/api.user/profile', params);     
         vm.$api.goUserLogout            = async (params = {}) => await vm.$u.post('/addons/shop/api.user/logout', params);

@@ -3,10 +3,14 @@
 namespace app\api\controller;
 
 use app\common\controller\Api;
+use app\common\library\CoinService;
 use app\common\library\Ems;
 use app\common\library\Sms;
+use app\common\model\User;
+use app\common\model\UserCommissionStat;
 use fast\Random;
 use think\Config;
+use think\Db;
 use think\Validate;
 
 /**
@@ -28,11 +32,67 @@ class User extends Api
     }
 
     /**
-     * 会员中心
+     * 会员中心 - 获取用户完整信息
+     * GET /api/user/index
      */
     public function index()
     {
-        $this->success('', ['welcome' => $this->auth->nickname]);
+        $userId = $this->auth->id;
+        
+        $user = User::find($userId);
+        if (!$user) {
+            $this->error('用户不存在');
+        }
+        
+        // 邀请码（如果没有则生成）
+        $inviteCode = $user->invite_code ?: '';
+        if (empty($inviteCode)) {
+            $prefix = strtoupper(substr(md5($userId), 0, 4));
+            $suffix = str_pad($userId, 6, '0', STR_PAD_LEFT);
+            $inviteCode = $prefix . $suffix;
+            User::where('id', $userId)->update(['invite_code' => $inviteCode]);
+        }
+        
+        // 金币余额
+        $coinService = new CoinService();
+        $coinBalance = $coinService->getBalance($userId);
+        
+        // 分销等级（按累计佣金）
+        $level = 1;
+        $levelName = '普通会员';
+        $levelConfig = [
+            ['min' => 0,      'name' => '普通会员'],
+            ['min' => 100,    'name' => '青铜代理'],
+            ['min' => 500,    'name' => '白银代理'],
+            ['min' => 2000,   'name' => '黄金代理'],
+            ['min' => 5000,   'name' => '铂金代理'],
+            ['min' => 10000,  'name' => '钻石代理'],
+            ['min' => 50000,  'name' => '星耀代理'],
+            ['min' => 100000, 'name' => '王者代理'],
+        ];
+        
+        $commissionStat = UserCommissionStat::getOrCreate($userId);
+        $totalCommission = floatval($commissionStat->total_commission);
+        foreach ($levelConfig as $cfg) {
+            if ($totalCommission >= $cfg['min']) {
+                $level = array_search($cfg, $levelConfig) + 1;
+                $levelName = $cfg['name'];
+            }
+        }
+        
+        $userInfo = [
+            'id'            => $userId,
+            'nickname'      => $user->nickname ?: '用户' . $userId,
+            'avatar'        => $user->avatar ? cdnurl($user->avatar) : '',
+            'mobile'        => $user->mobile ?: '',
+            'level'         => $level,
+            'level_name'    => $levelName,
+            'invite_code'   => $inviteCode,
+            'coin_balance'  => floatval($coinBalance),
+            'score'         => floatval($user->score),
+        ];
+        
+        $this->success('获取成功', ['userInfo' => $userInfo]);
     }
 
     /**
