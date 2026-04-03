@@ -213,12 +213,17 @@
                                         {
                                                 icon: "/images/mic-policy.png",
                                                 name: "用户协议",
-                                                type: "privacy"
+                                                type: "user_agreement"
                                         },
                                         {
                                                 icon: "/images/mic-priv.png",
                                                 name: "隐私协议",
-                                                type: "privacy"
+                                                type: "privacy_policy"
+                                        },
+                                        {
+                                                icon: "/images/mic-policy.png",
+                                                name: "分销规则",
+                                                type: "distribution_rules"
                                         }
                                 ]
                         };
@@ -367,9 +372,19 @@
                                                         url: "/pages/agent/index"
                                                 });
                                                 break;
-                                        case "privacy":
+                                        case "user_agreement":
                                                 uni.navigateTo({
-                                                        url: "/pages/page/page?id=2"
+                                                        url: "/pages/page/page?tpl=user-agreement"
+                                                });
+                                                break;
+                                        case "privacy_policy":
+                                                uni.navigateTo({
+                                                        url: "/pages/page/page?tpl=privacy-policy"
+                                                });
+                                                break;
+                                        case "distribution_rules":
+                                                uni.navigateTo({
+                                                        url: "/pages/page/page?tpl=distribution-rules"
                                                 });
                                                 break;
                                         default:
