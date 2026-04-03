@@ -24,11 +24,6 @@ class User extends Api
     public function _initialize()
     {
         parent::_initialize();
-
-        if (!Config::get('fastadmin.usercenter')) {
-            $this->error(__('User center already closed'));
-        }
-
     }
 
     /**
