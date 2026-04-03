@@ -2,21 +2,21 @@
     <div class="panel-heading">
         <div class="panel-lead"><em>广告统计</em></div>
         <div class="btn-group">
-            <a href="javascript:;" class="btn btn-default btn-xs active" id="btn-today" onclick="loadStat('today')">今日</a>
-            <a href="javascript:;" class="btn btn-default btn-xs" id="btn-yesterday" onclick="loadStat('yesterday')">昨日</a>
-            <a href="javascript:;" class="btn btn-default btn-xs" id="btn-week" onclick="loadStat('week')">近7天</a>
-            <a href="javascript:;" class="btn btn-default btn-xs" id="btn-month" onclick="loadStat('month')">本月</a>
-            <a href="javascript:;" class="btn btn-default btn-xs" id="btn-custom" onclick="toggleCustomRange()">自定义</a>
+            <a href="javascript:;" class="btn btn-default btn-xs active" id="btn-today">今日</a>
+            <a href="javascript:;" class="btn btn-default btn-xs" id="btn-yesterday">昨日</a>
+            <a href="javascript:;" class="btn btn-default btn-xs" id="btn-week">近7天</a>
+            <a href="javascript:;" class="btn btn-default btn-xs" id="btn-month">本月</a>
+            <a href="javascript:;" class="btn btn-default btn-xs" id="btn-custom">自定义</a>
         </div>
     </div>
     <div class="panel-body">
         <div id="custom-range" style="display:none; margin-bottom:15px;" class="form-inline">
-            <input type="text" id="start_date" class="form-control datetimepicker" placeholder="开始日期" data-date-format="yyyy-mm-dd" data-min-view="2" style="width:150px;">
+            <input type="text" id="start_date" class="form-control datetimepicker" placeholder="开始日期" style="width:150px;">
             <span style="margin:0 10px;"> - </span>
-            <input type="text" id="end_date" class="form-control datetimepicker" placeholder="结束日期" data-date-format="yyyy-mm-dd" data-min-view="2" style="width:150px;">
-            <a href="javascript:;" class="btn btn-primary btn-sm" onclick="loadStat('custom')"><i class="fa fa-search"></i> 查询</a>
+            <input type="text" id="end_date" class="form-control datetimepicker" placeholder="结束日期" style="width:150px;">
+            <a href="javascript:;" class="btn btn-primary btn-sm" id="btn-search"><i class="fa fa-search"></i> 查询</a>
         </div>
-        
+
         <div class="row" id="stat-overview">
             <div class="col-md-3 col-sm-6">
                 <div class="panel panel-success">
@@ -51,7 +51,7 @@
                 </div>
             </div>
         </div>
-        
+
         <div class="row" style="margin-top:20px;">
             <div class="col-md-6">
                 <div class="panel panel-default">
