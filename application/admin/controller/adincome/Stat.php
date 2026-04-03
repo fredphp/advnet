@@ -17,12 +17,16 @@ class Stat extends Backend
      */
     protected function checkTableExists()
     {
-        try {
-            Db::query("SELECT 1 FROM " . config('database.prefix') . "ad_income_log LIMIT 1");
-            return true;
-        } catch (\Exception $e) {
-            return false;
+        static $exists = null;
+        if ($exists === null) {
+            try {
+                Db::query("SELECT 1 FROM " . config('database.prefix') . "ad_income_log LIMIT 1");
+                $exists = true;
+            } catch (\Exception $e) {
+                $exists = false;
+            }
         }
+        return $exists;
     }
 
     /**
@@ -33,7 +37,7 @@ class Stat extends Backend
         if ($this->request->isAjax()) {
             // 检查表是否存在
             if (!$this->checkTableExists()) {
-                $this->error('广告收益表(ad_income_log)不存在，请先执行数据库迁移: sql/add_ad_income_tables.sql');
+                $this->error('广告收益表不存在，请先执行数据库迁移: sql/add_ad_income_tables.sql');
             }
 
             $type = $this->request->get('type', 'today');
@@ -73,26 +77,40 @@ class Stat extends Backend
             }
 
             try {
+                // 概览统计
                 $overview = Db::name('ad_income_log')
                     ->where('status', 'in', [1, 2])
                     ->where('createtime', 'between', [$startTime, $endTime])
                     ->field('COUNT(*) as total_records, SUM(amount_coin) as total_coin, SUM(user_amount_coin) as user_coin, SUM(platform_amount_coin) as platform_coin, COUNT(DISTINCT user_id) as user_count')
                     ->find();
 
+                $overview = $overview ? $overview : [
+                    'total_records' => 0,
+                    'total_coin' => 0,
+                    'user_coin' => 0,
+                    'platform_coin' => 0,
+                    'user_count' => 0,
+                ];
+
+                // 按类型统计 - 转为普通数组
                 $typeStats = Db::name('ad_income_log')
                     ->where('status', 'in', [1, 2])
                     ->where('createtime', 'between', [$startTime, $endTime])
                     ->group('ad_type')
                     ->field('ad_type, COUNT(*) as count, SUM(user_amount_coin) as user_coin')
                     ->select();
+                $typeStats = $typeStats ? json_decode(json_encode($typeStats), true) : [];
 
+                // 按平台统计
                 $providerStats = Db::name('ad_income_log')
                     ->where('status', 'in', [1, 2])
                     ->where('createtime', 'between', [$startTime, $endTime])
                     ->group('ad_provider')
                     ->field('ad_provider, COUNT(*) as count, SUM(user_amount_coin) as user_coin')
                     ->select();
+                $providerStats = $providerStats ? json_decode(json_encode($providerStats), true) : [];
 
+                // 用户排行 - 转为普通数组并填充用户信息
                 $userRanking = Db::name('ad_income_log')
                     ->where('status', 'in', [1, 2])
                     ->where('createtime', 'between', [$startTime, $endTime])
@@ -101,20 +119,27 @@ class Stat extends Backend
                     ->order('total_coin', 'desc')
                     ->limit(10)
                     ->select();
+                $userRanking = $userRanking ? json_decode(json_encode($userRanking), true) : [];
 
-                foreach ($userRanking as &$rank) {
-                    $user = Db::name('user')->field('username, nickname, mobile')->find($rank['user_id']);
-                    $rank['username'] = $user['username'] ?? '';
-                    $rank['nickname'] = $user['nickname'] ?? '';
+                // 填充用户昵称
+                if (!empty($userRanking)) {
+                    $userIds = array_column($userRanking, 'user_id');
+                    $users = Db::name('user')
+                        ->where('id', 'in', $userIds)
+                        ->column('nickname,username', 'id');
+                    foreach ($userRanking as &$rank) {
+                        $rank['nickname'] = $users[$rank['user_id']]['nickname'] ?? '';
+                        $rank['username'] = $users[$rank['user_id']]['username'] ?? '';
+                    }
+                    unset($rank);
                 }
-                unset($rank);
 
                 $this->success('', null, [
                     'title' => $title,
-                    'overview' => $overview ?: ['total_records' => 0, 'user_count' => 0, 'user_coin' => 0, 'platform_coin' => 0],
-                    'type_stats' => $typeStats ?: [],
-                    'provider_stats' => $providerStats ?: [],
-                    'user_ranking' => $userRanking ?: [],
+                    'overview' => $overview,
+                    'type_stats' => $typeStats,
+                    'provider_stats' => $providerStats,
+                    'user_ranking' => $userRanking,
                 ]);
             } catch (\Exception $e) {
                 $this->error('查询失败: ' . $e->getMessage());
