@@ -57,6 +57,55 @@ class Singlepage extends Api
     }
 
     /**
+     * 获取帮助中心文章列表（含内容）
+     * 按"帮助中心"分类获取所有已启用的文章，返回标题+内容，前端直接展示无需跳转
+     * 返回 version 时间戳用于前端缓存判断
+     * @method GET
+     * @param int $version 客户端本地缓存的版本时间戳，相同则返回304标识
+     */
+    public function helpList()
+    {
+        // 查找"帮助中心"分类
+        $categoryId = Db::name('singlepage_category')
+            ->where('name', '帮助中心')
+            ->where('status', 1)
+            ->value('id');
+
+        if (!$categoryId) {
+            $this->success('获取成功', ['list' => [], 'version' => time()]);
+            return;
+        }
+
+        // 查询该分类下所有已启用的文章（包含content字段）
+        $list = Db::name('singlepage')
+            ->where('category_id', $categoryId)
+            ->where('status', 1)
+            ->order('weigh', 'desc')
+            ->order('id', 'asc')
+            ->field('id,title,description,content,updatetime')
+            ->select();
+
+        // 获取最新更新时间作为版本号
+        $version = 0;
+        if (!empty($list)) {
+            $version = Db::name('singlepage')
+                ->where('category_id', $categoryId)
+                ->where('status', 1)
+                ->max('updatetime');
+            $version = intval($version);
+        }
+
+        // 客户端版本比对：如果传入了version且相同，返回not_modified标识
+        $clientVersion = $this->request->get('version', 0, 'intval');
+        if ($clientVersion > 0 && $clientVersion >= $version) {
+            $this->success('not_modified', ['list' => [], 'version' => $version, 'not_modified' => true]);
+            return;
+        }
+
+        $this->success('获取成功', ['list' => $list, 'version' => $version]);
+    }
+
+    /**
      * 获取单页详情
      * 支持按ID、tpl标识、分类名获取
      * @method GET
