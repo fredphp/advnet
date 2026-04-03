@@ -27,10 +27,10 @@ use think\Log;
  * php think ad:settle --limit=500              # 每批处理500条
  *
  * Cron 配置（建议每30分钟执行一次结算）：
- * */30 * * * * cd /path/to/advnet && php think ad:settle --action=settle >> /dev/null 2>&1
+ * 每30分钟: cd /path/to/advnet && php think ad:settle --action=settle >> /dev/null 2>&1
  *
  * 过期红包处理（建议每小时执行一次）：
- * 0 * * * * cd /path/to/advnet && php think ad:settle --action=expire >> /dev/null 2>&1
+ * 每小时: cd /path/to/advnet && php think ad:settle --action=expire >> /dev/null 2>&1
  */
 class AdSettle extends Command
 {
