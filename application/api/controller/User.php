@@ -48,6 +48,9 @@ class User extends Api
         // 金币余额
         $coinService = new CoinService();
         $coinBalance = $coinService->getBalance($userId);
+        $coinAvailable = $coinService->getAvailableBalance($userId);
+        $cashAmount = CoinService::coinToCash($coinAvailable);
+        $coinRate = \app\common\library\SystemConfigService::getCoinRate();
         
         // 分销等级（按累计佣金）
         $level = 1;
@@ -80,7 +83,10 @@ class User extends Api
             'level'         => $level,
             'level_name'    => $levelName,
             'invite_code'   => $inviteCode,
-            'coin_balance'  => floatval($coinBalance),
+            'coin_balance'  => intval($coinBalance),
+            'coin_available'=> intval($coinAvailable),
+            'cash_amount'   => floatval($cashAmount),
+            'coin_rate'     => intval($coinRate),
             'score'         => floatval($user->score),
         ];
         

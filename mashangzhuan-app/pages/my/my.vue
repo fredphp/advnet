@@ -42,18 +42,37 @@
                         <image class="wallet-bg-img" :src="$IMG_URL+'/images/ag-wallet-bg.png'" mode="aspectFill"></image>
                         <view class="wallet-card">
                                 <view class="wallet-header">
-                                        <text class="wallet-title">我的金币</text>
+                                        <text class="wallet-title">我的钱包</text>
                                         <text class="wallet-record" @click="goPage('/pages/my/withdraw/log')">提现记录 ></text>
                                 </view>
 
-                                <view class="wallet-balance">
-                                        <text class="balance-label">可提现：</text>
-                                        <text class="balance-amount">{{ coinBalance }}</text>
-                                        <u-button type="error" hover-class="none" shape="circle" size="mini"
-                                                :custom-style="{backgroundColor: '#fff',fontSize:'26rpx', color: '#FF6512', border: 'none'}"
-                                                @click="goPage('/pages/my/withdraw/index')">去提现</u-button>
+                                <view class="wallet-balance-row">
+                                        <view class="wallet-balance-item">
+                                                <text class="balance-label">我的金币</text>
+                                                <view class="balance-value-row">
+                                                        <text class="balance-amount">{{ coinBalance }}</text>
+                                                        <text class="balance-unit">金币</text>
+                                                </view>
+                                        </view>
+                                        <view class="wallet-balance-divider"></view>
+                                        <view class="wallet-balance-item">
+                                                <text class="balance-label">可提现金额</text>
+                                                <view class="balance-value-row">
+                                                        <text class="balance-amount cash-amount">{{ cashAmount }}</text>
+                                                        <text class="balance-unit">元</text>
+                                                </view>
+                                        </view>
                                 </view>
 
+                                <view class="wallet-exchange-tip">
+                                        <text>兑换比例：{{ coinRate }}金币 = 1.00元</text>
+                                </view>
+
+                                <view class="wallet-action-row">
+                                        <u-button type="error" hover-class="none" shape="circle" size="mini"
+                                                :custom-style="{backgroundColor: '#fff',fontSize:'26rpx', color: '#FF6512', border: 'none', padding: '0 40rpx', height: '60rpx'}"
+                                                @click="goPage('/pages/my/withdraw/index')">去提现</u-button>
+                                </view>
 
                         </view>
                 </view>
@@ -121,7 +140,9 @@
                                 scrollTop: 0,
                                 // 加载状态
                                 loading: true,
-                                coinBalance: '0.00',
+                                coinBalance: '0',
+                                cashAmount: '0.00',
+                                coinRate: 10000,
                                 // 用户基本信息
                                 userInfo: {
                                         avatar: "https://picsum.photos/200/200?random=100", // 默认头像
@@ -225,7 +246,9 @@
                                 if (res.code == 1) {
                                         const info = res.data.userInfo || {};
                                         this.$u.vuex('vuex_user', info);
-                                        this.coinBalance = parseFloat(info.coin_balance || 0).toFixed(0);
+                                        this.coinBalance = (info.coin_balance || 0).toString();
+                                        this.cashAmount = parseFloat(info.cash_amount || 0).toFixed(2);
+                                        this.coinRate = info.coin_rate || 10000;
                                 } else {
                                         this.$u.toast(res.msg);
                                         return;
@@ -718,13 +741,70 @@
                         .wallet-title {
                                 font-size: 30rpx;
                                 font-weight: bold;
-
                         }
 
                         .wallet-record {
                                 font-size: 26rpx;
-
                         }
+                }
+
+                .wallet-balance-row {
+                        display: flex;
+                        align-items: stretch;
+                        margin-bottom: 24rpx;
+
+                        .wallet-balance-item {
+                                flex: 1;
+                                display: flex;
+                                flex-direction: column;
+                                justify-content: center;
+                        }
+
+                        .wallet-balance-divider {
+                                width: 2rpx;
+                                background: rgba(255, 255, 255, 0.3);
+                                margin: 10rpx 30rpx;
+                        }
+                }
+
+                .balance-label {
+                        font-size: 24rpx;
+                        color: rgba(255, 255, 255, 0.8);
+                        margin-bottom: 10rpx;
+                        display: block;
+                }
+
+                .balance-value-row {
+                        display: flex;
+                        align-items: baseline;
+                }
+
+                .balance-amount {
+                        font-size: 44rpx;
+                        font-weight: bold;
+                        margin-right: 8rpx;
+                }
+
+                .balance-unit {
+                        font-size: 24rpx;
+                        color: rgba(255, 255, 255, 0.8);
+                }
+
+                .cash-amount {
+                        color: #FFE4B5;
+                }
+
+                .wallet-exchange-tip {
+                        font-size: 22rpx;
+                        color: rgba(255, 255, 255, 0.6);
+                        margin-bottom: 24rpx;
+                        padding-bottom: 20rpx;
+                        border-bottom: 1rpx solid rgba(255, 255, 255, 0.15);
+                }
+
+                .wallet-action-row {
+                        display: flex;
+                        justify-content: flex-end;
                 }
 
                 .wallet-balance {
