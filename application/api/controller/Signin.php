@@ -346,10 +346,16 @@ class Signin extends Api
         $rankList = Db::name('signin_record')
             ->alias('sr')
             ->join('user u', 'u.id = sr.user_id', 'LEFT')
-            ->field('sr.user_id, u.avatar, u.nickname, MAX(sr.successions) as max_successions, MIN(sr.createtime) as first_sign_time')
+            ->field([
+                'sr.user_id',
+                'u.avatar',
+                'u.nickname',
+                Db::raw('MAX(sr.successions) as max_successions'),
+                Db::raw('MIN(sr.createtime) as first_sign_time'),
+            ])
             ->where('sr.type', 'daily')
             ->group('sr.user_id')
-            ->having('max_successions > 0')
+            ->having(Db::raw('max_successions > 0'))
             ->order('max_successions desc, first_sign_time asc')
             ->limit(10)
             ->select();
@@ -450,7 +456,7 @@ class Signin extends Api
             ->where('type', 'daily')
             ->where('successions', '>', 0)
             ->group('user_id')
-            ->field('user_id, MAX(successions) as max_successions')
+            ->field(['user_id', Db::raw('MAX(successions) as max_successions')])
             ->buildSql();
         
         $count = Db::table($subSql . ' t')
