@@ -2,19 +2,35 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
 
     var Controller = {
         index: function () {
-            Table.init({
+            // 初始化表格参数配置
+            Table.api.init({
                 extend: {
-                    index_url: 'adincome/redpacket',
+                    index_url: 'adincome/redpacket/index',
                     detail_url: 'adincome/redpacket/detail',
                     del_url: 'adincome/redpacket/del',
-                    multi_url: 'adincome/redpacket/multi',
-                    table: 'table',
-                },
+                    multi_url: '',
+                    add_url: '',
+                    edit_url: '',
+                    table: 'ad_red_packet',
+                }
+            });
+
+            var table = $("#table");
+
+            // 初始化表格
+            table.bootstrapTable({
+                url: $.fn.bootstrapTable.defaults.extend.index_url,
+                pk: 'id',
+                sortName: 'id',
+                sortOrder: 'desc',
+                search: false,
+                showToggle: true,
+                showColumns: true,
                 columns: [
                     [
                         {field: 'state', checkbox: true},
                         {field: 'id', title: 'ID', sortable: true},
-                        {field: 'user_id', title: '用户ID'},
+                        {field: 'user_id', title: '用户ID', sortable: true},
                         {field: 'username', title: '用户名', operate: false},
                         {field: 'nickname', title: '昵称', operate: false},
                         {field: 'amount', title: '金额(金币)', sortable: true},
@@ -26,11 +42,15 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
                         {field: 'operate', title: '操作', table: table, events: Table.api.events.operate,
                             buttons: [
                                 {name: 'detail', text: '详情', title: '详情', classname: 'btn btn-xs btn-info btn-dialog', icon: 'fa fa-list', url: 'adincome/redpacket/detail'}
-                            ]
+                            ],
+                            formatter: Table.api.formatter.operate
                         }
                     ]
                 ]
             });
+
+            // 为表格绑定事件
+            Table.api.bindevent(table);
         },
         detail: function () {
             Controller.api.bindevent();
@@ -40,26 +60,6 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
                 Form.api.bindevent($("form[role=form]"));
             }
         }
-    };
-
-    // 全局函数
-    window.expirePackets = function () {
-        Layer.confirm('确定要执行过期处理吗？将所有已过期的未领取红包标记为已过期。', function (index) {
-            $.ajax({
-                url: 'adincome/redpacket/expire',
-                type: 'POST',
-                dataType: 'json',
-                success: function (res) {
-                    if (res.code === 1) {
-                        Layer.close(index);
-                        Table.api.refresh();
-                        Toastr.success(res.msg);
-                    } else {
-                        Toastr.error(res.msg);
-                    }
-                }
-            });
-        });
     };
 
     return Controller;
