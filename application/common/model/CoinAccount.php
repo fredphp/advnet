@@ -54,6 +54,8 @@ class CoinAccount extends Model
             $account->total_withdraw = 0;
             $account->today_earn = 0;
             $account->today_earn_date = date('Y-m-d');
+            $account->ad_freeze_balance = 0;
+            $account->total_ad_income = 0;
             $account->version = 0;
             $account->save();
         }

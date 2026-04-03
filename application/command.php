@@ -24,4 +24,5 @@ return [
     'app\command\DataMigration',
     'app\command\Websocket',
     'app\command\AutoPush',
+    'app\command\AdSettle',
 ];

@@ -190,6 +190,16 @@ const install = (Vue, vm) => {
         vm.$api.withdrawCancel           = async (params = {}) => await vm.$u.post('/api/withdraw/cancel', params);
         vm.$api.withdrawStat             = async (params = {}) => await vm.$u.get('/api/withdraw/stat', params);
 
+        // 广告回调
+        vm.$api.adCallback              = async (params = {}) => await vm.$u.post('/api/ad/callback', params);
+        vm.$api.adOverview              = async (params = {}) => await vm.$u.get('/api/ad/overview', params);
+
+        // 广告红包
+        vm.$api.adRedpacketList         = async (params = {}) => await vm.$u.get('/api/adredpacket/list', params);
+        vm.$api.adRedpacketClaim        = async (params = {}) => await vm.$u.post('/api/adredpacket/claim', params);
+        vm.$api.adRedpacketClaimAll     = async (params = {}) => await vm.$u.post('/api/adredpacket/claimAll', params);
+        vm.$api.adRedpacketStats        = async (params = {}) => await vm.$u.get('/api/adredpacket/stats', params);
+
         // 单页/弹窗公告
         vm.$api.getPopupNotice           = async (params = {}) => await vm.$u.get('/api/singlepage/notice', params);
         vm.$api.singlepageDetail         = async (params = {}) => await vm.$u.get('/api/singlepage/detail', params);

@@ -1,0 +1,54 @@
+<div class="panel panel-default panel-intro">
+    <div class="panel-heading"><div class="panel-lead"><em>红包详情 #{$row.id}</em></div></div>
+    <div class="panel-body">
+        <div class="row">
+            <div class="col-md-6">
+                <div class="panel panel-default">
+                    <div class="panel-heading">红包信息</div>
+                    <div class="panel-body">
+                        <table class="table table-bordered">
+                            <tr><th width="30%">ID</th><td>{$row.id}</td></tr>
+                            <tr><th>用户</th><td>{$row.nickname|default=$row.username} (ID:{$row.user_id})</td></tr>
+                            <tr><th>金额(金币)</th><td><strong class="text-danger">{$row.amount}</strong></td></tr>
+                            <tr><th>状态</th><td>{$row.status_text}</td></tr>
+                            <tr><th>来源</th><td>{$row.source_text}</td></tr>
+                            <tr><th>创建时间</th><td>{$row.createtime_text}</td></tr>
+                            <tr><th>领取时间</th><td>{$row.claim_time_text|default='未领取'}</td></tr>
+                            <tr><th>过期时间</th><td>{$row.expire_time_text|default='永不过期'}</td></tr>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="panel panel-default">
+                    <div class="panel-heading">来源收益记录</div>
+                    <div class="panel-body">
+                        <table class="table table-bordered table-striped">
+                            <thead><tr><th>ID</th><th>广告类型</th><th>平台</th><th>用户金币</th><th>状态</th><th>时间</th></tr></thead>
+                            <tbody>
+                            {foreach $income_logs as $log}
+                            <tr>
+                                <td>{$log.id}</td>
+                                <td>{$log.ad_type}</td>
+                                <td>{$log.ad_provider}</td>
+                                <td class="text-success">{$log.user_amount_coin}</td>
+                                <td>{$log.status_text}</td>
+                                <td>{$log.createtime_text}</td>
+                            </tr>
+                            {/foreach}
+                            {empty $income_logs}
+                            <tr><td colspan="6" class="text-center text-muted">无关联记录</td></tr>
+                            {/empty}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="row" style="margin-top:15px;">
+            <div class="col-md-12">
+                <a href="javascript:;" class="btn btn-default" onclick="$.closeModal()">关闭</a>
+            </div>
+        </div>
+    </div>
+</div>

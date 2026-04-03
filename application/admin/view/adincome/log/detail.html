@@ -1,0 +1,58 @@
+<div class="panel panel-default panel-intro">
+    <div class="panel-heading"><div class="panel-lead"><em>收益详情 #{$row.id}</em></div></div>
+    <div class="panel-body">
+        <div class="row">
+            <div class="col-md-6">
+                <div class="panel panel-default">
+                    <div class="panel-heading">基本信息</div>
+                    <div class="panel-body">
+                        <table class="table table-bordered">
+                            <tr><th width="30%">ID</th><td>{$row.id}</td></tr>
+                            <tr><th>用户</th><td>{$row.nickname|default=$row.username} (ID:{$row.user_id})</td></tr>
+                            <tr><th>手机号</th><td>{$row.mobile|default='-'}</td></tr>
+                            <tr><th>广告类型</th><td>{$row.ad_type_text}</td></tr>
+                            <tr><th>广告平台</th><td>{$row.ad_provider_text}</td></tr>
+                            <tr><th>广告位ID</th><td>{$row.adpid|default='-'}</td></tr>
+                            <tr><th>广告来源</th><td>{$row.ad_source|default='-'}</td></tr>
+                            <tr><th>状态</th><td>{$row.status_text}</td></tr>
+                            <tr><th>交易ID</th><td>{$row.transaction_id|default='-'}</td></tr>
+                            <tr><th>创建时间</th><td>{$row.createtime_text}</td></tr>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="panel panel-default">
+                    <div class="panel-heading">收益明细</div>
+                    <div class="panel-body">
+                        <table class="table table-bordered">
+                            <tr><th width="30%">总金额(金币)</th><td><strong>{$row.amount_coin}</strong></td></tr>
+                            <tr><th>平台抽成(金币)</th><td>{$row.platform_amount_coin}</td></tr>
+                            <tr><th>用户获得(金币)</th><td class="text-success"><strong>{$row.user_amount_coin}</strong></td></tr>
+                            <tr><th>平台抽成比例</th><td>{$row.platform_rate*100|default=0}%</td></tr>
+                            <tr><th>总金额(元)</th><td>{$row.amount}</td></tr>
+                            <tr><th>平台抽成(元)</th><td>{$row.platform_amount}</td></tr>
+                            <tr><th>用户获得(元)</th><td>{$row.user_amount}</td></tr>
+                        </table>
+                    </div>
+                </div>
+                <div class="panel panel-default" style="margin-top:15px;">
+                    <div class="panel-heading">设备信息</div>
+                    <div class="panel-body">
+                        <table class="table table-bordered">
+                            <tr><th width="30%">IP</th><td>{$row.ip|default='-'}</td></tr>
+                            <tr><th>设备ID</th><td>{$row.device_id|default='-'}</td></tr>
+                            <tr><th>UA</th><td style="word-break:break-all;">{$row.user_agent|default='-'}</td></tr>
+                            <tr><th>备注</th><td>{$row.remark|default='-'}</td></tr>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="row" style="margin-top:15px;">
+            <div class="col-md-12">
+                <a href="javascript:;" class="btn btn-default" onclick="$.closeModal()">关闭</a>
+            </div>
+        </div>
+    </div>
+</div>

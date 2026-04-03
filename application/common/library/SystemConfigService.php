@@ -29,6 +29,7 @@ class SystemConfigService
     const GROUP_SYSTEM = 'system';
     const GROUP_SIGNIN = 'signin';
     const GROUP_WECHAT = 'wechat';
+    const GROUP_AD = 'ad';
     
     /**
      * @var array 配置缓存
@@ -165,6 +166,30 @@ class SystemConfigService
             'device_multi_account_threshold' => 3,
             // 风控规则缓存时间(秒)
             'rule_cache_ttl' => 300,
+        ],
+        
+        // ==================== 广告配置 ====================
+        'ad' => [
+            // 是否启用广告变现
+            'ad_income_enabled' => 1,
+            // 平台抽成比例 (0.30 = 30%)
+            'platform_rate' => 0.30,
+            // 红包生成间隔(分钟)
+            'settle_interval' => 30,
+            // 最小红包金额(金币)
+            'min_redpacket_amount' => 100,
+            // 红包过期时间(小时)
+            'redpacket_expire_hours' => 48,
+            // 每日广告收益上限(金币)
+            'daily_reward_limit' => 50000,
+            // 每次信息流广告奖励(金币)
+            'reward_per_feed' => 50,
+            // 每次激励视频奖励(金币)
+            'reward_per_video' => 200,
+            // 回调签名密钥
+            'callback_secret' => '',
+            // 启用的广告平台 (逗号分隔: uniad,csj,ylh)
+            'enabled_providers' => 'uniad',
         ],
         
         // ==================== 系统配置 ====================
@@ -541,6 +566,14 @@ class SystemConfigService
     {
         $rate = self::getCoinRate();
         return intval($cash * $rate);
+    }
+
+    /**
+     * 获取广告配置
+     */
+    public static function getAdConfig()
+    {
+        return self::getGroupConfig(self::GROUP_AD);
     }
     
     /**
