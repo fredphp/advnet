@@ -48,9 +48,10 @@ class User extends Api
         // 金币余额
         $coinService = new CoinService();
         $coinBalance = $coinService->getBalance($userId);
-        $coinAvailable = $coinService->getAvailableBalance($userId);
-        $cashAmount = CoinService::coinToCash($coinAvailable);
-        $coinRate = \app\common\library\SystemConfigService::getCoinRate();
+        
+        // 兑换比例直接从 site 配置读取（$site.coin_rate）
+        $coinRate = intval(config('site.coin_rate') ?: 10000);
+        $cashAmount = $coinRate > 0 ? round($coinBalance / $coinRate, 2) : 0;
         
         // 分销等级（按累计佣金）
         $level = 1;
@@ -84,9 +85,8 @@ class User extends Api
             'level_name'    => $levelName,
             'invite_code'   => $inviteCode,
             'coin_balance'  => intval($coinBalance),
-            'coin_available'=> intval($coinAvailable),
             'cash_amount'   => floatval($cashAmount),
-            'coin_rate'     => intval($coinRate),
+            'coin_rate'     => $coinRate,
             'score'         => floatval($user->score),
         ];
         
