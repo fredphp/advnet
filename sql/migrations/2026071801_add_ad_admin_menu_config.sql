@@ -1,18 +1,19 @@
--- ============================================================
+-- =====================================================
 -- 广告变现闭环系统 - 后台菜单 & 系统配置
--- 执行前请备份数据库
+-- 在后台管理系统中添加广告管理菜单和广告配置分组
 -- 执行顺序：先执行 add_ad_income_tables.sql，再执行本文件
--- 注意：本文件已同步迁移至 sql/migrations/2026071801_add_ad_admin_menu_config.sql
--- ============================================================
+-- 执行时间: 2026-07-18
+-- =====================================================
 
--- ============================================================
--- 一、后台菜单（advn_auth_rule）
--- ============================================================
+-- =====================================================
+-- 一、后台管理菜单（advn_auth_rule）
+-- =====================================================
 
--- 1. 顶级菜单：广告管理 (weigh=52)
+-- 1. 顶级菜单：广告管理 (weigh=52, 排在签到管理60和单页管理50之间)
 INSERT INTO `advn_auth_rule` (`pid`, `name`, `title`, `icon`, `condition`, `remark`, `ismenu`, `createtime`, `updatetime`, `weigh`, `status`)
 VALUES (0, 'adincome', '广告管理', 'fa fa-bullhorn', '', '广告变现闭环系统管理', 1, UNIX_TIMESTAMP(), UNIX_TIMESTAMP(), 52, 'normal');
 
+-- 获取刚插入的广告管理菜单ID
 SET @ad_menu_id = LAST_INSERT_ID();
 
 -- 2. 子菜单：收益记录
@@ -51,16 +52,18 @@ SET @ad_stat_id = LAST_INSERT_ID();
 INSERT INTO `advn_auth_rule` (`pid`, `name`, `title`, `icon`, `condition`, `remark`, `ismenu`, `createtime`, `updatetime`, `weigh`, `status`) VALUES
 (@ad_stat_id, 'adincome/stat/index', '查看', '', '', '', 0, UNIX_TIMESTAMP(), UNIX_TIMESTAMP(), 0, 'normal');
 
--- ============================================================
+-- =====================================================
 -- 二、系统配置项
--- ============================================================
+-- =====================================================
 
 -- 2.1 在配置分组字典中添加"广告配置"分组
+-- 直接使用完整JSON覆盖（包含已知的所有分组）
 UPDATE `advn_config`
 SET `value` = '{"basic":"基础配置","coin":"金币配置","video":"视频配置","user":"用户配置","withdraw":"提现配置","invite":"邀请配置","risk":"风控配置","redpacket":"红包配置","migration":"数据迁移","email":"邮件配置","dictionary":"字典配置","wechat":"微信配置","system":"系统配置","signin":"签到配置","singlepage":"单页管理","ad":"广告配置"}'
 WHERE `name` = 'configgroup';
 
 -- 2.2 广告系统配置项 (group=ad)
+-- 使用 ON DUPLICATE KEY UPDATE 保证幂等性
 INSERT INTO `advn_config` (`name`, `group`, `title`, `tip`, `type`, `visible`, `value`, `content`, `rule`, `extend`, `setting`) VALUES
 ('ad_income_enabled', 'ad', '启用广告变现', '是否启用广告收益功能', 'switch', '', '1', '', '', '', ''),
 ('platform_rate', 'ad', '平台抽成比例', '广告收益中平台抽取的比例，如0.30表示30%', 'number', '', '0.30', '', 'required|between:0,1', '', ''),
@@ -74,9 +77,9 @@ INSERT INTO `advn_config` (`name`, `group`, `title`, `tip`, `type`, `visible`, `
 ('enabled_providers', 'ad', '启用的广告平台', '启用的广告平台，逗号分隔: uniad=uni-ad, csj=穿山甲, ylh=优量汇', 'string', '', 'uniad', '', '', '', '')
 ON DUPLICATE KEY UPDATE `group` = VALUES(`group`), `title` = VALUES(`title`), `tip` = VALUES(`tip`);
 
--- ============================================================
+-- =====================================================
 -- 三、执行后操作
--- ============================================================
+-- =====================================================
 -- 1. 清除后台缓存：
 --    rm -rf runtime/cache/*
 --    rm -rf runtime/temp/*
@@ -85,4 +88,4 @@ ON DUPLICATE KEY UPDATE `group` = VALUES(`group`), `title` = VALUES(`title`), `t
 --    b) 给管理员组分配"广告管理"下的所有权限
 --    c) 常规管理 → 系统配置 → 切换到"广告配置"标签 → 保存
 -- 3. 访问后台左侧菜单应能看到"广告管理"入口
--- ============================================================
+-- =====================================================
