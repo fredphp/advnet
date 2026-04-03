@@ -120,6 +120,7 @@ class Invite extends Api
             $parentName = '无';
             $parentUserId = 0;
             $parentAvatar = '';
+            $parentInviteCode = '';
             $relation = InviteRelation::where('user_id', $userId)->find();
             if ($relation && $relation->parent_id > 0) {
                 $parent = User::find($relation->parent_id);
@@ -127,6 +128,7 @@ class Invite extends Api
                     $parentName = $parent->nickname ?: '未知';
                     $parentUserId = $parent->id;
                     $parentAvatar = $parent->avatar ?: '';
+                    $parentInviteCode = $parent->invite_code ?: '';
                 }
             }
             
@@ -197,6 +199,7 @@ class Invite extends Api
                 // 邀请码
                 'invite_code'   => $inviteCode,
                 'invite_link'   => $inviteLink,
+                'parent_invite_code' => $parentInviteCode,
             ];
             
             $this->success('获取成功', $data);
@@ -279,7 +282,7 @@ class Invite extends Api
             // 查询成员信息（resultset_type=array 时 select 已返回数组，无需 toArray）
             $users = Db::name('user')
                 ->whereIn('id', $pagedIds)
-                ->field('id, nickname, avatar, logintime, createtime')
+                ->field('id, nickname, avatar, logintime, createtime, invite_code')
                 ->select();
             $users = $users ? (array)$users : [];
             
@@ -334,6 +337,7 @@ class Invite extends Api
                 
                 $list[] = [
                     'user_id'    => $uid,
+                    'invite_code'=> $u['invite_code'] ?: '',
                     'user'       => [
                         'nickname'       => $u['nickname'] ?: '未知用户',
                         'avatar'         => $u['avatar'] ?: '/static/image/avatar.png',

@@ -15,7 +15,10 @@
                                                         <u-tag :text="userInfo.level_name" size="mini" mode="dark" shape="circle" bg-color="#D69848"
                                                                 color="#FFFFFF" :custom-style="{marginLeft: '16rpx'}"></u-tag>
                                                 </view>
-                                                <text class="user-id">ID: {{ userInfo.id }}</text>
+                                                <view class="user-id" @click="copyText(userInfo.invite_code)">
+                                                        <text>邀请码: {{ userInfo.invite_code || '--' }}</text>
+                                                        <text class="copy-icon">复制</text>
+                                                </view>
                                         </view>
                                         <u-button type="primary" size="mini" shape="circle" hover-class="none"
                                                 :custom-style="{backgroundColor: 'rgba(255, 255, 255, 0.2)',fontSize:'24rpx', color: '#FFFFFF', border: 'none'}"
@@ -27,7 +30,10 @@
 
                                         <text class="parent-label">上级：</text>
                                         <text class="parent-name">{{ userInfo.parent_name || '无' }}</text>
-                                        <text class="parent-id" v-if="userInfo.parent_user_id">ID: {{ parentInfo.id }}</text>
+                                        <view class="parent-id" v-if="userInfo.parent_user_id && parentInfo.invite_code" @click="copyText(parentInfo.invite_code)">
+                                                <text>邀请码: {{ parentInfo.invite_code }}</text>
+                                                <text class="copy-icon">复制</text>
+                                        </view>
                                 </view>
 
                         </view>
@@ -406,7 +412,8 @@
                                 // 上级用户信息
                                 parentInfo: {
                                         name: '无',
-                                        id: 0
+                                        id: 0,
+                                        invite_code: ''
                                 },
 
                                 // 业绩数据
@@ -525,6 +532,7 @@
                                                 this.parentInfo = {
                                                         name: d.parent_name || '无',
                                                         id: d.parent_user_id || 0,
+                                                        invite_code: d.parent_invite_code || '',
                                                 };
                                                 if (d.invite_link) {
                                                         this.inviteLinkUrl = d.invite_link;
@@ -661,6 +669,20 @@
                         closeSharePopup() {
                                 this.showSharePopup = false;
                                 this.showPosterPreview = false;
+                        },
+
+                        // 复制通用文本
+                        copyText(text) {
+                                if (!text) {
+                                        uni.showToast({ title: '内容为空', icon: 'none' });
+                                        return;
+                                }
+                                uni.setClipboardData({
+                                        data: text,
+                                        success: () => {
+                                                uni.showToast({ title: '已复制', icon: 'success' });
+                                        }
+                                });
                         },
 
                         // 复制邀请码
@@ -1074,7 +1096,17 @@
                                         font-size: 24rpx;
                                         color: rgba(255, 255, 255, 0.8);
                                         margin-top: 8rpx;
-                                        display: inline-block;
+                                        display: flex;
+                                        align-items: center;
+
+                                        .copy-icon {
+                                                margin-left: 12rpx;
+                                                color: rgba(255, 255, 255, 0.5);
+                                                font-size: 22rpx;
+                                                border: 1rpx solid rgba(255, 255, 255, 0.4);
+                                                border-radius: 6rpx;
+                                                padding: 2rpx 10rpx;
+                                        }
                                 }
                         }
                 }
@@ -1099,6 +1131,17 @@
                                 margin-left: 10rpx;
                                 color: rgba(255, 255, 255, 0.7);
                                 font-size: 24rpx;
+                                display: inline-flex;
+                                align-items: center;
+
+                                .copy-icon {
+                                        margin-left: 8rpx;
+                                        color: rgba(255, 255, 255, 0.5);
+                                        font-size: 20rpx;
+                                        border: 1rpx solid rgba(255, 255, 255, 0.4);
+                                        border-radius: 6rpx;
+                                        padding: 1rpx 8rpx;
+                                }
                         }
                 }
 
