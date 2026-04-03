@@ -319,18 +319,18 @@ export default {
         overflow: hidden;
 
         // u-parse 内部样式覆盖
-        /deep/ image {
+        ::v-deep image {
                 max-width: 100% !important;
                 height: auto !important;
                 border-radius: 8rpx;
                 margin: 10rpx 0;
         }
 
-        /deep/ p {
+        ::v-deep p {
                 margin: 10rpx 0;
         }
 
-        /deep/ a {
+        ::v-deep a {
                 color: #E62129;
                 text-decoration: underline;
         }
