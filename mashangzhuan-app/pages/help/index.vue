@@ -54,8 +54,6 @@
                 <!-- 回到顶部 -->
                 <u-back-top
                         :scroll-top="scrollTop"
-                        :icon-style="{ color: theme.bgColor }"
-                        :custom-style="{ backgroundColor: theme.lightColor }"
                 ></u-back-top>
 
                 <!-- 底部导航 -->
