@@ -342,16 +342,15 @@ class Signin extends Api
         // 获取当前用户的连续签到天数
         $mySuccessions = $this->getSuccessions($userId);
         
-        // 获取排行榜前10名（按最大连续签到天数降序）
+        // 获取排行榜前10名（按最大连续签到天数降序，相同则最早签到排前面）
         $rankList = Db::name('signin_record')
             ->alias('sr')
             ->join('user u', 'u.id = sr.user_id', 'LEFT')
-            ->field('sr.user_id, u.avatar, u.nickname, MAX(sr.successions) as max_successions')
+            ->field('sr.user_id, u.avatar, u.nickname, MAX(sr.successions) as max_successions, MIN(sr.createtime) as first_sign_time')
             ->where('sr.type', 'daily')
             ->group('sr.user_id')
             ->having('max_successions > 0')
-            ->order('max_successions', 'desc')
-            ->order('MIN(sr.createtime)', 'asc')
+            ->order('max_successions desc, first_sign_time asc')
             ->limit(10)
             ->select();
         
@@ -363,7 +362,7 @@ class Signin extends Api
                     'avatar'   => $item['avatar'] ? cdnurl($item['avatar']) : '',
                     'nickname' => $item['nickname'] ?: '用户' . $item['user_id'],
                 ],
-                'successions' => (int)$item['successions'],
+                'max_successions' => (int)$item['max_successions'],
             ];
         }
         
