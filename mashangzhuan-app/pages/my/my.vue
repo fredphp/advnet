@@ -219,11 +219,6 @@
                                                 icon: "/images/mic-priv.png",
                                                 name: "隐私协议",
                                                 type: "privacy_policy"
-                                        },
-                                        {
-                                                icon: "/images/mic-policy.png",
-                                                name: "分销规则",
-                                                type: "distribution_rules"
                                         }
                                 ]
                         };
