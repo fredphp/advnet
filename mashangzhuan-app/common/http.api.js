@@ -74,10 +74,9 @@ const install = (Vue, vm) => {
         vm.$api.goUpload                        = async (params = {}) => await upload(vm, params);
         //用户
         vm.$api.getMyIndex              = async (params = {}) => await vm.$u.get('/api/user/index', params);
-        vm.$api.getUserIndex            = async (params = {}) => await vm.$u.get('/addons/shop/api.user/index', params);
-        vm.$api.getUserProfile          = async (params = {}) => await vm.$u.post('/addons/shop/api.user/profile', params);     
-        vm.$api.goUserLogout            = async (params = {}) => await vm.$u.post('/addons/shop/api.user/logout', params);
-        vm.$api.goUserAvatar            = async (params = {}) => await vm.$u.post('/addons/shop/api.user/avatar', params);
+        vm.$api.getUserProfile          = async (params = {}) => await vm.$u.post('/api/user/profile', params);
+        vm.$api.getProfileInfo          = async (params = {}) => await vm.$u.get('/api/user/getProfile', params);
+        vm.$api.goUserLogout            = async (params = {}) => await vm.$u.post('/api/user/logout', params);
         vm.$api.getSigned                       = async (params = {}) => await vm.$u.post('/addons/shop/api.user/getSigned',params);            
         // 登录   
         vm.$api.getEmsSend                      = async (params = {}) => await vm.$u.post('/addons/shop/api.ems/send', params);

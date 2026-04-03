@@ -24,6 +24,33 @@ class User extends Api
     }
 
     /**
+     * 获取个人资料
+     * GET /api/user/profile
+     * 返回当前用户的详细个人资料信息，用于编辑页面初始化
+     */
+    public function getProfile()
+    {
+        $user = $this->auth->getUser();
+        if (!$user) {
+            $this->error('用户不存在');
+        }
+
+        $profile = [
+            'id'        => $user->id,
+            'avatar'    => $user->avatar ? cdnurl($user->avatar) : '',
+            'username'  => $user->username ?: '',
+            'nickname'  => $user->nickname ?: '',
+            'gender'    => intval($user->gender),
+            'birthday'  => $user->birthday ?: '',
+            'bio'       => $user->bio ?: '',
+            'mobile'    => $user->mobile ?: '',
+            'email'     => $user->email ?: '',
+        ];
+
+        $this->success('获取成功', $profile);
+    }
+
+    /**
      * 会员中心 - 获取用户完整信息
      * GET /api/user/index
      */
@@ -209,38 +236,82 @@ class User extends Api
 
     /**
      * 修改会员个人信息
+     * POST /api/user/profile
      *
-     * @ApiMethod (POST)
-     * @ApiParams (name="avatar", type="string", required=true, description="头像地址")
-     * @ApiParams (name="username", type="string", required=true, description="用户名")
-     * @ApiParams (name="nickname", type="string", required=true, description="昵称")
-     * @ApiParams (name="bio", type="string", required=true, description="个人简介")
+     * 支持字段：avatar, username, nickname, gender, birthday, bio
+     * gender: 0=未知, 1=男, 2=女
+     * birthday: YYYY-MM-DD 格式
      */
     public function profile()
     {
         $user = $this->auth->getUser();
-        $username = $this->request->post('username');
-        $nickname = $this->request->post('nickname');
-        $bio = $this->request->post('bio');
-        $avatar = $this->request->post('avatar', '', 'trim,strip_tags,htmlspecialchars');
-        if ($username) {
+        if (!$user) {
+            $this->error('用户不存在');
+        }
+
+        $username = $this->request->post('username', '');
+        $nickname = $this->request->post('nickname', '');
+        $bio      = $this->request->post('bio', '');
+        $avatar   = $this->request->post('avatar', '', 'trim,strip_tags,htmlspecialchars');
+        $gender   = $this->request->post('gender', 0, 'intval');
+        $birthday = $this->request->post('birthday', '');
+
+        // 用户名（可选修改，不为空时检查唯一性）
+        if ($username !== '') {
+            if (mb_strlen($username) < 3 || mb_strlen($username) > 32) {
+                $this->error('用户名长度为3-32个字符');
+            }
             $exists = \app\common\model\User::where('username', $username)->where('id', '<>', $this->auth->id)->find();
             if ($exists) {
                 $this->error(__('Username already exists'));
             }
             $user->username = $username;
         }
-        if ($nickname) {
+
+        // 昵称（必填）
+        if ($nickname !== '') {
+            if (mb_strlen($nickname) < 2 || mb_strlen($nickname) > 50) {
+                $this->error('昵称长度为2-50个字符');
+            }
             $exists = \app\common\model\User::where('nickname', $nickname)->where('id', '<>', $this->auth->id)->find();
             if ($exists) {
                 $this->error(__('Nickname already exists'));
             }
             $user->nickname = $nickname;
+        } else {
+            $this->error('昵称不能为空');
         }
-        $user->bio = $bio;
+
+        // 性别：0=未知, 1=男, 2=女
+        if (in_array($gender, [0, 1, 2])) {
+            $user->gender = $gender;
+        }
+
+        // 生日：校验日期格式
+        if ($birthday !== '') {
+            if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $birthday)) {
+                $this->error('生日格式不正确，应为YYYY-MM-DD');
+            }
+            $user->birthday = $birthday;
+        } else {
+            $user->birthday = null;
+        }
+
+        $user->bio = mb_substr($bio, 0, 100);
         $user->avatar = $avatar;
         $user->save();
-        $this->success();
+
+        // 返回更新后的用户信息（用于前端同步vuex）
+        $updatedUser = [
+            'id'        => $user->id,
+            'nickname'  => $user->nickname ?: '用户' . $user->id,
+            'avatar'    => $user->avatar ? cdnurl($user->avatar) : '',
+            'gender'    => intval($user->gender),
+            'birthday'  => $user->birthday ?: '',
+            'bio'       => $user->bio ?: '',
+        ];
+
+        $this->success('保存成功', $updatedUser);
     }
 
     /**
