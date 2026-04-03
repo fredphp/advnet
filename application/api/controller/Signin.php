@@ -342,16 +342,16 @@ class Signin extends Api
         // 获取当前用户的连续签到天数
         $mySuccessions = $this->getSuccessions($userId);
         
-        // 获取排行榜前10名（按连续签到天数降序，取每个用户最新记录）
+        // 获取排行榜前10名（按最大连续签到天数降序）
         $rankList = Db::name('signin_record')
             ->alias('sr')
             ->join('user u', 'u.id = sr.user_id', 'LEFT')
-            ->field('sr.user_id, u.avatar, u.nickname, sr.successions')
+            ->field('sr.user_id, u.avatar, u.nickname, MAX(sr.successions) as max_successions')
             ->where('sr.type', 'daily')
-            ->where('sr.successions', '>', 0)
-            ->order('sr.successions', 'desc')
-            ->order('sr.createtime', 'asc')
             ->group('sr.user_id')
+            ->having('max_successions > 0')
+            ->order('max_successions', 'desc')
+            ->order('MIN(sr.createtime)', 'asc')
             ->limit(10)
             ->select();
         

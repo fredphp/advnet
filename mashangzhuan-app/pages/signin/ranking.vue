@@ -13,7 +13,7 @@
                                                 <u-avatar :src="item.user.avatar"></u-avatar>
                                         </view>
                                         <view class="u-flex-4 u-m-l-15 u-line-1">{{ item.user.nickname }}</view>
-                                        <view class="u-flex-5 u-text-right">连续签到<text class="u-text-weight u-p-l-10 u-p-r-10">{{ item.successions }}</text>天</view>
+                                        <view class="u-flex-5 u-text-right">连续签到<text class="u-text-weight u-p-l-10 u-p-r-10">{{ item.max_successions }}</text>天</view>
                                 </view>
                         </block>
                 </view>
