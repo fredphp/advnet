@@ -59,6 +59,12 @@
                                                 :message="msg"
                                                 @ad-rewarded="handleAdRewarded" />
 
+                                        <!-- 激励视频广告消息 -->
+                                        <rewarded-video-message
+                                                v-if="msg.type === 'rewarded_video'"
+                                                :message="msg"
+                                                @ad-rewarded="handleAdRewarded" />
+
                                         <!-- 普通聊天/下载/广告/视频 任务卡片 -->
                                         <task-message
                                                 v-if="msg.type === 'task_chat' || msg.type === 'task_download' || msg.type === 'task_adv' || msg.type === 'task_video'"
@@ -177,8 +183,8 @@ import RedbagMessage from '@/components/chat/redbagMessage.vue'
 import TaskMessage from '@/components/chat/taskMessage.vue'
 import AdBanner from '@/components/ad/adBanner.vue'
 import AdFeedMessage from '@/components/chat/adFeedMessage.vue'
+import RewardedVideoMessage from '@/components/chat/rewardedVideoMessage.vue'
 import AdRedPacketList from '@/components/ad/adRedPacketList.vue'
-import { decryptData } from '@/common/crypto.js'
 
 export default {
         components: {
@@ -187,6 +193,7 @@ export default {
                 TaskMessage,
                 AdBanner,
                 AdFeedMessage,
+                RewardedVideoMessage,
                 AdRedPacketList,
         },
 
@@ -200,6 +207,8 @@ export default {
                 this.generateInitialMessages();
                 // ★ 启动持续推送（聊天消息 + 信息流广告交替，永不停止）
                 this.startContinuousPush();
+                // ★ 启动激励视频推送（每120秒推一条激励视频广告）
+                this.startRewardedVideoPush();
         },
 
         onShow() {
@@ -210,6 +219,8 @@ export default {
         onUnload() {
                 // 停止持续推送
                 this.stopContinuousPush();
+                // 停止激励视频推送
+                this.stopRewardedVideoPush();
                 // 离开页面时清理所有红包过期计时器
                 this.clearAllRedbagTimers();
                 // 清理关闭倒计时
@@ -233,9 +244,10 @@ export default {
                                 feed_ad_count: 3,
                                 reward_per_feed: 50,
                                 ad_income_enabled: 0,
-                                platform_rate: 0.30,
+                                // ★ 激励视频广告配置
                                 rewarded_video_adpid: '',
                                 reward_per_video: 200,
+                                rewarded_video_interval: 120,  // 激励视频推送间隔（秒）
                         },
 
                         // 在线人数（模拟显示，不依赖WebSocket）
@@ -267,6 +279,10 @@ export default {
                         pushChatCountBeforeAd: 0,          // 下一批聊天消息还需要推几条才插广告
                         maxMessages: 150,                 // 消息列表最大保留数量（防止内存溢出）
 
+                        // ★ 激励视频推送定时器
+                        rewardedVideoPushTimer: null,     // 激励视频推送定时器
+                        rewardedVideoLastPushTime: 0,     // 上次推送激励视频的时间戳
+
                         // ★ 头像相关
                         avatarList: [],                    // 后台头像URL列表
                         nicknameAvatarMap: {},              // 昵称→头像的固定映射（同一用户始终同一头像）
@@ -297,15 +313,7 @@ export default {
                  */
 
                 handleAdRewarded(data) {
-                        const adLabel = data.adType === 'reward' ? '激励视频广告' : '信息流广告';
-                        console.log('========== 🧧 ' + adLabel + '奖励回调 ==========');
-                        console.log('💰 广告平台给出总金币:', data.totalRewardCoin || 0);
-                        console.log('📊 系统平台抽成比例:', this.adConfig.platform_rate ? (this.adConfig.platform_rate * 100).toFixed(0) + '%' : '未获取');
-                        console.log('🏦 平台抽成金币:', data.platformCoin || 0);
-                        console.log('👤 用户实际获得金币:', data.userCoin || data.amount || 0);
-                        console.log('🆔 收益记录ID:', data.logId);
-                        console.log('📦 完整回调数据:', JSON.stringify(data, null, 2));
-                        console.log('============================================');
+                        console.log('[RedBag] 广告奖励回调:', JSON.stringify(data));
 
                         // 更新消息状态
                         if (data.message) {
@@ -317,11 +325,13 @@ export default {
                         this.loadAdOverview();
 
                         if (data.amount > 0) {
-                                // 添加一条系统提示消息
+                                // 根据广告类型显示不同的系统提示
+                                const adType = data.adType || 'feed';
+                                const adTypeText = adType === 'reward' ? '观看激励视频' : '浏览信息流广告';
                                 this.messages.push({
                                         id: 'ad_reward_' + Date.now(),
                                         type: 'system',
-                                        content: '观看广告获得 +' + data.amount + ' 金币，已存入待释放余额',
+                                        content: adTypeText + '获得 +' + data.amount + ' 金币，已存入待释放余额',
                                         time: Date.now(),
                                         sender: 'system'
                                 });
@@ -336,27 +346,18 @@ export default {
                         try {
                                 const res = await this.$api.adOverview({});
                                 if (res && res.code === 1 && res.data) {
-                                        // ★ 解密后端返回的加密数据
-                                        let data = res.data;
-                                        if (typeof data === 'string') {
-                                                data = decryptData(data);
-                                                if (!data) {
-                                                        console.error('[RedBag] 数据解密失败');
-                                                        return;
-                                                }
-                                        }
-
-                                        this.adPacketBadge = data.unclaimed_packet_count || 0;
+                                        this.adPacketBadge = res.data.unclaimed_packet_count || 0;
 
                                         // ★ 保存广告配置供持续推送使用
-                                        this.adConfig.feed_adpid = data.feed_adpid || '';
-                                        this.adConfig.feed_ad_count = data.feed_ad_count || 3;
-                                        this.adConfig.reward_per_feed = data.reward_per_feed || 50;
-                                        this.adConfig.ad_income_enabled = data.ad_income_enabled || 0;
-                                        this.adConfig.platform_rate = data.platform_rate || 0.30;
-                                        // ★ 激励视频广告配置
-                                        this.adConfig.rewarded_video_adpid = data.rewarded_video_adpid || '';
-                                        this.adConfig.reward_per_video = (data.reward_per_video || data.reward_per_feed * 4 || 200);
+                                        this.adConfig.feed_adpid = res.data.feed_adpid || '';
+                                        this.adConfig.feed_ad_count = res.data.feed_ad_count || 3;
+                                        this.adConfig.reward_per_feed = res.data.reward_per_feed || 50;
+                                        this.adConfig.ad_income_enabled = res.data.ad_income_enabled || 0;
+
+                                        // ★ 保存激励视频广告配置
+                                        this.adConfig.rewarded_video_adpid = res.data.rewarded_video_adpid || '';
+                                        this.adConfig.reward_per_video = res.data.reward_per_video || 200;
+                                        this.adConfig.rewarded_video_interval = res.data.rewarded_video_interval || 120;
 
                                         // 检查广告配置并提示
                                         this.checkAdConfigAndHint();
@@ -518,39 +519,17 @@ export default {
                                 this.pushCounter = 0;
                                 this.pushChatCountBeforeAd = 2 + Math.floor(Math.random() * 3);
 
-                                // ★ 随机决定推信息流还是激励视频广告（激励视频概率更低，约30%）
-                                const hasFeedAdpid = !!this.adConfig.feed_adpid;
-                                const hasVideoAdpid = !!this.adConfig.rewarded_video_adpid;
-
-                                if (hasFeedAdpid && hasVideoAdpid) {
-                                        // 两种广告都有 → 70%信息流，30%激励视频
-                                        if (Math.random() < 0.3) {
-                                                this.messages.push(this.createAdVideoMessage(
-                                                        this.adConfig.rewarded_video_adpid,
-                                                        this.adConfig.reward_per_video || 200
-                                                ));
-                                                console.log('[RedBag] 推送激励视频广告, adpid=' + this.adConfig.rewarded_video_adpid);
-                                        } else {
-                                                this.messages.push(this.createAdFeedMessage(
-                                                        this.adConfig.feed_adpid,
-                                                        this.adConfig.reward_per_feed || 50
-                                                ));
-                                                console.log('[RedBag] 推送信息流广告, adpid=' + this.adConfig.feed_adpid);
-                                        }
-                                } else if (hasFeedAdpid) {
-                                        this.messages.push(this.createAdFeedMessage(
+                                // 推送信息流广告
+                                if (this.adConfig.feed_adpid) {
+                                        const adMsg = this.createAdFeedMessage(
                                                 this.adConfig.feed_adpid,
-                                                this.adConfig.reward_per_feed || 50
-                                        ));
+                                                this.adConfig.reward_per_feed || 50,
+                                                Date.now()
+                                        );
+                                        this.messages.push(adMsg);
                                         console.log('[RedBag] 推送信息流广告, adpid=' + this.adConfig.feed_adpid);
-                                } else if (hasVideoAdpid) {
-                                        this.messages.push(this.createAdVideoMessage(
-                                                this.adConfig.rewarded_video_adpid,
-                                                this.adConfig.reward_per_video || 200
-                                        ));
-                                        console.log('[RedBag] 推送激励视频广告, adpid=' + this.adConfig.rewarded_video_adpid);
                                 } else {
-                                        // 没配置广告位时，推一条聊天消息代替
+                                        // 没配置 adpid 时，推一条聊天消息代替
                                         this.messages.push(this.createFakeChatMessage(names, msgs));
                                 }
                         } else {
@@ -607,7 +586,6 @@ export default {
                                         avatar: '/static/image/ad-avatar.png'
                                 },
                                 taskData: {
-                                        ad_type: 'feed',
                                         adpid: adpid,
                                         reward_coin: rewardCoin,
                                         resource: {
@@ -620,25 +598,102 @@ export default {
                 /**
                  * 创建一条激励视频广告消息对象
                  */
-                createAdVideoMessage(adpid, rewardCoin) {
+                createRewardedVideoMessage(adpid, rewardCoin) {
                         return {
-                                id: 'ad_video_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6),
-                                type: 'ad_feed', // 复用同一个组件渲染，通过 taskData.ad_type 区分
+                                id: 'rewarded_video_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6),
+                                type: 'rewarded_video',
                                 time: Date.now(),
                                 sender: 'system',
                                 user: {
-                                        nickname: '视频推荐',
+                                        nickname: '限时福利',
                                         avatar: '/static/image/ad-avatar.png'
                                 },
                                 taskData: {
-                                        ad_type: 'reward',
                                         adpid: adpid,
                                         reward_coin: rewardCoin,
+                                        cooldown: this.adConfig.rewarded_video_interval || 120,
                                         resource: {
                                                 adpid: adpid
                                         }
                                 }
                         };
+                },
+
+                // ==================== ★ 激励视频推送管理 ====================
+
+                /**
+                 * 启动激励视频定时推送
+                 * 每隔 rewarded_video_interval 秒（默认120秒）推送一条激励视频广告
+                 */
+                startRewardedVideoPush() {
+                        // 防止重复启动
+                        if (this.rewardedVideoPushTimer) return;
+
+                        // 如果没有配置激励视频 adpid，则不启动
+                        if (!this.adConfig.rewarded_video_adpid) {
+                                console.log('[RedBag] 未配置激励视频广告位ID，跳过激励视频推送');
+                                return;
+                        }
+
+                        // 记录启动时间，延迟一个间隔后首次推送
+                        this.rewardedVideoLastPushTime = Date.now();
+                        const intervalMs = (this.adConfig.rewarded_video_interval || 120) * 1000;
+
+                        console.log('[RedBag] 激励视频推送已启动，间隔=' + this.adConfig.rewarded_video_interval + '秒');
+
+                        const scheduleNext = () => {
+                                this.rewardedVideoPushTimer = setTimeout(() => {
+                                        this.doPushRewardedVideo();
+                                        scheduleNext(); // 递归调度
+                                }, intervalMs);
+                        };
+
+                        // 延迟一个间隔后首次推送激励视频
+                        this.rewardedVideoPushTimer = setTimeout(() => {
+                                this.doPushRewardedVideo();
+                                scheduleNext();
+                        }, intervalMs);
+                },
+
+                /**
+                 * 停止激励视频推送
+                 */
+                stopRewardedVideoPush() {
+                        if (this.rewardedVideoPushTimer) {
+                                clearTimeout(this.rewardedVideoPushTimer);
+                                this.rewardedVideoPushTimer = null;
+                                console.log('[RedBag] 激励视频推送已停止');
+                        }
+                },
+
+                /**
+                 * 推送一条激励视频广告消息
+                 */
+                doPushRewardedVideo() {
+                        if (!this.adConfig.rewarded_video_adpid) {
+                                console.log('[RedBag] 激励视频 adpid 未配置，跳过推送');
+                                return;
+                        }
+
+                        // 如果 adpid 发生变化（后台热更新配置），则更新
+                        if (this.adConfig.rewarded_video_adpid) {
+                                const videoMsg = this.createRewardedVideoMessage(
+                                        this.adConfig.rewarded_video_adpid,
+                                        this.adConfig.reward_per_video || 200
+                                );
+                                this.messages.push(videoMsg);
+                                this.rewardedVideoLastPushTime = Date.now();
+
+                                console.log('[RedBag] 推送激励视频广告, adpid=' + this.adConfig.rewarded_video_adpid + ', 奖励=' + (this.adConfig.reward_per_video || 200) + '金币');
+
+                                // 性能保护
+                                if (this.messages.length > this.maxMessages) {
+                                        const removeCount = this.messages.length - this.maxMessages;
+                                        this.messages.splice(0, removeCount);
+                                }
+
+                                this.scrollToBottom();
+                        }
                 },
 
                 /**
