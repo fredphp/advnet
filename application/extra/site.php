@@ -188,6 +188,6 @@ return array (
   'feed_adpid' => '__UNI__23335FE',
   'rewarded_video_adpid' => '__UNI__7A08202',
   'feed_ad_count' => '3',
-  'rewarded_video_interval' => '12',
+  'rewarded_video_interval' => '120',
   'rewarded_video_cooldown' => '30',
 );
