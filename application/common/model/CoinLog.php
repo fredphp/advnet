@@ -23,7 +23,9 @@ class CoinLog extends Model
     public static $typeList = [
         // 收入类型
         'register_reward' => '注册奖励',
+        'new_user' => '新用户奖励',
         'video_watch' => '观看视频',
+        'video' => '视频奖励',
         'video_share' => '分享视频',
         'task_reward' => '任务奖励',
         'sign_in' => '签到奖励',
@@ -31,20 +33,33 @@ class CoinLog extends Model
         'sign_fillup_reward' => '补签奖励',
         'invite_level1' => '一级邀请奖励',
         'invite_level2' => '二级邀请奖励',
+        'invite_reward' => '邀请新用户奖励',
+        'invite_commission' => '邀请佣金',
         'commission_level1' => '一级佣金',
         'commission_level2' => '二级佣金',
         'red_packet' => '红包奖励',
+        'red_packet_grab' => '抢红包奖励',
+        'red_packet_click' => '红包点击奖励',
+        'ad_red_packet' => '领取广告红包',
         'game_reward' => '游戏奖励',
+        'transfer_in' => '转账收入',
         'admin_add' => '后台增加',
+        'admin_recharge' => '后台充值',
+        'admin_batch_recharge' => '批量充值',
         'withdraw_return' => '提现退回',
-        'withdraw_freeze' => '提现冻结',
         'withdraw_refund' => '提现退还',
-        'withdraw_success' => '提现成功',
-        'withdraw' => '提现',
-        'withdraw_cancel' => '取消提现',
         // 支出类型
+        'withdraw_freeze' => '提现冻结',
+        'withdraw' => '提现',
+        'withdraw_success' => '提现成功',
+        'withdraw_cancel' => '取消提现',
         'withdraw_fee' => '提现手续费',
+        'transfer_out' => '转账支出',
         'admin_reduce' => '后台扣减',
+        'admin_deduct' => '后台扣减',
+        'admin_batch_deduct' => '批量扣减',
+        // 系统类型
+        'system' => '系统操作',
     ];
     /**
      * 关联用户

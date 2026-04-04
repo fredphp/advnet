@@ -129,6 +129,7 @@ class Log extends Backend
                 'withdraw' => '提现',
                 'invite' => '邀请',
                 'red_packet' => '红包',
+                'ad_red_packet' => '广告红包',
                 'admin' => '后台操作',
                 'user' => '用户转账',
                 'click' => '点击奖励',
@@ -471,6 +472,7 @@ class Log extends Backend
             'withdraw' => '提现',
             'invite' => '邀请',
             'red_packet' => '红包',
+            'ad_red_packet' => '广告红包',
             'admin' => '后台操作',
             'user' => '用户转账',
             'click' => '点击奖励',
@@ -617,6 +619,29 @@ class Log extends Backend
                             ['label' => '总金额', 'value' => $detail['total_amount'] ?? 0],
                             ['label' => '点击次数', 'value' => $detail['click_count'] ?? 0],
                             ['label' => '领取状态', 'value' => $detail['is_collected'] ? '已领取' : '未领取'],
+                        ]
+                    ];
+                }
+                break;
+
+            case 'ad_red_packet':
+                $detail = Db::name('ad_red_packet')->where('id', $relationId)->find();
+                if ($detail) {
+                    $statusMap = [
+                        0 => '未领取',
+                        1 => '已领取',
+                        2 => '已过期',
+                    ];
+                    return [
+                        'type' => '广告红包',
+                        'fields' => [
+                            ['label' => '红包ID', 'value' => $detail['id']],
+                            ['label' => '金额', 'value' => $detail['amount'] ?? 0],
+                            ['label' => '来源', 'value' => $detail['source'] ?? ''],
+                            ['label' => '状态', 'value' => $statusMap[$detail['status']] ?? '未知', 'highlight' => true],
+                            ['label' => '过期时间', 'value' => date('Y-m-d H:i:s', $detail['expire_time'] ?? 0)],
+                            ['label' => '领取时间', 'value' => $detail['claim_time'] ? date('Y-m-d H:i:s', $detail['claim_time']) : '-'],
+                            ['label' => '创建时间', 'value' => date('Y-m-d H:i:s', $detail['createtime'] ?? 0)],
                         ]
                     ];
                 }

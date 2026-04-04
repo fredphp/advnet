@@ -45,6 +45,7 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
                             "withdraw": "提现",
                             "invite": "邀请",
                             "red_packet": "红包",
+                            "ad_red_packet": "广告红包",
                             "admin": "后台"
                         }},
                         {field: 'title', title: '标题', operate: 'LIKE'},
