@@ -5,7 +5,7 @@ namespace app\api\controller;
 use app\api\controller\Ad;
 use app\common\controller\Api;
 use app\common\library\AdIncomeService;
-use app\common\model\AdRedPacket;
+use app\common\model\AdRedPacket as AdRedPacketModel;
 use app\common\model\AdIncomeLog;
 use think\Db;
 use think\Log;
@@ -47,7 +47,7 @@ class AdRedPacket extends Api
             $limit = 50;
         }
 
-        $data = AdRedPacket::getUserPackets($userId, $page, $limit);
+        $data = AdRedPacketModel::getUserPackets($userId, $page, $limit);
 
         $this->success('获取成功', $data);
     }
