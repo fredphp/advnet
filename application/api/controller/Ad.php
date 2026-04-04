@@ -182,6 +182,10 @@ class Ad extends Api
         // ★ 平台抽成比例（供前端展示金币分配明细）
         $data['platform_rate'] = (float)\app\common\library\SystemConfigService::get('ad.platform_rate', null, 0.30);
 
+        // ★ 激励视频广告配置
+        $data['reward_per_video'] = (int)\app\common\library\SystemConfigService::get('ad.reward_per_video', null, 200);
+        $data['rewarded_video_interval'] = (int)\app\common\library\SystemConfigService::get('ad.rewarded_video_interval', null, 120);
+
         // ★ 加密 data 字段
         if (DataEncryptService::isEnabled()) {
             $data = DataEncryptService::encrypt($data);

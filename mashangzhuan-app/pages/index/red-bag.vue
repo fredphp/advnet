@@ -1028,15 +1028,23 @@ export default {
                 scrollToBottom() {
                         const anchorId = this.scrollAnchorId;
 
-                        // H5环境：直接用原生DOM scrollIntoView，完全绕过uni-app的scroll-view滚动机制
+                        // H5环境：直接滚动 scroll-view 内部元素，避免触发外层页面滚动导致 header 被推上去
                         // #ifdef H5
                         this.$nextTick(() => {
-                                // 用requestAnimationFrame确保浏览器已完成渲染
                                 requestAnimationFrame(() => {
                                         requestAnimationFrame(() => {
-                                                const el = document.getElementById(anchorId);
-                                                if (el) {
-                                                        el.scrollIntoView({ block: 'end', behavior: 'smooth' });
+                                                // 找到 scroll-view 的内部滚动容器
+                                                const scrollView = document.querySelector('.message-list uni-scroll-view') ||
+                                                        document.querySelector('.message-list .uni-scroll-view') ||
+                                                        document.querySelector('.message-list scroll-view');
+                                                if (scrollView) {
+                                                        scrollView.scrollTop = scrollView.scrollHeight;
+                                                } else {
+                                                        // 降级方案：用 anchor 的 scrollIntoView，但只在 scroll-view 内滚动
+                                                        const el = document.getElementById(anchorId);
+                                                        if (el) {
+                                                                el.scrollIntoView({ block: 'end', behavior: 'smooth' });
+                                                        }
                                                 }
                                         });
                                 });
@@ -1090,10 +1098,11 @@ export default {
 
 <style lang="scss" scoped>
 .page-content {
-        min-height: 100vh;
+        height: 100vh;
         background: #f5f5f5;
         display: flex;
         flex-direction: column;
+        overflow: hidden;
 }
 
 .chat-container {
@@ -1117,6 +1126,9 @@ export default {
         align-items: center;
         padding: 0 20rpx;
         border-bottom: 1rpx solid #eee;
+        flex-shrink: 0;
+        position: relative;
+        z-index: 10;
 }
 
 .navbar-content {
@@ -1198,11 +1210,14 @@ export default {
 
 .ad-section {
         height: 200rpx;
+        flex-shrink: 0;
 }
 
 .message-list {
         flex: 1;
         padding: 20rpx;
+        min-height: 0;
+        overflow: hidden;
 }
 
 .system-message {

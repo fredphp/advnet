@@ -198,6 +198,8 @@ class SystemConfigService
             'rewarded_video_adpid' => '',
             // 红包页信息流广告数量
             'feed_ad_count' => 3,
+            // 激励视频推送间隔(秒)
+            'rewarded_video_interval' => 120,
         ],
         
         // ==================== 系统配置 ====================
