@@ -14,6 +14,17 @@
 			</view>
 		</view>
 
+		<!-- 待释放金币进度 -->
+		<view class="freeze-progress-bar" v-if="overviewLoaded">
+			<view class="freeze-progress-info">
+				<text class="freeze-progress-label">待释放金币</text>
+				<text class="freeze-progress-value">{{ freezeBalance }} / {{ redpacketThreshold }}</text>
+			</view>
+			<view class="freeze-progress-track">
+				<view class="freeze-progress-fill" :style="{ width: freezePercent + '%' }"></view>
+			</view>
+		</view>
+
 		<!-- 一键领取按钮 -->
 		<view class="claim-all-bar" v-if="summary.unclaimed_count > 0">
 			<view class="claim-all-btn" @click="claimAll">
@@ -93,18 +104,38 @@ export default {
 			summary: {
 				unclaimed_count: 0,
 				unclaimed_amount: 0,
-			}
+			},
+			freezeBalance: 0,
+			redpacketThreshold: 1000,
+			overviewLoaded: false,
+			// 一键领取批量模式：观看一个广告后继续领取剩余
+			batchClaiming: false,
+			batchPacketIds: [],
+			batchCurrentIndex: 0,
 		};
+	},
+
+	computed: {
+		freezePercent() {
+			if (this.redpacketThreshold <= 0) return 100;
+			return Math.min(100, Math.round((this.freezeBalance / this.redpacketThreshold) * 100));
+		}
 	},
 
 	mounted() {
 		this.loadSummary();
 		this.loadList();
+		// 监听广告观看结果
+		uni.$on('ad-watch-result', this.onAdWatchResult);
+	},
+
+	beforeDestroy() {
+		uni.$off('ad-watch-result', this.onAdWatchResult);
 	},
 
 	methods: {
 		/**
-		 * 加载摘要
+		 * 加载摘要（含冻结余额信息）
 		 */
 		async loadSummary() {
 			try {
@@ -114,6 +145,9 @@ export default {
 						unclaimed_count: res.data.unclaimed_packet_count || 0,
 						unclaimed_amount: Math.floor(res.data.unclaimed_packet_amount || 0),
 					};
+					this.freezeBalance = Math.floor(res.data.ad_freeze_balance || 0);
+					this.redpacketThreshold = Math.floor(res.data.redpacket_threshold || 1000);
+					this.overviewLoaded = true;
 				}
 			} catch (e) {
 				console.error('[AdRedPacketList] 加载摘要失败:', e);
@@ -169,90 +203,118 @@ export default {
 		},
 
 		/**
-		 * 领取单个红包
+		 * 领取单个红包 — 跳转到观看广告页面
 		 */
-		async claimPacket(packet) {
+		claimPacket(packet) {
 			if (packet.status !== 0) return;
-
-			try {
-				uni.showLoading({ title: '领取中...', mask: true });
-				const res = await this.$api.adRedpacketClaim({ packet_id: packet.id });
-				uni.hideLoading();
-
-				if (res && res.code === 1) {
-					// 更新本地状态
-					this.$set(packet, 'status', 1);
-
-					const amount = (res.data && res.data.amount) || 0;
-					uni.showToast({
-						title: '领取成功 +' + amount + ' 金币',
-						icon: 'none',
-						duration: 2000
-					});
-
-					// 更新摘要
-					this.loadSummary();
-
-					// 通知父组件
-					this.$emit('claimed', {
-						amount: amount,
-						balance: (res.data && res.data.balance) || 0,
-					});
-				} else {
-					uni.showToast({
-						title: (res && res.msg) || '领取失败',
-						icon: 'none'
-					});
-				}
-			} catch (e) {
-				uni.hideLoading();
-				console.error('[AdRedPacketList] 领取红包失败:', e);
-			}
+			this.navigateToWatchAd(packet);
 		},
 
 		/**
-		 * 一键领取
+		 * 跳转到广告观看页面
 		 */
-		async claimAll() {
-			try {
-				uni.showLoading({ title: '领取中...', mask: true });
-				const res = await this.$api.adRedpacketClaimAll({});
-				uni.hideLoading();
+		navigateToWatchAd(packet) {
+			const params = {
+				type: 'redpacket_claim',
+				packet_id: packet.id,
+				rewardCoin: packet.amount || 0,
+				watchSeconds: 30,
+				msgId: 'redpacket_' + packet.id,
+			};
+			const query = Object.keys(params).map(k => k + '=' + params[k]).join('&');
+			uni.navigateTo({
+				url: '/pages/ad/watch?' + query,
+			});
+		},
 
-				if (res && res.code === 1) {
-					const totalAmount = (res.data && res.data.total_amount) || 0;
-					const claimCount = (res.data && res.data.claim_count) || 0;
+		/**
+		 * 监听广告观看结果事件
+		 */
+		onAdWatchResult(eventData) {
+			if (!eventData || eventData.adType !== 'redpacket_claim') return;
 
-					if (claimCount > 0) {
-						uni.showToast({
-							title: '成功领取 ' + claimCount + ' 个红包，共 +' + totalAmount + ' 金币',
-							icon: 'none',
-							duration: 3000
-						});
-
-						// 刷新列表和摘要
-						this.page = 1;
-						this.noMore = false;
-						this.loadList();
-						this.loadSummary();
-
-						// 通知父组件
-						this.$emit('claimed', {
-							amount: totalAmount,
-							balance: (res.data && res.data.balance) || 0,
-						});
-					} else {
-						uni.showToast({ title: '没有可领取的红包', icon: 'none' });
+			if (eventData.success) {
+				// 广告观看成功，后端已通过 claimWithAd 完成领取
+				// 提取 packet_id 从 msgId
+				const packetId = eventData.msgId ? eventData.msgId.replace('redpacket_', '') : '';
+				if (packetId) {
+					// 更新本地列表中对应红包的状态
+					const packet = this.list.find(p => String(p.id) === String(packetId));
+					if (packet) {
+						this.$set(packet, 'status', 1);
 					}
-				} else {
-					uni.showToast({
-						title: (res && res.msg) || '领取失败',
-						icon: 'none'
-					});
 				}
-			} catch (e) {
-				uni.hideLoading();
-				console.error('[AdRedPacketList] 一键领取失败:', e);
+
+				const amount = eventData.amount || 0;
+				uni.showToast({
+					title: '领取成功 +' + amount + ' 金币',
+					icon: 'none',
+					duration: 2000
+				});
+
+				// 更新摘要
+				this.loadSummary();
+
+				// 通知父组件
+				this.$emit('claimed', {
+					amount: amount,
+					packetId: packetId,
+				});
+
+				// 批量领取模式：继续领取下一个
+				if (this.batchClaiming) {
+					this.continueBatchClaim();
+				}
+			}
+			// 如果不成功，不做任何处理（用户未看完广告）
+		},
+
+		/**
+		 * 一键领取 — 逐个跳转观看广告
+		 */
+		claimAll() {
+			const unclaimed = this.list.filter(p => p.status === 0);
+			if (unclaimed.length === 0) {
+				uni.showToast({ title: '没有可领取的红包', icon: 'none' });
+				return;
+			}
+
+			// 进入批量领取模式
+			this.batchClaiming = true;
+			this.batchPacketIds = unclaimed.map(p => p.id);
+			this.batchCurrentIndex = 0;
+
+			// 先去观看第一个红包的广告
+			const firstPacket = unclaimed[0];
+			this.navigateToWatchAd(firstPacket);
+		},
+
+		/**
+		 * 批量领取：继续领取下一个
+		 */
+		continueBatchClaim() {
+			this.batchCurrentIndex++;
+			if (this.batchCurrentIndex >= this.batchPacketIds.length) {
+				// 全部领取完毕
+				this.batchClaiming = false;
+				this.batchPacketIds = [];
+				this.batchCurrentIndex = 0;
+				// 刷新列表
+				this.page = 1;
+				this.noMore = false;
+				this.loadList();
+				return;
+			}
+
+			// 检查下一个是否还在列表中且未领取
+			const nextId = this.batchPacketIds[this.batchCurrentIndex];
+			const nextPacket = this.list.find(p => p.id === nextId && p.status === 0);
+			if (nextPacket) {
+				// 继续跳转观看广告
+				this.navigateToWatchAd(nextPacket);
+			} else {
+				// 已领取或不存在，跳过
+				this.continueBatchClaim();
 			}
 		},
 
@@ -334,6 +396,47 @@ export default {
 	font-size: 32rpx;
 	font-weight: bold;
 	color: #e74c3c;
+}
+
+/* 待释放金币进度条 */
+.freeze-progress-bar {
+	padding: 16rpx 24rpx;
+	background: linear-gradient(135deg, #fff9f0, #fff3e6);
+	border-bottom: 1rpx solid #ffe8d0;
+}
+
+.freeze-progress-info {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	margin-bottom: 10rpx;
+}
+
+.freeze-progress-label {
+	font-size: 24rpx;
+	color: #ff9500;
+	font-weight: 500;
+}
+
+.freeze-progress-value {
+	font-size: 24rpx;
+	color: #ff6b00;
+	font-weight: 600;
+}
+
+.freeze-progress-track {
+	width: 100%;
+	height: 8rpx;
+	background: #ffe0b2;
+	border-radius: 4rpx;
+	overflow: hidden;
+}
+
+.freeze-progress-fill {
+	height: 100%;
+	background: linear-gradient(90deg, #ff9500, #ff6b00);
+	border-radius: 4rpx;
+	transition: width 0.5s ease;
 }
 
 .claim-all-bar {

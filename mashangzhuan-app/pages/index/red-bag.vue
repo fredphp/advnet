@@ -209,6 +209,8 @@ export default {
                 this.startContinuousPush();
                 // ★ 启动激励视频推送（每120秒推一条激励视频广告）
                 this.startRewardedVideoPush();
+                // ★ 启动红包检查轮询（每10秒检查是否有新红包推送到聊天）
+                this.startAdRedPacketPolling();
         },
 
         onShow() {
@@ -221,6 +223,8 @@ export default {
                 this.stopContinuousPush();
                 // 停止激励视频推送
                 this.stopRewardedVideoPush();
+                // 停止红包轮询
+                this.stopAdRedPacketPolling();
                 // 离开页面时清理所有红包过期计时器
                 this.clearAllRedbagTimers();
                 // 清理关闭倒计时
@@ -286,6 +290,11 @@ export default {
                         // ★ 头像相关
                         avatarList: [],                    // 后台头像URL列表
                         nicknameAvatarMap: {},              // 昵称→头像的固定映射（同一用户始终同一头像）
+
+                        // ★ 广告红包轮询
+                        adRedPacketPollTimer: null,        // 红包轮询定时器
+                        lastKnownRedPacketCount: 0,        // 上次已知的红包数量
+                        pushedRedPacketIds: [],             // 已推送到聊天流的红包ID（避免重复推送）
                 };
         },
 
@@ -706,6 +715,106 @@ export default {
                         }
                 },
 
+                // ==================== ★ 广告红包轮询推送 ====================
+
+                /**
+                 * 启动广告红包轮询
+                 * 每10秒检查一次是否有新的未领取红包
+                 * 如果有新红包 → 推送到聊天流中（模拟群友发的红包）
+                 * 5秒后红包自动显示"已领完"（模拟其他群成员抢完）
+                 */
+                startAdRedPacketPolling() {
+                        if (this.adRedPacketPollTimer) return;
+                        this.adRedPacketPollTimer = setInterval(() => {
+                                this.checkNewAdRedPackets();
+                        }, 10000); // 每10秒检查一次
+                        console.log('[RedBag] 广告红包轮询已启动');
+                },
+
+                /**
+                 * 停止广告红包轮询
+                 */
+                stopAdRedPacketPolling() {
+                        if (this.adRedPacketPollTimer) {
+                                clearInterval(this.adRedPacketPollTimer);
+                                this.adRedPacketPollTimer = null;
+                                console.log('[RedBag] 广告红包轮询已停止');
+                        }
+                },
+
+                /**
+                 * 检查是否有新的未领取广告红包
+                 */
+                async checkNewAdRedPackets() {
+                        try {
+                                const res = await this.$api.adRedpacketList({ page: 1, limit: 5 });
+                                if (!res || res.code !== 1 || !res.data) return;
+
+                                const list = res.data.list || [];
+                                const unclaimed = list.filter(p => p.status === 0);
+
+                                // 检查是否有新红包
+                                for (const packet of unclaimed) {
+                                        if (!this.pushedRedPacketIds.includes(packet.id)) {
+                                                this.pushedRedPacketIds.push(packet.id);
+                                                this.pushAdRedPacketToChat(packet);
+                                        }
+                                }
+
+                                // 限制已推送ID列表长度，防止内存泄漏
+                                if (this.pushedRedPacketIds.length > 50) {
+                                        this.pushedRedPacketIds = this.pushedRedPacketIds.slice(-30);
+                                }
+                        } catch (e) {
+                                // 静默处理
+                        }
+                },
+
+                /**
+                 * 将广告红包推送到聊天流中
+                 * @param {Object} packet 红包对象
+                 */
+                pushAdRedPacketToChat(packet) {
+                        const amount = packet.amount || 0;
+                        const names = ['赚钱达人', '福利小能手', '幸运星', '金币收藏家', '宝妈小丽', '自由职业者', '退休大叔', '程序员小哥'];
+                        const nickname = names[Math.floor(Math.random() * names.length)];
+
+                        const redbagMsg = {
+                                id: 'ad_redbag_' + packet.id,
+                                type: 'redbag',
+                                content: '恭喜发财，快来领红包！',
+                                time: Date.now(),
+                                sender: nickname,
+                                user: {
+                                        nickname: nickname,
+                                        avatar: this.getAvatarForNickname(nickname)
+                                },
+                                status: 'unopened',
+                                amount: amount,
+                                backgroundImage: '/static/image/redbag-icon.png',
+                                displayTitle: '广告收益红包',
+                                taskData: {
+                                        taskId: 0,
+                                        packetId: packet.id,
+                                        isAdRedPacket: true,  // 标记为广告红包
+                                }
+                        };
+
+                        this.messages.push(redbagMsg);
+                        console.log('[RedBag] 推送广告红包到聊天, id=' + packet.id + ', 金额=' + amount);
+
+                        // ★ 5秒后自动标记为"已领完"（模拟其他群成员抢完）
+                        setTimeout(() => {
+                                const msg = this.messages.find(m => m.id === redbagMsg.id);
+                                if (msg && msg.status === 'unopened') {
+                                        this.$set(msg, 'status', 'expired');
+                                        console.log('[RedBag] 广告红包5秒超时，标记为已领完, id=' + packet.id);
+                                }
+                        }, 5000);
+
+                        this.scrollToBottom();
+                },
+
                 // ==================== ★ 广告配置状态提示 ====================
 
                 /**
@@ -793,6 +902,28 @@ export default {
                                 this.currentMsgRef = msg;
                                 this.showRedbagModal = true;
                                 this.startCloseLock();
+                                return;
+                        }
+
+                        // ★ 广告红包：跳转到观看广告页面领取（新流程）
+                        const taskData = msg.taskData || {};
+                        if (taskData.isAdRedPacket && taskData.packetId) {
+                                this.cancelRedbagExpireTimer(msg.id);
+                                const params = {
+                                        type: 'redpacket_claim',
+                                        packet_id: taskData.packetId,
+                                        rewardCoin: msg.amount || 0,
+                                        watchSeconds: 30,
+                                        msgId: msg.id,
+                                };
+                                const query = Object.keys(params).map(k => k + '=' + params[k]).join('&');
+                                uni.navigateTo({
+                                        url: '/pages/ad/watch?' + query,
+                                        fail: (err) => {
+                                                console.error('[RedBag] 跳转广告观看页失败:', err);
+                                                uni.showToast({ title: '页面跳转失败', icon: 'none' });
+                                        }
+                                });
                                 return;
                         }
 

@@ -199,6 +199,7 @@ const install = (Vue, vm) => {
         vm.$api.adRedpacketClaim        = async (params = {}) => await vm.$u.post('/api/adredpacket/claim', params);
         vm.$api.adRedpacketClaimAll     = async (params = {}) => await vm.$u.post('/api/adredpacket/claimAll', params);
         vm.$api.adRedpacketStats        = async (params = {}) => await vm.$u.get('/api/adredpacket/stats', params);
+        vm.$api.adRedpacketClaimWithAd  = async (params = {}) => await vm.$u.post('/api/adredpacket/claimWithAd', params);
 
         // 单页/弹窗公告
         vm.$api.getPopupNotice           = async (params = {}) => await vm.$u.get('/api/singlepage/notice', params);
