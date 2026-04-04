@@ -178,6 +178,9 @@ class Ad extends Api
         $data['ad_income_enabled'] = (int)\app\common\library\SystemConfigService::get('ad.ad_income_enabled', null, 1);
         $data['enabled_providers'] = \app\common\library\SystemConfigService::get('ad.enabled_providers', null, 'uniad');
 
+        // ★ 平台抽成比例（供前端展示金币分配明细）
+        $data['platform_rate'] = (float)\app\common\library\SystemConfigService::get('ad.platform_rate', null, 0.30);
+
         $this->success('获取成功', $data);
     }
 

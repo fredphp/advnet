@@ -159,6 +159,17 @@ export default {
                                         this.rewarded = true;
                                         this.rewardAmount = res.data.user_amount_coin || 0;
 
+                                        // ★ 打印金币分配明细到控制台
+                                        console.log('========== 💰 信息流广告金币分配明细 ==========');
+                                        console.log('📢 广告位ID:', this.adpid);
+                                        console.log('💰 广告平台给出总金币:', res.data.total_reward_coin || 0);
+                                        console.log('📊 平台抽成比例:', (res.data.platform_rate !== undefined ? (res.data.platform_rate * 100).toFixed(0) + '%' : '未返回'));
+                                        console.log('🏦 平台抽成金币:', res.data.platform_amount_coin || 0);
+                                        console.log('👤 用户实际获得金币:', res.data.user_amount_coin || 0);
+                                        console.log('🆔 收益记录ID:', res.data.log_id);
+                                        console.log('📦 完整回调数据:', JSON.stringify(res.data, null, 2));
+                                        console.log('================================================');
+
                                         if (this.rewardAmount > 0) {
                                                 uni.showToast({
                                                         title: '获得 +' + this.rewardAmount + ' 金币',
@@ -167,10 +178,14 @@ export default {
                                                 });
                                         }
 
-                                        // 通知父组件更新
+                                        // 通知父组件更新（传递完整分配数据）
                                         this.$emit('ad-rewarded', {
                                                 message: this.message,
                                                 amount: this.rewardAmount,
+                                                totalRewardCoin: res.data.total_reward_coin || 0,
+                                                platformRate: res.data.platform_rate,
+                                                platformCoin: res.data.platform_amount_coin || 0,
+                                                userCoin: res.data.user_amount_coin || 0,
                                                 logId: res.data.log_id,
                                         });
                                 } else {

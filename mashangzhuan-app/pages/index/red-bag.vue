@@ -33,9 +33,15 @@
                         </view>
 
                         <!-- 消息列表 -->
-                        <scroll-view class="message-list" scroll-y :scroll-into-view="scrollIntoViewId"
-                                scroll-with-animation :style="{height: scrollHeight + 'px'}"
-                                :scroll-top="scrollTop" :enable-back-to-top="true">
+                        <!-- #ifdef H5 -->
+                        <scroll-view class="message-list" scroll-y
+                                :style="{height: scrollHeight + 'px'}">
+                        <!-- #endif -->
+                        <!-- #ifndef H5 -->
+                        <scroll-view class="message-list" scroll-y scroll-with-animation
+                                :style="{height: scrollHeight + 'px'}"
+                                :scroll-into-view="scrollToId">
+                        <!-- #endif -->
                                 <view v-for="(msg, index) in messages" :key="msg.id" :id="'msg-' + msg.id">
                                         <!-- 系统消息 -->
                                         <view class="system-message" v-if="msg.type === 'system'">
@@ -74,7 +80,8 @@
                                                 :is-me="msg.sender === 'me'"
                                                 @play-voice="playVoice(msg)" />
                                 </view>
-                                <view id="bottom-anchor"></view>
+                                <!-- 底部锚点：用于scroll-into-view定位 -->
+                                <view :id="scrollAnchorId" class="scroll-bottom-anchor"></view>
                         </scroll-view>
                 </view>
 
@@ -186,6 +193,8 @@ export default {
                 this.groupId = opt.group_id || 'default_group';
                 this.user_info = uni.getStorageSync('user_info') || {};
                 this.loadAdOverview();
+                // ★ 加载头像列表
+                this.loadAvatarList();
                 // 生成初始聊天消息（系统欢迎语）
                 this.generateInitialMessages();
                 // ★ 启动持续推送（聊天消息 + 信息流广告交替，永不停止）
@@ -212,9 +221,9 @@ export default {
                 return {
                         groupId: '',
                         user_info: {},
-                        scrollTop: 0,
-                        scrollIntoViewId: '',
                         scrollHeight: 0,
+                        scrollToId: '',
+                        scrollAnchorId: 'anchor-init',
                         messages: [],
 
                         // 广告配置（从 overview 接口获取）
@@ -223,6 +232,7 @@ export default {
                                 feed_ad_count: 3,
                                 reward_per_feed: 50,
                                 ad_income_enabled: 0,
+                                platform_rate: 0.30,
                         },
 
                         // 在线人数（模拟显示，不依赖WebSocket）
@@ -253,6 +263,10 @@ export default {
                         pushCounter: 0,                   // 推送计数（用于判断何时插广告）
                         pushChatCountBeforeAd: 0,          // 下一批聊天消息还需要推几条才插广告
                         maxMessages: 150,                 // 消息列表最大保留数量（防止内存溢出）
+
+                        // ★ 头像相关
+                        avatarList: [],                    // 后台头像URL列表
+                        nicknameAvatarMap: {},              // 昵称→头像的固定映射（同一用户始终同一头像）
                 };
         },
 
@@ -280,7 +294,14 @@ export default {
                  */
 
                 handleAdRewarded(data) {
-                        console.log('[RedBag] 广告奖励回调:', JSON.stringify(data));
+                        console.log('========== 🧧 红包页面广告奖励回调 ==========');
+                        console.log('💰 广告平台给出总金币:', data.totalRewardCoin || 0);
+                        console.log('📊 系统平台抽成比例:', this.adConfig.platform_rate ? (this.adConfig.platform_rate * 100).toFixed(0) + '%' : '未获取');
+                        console.log('🏦 平台抽成金币:', data.platformCoin || 0);
+                        console.log('👤 用户实际获得金币:', data.userCoin || data.amount || 0);
+                        console.log('🆔 收益记录ID:', data.logId);
+                        console.log('📦 完整回调数据:', JSON.stringify(data, null, 2));
+                        console.log('============================================');
 
                         // 更新消息状态
                         if (data.message) {
@@ -318,6 +339,7 @@ export default {
                                         this.adConfig.feed_ad_count = res.data.feed_ad_count || 3;
                                         this.adConfig.reward_per_feed = res.data.reward_per_feed || 50;
                                         this.adConfig.ad_income_enabled = res.data.ad_income_enabled || 0;
+                                        this.adConfig.platform_rate = res.data.platform_rate || 0.30;
 
                                         // 检查广告配置并提示
                                         this.checkAdConfigAndHint();
@@ -325,6 +347,55 @@ export default {
                         } catch (e) {
                                 // 静默处理
                         }
+                },
+
+                // ==================== ★ 头像管理 ====================
+
+                /**
+                 * 从后端加载头像列表（带缓存）
+                 */
+                async loadAvatarList() {
+                        try {
+                                const res = await this.$api.getAvatarList({});
+                                if (res && res.code === 1 && res.data && res.data.avatars) {
+                                        this.avatarList = res.data.avatars;
+                                        console.log('[RedBag] 加载头像列表成功，数量:', this.avatarList.length);
+                                }
+                        } catch (e) {
+                                console.warn('[RedBag] 加载头像列表失败:', e);
+                        }
+                },
+
+                /**
+                 * 根据昵称获取头像URL
+                 * 同一昵称始终返回同一头像（通过nicknameAvatarMap缓存映射）
+                 * 新昵称随机分配一个头像
+                 */
+                getAvatarForNickname(nickname) {
+                        if (!nickname) return '/static/image/avatar.png';
+
+                        // 已有映射，直接返回
+                        if (this.nicknameAvatarMap[nickname]) {
+                                return this.nicknameAvatarMap[nickname];
+                        }
+
+                        // 没有头像列表或列表为空，使用默认头像
+                        if (!this.avatarList || this.avatarList.length === 0) {
+                                return '/static/image/avatar.png';
+                        }
+
+                        // 基于昵称hash值确定性地选一个头像（同一昵称hash相同）
+                        let hash = 0;
+                        for (let i = 0; i < nickname.length; i++) {
+                                hash = ((hash << 5) - hash) + nickname.charCodeAt(i);
+                                hash = hash & hash; // 转为32位整数
+                        }
+                        const index = Math.abs(hash) % this.avatarList.length;
+                        const avatar = this.avatarList[index];
+
+                        // 存入映射
+                        this.nicknameAvatarMap[nickname] = avatar;
+                        return avatar;
                 },
 
                 // ==================== ★ 信息流广告消息管理 ====================
@@ -469,15 +540,16 @@ export default {
                 createFakeChatMessage(names, msgs) {
                         const nameIdx = Math.floor(Math.random() * names.length);
                         const msgIdx = Math.floor(Math.random() * msgs.length);
+                        const nickname = names[nameIdx];
                         return {
                                 id: 'fake_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6),
                                 type: 'text',
                                 content: msgs[msgIdx],
                                 time: Date.now(),
-                                sender: names[nameIdx],
+                                sender: nickname,
                                 user: {
-                                        nickname: names[nameIdx],
-                                        avatar: '/static/image/avatar.png'
+                                        nickname: nickname,
+                                        avatar: this.getAvatarForNickname(nickname)
                                 }
                         };
                 },
@@ -835,17 +907,31 @@ export default {
                 },
 
                 scrollToBottom() {
+                        const anchorId = this.scrollAnchorId;
+
+                        // H5环境：直接用原生DOM scrollIntoView，完全绕过uni-app的scroll-view滚动机制
+                        // #ifdef H5
                         this.$nextTick(() => {
-                                // 每次切换 scrollIntoViewId 以确保重新触发滚动
-                                if (this.scrollIntoViewId === 'bottom-anchor') {
-                                        this.scrollIntoViewId = '';
-                                        setTimeout(() => {
-                                                this.scrollIntoViewId = 'bottom-anchor';
-                                        }, 50);
-                                } else {
-                                        this.scrollIntoViewId = 'bottom-anchor';
-                                }
+                                // 用requestAnimationFrame确保浏览器已完成渲染
+                                requestAnimationFrame(() => {
+                                        requestAnimationFrame(() => {
+                                                const el = document.getElementById(anchorId);
+                                                if (el) {
+                                                        el.scrollIntoView({ block: 'end', behavior: 'smooth' });
+                                                }
+                                        });
+                                });
                         });
+                        // #endif
+
+                        // 非H5环境（APP/小程序）：用scroll-into-view绑定
+                        // #ifndef H5
+                        const newId = 'anchor-' + Date.now();
+                        this.scrollAnchorId = newId;
+                        this.$nextTick(() => {
+                                this.scrollToId = newId;
+                        });
+                        // #endif
                 },
 
                 showTimeDivider(index) {
@@ -868,9 +954,10 @@ export default {
 
                 calcScrollHeight() {
                         const sysInfo = uni.getSystemInfoSync();
-                        const navH = 88;
-                        const adH = 200;
-                        const tabH = 100;
+                        // 用 upx2px 精确转换 rpx 为 px
+                        const navH = uni.upx2px(88);
+                        const adH = uni.upx2px(200);
+                        const tabH = uni.upx2px(120);
                         const statusBarH = sysInfo.statusBarHeight || 0;
                         this.scrollHeight = sysInfo.windowHeight - navH - adH - tabH - statusBarH;
                 },
@@ -895,6 +982,13 @@ export default {
         display: flex;
         flex-direction: column;
         overflow: hidden;
+}
+
+/* 底部锚点：增加高度作为最后一条消息与tabbar之间的间距 */
+.scroll-bottom-anchor {
+        height: 120rpx;
+        width: 100%;
+        flex-shrink: 0;
 }
 
 .custom-navbar {

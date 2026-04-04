@@ -204,6 +204,9 @@ const install = (Vue, vm) => {
         vm.$api.getPopupNotice           = async (params = {}) => await vm.$u.get('/api/singlepage/notice', params);
         vm.$api.singlepageDetail         = async (params = {}) => await vm.$u.get('/api/singlepage/detail', params);
         vm.$api.helpList                 = async (params = {}) => await vm.$u.get('/api/singlepage/helpList', params);
+
+        // 头像列表
+        vm.$api.getAvatarList            = async (params = {}) => await vm.$u.get('/api/avatar/list', params);
 }
 
 export default {
