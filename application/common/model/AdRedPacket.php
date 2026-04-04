@@ -2,6 +2,7 @@
 
 namespace app\common\model;
 
+use think\Db;
 use think\Model;
 
 /**
@@ -86,19 +87,16 @@ class AdRedPacket extends Model
      */
     public static function getUnclaimedSummary($userId)
     {
-        $unclaimed = self::where('user_id', $userId)
+        // 优化：使用 SQL 聚合查询替代全量加载到 PHP 内存
+        $result = Db::name('ad_red_packet')
+            ->where('user_id', $userId)
             ->where('status', self::STATUS_UNCLAIMED)
-            ->select();
-
-        $count = count($unclaimed);
-        $totalAmount = 0;
-        foreach ($unclaimed as $packet) {
-            $totalAmount += (float)$packet['amount'];
-        }
+            ->field('COUNT(*) AS cnt, IFNULL(SUM(amount), 0) AS total')
+            ->find();
 
         return [
-            'count' => $count,
-            'total_amount' => $totalAmount,
+            'count' => (int)$result['cnt'],
+            'total_amount' => (float)$result['total'],
         ];
     }
 

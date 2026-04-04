@@ -2,6 +2,7 @@
 
 namespace app\api\controller;
 
+use app\api\controller\Ad;
 use app\common\controller\Api;
 use app\common\library\AdIncomeService;
 use app\common\model\AdRedPacket;
@@ -76,6 +77,7 @@ class AdRedPacket extends Api
         $result = $service->claimRedPacket($userId, $packetId);
 
         if ($result['success']) {
+            Ad::clearOverviewCache($userId);
             $this->success('领取成功', [
                 'amount' => $result['amount'],
                 'balance' => $result['balance'],
@@ -104,6 +106,7 @@ class AdRedPacket extends Api
         $result = $service->claimAllRedPackets($userId);
 
         if ($result['success']) {
+            Ad::clearOverviewCache($userId);
             $this->success($result['message'], [
                 'total_amount' => $result['total_amount'],
                 'claim_count' => $result['claim_count'],
@@ -164,6 +167,7 @@ class AdRedPacket extends Api
         $claimResult = $service->claimRedPacket($userId, $packetId);
 
         if ($claimResult['success']) {
+            Ad::clearOverviewCache($userId);
             $this->success('领取成功', [
                 'amount' => $claimResult['amount'],
                 'balance' => $claimResult['balance'],

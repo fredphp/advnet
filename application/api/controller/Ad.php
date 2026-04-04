@@ -6,6 +6,7 @@ use app\common\controller\Api;
 use app\common\library\AdIncomeService;
 use app\common\library\DataEncryptService;
 use app\common\library\RiskControlService;
+use think\Cache;
 use think\Db;
 use think\Log;
 use think\exception\HttpResponseException;
@@ -151,6 +152,16 @@ class Ad extends Api
             $this->error('请先登录');
         }
 
+        // ★ 接口级缓存：同一用户 30 秒内重复请求直接返回缓存（前端频繁轮询场景）
+        $cacheKey = 'ad_overview:' . $userId;
+        $cached = Cache::get($cacheKey);
+        if ($cached !== null) {
+            $this->success('获取成功', $cached);
+        }
+
+        // ★ 性能优化：一次性批量加载全部 ad 分组配置（1次调用替代12+次）
+        $adConfig = \app\common\library\SystemConfigService::get('ad');
+
         $service = new AdIncomeService();
 
         try {
@@ -167,32 +178,47 @@ class Ad extends Api
             ];
         }
 
-        // 附加红包基数额度配置
-        $threshold = \app\common\library\SystemConfigService::get('ad.redpacket_threshold', null, 1000);
-        $data['redpacket_threshold'] = (int)$threshold;
+        // 从已加载的配置中直接取值（零额外 I/O）
+        $data['redpacket_threshold'] = (int)($adConfig['redpacket_threshold'] ?? 1000);
+        $data['feed_adpid'] = $adConfig['feed_adpid'] ?? '';
+        $data['rewarded_video_adpid'] = $adConfig['rewarded_video_adpid'] ?? '';
+        $data['feed_ad_count'] = (int)($adConfig['feed_ad_count'] ?? 3);
+        $data['reward_per_feed'] = (int)($adConfig['reward_per_feed'] ?? 50);
+        $data['ad_income_enabled'] = (int)($adConfig['ad_income_enabled'] ?? 1);
+        $data['enabled_providers'] = $adConfig['enabled_providers'] ?? 'uniad';
+        $data['platform_rate'] = (float)($adConfig['platform_rate'] ?? 0.30);
+        $data['reward_per_video'] = (int)($adConfig['reward_per_video'] ?? 200);
+        $data['rewarded_video_interval'] = (int)($adConfig['rewarded_video_interval'] ?? 120);
+        $data['settle_interval'] = (int)($adConfig['settle_interval'] ?? 30);
 
-        // ★ 附加广告显示配置（供前端信息流广告使用）
-        $data['feed_adpid'] = \app\common\library\SystemConfigService::get('ad.feed_adpid', null, '');
-        $data['rewarded_video_adpid'] = \app\common\library\SystemConfigService::get('ad.rewarded_video_adpid', null, '');
-        $data['feed_ad_count'] = (int)\app\common\library\SystemConfigService::get('ad.feed_ad_count', null, 3);
-        $data['reward_per_feed'] = (int)\app\common\library\SystemConfigService::get('ad.reward_per_feed', null, 50);
-        $data['ad_income_enabled'] = (int)\app\common\library\SystemConfigService::get('ad.ad_income_enabled', null, 1);
-        $data['enabled_providers'] = \app\common\library\SystemConfigService::get('ad.enabled_providers', null, 'uniad');
-
-        // ★ 平台抽成比例（供前端展示金币分配明细）
-        $data['platform_rate'] = (float)\app\common\library\SystemConfigService::get('ad.platform_rate', null, 0.30);
-
-        // ★ 激励视频广告配置
-        $data['reward_per_video'] = (int)\app\common\library\SystemConfigService::get('ad.reward_per_video', null, 200);
-        $data['rewarded_video_interval'] = (int)\app\common\library\SystemConfigService::get('ad.rewarded_video_interval', null, 120);
-        $data['settle_interval'] = (int)\app\common\library\SystemConfigService::get('ad.settle_interval', null, 30);
-
-        // ★ 加密 data 字段
-        if (DataEncryptService::isEnabled()) {
+        // ★ 加密 data 字段（复用已加载的配置判断，不再额外查库）
+        $encryptEnabled = isset($adConfig['data_encrypt']) ? (int)$adConfig['data_encrypt'] : 1;
+        if ($encryptEnabled) {
             $data = DataEncryptService::encrypt($data);
         }
 
+        // 缓存结果 30 秒
+        try {
+            Cache::set($cacheKey, $data, 30);
+        } catch (\Throwable $e) {
+            // 缓存写入失败不影响响应
+        }
+
         $this->success('获取成功', $data);
+    }
+
+    /**
+     * 清除 overview 接口缓存（在数据变更时调用）
+     * @param int|array $userId 用户ID或ID数组
+     */
+    public static function clearOverviewCache($userId)
+    {
+        $ids = is_array($userId) ? $userId : [$userId];
+        foreach ($ids as $id) {
+            try {
+                Cache::delete('ad_overview:' . (int)$id);
+            } catch (\Throwable $e) {}
+        }
     }
 
     /**
