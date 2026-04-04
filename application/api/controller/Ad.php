@@ -4,6 +4,7 @@ namespace app\api\controller;
 
 use app\common\controller\Api;
 use app\common\library\AdIncomeService;
+use app\common\library\DataEncryptService;
 use app\common\library\RiskControlService;
 use think\Db;
 use think\Log;
@@ -180,6 +181,11 @@ class Ad extends Api
 
         // ★ 平台抽成比例（供前端展示金币分配明细）
         $data['platform_rate'] = (float)\app\common\library\SystemConfigService::get('ad.platform_rate', null, 0.30);
+
+        // ★ 加密 data 字段
+        if (DataEncryptService::isEnabled()) {
+            $data = DataEncryptService::encrypt($data);
+        }
 
         $this->success('获取成功', $data);
     }

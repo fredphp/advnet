@@ -178,6 +178,7 @@ import TaskMessage from '@/components/chat/taskMessage.vue'
 import AdBanner from '@/components/ad/adBanner.vue'
 import AdFeedMessage from '@/components/chat/adFeedMessage.vue'
 import AdRedPacketList from '@/components/ad/adRedPacketList.vue'
+import { decryptData } from '@/common/crypto.js'
 
 export default {
         components: {
@@ -332,14 +333,24 @@ export default {
                         try {
                                 const res = await this.$api.adOverview({});
                                 if (res && res.code === 1 && res.data) {
-                                        this.adPacketBadge = res.data.unclaimed_packet_count || 0;
+                                        // ★ 解密后端返回的加密数据
+                                        let data = res.data;
+                                        if (typeof data === 'string') {
+                                                data = decryptData(data);
+                                                if (!data) {
+                                                        console.error('[RedBag] 数据解密失败');
+                                                        return;
+                                                }
+                                        }
+
+                                        this.adPacketBadge = data.unclaimed_packet_count || 0;
 
                                         // ★ 保存广告配置供持续推送使用
-                                        this.adConfig.feed_adpid = res.data.feed_adpid || '';
-                                        this.adConfig.feed_ad_count = res.data.feed_ad_count || 3;
-                                        this.adConfig.reward_per_feed = res.data.reward_per_feed || 50;
-                                        this.adConfig.ad_income_enabled = res.data.ad_income_enabled || 0;
-                                        this.adConfig.platform_rate = res.data.platform_rate || 0.30;
+                                        this.adConfig.feed_adpid = data.feed_adpid || '';
+                                        this.adConfig.feed_ad_count = data.feed_ad_count || 3;
+                                        this.adConfig.reward_per_feed = data.reward_per_feed || 50;
+                                        this.adConfig.ad_income_enabled = data.ad_income_enabled || 0;
+                                        this.adConfig.platform_rate = data.platform_rate || 0.30;
 
                                         // 检查广告配置并提示
                                         this.checkAdConfigAndHint();
