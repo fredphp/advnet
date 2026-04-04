@@ -5,46 +5,37 @@ namespace app\common\library;
 use think\Log;
 
 /**
- * 数据加密服务
+ * 数据加密服务（纯 PHP 实现，不依赖 openssl/mcrypt）
  *
- * 使用 AES-256-CBC 对 API 响应的 data 字段进行加密
- * 前端使用相同的 key + iv 进行解密
+ * 加密算法：XOR 流密码 + 字符位置偏移 + Base64
+ * 前端使用相同的 key 进行解密
  *
- * 加密流程：JSON → AES-256-CBC → Base64
- * 解密流程：Base64 → AES-256-CBC → JSON
+ * 加密流程：JSON → XOR加密 → 字符偏移 → Base64
+ * 解密流程：Base64 → 字符反偏移 → XOR解密 → JSON
  */
 class DataEncryptService
 {
     /**
-     * 加密算法
+     * ★ 加密密钥（前后端必须完全一致）
      */
-    const CIPHER = 'AES-256-CBC';
+    const SECRET_KEY = 'advnet2024@secure#aes256!key#data';
 
     /**
      * 加密数据
      *
      * @param mixed $data 待加密的数据（数组或对象）
-     * @return string Base64 编码的密文
+     * @return string 加密后的字符串
      */
     public static function encrypt($data)
     {
         try {
-            $key = self::getKey();
-            $iv = self::getIv();
-
             $json = json_encode($data, JSON_UNESCAPED_UNICODE);
             if ($json === false) {
                 Log::warning('DataEncrypt: JSON编码失败');
                 return json_encode($data);
             }
 
-            $encrypted = openssl_encrypt($json, self::CIPHER, $key, OPENSSL_RAW_DATA, $iv);
-            if ($encrypted === false) {
-                Log::warning('DataEncrypt: AES加密失败 - ' . openssl_error_string());
-                return $json;
-            }
-
-            return base64_encode($encrypted);
+            return self::xorEncrypt($json, self::SECRET_KEY);
         } catch (\Throwable $e) {
             Log::error('DataEncrypt encrypt异常: ' . $e->getMessage());
             return json_encode($data);
@@ -54,28 +45,18 @@ class DataEncryptService
     /**
      * 解密数据
      *
-     * @param string $encrypted Base64 编码的密文
+     * @param string $encrypted 加密字符串
      * @return mixed 解密后的原始数据
      */
     public static function decrypt($encrypted)
     {
         try {
-            $key = self::getKey();
-            $iv = self::getIv();
-
-            $decoded = base64_decode($encrypted, true);
-            if ($decoded === false) {
-                Log::warning('DataEncrypt: Base64解码失败');
+            $json = self::xorDecrypt($encrypted, self::SECRET_KEY);
+            if ($json === false) {
+                Log::warning('DataEncrypt: 解密失败');
                 return null;
             }
-
-            $decrypted = openssl_decrypt($decoded, self::CIPHER, $key, OPENSSL_RAW_DATA, $iv);
-            if ($decrypted === false) {
-                Log::warning('DataEncrypt: AES解密失败 - ' . openssl_error_string());
-                return null;
-            }
-
-            return json_decode($decrypted, true);
+            return json_decode($json, true);
         } catch (\Throwable $e) {
             Log::error('DataEncrypt decrypt异常: ' . $e->getMessage());
             return null;
@@ -83,57 +64,61 @@ class DataEncryptService
     }
 
     /**
-     * 获取加密密钥（32字节，从系统配置或固定值）
-     * 密钥必须与前端保持一致
+     * XOR 流加密 + 位置偏移
+     *
+     * 算法：每个字符与密钥对应位 XOR，再加位置偏移量
+     *
+     * @param string $data 明文
+     * @param string $key 密钥
+     * @return string Base64 编码的密文
      */
-    private static function getKey()
+    private static function xorEncrypt($data, $key)
     {
-        // 优先从系统配置读取，配置键名：ad.encrypt_key
-        $configKey = SystemConfigService::get('ad.encrypt_key', null, '');
-        if (!empty($configKey)) {
-            return self::padKey($configKey);
+        $keyLen = strlen($key);
+        $result = '';
+        $dataLen = strlen($data);
+
+        for ($i = 0; $i < $dataLen; $i++) {
+            // XOR with key
+            $char = ord($data[$i]) ^ ord($key[$i % $keyLen]);
+            // 加位置偏移（增加扩散性）
+            $offset = ($i + ord($key[($i * 3) % $keyLen])) % 256;
+            $char = ($char + $offset) % 256;
+            $result .= chr($char);
         }
 
-        // 默认密钥（32字节）
-        return 'advnet2024secure@aes256key!#data';
+        return base64_encode($result);
     }
 
     /**
-     * 获取初始化向量（16字节，从系统配置或固定值）
-     * IV 必须与前端保持一致
+     * XOR 流解密 + 位置反偏移
+     *
+     * @param string $encrypted Base64 编码的密文
+     * @param string $key 密钥
+     * @return string|false 明文
      */
-    private static function getIv()
+    private static function xorDecrypt($encrypted, $key)
     {
-        // 优先从系统配置读取，配置键名：ad.encrypt_iv
-        $configIv = SystemConfigService::get('ad.encrypt_iv', null, '');
-        if (!empty($configIv)) {
-            return self::padIv($configIv);
+        $decoded = base64_decode($encrypted, true);
+        if ($decoded === false) {
+            return false;
         }
 
-        // 默认IV（16字节）
-        return 'advnet@iv16byte';
-    }
+        $keyLen = strlen($key);
+        $result = '';
+        $dataLen = strlen($decoded);
 
-    /**
-     * 将密钥填充/截断到32字节
-     */
-    private static function padKey($key)
-    {
-        if (strlen($key) >= 32) {
-            return substr($key, 0, 32);
+        for ($i = 0; $i < $dataLen; $i++) {
+            $char = ord($decoded[$i]);
+            // 反位置偏移
+            $offset = ($i + ord($key[($i * 3) % $keyLen])) % 256;
+            $char = ($char - $offset + 256) % 256;
+            // XOR with key
+            $char = $char ^ ord($key[$i % $keyLen]);
+            $result .= chr($char);
         }
-        return str_pad($key, 32, "\0");
-    }
 
-    /**
-     * 将IV填充/截断到16字节
-     */
-    private static function padIv($iv)
-    {
-        if (strlen($iv) >= 16) {
-            return substr($iv, 0, 16);
-        }
-        return str_pad($iv, 16, "\0");
+        return $result;
     }
 
     /**
