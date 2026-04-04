@@ -135,18 +135,13 @@ class Ad extends Api
     /**
      * 获取广告收益概览
      *
-     * ★ 额外功能：如果可释放余额已达红包基数但尚未生成红包，
-     *   自动尝试结算（补偿 callback 中 checkAndAutoSettle 偶发失败的场景）
-     *
      * @api {get} /api/ad/overview 广告收益概览
      * @apiSuccess {Number} today_income 今日广告收益（金币）
      * @apiSuccess {Number} total_ad_income 累计广告收益（金币）
-     * @apiSuccess {Number} ad_freeze_balance 待释放金币（可释放余额）
+     * @apiSuccess {Number} ad_freeze_balance 待释放金币
      * @apiSuccess {Number} unclaimed_packet_count 未领取红包数
      * @apiSuccess {Number} unclaimed_packet_amount 未领取红包总金额
-     * @apiSuccess {Number} redpacket_threshold 红包基数额度（{$site.redpacket_threshold} 金币，达到此额度自动发红包）
-     * @apiSuccess {Number} reward_per_feed 每次信息流广告奖励金币数
-     * @apiSuccess {Number} redpacket_just_created 本次请求是否刚自动生成了红包 (1=是)
+     * @apiSuccess {Number} redpacket_threshold 红包基数额度（达到此额度自动发红包）
      */
     public function overview()
     {
@@ -161,6 +156,7 @@ class Ad extends Api
             $data = $service->getAdIncomeOverview($userId);
         } catch (\Throwable $e) {
             Log::error('AdOverview error: ' . get_class($e) . ' - ' . $e->getMessage() . ' in ' . $e->getFile() . ':' . $e->getLine());
+            // 即使查询失败也返回基础结构
             $data = [
                 'today_income' => 0,
                 'total_ad_income' => 0,
@@ -170,36 +166,17 @@ class Ad extends Api
             ];
         }
 
-        // 附加配置
+        // 附加红包基数额度配置
         $threshold = \app\common\library\SystemConfigService::get('ad.redpacket_threshold', null, 1000);
         $data['redpacket_threshold'] = (int)$threshold;
-        $data['reward_per_feed'] = (int)\app\common\library\SystemConfigService::get('ad.reward_per_feed', null, 50);
-        $data['redpacket_just_created'] = 0;
 
-        // ★ 补偿结算：如果可释放余额 >= 红包基数 且 没有未领取红包，
-        //   尝试自动结算（防止 callback 中的 checkAndAutoSettle 偶发失败）
-        $freezeBalance = (int)($data['ad_freeze_balance'] ?? 0);
-        $unclaimedCount = (int)($data['unclaimed_packet_count'] ?? 0);
-        if ($freezeBalance >= (int)$threshold && $unclaimedCount === 0) {
-            try {
-                $settleResult = $service->checkAndAutoSettle($userId);
-                if ($settleResult['success']) {
-                    // 结算成功，刷新数据
-                    $freshData = $service->getAdIncomeOverview($userId);
-                    if ($freshData) {
-                        $data['today_income'] = $freshData['today_income'];
-                        $data['total_ad_income'] = $freshData['total_ad_income'];
-                        $data['ad_freeze_balance'] = $freshData['ad_freeze_balance'];
-                        $data['unclaimed_packet_count'] = $freshData['unclaimed_packet_count'];
-                        $data['unclaimed_packet_amount'] = $freshData['unclaimed_packet_amount'];
-                    }
-                    $data['redpacket_just_created'] = 1;
-                    Log::info('OverviewCompensate: 用户' . $userId . '补偿结算成功，红包' . ($settleResult['amount'] ?? 0) . '金币');
-                }
-            } catch (\Throwable $e) {
-                Log::warning('Overview补偿结算异常: ' . $e->getMessage());
-            }
-        }
+        // ★ 附加广告显示配置（供前端信息流广告使用）
+        $data['feed_adpid'] = \app\common\library\SystemConfigService::get('ad.feed_adpid', null, '');
+        $data['rewarded_video_adpid'] = \app\common\library\SystemConfigService::get('ad.rewarded_video_adpid', null, '');
+        $data['feed_ad_count'] = (int)\app\common\library\SystemConfigService::get('ad.feed_ad_count', null, 3);
+        $data['reward_per_feed'] = (int)\app\common\library\SystemConfigService::get('ad.reward_per_feed', null, 50);
+        $data['ad_income_enabled'] = (int)\app\common\library\SystemConfigService::get('ad.ad_income_enabled', null, 1);
+        $data['enabled_providers'] = \app\common\library\SystemConfigService::get('ad.enabled_providers', null, 'uniad');
 
         $this->success('获取成功', $data);
     }

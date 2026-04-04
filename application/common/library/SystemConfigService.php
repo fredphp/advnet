@@ -192,6 +192,12 @@ class SystemConfigService
             'enabled_providers' => 'uniad',
             // 红包基数额度(金币)：冻结余额达到此值时自动生成红包
             'redpacket_threshold' => 1000,
+            // 信息流广告位ID（uni-ad adpid）
+            'feed_adpid' => '',
+            // 激励视频广告位ID（uni-ad adpid）
+            'rewarded_video_adpid' => '',
+            // 红包页信息流广告数量
+            'feed_ad_count' => 3,
         ],
         
         // ==================== 系统配置 ====================
