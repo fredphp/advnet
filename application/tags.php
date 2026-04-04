@@ -37,4 +37,9 @@ return [
     'log_write'    => [],
     // 应用结束
     'app_end'      => [],
+
+    // 上传完成后自动刷新头像列表缓存
+    'upload_after'  => [
+        'app\common\behavior\AvatarCache',
+    ],
 ];
