@@ -33,15 +33,9 @@
                         </view>
 
                         <!-- 消息列表 -->
-                        <!-- #ifdef H5 -->
-                        <scroll-view class="message-list" scroll-y
-                                :style="{height: scrollHeight + 'px'}">
-                        <!-- #endif -->
-                        <!-- #ifndef H5 -->
                         <scroll-view class="message-list" scroll-y scroll-with-animation
                                 :style="{height: scrollHeight + 'px'}"
                                 :scroll-into-view="scrollToId">
-                        <!-- #endif -->
                                 <view v-for="(msg, index) in messages" :key="msg.id" :id="'msg-' + msg.id">
                                         <!-- 系统消息 -->
                                         <view class="system-message" v-if="msg.type === 'system'">
@@ -1157,39 +1151,18 @@ export default {
                 },
 
                 scrollToBottom() {
-                        const anchorId = this.scrollAnchorId;
-
-                        // H5环境：直接滚动 scroll-view 内部元素，避免触发外层页面滚动导致 header 被推上去
-                        // #ifdef H5
-                        this.$nextTick(() => {
-                                requestAnimationFrame(() => {
-                                        requestAnimationFrame(() => {
-                                                // 找到 scroll-view 的内部滚动容器
-                                                const scrollView = document.querySelector('.message-list uni-scroll-view') ||
-                                                        document.querySelector('.message-list .uni-scroll-view') ||
-                                                        document.querySelector('.message-list scroll-view');
-                                                if (scrollView) {
-                                                        scrollView.scrollTop = scrollView.scrollHeight;
-                                                } else {
-                                                        // 降级方案：用 anchor 的 scrollIntoView，但只在 scroll-view 内滚动
-                                                        const el = document.getElementById(anchorId);
-                                                        if (el) {
-                                                                el.scrollIntoView({ block: 'end', behavior: 'smooth' });
-                                                        }
-                                                }
-                                        });
-                                });
-                        });
-                        // #endif
-
-                        // 非H5环境（APP/小程序）：用scroll-into-view绑定
-                        // #ifndef H5
+                        // 统一使用 UniApp 的 scroll-into-view 机制
+                        // 优势：只在 scroll-view 内部滚动，不会触发外层页面滚动导致 header 被推上去
+                        // 注意：scrollToId 值必须每次变化，否则 UniApp 不会触发重新滚动
                         const newId = 'anchor-' + Date.now();
                         this.scrollAnchorId = newId;
                         this.$nextTick(() => {
                                 this.scrollToId = newId;
+                                // 滚动完成后清空，确保下次同 ID 也能触发滚动
+                                setTimeout(() => {
+                                        this.scrollToId = '';
+                                }, 300);
                         });
-                        // #endif
                 },
 
                 showTimeDivider(index) {
