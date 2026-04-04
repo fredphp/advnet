@@ -222,6 +222,44 @@ class Ad extends Api
     }
 
     /**
+     * 红包结算检查接口
+     * 前端按 settle_interval 间隔定时调用，检查冻结余额是否达到红包基数额度
+     * 达到则自动生成红包，前端随后通过 adredpacket/list 轮询获取新红包
+     *
+     * @api {get} /api/ad/checkSettle 红包结算检查
+     * @apiSuccess {Number} redpacket_created 是否生成了新红包 (0/1)
+     * @apiSuccess {Number} redpacket_amount 红包金额（金币）
+     * @apiSuccess {Number} ad_freeze_balance 当前冻结余额
+     */
+    public function checkSettle()
+    {
+        $userId = $this->auth->id;
+        if (!$userId) {
+            $this->error('请先登录');
+        }
+
+        $service = new AdIncomeService();
+
+        try {
+            $result = $service->checkAndAutoSettle($userId);
+        } catch (\Throwable $e) {
+            Log::error('CheckSettle error: ' . $e->getMessage());
+            $result = ['success' => false];
+        }
+
+        if ($result['success']) {
+            // 生成红包后清除 overview 缓存
+            self::clearOverviewCache($userId);
+        }
+
+        $this->success('检查完成', [
+            'redpacket_created' => $result['success'] ? 1 : 0,
+            'redpacket_amount' => (int)($result['amount'] ?? 0),
+            'message' => $result['message'] ?? '',
+        ]);
+    }
+
+    /**
      * 在 catch(\Throwable) 中重新抛出 HttpResponseException
      */
     private function rethrowHttpResponseException(\Throwable $e)

@@ -620,8 +620,9 @@ class AdIncomeService
     /**
      * 检查用户冻结余额是否达到红包基数额度，达到则自动结算为红包
      *
-     * ★ 核心逻辑：广告回调成功后调用，实时检测用户可释放额度
-     * ★ 当 ad_freeze_balance >= redpacket_threshold 且有 pending 记录时，立即生成红包
+     * ★ 核心逻辑：广告回调成功后 / 前端定时调用时触发
+     * ★ 当 ad_freeze_balance >= redpacket_threshold 时生成红包
+     * ★ 兜底：即使没有 CONFIRMED 的收益记录，也直接用 freeze_balance 生成红包
      *
      * @param int $userId 用户ID
      * @return array ['success' => bool, 'amount' => int, 'message' => string]
@@ -667,26 +668,29 @@ class AdIncomeService
                 return $result;
             }
 
-            // 检查是否有待释放的收益记录
+            // ★ 检查是否有待释放的收益记录
             $pendingRecords = AdIncomeLog::where('user_id', $userId)
                 ->where('status', AdIncomeLog::STATUS_CONFIRMED)
                 ->order('id', 'asc')
                 ->select();
 
+            // ★ 兜底逻辑：如果没有 CONFIRMED 记录，直接用 freeze_balance 作为红包金额
+            // （应对直接写入 freeze_balance 但无对应记录的场景）
             if (empty($pendingRecords)) {
-                return $result;
-            }
+                $packetAmount = $freezeBalance;
+                $sourceIds = [];
+            } else {
+                // 计算可释放金额（取 pending 记录总和和冻结余额的较小值）
+                $pendingTotal = 0;
+                $sourceIds = [];
+                foreach ($pendingRecords as $record) {
+                    $pendingTotal += (int)$record['user_amount_coin'];
+                    $sourceIds[] = $record['id'];
+                }
 
-            // 计算可释放金额（取 pending 记录总和和冻结余额的较小值）
-            $pendingTotal = 0;
-            $sourceIds = [];
-            foreach ($pendingRecords as $record) {
-                $pendingTotal += (int)$record['user_amount_coin'];
-                $sourceIds[] = $record['id'];
+                $packetAmount = min($pendingTotal, $freezeBalance);
+                $packetAmount = max(0, $packetAmount);
             }
-
-            $packetAmount = min($pendingTotal, $freezeBalance);
-            $packetAmount = max(0, $packetAmount);
 
             // 低于最小红包金额 → 不生成红包
             if ($packetAmount < $minAmount) {
@@ -719,26 +723,27 @@ class AdIncomeService
                     return $result;
                 }
 
-                // 重新计算可释放金额
+                // ★ 重新检查 pending 记录（兜底）
                 $freshPending = AdIncomeLog::where('user_id', $userId)
                     ->where('status', AdIncomeLog::STATUS_CONFIRMED)
                     ->order('id', 'asc')
                     ->select();
 
                 if (empty($freshPending)) {
-                    Db::rollback();
-                    return $result;
-                }
+                    // 兜底：直接用冻结余额
+                    $finalAmount = $currentFreeze;
+                    $freshSourceIds = [];
+                } else {
+                    $freshPendingTotal = 0;
+                    $freshSourceIds = [];
+                    foreach ($freshPending as $record) {
+                        $freshPendingTotal += (int)$record['user_amount_coin'];
+                        $freshSourceIds[] = $record['id'];
+                    }
 
-                $freshPendingTotal = 0;
-                $freshSourceIds = [];
-                foreach ($freshPending as $record) {
-                    $freshPendingTotal += (int)$record['user_amount_coin'];
-                    $freshSourceIds[] = $record['id'];
+                    $finalAmount = min($freshPendingTotal, $currentFreeze);
+                    $finalAmount = max(0, $finalAmount);
                 }
-
-                $finalAmount = min($freshPendingTotal, $currentFreeze);
-                $finalAmount = max(0, $finalAmount);
 
                 if ($finalAmount < $minAmount) {
                     Db::rollback();
@@ -752,7 +757,7 @@ class AdIncomeService
                 $packet->user_id = $userId;
                 $packet->amount = $finalAmount;
                 $packet->source = AdRedPacket::SOURCE_AD_INCOME;
-                $packet->source_ids = implode(',', $freshSourceIds);
+                $packet->source_ids = !empty($freshSourceIds) ? implode(',', $freshSourceIds) : 'freeze_balance';
                 $packet->status = AdRedPacket::STATUS_UNCLAIMED;
                 $packet->expire_time = $expireTime;
                 $packet->save();
@@ -771,13 +776,15 @@ class AdIncomeService
                     throw new Exception('账户更新失败');
                 }
 
-                // 标记收益记录为已释放
-                AdIncomeLog::where('user_id', $userId)
-                    ->where('status', AdIncomeLog::STATUS_CONFIRMED)
-                    ->update([
-                        'status' => AdIncomeLog::STATUS_RELEASED,
-                        'updatetime' => time(),
-                    ]);
+                // 如果有对应的 pending 记录，标记为已释放
+                if (!empty($freshPending)) {
+                    AdIncomeLog::where('user_id', $userId)
+                        ->where('status', AdIncomeLog::STATUS_CONFIRMED)
+                        ->update([
+                            'status' => AdIncomeLog::STATUS_RELEASED,
+                            'updatetime' => time(),
+                        ]);
+                }
 
                 Db::commit();
 
@@ -785,7 +792,8 @@ class AdIncomeService
                 $result['amount'] = $finalAmount;
                 $result['message'] = '自动生成红包 ' . $finalAmount . ' 金币';
 
-                Log::info("AutoSettle: 用户{$userId}冻结余额{$currentFreeze}达到阈值{$threshold}，自动生成红包{$finalAmount}金币");
+                $sourceNote = empty($freshSourceIds) ? '(兜底模式)' : '';
+                Log::info("AutoSettle: 用户{$userId}冻结余额{$currentFreeze}达到阈值{$threshold}，自动生成红包{$finalAmount}金币{$sourceNote}");
 
             } catch (Exception $e) {
                 Db::rollback();

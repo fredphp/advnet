@@ -193,6 +193,7 @@ const install = (Vue, vm) => {
         // 广告回调
         vm.$api.adCallback              = async (params = {}) => await vm.$u.post('/api/ad/callback', params);
         vm.$api.adOverview              = async (params = {}) => await vm.$u.get('/api/ad/overview', params);
+        vm.$api.adCheckSettle           = async (params = {}) => await vm.$u.get('/api/ad/checkSettle', params);
 
         // 广告红包
         vm.$api.adRedpacketList         = async (params = {}) => await vm.$u.get('/api/adredpacket/list', params);

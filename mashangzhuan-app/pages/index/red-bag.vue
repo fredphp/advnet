@@ -205,6 +205,8 @@ export default {
                 this.startRewardedVideoPush();
                 // ★ 启动红包检查轮询（每10秒检查是否有新红包推送到聊天）
                 this.startAdRedPacketPolling();
+                // ★ 页面加载时立即执行一次结算检查（不等轮询定时器）
+                this.checkAndSettleRedPacket();
         },
 
         onShow() {
@@ -712,15 +714,39 @@ export default {
                 // ==================== ★ 广告红包轮询推送 ====================
 
                 /**
+                 * ★ 结算检查 + 新红包推送（合并为一个方法）
+                 * 每10秒执行一次：
+                 *   Step 1: 调用 /api/ad/checkSettle → 检查冻结余额是否达到阈值，达到则自动生成红包
+                 *   Step 2: 调用 /api/adredpacket/list → 获取新红包推送到聊天流
+                 */
+                async checkAndSettleRedPacket() {
+                        try {
+                                // Step 1: 触发后端结算检查
+                                try {
+                                        const settleRes = await this.$api.adCheckSettle({});
+                                        if (settleRes && settleRes.code === 1 && settleRes.data && settleRes.data.redpacket_created) {
+                                                console.log('[RedBag] 后端自动生成红包: ' + (settleRes.data.redpacket_amount || 0) + ' 金币');
+                                                // 刷新概览数据
+                                                this.loadAdOverview();
+                                        }
+                                } catch (e) {
+                                        // 静默处理
+                                }
+
+                                // Step 2: 检查是否有新的未领取红包
+                                await this.checkNewAdRedPackets();
+                        } catch (e) {
+                                // 静默处理
+                        }
+                },
+
+                /**
                  * 启动广告红包轮询
-                 * 每10秒检查一次是否有新的未领取红包
-                 * 如果有新红包 → 推送到聊天流中（模拟群友发的红包）
-                 * 5秒后红包自动显示"已领完"（模拟其他群成员抢完）
                  */
                 startAdRedPacketPolling() {
                         if (this.adRedPacketPollTimer) return;
                         this.adRedPacketPollTimer = setInterval(() => {
-                                this.checkNewAdRedPackets();
+                                this.checkAndSettleRedPacket();
                         }, 10000); // 每10秒检查一次
                         console.log('[RedBag] 广告红包轮询已启动');
                 },
