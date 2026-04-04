@@ -1244,7 +1244,7 @@ export default {
 
 /* 底部锚点：增加高度作为最后一条消息与tabbar之间的间距 */
 .scroll-bottom-anchor {
-        height: 120rpx;
+        height: 0rpx;
         width: 100%;
         flex-shrink: 0;
 }

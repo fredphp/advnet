@@ -184,7 +184,7 @@ return array (
   'reward_per_video' => '200',
   'callback_secret' => 'fArAX0yiwDazNbnFDsFP2JGnP1SJkyZ7',
   'enabled_providers' => 'uniad,csj',
-  'redpacket_threshold' => '1000',
+  'redpacket_threshold' => '100',
   'feed_adpid' => '__UNI__23335FE',
   'rewarded_video_adpid' => '__UNI__7A08202',
   'feed_ad_count' => '3',
