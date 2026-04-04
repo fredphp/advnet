@@ -71,7 +71,8 @@ INSERT INTO `advn_config` (`name`, `group`, `title`, `tip`, `type`, `visible`, `
 ('reward_per_feed', 'ad', '信息流广告奖励(金币)', '每次观看信息流广告获得的金币数(无真实金额回调时使用)', 'number', '', '50', '', 'required|integer|gt:0', '', ''),
 ('reward_per_video', 'ad', '激励视频奖励(金币)', '每次观看激励视频广告获得的金币数(无真实金额回调时使用)', 'number', '', '200', '', 'required|integer|gt:0', '', ''),
 ('callback_secret', 'ad', '回调签名密钥', '广告联盟回调验证密钥，留空则不验证', 'password', '', '', '', '', '', ''),
-('enabled_providers', 'ad', '启用的广告平台', '启用的广告平台，逗号分隔: uniad=uni-ad, csj=穿山甲, ylh=优量汇', 'string', '', 'uniad', '', '', '', '')
+('enabled_providers', 'ad', '启用的广告平台', '启用的广告平台，逗号分隔: uniad=uni-ad, csj=穿山甲, ylh=优量汇', 'string', '', 'uniad', '', '', '', ''),
+('redpacket_threshold', 'ad', '红包基数额度(金币)', '用户广告待释放余额达到此额度时自动生成红包（设置为0则不启用自动发红包）', 'number', '', '1000', '', 'required|integer|gte:0', '', '')
 ON DUPLICATE KEY UPDATE `group` = VALUES(`group`), `title` = VALUES(`title`), `tip` = VALUES(`tip`);
 
 -- ============================================================

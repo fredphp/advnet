@@ -190,6 +190,8 @@ class SystemConfigService
             'callback_secret' => '',
             // 启用的广告平台 (逗号分隔: uniad,csj,ylh)
             'enabled_providers' => 'uniad',
+            // 红包基数额度(金币)：冻结余额达到此值时自动生成红包
+            'redpacket_threshold' => 1000,
         ],
         
         // ==================== 系统配置 ====================

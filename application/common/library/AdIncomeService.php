@@ -56,6 +56,7 @@ class AdIncomeService
             'reward_per_feed' => SystemConfigService::get('ad.reward_per_feed', null, 50),
             'reward_per_video' => SystemConfigService::get('ad.reward_per_video', null, 200),
             'callback_secret' => SystemConfigService::get('ad.callback_secret', null, ''),
+            'redpacket_threshold' => SystemConfigService::get('ad.redpacket_threshold', null, 1000),
         ];
     }
 
@@ -614,6 +615,190 @@ class AdIncomeService
             'unclaimed_packet_count' => $unclaimedSummary['count'],
             'unclaimed_packet_amount' => $unclaimedSummary['total_amount'],
         ];
+    }
+
+    /**
+     * 检查用户冻结余额是否达到红包基数额度，达到则自动结算为红包
+     *
+     * ★ 核心逻辑：广告回调成功后调用，实时检测用户可释放额度
+     * ★ 当 ad_freeze_balance >= redpacket_threshold 且有 pending 记录时，立即生成红包
+     *
+     * @param int $userId 用户ID
+     * @return array ['success' => bool, 'amount' => int, 'message' => string]
+     */
+    public function checkAndAutoSettle($userId)
+    {
+        $result = [
+            'success' => false,
+            'amount' => 0,
+            'message' => '',
+        ];
+
+        $userId = (int)$userId;
+        if ($userId <= 0) {
+            return $result;
+        }
+
+        try {
+            // 获取红包基数额度配置
+            $threshold = (int)$this->getConfig('redpacket_threshold', 1000);
+            if ($threshold <= 0) {
+                return $result;
+            }
+
+            // 获取最小红包金额和过期时间配置
+            $minAmount = (int)$this->getConfig('min_redpacket_amount', 100);
+            $expireHours = (int)$this->getConfig('redpacket_expire_hours', 48);
+
+            // 查询用户当前冻结余额
+            $account = Db::name('coin_account')
+                ->where('user_id', $userId)
+                ->lock(true)
+                ->find();
+
+            if (!$account) {
+                return $result;
+            }
+
+            $freezeBalance = (int)round($account['ad_freeze_balance']);
+
+            // 未达到基数额度 → 不自动发红包
+            if ($freezeBalance < $threshold) {
+                return $result;
+            }
+
+            // 检查是否有待释放的收益记录
+            $pendingRecords = AdIncomeLog::where('user_id', $userId)
+                ->where('status', AdIncomeLog::STATUS_CONFIRMED)
+                ->order('id', 'asc')
+                ->select();
+
+            if (empty($pendingRecords)) {
+                return $result;
+            }
+
+            // 计算可释放金额（取 pending 记录总和和冻结余额的较小值）
+            $pendingTotal = 0;
+            $sourceIds = [];
+            foreach ($pendingRecords as $record) {
+                $pendingTotal += (int)$record['user_amount_coin'];
+                $sourceIds[] = $record['id'];
+            }
+
+            $packetAmount = min($pendingTotal, $freezeBalance);
+            $packetAmount = max(0, $packetAmount);
+
+            // 低于最小红包金额 → 不生成红包
+            if ($packetAmount < $minAmount) {
+                return $result;
+            }
+
+            // 获取分布式锁（防止并发）
+            $lockKey = self::LOCK_PREFIX . 'auto:' . $userId;
+            $lock = $this->getLock($lockKey, 10);
+
+            if (!$lock) {
+                Log::warning("AutoSettle: 用户{$userId}获取锁失败");
+                return $result;
+            }
+
+            try {
+                Db::startTrans();
+
+                // 重新加锁查询（防止并发修改）
+                $freshAccount = Db::name('coin_account')
+                    ->where('user_id', $userId)
+                    ->lock(true)
+                    ->find();
+
+                $currentFreeze = (int)round($freshAccount['ad_freeze_balance']);
+
+                // 再次检查是否仍满足条件
+                if ($currentFreeze < $threshold) {
+                    Db::rollback();
+                    return $result;
+                }
+
+                // 重新计算可释放金额
+                $freshPending = AdIncomeLog::where('user_id', $userId)
+                    ->where('status', AdIncomeLog::STATUS_CONFIRMED)
+                    ->order('id', 'asc')
+                    ->select();
+
+                if (empty($freshPending)) {
+                    Db::rollback();
+                    return $result;
+                }
+
+                $freshPendingTotal = 0;
+                $freshSourceIds = [];
+                foreach ($freshPending as $record) {
+                    $freshPendingTotal += (int)$record['user_amount_coin'];
+                    $freshSourceIds[] = $record['id'];
+                }
+
+                $finalAmount = min($freshPendingTotal, $currentFreeze);
+                $finalAmount = max(0, $finalAmount);
+
+                if ($finalAmount < $minAmount) {
+                    Db::rollback();
+                    return $result;
+                }
+
+                $expireTime = time() + $expireHours * 3600;
+
+                // 创建红包
+                $packet = new AdRedPacket();
+                $packet->user_id = $userId;
+                $packet->amount = $finalAmount;
+                $packet->source = AdRedPacket::SOURCE_AD_INCOME;
+                $packet->source_ids = implode(',', $freshSourceIds);
+                $packet->status = AdRedPacket::STATUS_UNCLAIMED;
+                $packet->expire_time = $expireTime;
+                $packet->save();
+
+                // 清空 ad_freeze_balance
+                $affected = Db::name('coin_account')
+                    ->where('user_id', $userId)
+                    ->where('version', $freshAccount['version'])
+                    ->update([
+                        'ad_freeze_balance' => 0,
+                        'version' => (int)$freshAccount['version'] + 1,
+                        'updatetime' => time(),
+                    ]);
+
+                if ($affected === 0) {
+                    throw new Exception('账户更新失败');
+                }
+
+                // 标记收益记录为已释放
+                AdIncomeLog::where('user_id', $userId)
+                    ->where('status', AdIncomeLog::STATUS_CONFIRMED)
+                    ->update([
+                        'status' => AdIncomeLog::STATUS_RELEASED,
+                        'updatetime' => time(),
+                    ]);
+
+                Db::commit();
+
+                $result['success'] = true;
+                $result['amount'] = $finalAmount;
+                $result['message'] = '自动生成红包 ' . $finalAmount . ' 金币';
+
+                Log::info("AutoSettle: 用户{$userId}冻结余额{$currentFreeze}达到阈值{$threshold}，自动生成红包{$finalAmount}金币");
+
+            } catch (Exception $e) {
+                Db::rollback();
+                Log::error("AutoSettle 用户{$userId}失败: " . $e->getMessage());
+            } finally {
+                $this->releaseLock($lockKey);
+            }
+
+        } catch (\Throwable $e) {
+            Log::error("AutoSettle 检查用户{$userId}异常: " . $e->getMessage());
+        }
+
+        return $result;
     }
 
     /**

@@ -32,17 +32,10 @@
 				<ad-banner></ad-banner>
 			</view>
 
-			<!-- 聊天消息列表（含广告流） -->
+			<!-- 消息列表 -->
 			<scroll-view class="message-list" scroll-y :scroll-into-view="scrollIntoViewId"
-				scroll-with-animation :style="{height: scrollHeight + 'px'}" @scrolltoupper="getHistoryMsg"
-				:scroll-top="scrollTop" :enable-back-to-top="true" :upper-threshold="50">
-				<view class="loading-more" v-if="loading">
-					<text>加载中...</text>
-				</view>
-				<view class="connection-status" v-if="showConnected" :class="{ connected: isConnected }">
-					<text>{{ isConnected ? '已连接' : '连接中...' }}</text>
-				</view>
-
+				scroll-with-animation :style="{height: scrollHeight + 'px'}"
+				:scroll-top="scrollTop" :enable-back-to-top="true">
 				<view v-for="(msg, index) in messages" :key="msg.id" :id="'msg-' + msg.id">
 					<!-- 系统消息 -->
 					<view class="system-message" v-if="msg.type === 'system'">
@@ -54,7 +47,7 @@
 						{{ formatTime(msg.time) }}
 					</view>
 
-					<!-- ★ 新增：广告信息流消息（uni-ad feed 广告） -->
+					<!-- 广告信息流消息（uni-ad feed 广告） -->
 					<ad-feed-message
 						v-if="msg.type === 'ad_feed'"
 						:message="msg"
@@ -85,7 +78,7 @@
 			</scroll-view>
 		</view>
 
-		<!-- ★ 新增：广告红包面板（底部弹窗） -->
+		<!-- 广告红包面板（底部弹窗） -->
 		<view class="ad-packet-mask" v-if="showAdPacketPanel" @click="showAdPacketPanel = false">
 			<view class="ad-packet-popup" @click.stop>
 				<view class="popup-header">
@@ -178,7 +171,6 @@ import TaskMessage from '@/components/chat/taskMessage.vue'
 import AdBanner from '@/components/ad/adBanner.vue'
 import AdFeedMessage from '@/components/chat/adFeedMessage.vue'
 import AdRedPacketList from '@/components/ad/adRedPacketList.vue'
-import socketService from '@/common/socket.js'
 
 export default {
 	components: {
@@ -193,7 +185,6 @@ export default {
 	onLoad(opt) {
 		this.groupId = opt.group_id || 'default_group';
 		this.user_info = uni.getStorageSync('user_info') || {};
-		this.initSocket();
 		this.loadAdOverview();
 	},
 
@@ -203,31 +194,27 @@ export default {
 	},
 
 	onUnload() {
-		socketService.disconnect();
 		// 离开页面时清理所有红包过期计时器
 		this.clearAllRedbagTimers();
 		// 清理关闭倒计时
 		this.stopCloseLock();
-		// 离开页面时重置累加数据（per-user 共享，下次进入重新开始）
+		// 离开页面时重置累加数据
 		this.resetRedbag();
 	},
 
 	data() {
 		return {
-			inputText: '',
 			groupId: '',
-			groupName: '红包群94',
-			onlineCount: 0,
 			user_info: {},
 			scrollTop: 0,
 			scrollIntoViewId: '',
-			loading: false,
-			showConnected: true,
 			scrollHeight: 0,
-			isConnected: false,
 			messages: [],
 
-			// ★ 广告红包面板
+			// 在线人数（固定显示，不依赖WebSocket）
+			onlineCount: 0,
+
+			// 广告红包面板
 			showAdPacketPanel: false,
 			adPacketBadge: 0,
 			panelHeight: 300,
@@ -265,165 +252,6 @@ export default {
 	},
 
 	methods: {
-		// ==================== WebSocket ====================
-		initSocket() {
-			socketService.connect({
-				userId: this.user_info.id || this.user_info.user_id,
-				token: this.user_info.token || '',
-				groupId: this.groupId,
-				serverUrl: 'ws://advnet.cocos2026.cn:3002'
-			});
-
-			socketService.onConnected((data) => {
-				this.isConnected = true;
-				this.onlineCount = data.onlineCount;
-				setTimeout(() => { this.showConnected = false; }, 1000);
-			});
-
-			socketService.onAuthFailed(() => {
-				this.isConnected = false;
-				uni.showToast({ title: '认证失败，请重新登录', icon: 'none' });
-			});
-
-			socketService.onOnlineCount((count) => {
-				this.onlineCount = count;
-			});
-
-			// ★ 核心：监听任务推送，根据类型分发到不同消息卡片
-			socketService.onTask((task) => {
-				console.log('[RedBag] 收到任务推送:', JSON.stringify(task));
-				this.handleTaskPush(task);
-			});
-
-			socketService.onSystemMessage((msg) => {
-				this.messages.push({
-					id: 'sys_' + Date.now(),
-					type: 'system',
-					content: msg.content,
-					time: Date.now(),
-					sender: 'system'
-				});
-				this.scrollToBottom();
-			});
-		},
-
-		// ==================== 任务推送分发（核心逻辑） ====================
-		/**
-		 * 根据任务类型，将推送转化为不同样式的消息卡片
-		 */
-		handleTaskPush(task) {
-			const taskId = task.taskId || task.task_id || 0;
-			const taskName = task.taskName || task.task_name || '';
-			const taskType = task.taskType || task.type || '';
-			const displayTitle = task.display_title || task.displayTitle || taskName;
-			const displayDesc = task.display_description || task.displayDescription || (task.description || '');
-			const senderName = task.sender_name || task.senderName || '系统';
-			const senderAvatar = task.sender_avatar || task.senderAvatar || '';
-			const timestamp = task.time || task.timestamp || Date.now() / 1000;
-			const resource = task.resource || null;
-			const backgroundImage = task.background_image || '';
-
-			const baseMsg = {
-				id: 'task_' + Date.now(),
-				time: timestamp * 1000,
-				sender: 'other',
-				user: {
-					nickname: senderName,
-					avatar: senderAvatar || '/static/image/avatar.png'
-				},
-				displayTitle,
-				displayDesc,
-				backgroundImage,
-				taskData: {
-					taskId,
-					taskName,
-					taskType,
-					description: task.description || '',
-					resource,
-					background_image: backgroundImage,
-					jump_url: task.jump_url || '',
-				}
-			};
-
-			switch (taskType) {
-				case 'chat':
-					this.messages.push({
-						...baseMsg,
-						type: 'task_chat',
-						content: task.description || displayDesc || displayTitle,
-					});
-					break;
-
-				case 'download':
-				case 'download_app':
-					this.messages.push({
-						...baseMsg,
-						type: 'task_download',
-						content: displayTitle,
-					});
-					break;
-
-				case 'miniapp':
-				case 'mini_program':
-					// 小程序游戏 → 显示红包卡片
-					const msgId = baseMsg.id;
-					this.messages.push({
-						...baseMsg,
-						type: 'redbag',
-						content: displayTitle,
-						amount: 0,
-						currentAmount: 0,
-						status: 'unopened', // unopened → opened → claimed / expired
-					});
-					// ★ 新红包到达后，启动 2~4 秒自动过期计时器
-					this.startRedbagExpireTimer(msgId);
-					break;
-
-				case 'adv':
-					this.messages.push({
-						...baseMsg,
-						type: 'task_adv',
-						content: displayTitle,
-						advDuration: task.adv_duration || (resource && resource.adv_duration) || 0,
-					});
-					break;
-
-				case 'video':
-				case 'watch_video':
-					this.messages.push({
-						...baseMsg,
-						type: 'task_video',
-						content: displayTitle,
-						videoDuration: task.video_duration || (resource && resource.video_duration) || 0,
-					});
-					break;
-
-				case 'ad_feed':
-				case 'uniad_feed':
-					// ★ 新增：uni-ad 信息流广告消息
-					this.messages.push({
-						...baseMsg,
-						type: 'ad_feed',
-						content: displayTitle || '观看广告赚金币',
-						taskData: {
-							...baseMsg.taskData,
-							adpid: resource ? (resource.adpid || '') : '',
-							reward_coin: task.reward_coin || 0,
-						},
-					});
-					break;
-
-				default:
-					this.messages.push({
-						...baseMsg,
-						type: 'text',
-						content: displayTitle || taskName || '收到新任务',
-					});
-			}
-
-			this.scrollToBottom();
-		},
-
 		// ==================== ★ 广告收益回调 ====================
 
 		/**
@@ -433,13 +261,13 @@ export default {
 		handleAdRewarded(data) {
 			console.log('[RedBag] 广告奖励回调:', JSON.stringify(data));
 
-			// 更新消息状态（可选）
+			// 更新消息状态
 			if (data.message) {
 				this.$set(data.message, 'adRewarded', true);
 				this.$set(data.message, 'adRewardAmount', data.amount);
 			}
 
-			// 刷新广告红包摘要（可能生成了新红包）
+			// 刷新广告红包摘要（可能自动生成了新红包）
 			this.loadAdOverview();
 
 			if (data.amount > 0) {
@@ -474,7 +302,6 @@ export default {
 		 */
 		toggleAdPacketPanel() {
 			this.showAdPacketPanel = !this.showAdPacketPanel;
-			// 清除 badge
 			if (this.showAdPacketPanel) {
 				this.adPacketBadge = 0;
 			}
@@ -498,24 +325,19 @@ export default {
 
 		/**
 		 * 为新到达的红包启动自动过期计时器
-		 * 2~4 秒内未点击 → 自动变为已过期（不可再点击）
 		 */
 		startRedbagExpireTimer(msgId) {
-			const delay = 2000 + Math.random() * 3000; // 2~5 秒随机过期
+			const delay = 2000 + Math.random() * 3000;
 			const timerId = setTimeout(() => {
 				const msg = this.messages.find(m => m.id === msgId);
 				if (msg && msg.status === 'unopened') {
 					this.$set(msg, 'status', 'expired');
 				}
-				// 清理计时器引用
 				delete this.redbagTimers[msgId];
 			}, delay);
 			this.redbagTimers[msgId] = timerId;
 		},
 
-		/**
-		 * 取消指定红包的过期计时器
-		 */
 		cancelRedbagExpireTimer(msgId) {
 			if (this.redbagTimers[msgId]) {
 				clearTimeout(this.redbagTimers[msgId]);
@@ -523,9 +345,6 @@ export default {
 			}
 		},
 
-		/**
-		 * 清理所有红包过期计时器
-		 */
 		clearAllRedbagTimers() {
 			Object.keys(this.redbagTimers).forEach(msgId => {
 				clearTimeout(this.redbagTimers[msgId]);
@@ -539,13 +358,11 @@ export default {
 		 * 用户点击红包卡片 → 打开弹窗 → 调用 click 接口
 		 */
 		handleRedbagClick(msg) {
-			// 已过期 → 不可再点击
 			if (msg.status === 'expired') {
 				uni.showToast({ title: '已过期', icon: 'none' });
 				return;
 			}
 
-			// 已领取 → 打开弹窗显示已领取金额（不可再领取）
 			if (msg.status === 'claimed') {
 				this.currentRedbag = msg;
 				this.currentAmount = msg.claimedAmount || msg.currentAmount || 0;
@@ -557,10 +374,8 @@ export default {
 				return;
 			}
 
-			// ★ 新红包或已拆开的红包 → 取消过期计时器
 			this.cancelRedbagExpireTimer(msg.id);
 
-			// 记录当前操作的红包
 			this.currentRedbag = msg;
 			this.currentAmount = 0;
 			this.isClaimed = false;
@@ -569,7 +384,6 @@ export default {
 			this.showRedbagModal = true;
 			this.startCloseLock();
 
-			// ★ 始终 reset=0，让后端自行判断是否有累加数据
 			const taskId = (msg.taskData && msg.taskData.taskId) || 0;
 			if (taskId) {
 				this.doClickOnce(msg.id, taskId);
@@ -578,21 +392,14 @@ export default {
 			}
 		},
 
-		/**
-		 * 调用 click 接口获取/累加红包金额
-		 * @param {string} msgId 消息ID
-		 * @param {number} taskId 任务ID
-		 */
 		async doClickOnce(msgId, taskId) {
 			try {
-				// ★ 始终 reset=0，不传 reset 参数
 				const res = await this.$api.redpacketClick({ task_id: taskId, reset: 0 });
 				if (res && res.code === 1 && res.data) {
 					const amount = res.data.total_amount || 0;
 					this.currentAmount = amount;
 					this.isLoadingAmount = false;
 
-					// 同步更新消息列表中的金额和状态
 					const msg = this.messages.find(m => m.id === msgId);
 					if (msg) {
 						this.$set(msg, 'currentAmount', amount);
@@ -602,13 +409,11 @@ export default {
 				} else {
 					this.isLoadingAmount = false;
 					console.warn('[RedBag] click接口异常:', res);
-					// 恢复过期计时器，让用户可以重试
 					this.startRedbagExpireTimer(msgId);
 				}
 			} catch (e) {
 				this.isLoadingAmount = false;
 				console.error('[RedBag] click失败:', e);
-				// 恢复过期计时器
 				this.startRedbagExpireTimer(msgId);
 				uni.showToast({ title: '网络异常，请重试', icon: 'none' });
 			}
@@ -616,9 +421,6 @@ export default {
 
 		// ==================== 红包领取 ====================
 
-		/**
-		 * 领取红包 → 调用 claim 接口发放金币 → 跳转小程序广告页
-		 */
 		async claimRedbag() {
 			const taskId = (this.currentRedbag.taskData && this.currentRedbag.taskData.taskId) || 0;
 			try {
@@ -629,7 +431,6 @@ export default {
 				if (res && res.code === 1) {
 					this.isClaimed = true;
 
-					// 更新消息状态
 					if (this.currentMsgRef) {
 						this.$set(this.currentMsgRef, 'status', 'claimed');
 						this.$set(this.currentMsgRef, 'claimedAmount', this.currentAmount);
@@ -642,7 +443,6 @@ export default {
 						duration: 2000
 					});
 
-					// 2秒后跳转到小程序
 					setTimeout(() => {
 						this.jumpToMiniapp();
 					}, 2000);
@@ -656,9 +456,6 @@ export default {
 			}
 		},
 
-		/**
-		 * 跳转到小程序广告页面
-		 */
 		jumpToMiniapp() {
 			const resource = this.currentRedbag.taskData && this.currentRedbag.taskData.resource;
 			const miniappId = resource ? resource.miniapp_id : '';
@@ -702,9 +499,8 @@ export default {
 			// #endif
 		},
 
-		/**
-		 * 5秒关闭锁：弹窗打开后5秒内不可关闭
-		 */
+		// ==================== 关闭锁 ====================
+
 		startCloseLock() {
 			this.canCloseModal = false;
 			this.closeCountdown = 5;
@@ -731,7 +527,6 @@ export default {
 		},
 
 		tryCloseModal() {
-			// 已领取状态可立即关闭，否则需要等待5秒
 			if (!this.canCloseModal && !this.isClaimed) return;
 			this.closeRedbagModal();
 		},
@@ -747,7 +542,6 @@ export default {
 		},
 
 		async resetRedbag() {
-			// 静默重置，不弹提示
 			try {
 				await this.$api.redpacketReset({});
 			} catch (e) {
@@ -809,6 +603,30 @@ export default {
 			uni.navigateTo({ url: '/pages/my/withdraw/index' });
 		},
 
+		scrollToBottom() {
+			this.$nextTick(() => {
+				this.scrollIntoViewId = 'bottom-anchor';
+			});
+		},
+
+		showTimeDivider(index) {
+			if (index === 0) return false;
+			const prev = this.messages[index - 1];
+			if (!prev) return false;
+			return (Date.now() - prev.time) > 5 * 60 * 1000;
+		},
+
+		formatTime(time) {
+			const d = new Date(time);
+			const h = d.getHours().toString().padStart(2, '0');
+			const m = d.getMinutes().toString().padStart(2, '0');
+			return h + ':' + m;
+		},
+
+		playVoice(msg) {
+			// 预留语音播放
+		},
+
 		calcScrollHeight() {
 			const sysInfo = uni.getSystemInfoSync();
 			const navH = 88;
@@ -816,99 +634,63 @@ export default {
 			const tabH = 100;
 			const statusBarH = sysInfo.statusBarHeight || 0;
 			this.scrollHeight = sysInfo.windowHeight - navH - adH - tabH - statusBarH;
-
-			// 广告红包面板高度
-			this.panelHeight = sysInfo.windowHeight - 300;
 		},
 
-		getHistoryMsg() {},
-
-		playVoice(msg) {},
-
-		scrollToBottom() {
-			this.$nextTick(() => {
-				const lastMsg = this.messages[this.messages.length - 1];
-				if (lastMsg) {
-					this.scrollIntoViewId = '';
-					this.$nextTick(() => {
-						this.scrollIntoViewId = 'msg-' + lastMsg.id;
-					});
-				}
-			});
+		getHistoryMsg() {
+			// 预留：加载更多历史消息
 		},
-
-		formatTime(timestamp) {
-			const date = new Date(timestamp);
-			const hours = date.getHours().toString().padStart(2, '0');
-			const minutes = date.getMinutes().toString().padStart(2, '0');
-			return `${hours}:${minutes}`;
-		},
-
-		showTimeDivider(index) {
-			if (index === 0) return true;
-			const currentMsg = this.messages[index];
-			const prevMsg = this.messages[index - 1];
-			if (prevMsg.type === 'system') return false;
-			return currentMsg.time - prevMsg.time > 300000;
-		},
-
 	}
 }
 </script>
 
 <style lang="scss" scoped>
 .page-content {
-	background-color: #f5f5f5;
 	min-height: 100vh;
+	background: #f5f5f5;
+	display: flex;
+	flex-direction: column;
 }
 
 .chat-container {
+	flex: 1;
 	display: flex;
 	flex-direction: column;
-	height: 100vh;
-	background-color: #f5f5f5;
+	overflow: hidden;
 }
 
-/* ===== 导航栏 ===== */
 .custom-navbar {
-	background-color: #fff;
-	padding-top: var(--status-bar-height);
+	height: 88rpx;
+	background: #fff;
+	display: flex;
+	align-items: center;
+	padding: 0 20rpx;
 	border-bottom: 1rpx solid #eee;
+}
 
-	.navbar-content {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		height: 88rpx;
-		padding: 0 20rpx;
-	}
+.navbar-content {
+	display: flex;
+	align-items: center;
+	width: 100%;
 }
 
 .back-btn {
 	width: 60rpx;
-	height: 60rpx;
-	display: flex;
-	align-items: center;
-	justify-content: center;
 }
 
 .group-info {
-	display: flex;
-	align-items: center;
-	justify-content: center;
 	flex: 1;
+	text-align: center;
+}
 
-	.group-name {
-		font-size: 32rpx;
-		font-weight: bold;
-		color: #333;
-	}
+.group-name {
+	font-size: 32rpx;
+	font-weight: bold;
+	color: #333;
+}
 
-	.group-count {
-		font-size: 28rpx;
-		color: #999;
-		margin-left: 8rpx;
-	}
+.group-count {
+	font-size: 24rpx;
+	color: #999;
 }
 
 .right-btns {
@@ -916,11 +698,9 @@ export default {
 	align-items: center;
 }
 
-/* ★ 广告红包入口按钮 */
 .ad-packet-btn {
 	position: relative;
-	margin-right: 20rpx;
-	padding: 10rpx 16rpx;
+	padding: 10rpx 20rpx;
 }
 
 .ad-packet-icon {
@@ -929,112 +709,76 @@ export default {
 
 .ad-badge {
 	position: absolute;
-	top: 0;
-	right: 0;
-	min-width: 32rpx;
-	height: 32rpx;
-	background-color: #e74c3c;
-	border-radius: 16rpx;
+	top: -5rpx;
+	right: 5rpx;
+	background: #ff4d4f;
+	border-radius: 20rpx;
+	min-width: 30rpx;
+	height: 30rpx;
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	padding: 0 6rpx;
+	padding: 0 8rpx;
 }
 
 .ad-badge-text {
-	font-size: 20rpx;
 	color: #fff;
-	font-weight: bold;
+	font-size: 20rpx;
 }
 
 .withdraw-btn {
 	display: flex;
 	align-items: center;
-	background: linear-gradient(135deg, #e74c3c, #c0392b);
 	padding: 10rpx 20rpx;
-	border-radius: 30rpx;
-
-	.redbag-icon {
-		width: 32rpx;
-		height: 32rpx;
-		margin-right: 6rpx;
-	}
-
-	.withdraw-text {
-		font-size: 24rpx;
-		color: #fff;
-		font-weight: 500;
-	}
+	margin-left: 10rpx;
 }
 
-/* ===== 广告区域 ===== */
+.redbag-icon {
+	width: 40rpx;
+	height: 40rpx;
+}
+
+.withdraw-text {
+	font-size: 26rpx;
+	color: #ff6b35;
+	margin-left: 8rpx;
+}
+
 .ad-section {
-	background-color: #fff;
-	padding: 20rpx;
-	border-bottom: 1rpx solid #eee;
+	height: 200rpx;
 }
 
-/* ===== 消息列表 ===== */
 .message-list {
 	flex: 1;
 	padding: 20rpx;
-	overflow-y: auto;
-	background-color: #f5f5f5;
 }
 
-.loading-more {
-	padding: 20rpx 0;
+.system-message {
 	text-align: center;
+	padding: 16rpx 0;
 	color: #999;
 	font-size: 24rpx;
+}
+
+.time-divider {
+	text-align: center;
+	padding: 20rpx 0;
+	color: #bbb;
+	font-size: 22rpx;
 }
 
 .connection-status {
 	text-align: center;
 	padding: 10rpx;
-	background-color: #fff3cd;
-	color: #856404;
-	font-size: 24rpx;
-
-	&.connected {
-		background-color: #d4edda;
-		color: #155724;
-	}
-}
-
-.system-message {
-	text-align: center;
 	font-size: 24rpx;
 	color: #999;
-	margin: 20rpx 0;
-	background-color: rgba(0, 0, 0, 0.05);
-	padding: 10rpx 20rpx;
-	border-radius: 8rpx;
-	display: inline-block;
-	align-self: center;
 }
 
-.time-divider {
-	text-align: center;
-	font-size: 24rpx;
-	color: #999;
-	margin: 20rpx 0;
-	position: relative;
-
-	&::before, &::after {
-		content: "";
-		position: absolute;
-		top: 50%;
-		width: 30%;
-		height: 1rpx;
-		background-color: #ddd;
-	}
-
-	&::before { left: 0; }
-	&::after { right: 0; }
+.connection-status.connected {
+	color: #52c41a;
 }
 
-/* ===== ★ 广告红包面板 ===== */
+/* 广告红包面板 */
 .ad-packet-mask {
 	position: fixed;
 	top: 0;
@@ -1042,20 +786,16 @@ export default {
 	right: 0;
 	bottom: 0;
 	background: rgba(0, 0, 0, 0.5);
-	z-index: 9998;
+	z-index: 999;
 	display: flex;
 	align-items: flex-end;
-	justify-content: center;
 }
 
 .ad-packet-popup {
 	width: 100%;
-	max-height: 80vh;
 	background: #fff;
-	border-radius: 32rpx 32rpx 0 0;
-	overflow: hidden;
-	display: flex;
-	flex-direction: column;
+	border-radius: 24rpx 24rpx 0 0;
+	max-height: 70vh;
 }
 
 .popup-header {
@@ -1067,193 +807,129 @@ export default {
 }
 
 .popup-title {
-	font-size: 34rpx;
+	font-size: 32rpx;
 	font-weight: bold;
-	color: #333;
 }
 
 .popup-close {
-	width: 60rpx;
-	height: 60rpx;
-	display: flex;
-	align-items: center;
-	justify-content: center;
+	padding: 10rpx;
 }
 
-/* ===== 红包弹窗 ===== */
+/* 红包弹窗 */
 .redbag-modal-mask {
 	position: fixed;
 	top: 0;
 	left: 0;
 	right: 0;
 	bottom: 0;
-	background: rgba(0, 0, 0, 0.6);
+	background: rgba(0, 0, 0, 0.7);
+	z-index: 1000;
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	z-index: 9999;
 }
 
 .redbag-modal {
 	width: 600rpx;
-	background: linear-gradient(180deg, #e74c3c 0%, #c0392b 40%, #a93226 100%);
-	border-radius: 32rpx;
-	padding: 60rpx 40rpx 40rpx;
-	display: flex;
-	flex-direction: column;
-	align-items: center;
-	position: relative;
-	overflow: hidden;
-
-	&::before {
-		content: '';
-		position: absolute;
-		top: -60rpx;
-		right: -60rpx;
-		width: 200rpx;
-		height: 200rpx;
-		border-radius: 50%;
-		background: rgba(255, 255, 255, 0.1);
-	}
-
-	&::after {
-		content: '';
-		position: absolute;
-		bottom: -40rpx;
-		left: -40rpx;
-		width: 150rpx;
-		height: 150rpx;
-		border-radius: 50%;
-		background: rgba(255, 255, 255, 0.05);
-	}
+	background: linear-gradient(180deg, #e74c3c, #c0392b);
+	border-radius: 24rpx;
+	padding: 40rpx;
+	text-align: center;
 }
 
 .modal-header {
-	display: flex;
-	flex-direction: column;
-	align-items: center;
-	margin-bottom: 40rpx;
+	margin-bottom: 30rpx;
 }
 
 .modal-logo {
-	width: 100rpx;
-	height: 100rpx;
-	border-radius: 20rpx;
-	margin-bottom: 16rpx;
+	width: 120rpx;
+	height: 120rpx;
+	border-radius: 50%;
+	margin: 0 auto 20rpx;
 }
 
 .modal-title {
+	color: #ffd700;
 	font-size: 36rpx;
 	font-weight: bold;
-	color: #fff;
 }
 
 .modal-amount-area {
-	display: flex;
-	flex-direction: column;
-	align-items: center;
-	margin: 30rpx 0;
+	padding: 40rpx 0;
 }
 
 .amount-circle {
-	width: 200rpx;
-	height: 200rpx;
-	border-radius: 50%;
-	background: rgba(255, 255, 255, 0.15);
-	display: flex;
-	flex-direction: column;
-	align-items: center;
-	justify-content: center;
-	margin-bottom: 20rpx;
-
-	&.loading {
-		animation: pulse 1.5s ease-in-out infinite;
-	}
-}
-
-@keyframes pulse {
-	0%, 100% { transform: scale(1); }
-	50% { transform: scale(1.05); }
+	margin: 0 auto;
 }
 
 .amount-number {
-	font-size: 56rpx;
+	color: #fff;
+	font-size: 72rpx;
 	font-weight: bold;
-	color: #ffd700;
-	font-family: 'DIN Alternate', 'Helvetica Neue', sans-serif;
+}
 
-	&.loading-text {
-		color: rgba(255, 255, 255, 0.7);
-	}
+.amount-number.loading-text {
+	color: rgba(255, 255, 255, 0.6);
 }
 
 .amount-label {
-	font-size: 24rpx;
 	color: rgba(255, 255, 255, 0.8);
-	margin-top: 8rpx;
-}
-
-.amount-hint {
 	font-size: 26rpx;
-	color: rgba(255, 255, 255, 0.9);
+	display: block;
 	margin-top: 10rpx;
 }
 
-.modal-actions {
-	width: 100%;
+.amount-hint {
+	color: rgba(255, 255, 255, 0.9);
+	font-size: 28rpx;
 	margin-top: 20rpx;
+	display: block;
+}
+
+.modal-actions {
+	padding: 20rpx 0;
 }
 
 .action-btn {
-	width: 100%;
-	height: 88rpx;
-	border-radius: 44rpx;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	margin-bottom: 16rpx;
+	margin: 0 auto;
+	width: 400rpx;
+	height: 80rpx;
+	line-height: 80rpx;
+	border-radius: 40rpx;
+	text-align: center;
 }
 
 .claim-btn {
-	background: linear-gradient(135deg, #ffd700, #ffb300);
+	background: #ffd700;
+	color: #c0392b;
+	font-weight: bold;
 }
 
 .done-btn {
-	background: rgba(255, 255, 255, 0.15);
-}
-
-.disabled-btn {
-	background: rgba(255, 255, 255, 0.1);
+	background: rgba(255, 255, 255, 0.3);
+	color: #fff;
 }
 
 .close-action-btn {
-	background: rgba(255, 255, 255, 0.1);
-	border: 2rpx solid rgba(255, 255, 255, 0.3);
+	background: rgba(255, 255, 255, 0.2);
+	color: #fff;
 }
 
-.action-text {
-	font-size: 30rpx;
-	font-weight: 500;
-	color: #c0392b;
-}
-
-.done-btn .action-text,
-.disabled-btn .action-text,
-.close-action-btn .action-text {
-	color: rgba(255, 255, 255, 0.8);
+.disabled-btn {
+	background: rgba(255, 255, 255, 0.2);
+	color: rgba(255, 255, 255, 0.5);
 }
 
 .modal-close {
 	margin-top: 20rpx;
-	padding: 16rpx 40rpx;
-
-	&.close-disabled {
-		opacity: 0.5;
-	}
 }
 
 .close-text {
-	font-size: 26rpx;
 	color: rgba(255, 255, 255, 0.7);
+	font-size: 28rpx;
+}
+
+.close-disabled {
+	opacity: 0.4;
 }
 </style>
