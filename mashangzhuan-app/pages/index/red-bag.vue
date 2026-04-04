@@ -1,161 +1,153 @@
 <template>
 	<view class="page-content">
-		<view class="chat-container">
-			<!-- 顶部导航栏 -->
-			<view class="custom-navbar">
-				<view class="navbar-content">
-					<view class="back-btn" @click="goBack">
-						<u-icon name="arrow-left" color="#333" size="40"></u-icon>
-					</view>
-					<view class="group-info">
-						<text class="group-name">红包群94</text>
-						<text class="group-count">({{ onlineCount }})</text>
-					</view>
-					<view class="right-btns">
-						<!-- 广告红包入口 -->
-						<view class="ad-packet-btn" @click="toggleAdPacketPanel">
-							<text class="ad-packet-icon">🧧</text>
-							<view class="ad-badge" v-if="adPacketBadge > 0">
-								<text class="ad-badge-text">{{ adPacketBadge }}</text>
-							</view>
+		<!-- 顶部导航栏 -->
+		<view class="custom-navbar">
+			<view class="navbar-content">
+				<view class="back-btn" @click="goBack">
+					<u-icon name="arrow-left" color="#333" size="40"></u-icon>
+				</view>
+				<view class="group-info">
+					<text class="group-name">赚金币</text>
+				</view>
+				<view class="right-btns">
+					<!-- 广告红包入口 -->
+					<view class="ad-packet-btn" @click="toggleAdPacketPanel">
+						<text class="ad-packet-icon">🧧</text>
+						<view class="ad-badge" v-if="adPacketBadge > 0">
+							<text class="ad-badge-text">{{ adPacketBadge > 99 ? '99+' : adPacketBadge }}</text>
 						</view>
-						<view class="withdraw-btn" @click="goWithdraw">
-							<image class="redbag-icon" src="/static/image/redbag-icon.png" mode="aspectFit"></image>
-							<text class="withdraw-text">提现</text>
-						</view>
+					</view>
+					<!-- 提现入口 -->
+					<view class="withdraw-btn" @click="goWithdraw">
+						<image class="redbag-icon" src="/static/image/redbag-icon.png" mode="aspectFit"></image>
+						<text class="withdraw-text">提现</text>
 					</view>
 				</view>
 			</view>
-
-			<!-- 广告区域（保留原有 banner） -->
-			<view class="ad-section">
-				<ad-banner></ad-banner>
-			</view>
-
-			<!-- 消息列表 -->
-			<scroll-view class="message-list" scroll-y :scroll-into-view="scrollIntoViewId"
-				scroll-with-animation :style="{height: scrollHeight + 'px'}"
-				:scroll-top="scrollTop" :enable-back-to-top="true">
-				<view v-for="(msg, index) in messages" :key="msg.id" :id="'msg-' + msg.id">
-					<!-- 系统消息 -->
-					<view class="system-message" v-if="msg.type === 'system'">
-						{{ msg.content }}
-					</view>
-
-					<!-- 时间分隔 -->
-					<view class="time-divider" v-if="showTimeDivider(index)">
-						{{ formatTime(msg.time) }}
-					</view>
-
-					<!-- 广告信息流消息（uni-ad feed 广告） -->
-					<ad-feed-message
-						v-if="msg.type === 'ad_feed'"
-						:message="msg"
-						@ad-rewarded="handleAdRewarded" />
-
-					<!-- 普通聊天/下载/广告/视频 任务卡片 -->
-					<task-message
-						v-if="msg.type === 'task_chat' || msg.type === 'task_download' || msg.type === 'task_adv' || msg.type === 'task_video'"
-						:message="msg"
-						:is-me="false"
-						@task-click="handleTaskClick" />
-
-					<!-- 红包消息（小程序类型） -->
-					<redbag-message
-						v-if="msg.type === 'redbag'"
-						:message="msg"
-						:is-me="false"
-						@open-redbag="handleRedbagClick" />
-
-					<!-- 普通文本/图片消息 -->
-					<chat-message
-						v-if="msg.type === 'text' || msg.type === 'img'"
-						:message="msg"
-						:is-me="msg.sender === 'me'"
-						@play-voice="playVoice(msg)" />
-				</view>
-				<view id="bottom-anchor"></view>
-			</scroll-view>
 		</view>
 
+		<!-- Banner 广告 -->
+		<view class="ad-section">
+			<ad-banner></ad-banner>
+		</view>
+
+		<!-- 收益概览卡片 -->
+		<view class="income-card">
+			<!-- 收益统计 -->
+			<view class="income-stats">
+				<view class="stat-item">
+					<text class="stat-label">今日收益</text>
+					<text class="stat-value accent">+{{ overview.today_income || 0 }}</text>
+					<text class="stat-unit">金币</text>
+				</view>
+				<view class="stat-divider"></view>
+				<view class="stat-item">
+					<text class="stat-label">累计收益</text>
+					<text class="stat-value">{{ overview.total_ad_income || 0 }}</text>
+					<text class="stat-unit">金币</text>
+				</view>
+			</view>
+
+			<!-- 可释放余额进度条 -->
+			<view class="threshold-section">
+				<view class="threshold-header">
+					<text class="threshold-label">可释放余额</text>
+					<text class="threshold-value">{{ overview.ad_freeze_balance || 0 }} / {{ overview.redpacket_threshold || 1000 }} 金币</text>
+				</view>
+				<view class="progress-bar">
+					<view class="progress-fill" :style="{width: freezeProgress + '%'}"></view>
+				</view>
+				<text class="threshold-hint reached" v-if="freezeProgress >= 100">
+					🎉 已达标！红包已生成，请点击下方领取
+				</text>
+				<text class="threshold-hint" v-else>
+					再获得 {{ remainingToThreshold }} 金币即可生成红包
+				</text>
+			</view>
+
+			<!-- 未领取红包提示 -->
+			<view class="unclaimed-row" v-if="overview.unclaimed_packet_count > 0" @click="toggleAdPacketPanel">
+				<view class="unclaimed-left">
+					<text class="unclaimed-icon">🧧</text>
+					<text class="unclaimed-info">
+						{{ overview.unclaimed_packet_count }}个红包待领取，共{{ overview.unclaimed_packet_amount || 0 }}金币
+					</text>
+				</view>
+				<text class="unclaimed-arrow">›</text>
+			</view>
+		</view>
+
+		<!-- 信息流广告列表 -->
+		<scroll-view class="feed-scroll" scroll-y :style="{height: scrollHeight + 'px'}" @scrolltolower="loadMoreFeedAds">
+			<view v-for="(item, index) in feedSlots" :key="item.id" class="feed-item">
+				<!-- 广告标题栏 -->
+				<view class="feed-header">
+					<view class="feed-badge-wrap">
+						<text class="feed-badge-text">广告</text>
+					</view>
+					<text class="feed-title">观看广告赚金币</text>
+				</view>
+
+				<!-- 广告区域 -->
+				<view class="feed-ad-area">
+					<!-- #ifdef APP-PLUS || MP-WEIXIN || MP -->
+					<ad v-if="feedAdpid"
+						:adpid="feedAdpid"
+						@load="onAdLoad($event, index)"
+						@error="onAdError($event, index)"
+						@close="onAdClose($event, index)"
+						style="width: 100%; min-height: 120px;" />
+					<!-- #endif -->
+
+					<!-- #ifdef H5 -->
+					<view class="feed-ad-h5" @click="handleH5AdClick(index)">
+						<view class="h5-content">
+							<text class="h5-icon">🎁</text>
+							<text class="h5-text">点击观看广告赚金币</text>
+							<text class="h5-reward">+{{ overview.reward_per_feed || 50 }} 金币</text>
+						</view>
+					</view>
+					<!-- #endif -->
+
+					<!-- 未配置广告位ID -->
+					<view v-if="!feedAdpid" class="feed-ad-empty">
+						<text class="empty-text">请配置信息流广告位ID (adpid)</text>
+					</view>
+				</view>
+
+				<!-- 广告状态提示 -->
+				<view class="feed-status-bar" v-if="item.status">
+					<text :class="['feed-status-text', item.statusType]">{{ item.status }}</text>
+				</view>
+			</view>
+
+			<!-- 加载更多 -->
+			<view class="load-more-area" v-if="canLoadMore" @click="loadMoreFeedAds">
+				<text class="load-more-text">加载更多广告</text>
+			</view>
+			<view class="load-more-area" v-else>
+				<text class="load-more-text no-more">— 没有更多了 —</text>
+			</view>
+		</scroll-view>
+
 		<!-- 广告红包面板（底部弹窗） -->
-		<view class="ad-packet-mask" v-if="showAdPacketPanel" @click="showAdPacketPanel = false">
-			<view class="ad-packet-popup" @click.stop>
-				<view class="popup-header">
-					<text class="popup-title">广告红包</text>
-					<view class="popup-close" @click="showAdPacketPanel = false">
+		<view class="panel-mask" v-if="showAdPacketPanel" @click="showAdPacketPanel = false">
+			<view class="panel-popup" @click.stop>
+				<view class="panel-header">
+					<text class="panel-title">广告红包</text>
+					<view class="panel-close" @click="showAdPacketPanel = false">
 						<u-icon name="close" color="#999" size="36"></u-icon>
+					</view>
+				</view>
+				<!-- 一键领取按钮 -->
+				<view class="claim-all-bar" v-if="adPacketBadge > 0">
+					<view class="claim-all-btn" @click="claimAllPackets">
+						<text class="claim-all-text">一键领取全部 ({{ adPacketBadge }}个)</text>
 					</view>
 				</view>
 				<ad-red-packet-list
 					:list-height="panelHeight"
 					@claimed="onAdPacketClaimed" />
-			</view>
-		</view>
-
-		<!-- 红包领取弹窗（遮罩层5秒内不可关闭） -->
-		<view class="redbag-modal-mask" v-if="showRedbagModal" @click="tryCloseModal">
-			<view class="redbag-modal" @click.stop>
-				<!-- 顶部装饰 -->
-				<view class="modal-header">
-					<image class="modal-logo" :src="currentRedbag.backgroundImage || '/static/image/redbag-icon.png'" mode="aspectFit"></image>
-					<text class="modal-title">{{ currentRedbag.displayTitle || '恭喜发财' }}</text>
-				</view>
-
-				<!-- 金额显示区域 -->
-				<view class="modal-amount-area">
-					<!-- 加载中 -->
-					<view v-if="isLoadingAmount" class="amount-circle loading">
-						<text class="amount-number loading-text">...</text>
-						<text class="amount-label">获取中</text>
-					</view>
-					<!-- 有金额 -->
-					<view v-else class="amount-circle" :class="{ shaking: false }">
-						<text class="amount-number">{{ displayAmount }}</text>
-						<text class="amount-label">金币</text>
-					</view>
-
-					<text class="amount-hint" v-if="isLoadingAmount">
-						正在获取红包金额...
-					</text>
-					<text class="amount-hint" v-else-if="isClaimed">
-						已领取 {{ displayAmount }} 金币
-					</text>
-					<text class="amount-hint" v-else-if="isExpired">
-						已过期
-					</text>
-					<text class="amount-hint" v-else-if="currentAmount > 0">
-						恭喜获得 {{ displayAmount }} 金币
-					</text>
-					<text class="amount-hint" v-else>
-						获取金额失败，请重试
-					</text>
-				</view>
-
-				<!-- 操作按钮 -->
-				<view class="modal-actions">
-					<!-- 加载中 -->
-					<view v-if="isLoadingAmount" class="action-btn disabled-btn">
-						<text class="action-text">获取中...</text>
-					</view>
-					<!-- 金额获取成功，未领取 → 领取按钮 -->
-					<view v-else-if="!isClaimed && currentAmount > 0" class="action-btn claim-btn" @click="claimRedbag">
-						<text class="action-text">领取并去小程序</text>
-					</view>
-					<!-- 已领取 -->
-					<view v-else-if="isClaimed" class="action-btn done-btn">
-						<text class="action-text">已领取</text>
-					</view>
-					<!-- 获取失败 -->
-					<view v-else class="action-btn close-action-btn" @click="closeRedbagModal">
-						<text class="action-text">关闭</text>
-					</view>
-				</view>
-
-				<!-- 关闭按钮（5秒内禁用，已领取可立即关闭） -->
-				<view :class="['modal-close', { 'close-disabled': !canCloseModal && !isClaimed }]" @click="tryCloseModal">
-					<text class="close-text">{{ (canCloseModal || isClaimed) ? '关闭' : '请等待 ' + closeCountdown + 's' }}</text>
-				</view>
 			</view>
 		</view>
 
@@ -165,479 +157,379 @@
 </template>
 
 <script>
-import ChatMessage from '@/components/chat/chatMessage.vue'
-import RedbagMessage from '@/components/chat/redbagMessage.vue'
-import TaskMessage from '@/components/chat/taskMessage.vue'
 import AdBanner from '@/components/ad/adBanner.vue'
-import AdFeedMessage from '@/components/chat/adFeedMessage.vue'
 import AdRedPacketList from '@/components/ad/adRedPacketList.vue'
 
 export default {
 	components: {
-		ChatMessage,
-		RedbagMessage,
-		TaskMessage,
 		AdBanner,
-		AdFeedMessage,
 		AdRedPacketList,
 	},
 
 	onLoad(opt) {
-		this.groupId = opt.group_id || 'default_group';
-		this.user_info = uni.getStorageSync('user_info') || {};
-		this.loadAdOverview();
+		this.loadAdOverview()
+		this.initFeedSlots()
 	},
 
 	onShow() {
-		// 每次显示页面时刷新广告红包摘要
-		this.loadAdOverview();
+		this.loadAdOverview()
 	},
 
 	onUnload() {
-		// 离开页面时清理所有红包过期计时器
-		this.clearAllRedbagTimers();
-		// 清理关闭倒计时
-		this.stopCloseLock();
-		// 离开页面时重置累加数据
-		this.resetRedbag();
+		this.clearH5Timers()
 	},
 
 	data() {
 		return {
-			groupId: '',
-			user_info: {},
-			scrollTop: 0,
-			scrollIntoViewId: '',
-			scrollHeight: 0,
-			messages: [],
-
-			// 在线人数（固定显示，不依赖WebSocket）
-			onlineCount: 0,
+			// 广告收益概览数据
+			overview: {
+				today_income: 0,
+				total_ad_income: 0,
+				ad_freeze_balance: 0,
+				unclaimed_packet_count: 0,
+				unclaimed_packet_amount: 0,
+				redpacket_threshold: 1000,
+				reward_per_feed: 50,
+			},
 
 			// 广告红包面板
 			showAdPacketPanel: false,
 			adPacketBadge: 0,
 			panelHeight: 300,
 
-			// 红包弹窗状态
-			showRedbagModal: false,
-			currentRedbag: {},
-			currentAmount: 0,
-			isClaimed: false,
-			isLoadingAmount: false,
-			currentMsgRef: null,
-			// 5秒关闭锁
-			canCloseModal: false,
-			closeCountdown: 5,
-			closeCountdownTimer: null,
+			// 页面布局
+			scrollHeight: 0,
 
-			// 红包过期计时器 { msgId: timerId }
-			redbagTimers: {},
+			// ==================== 信息流广告配置 ====================
+			// ★★★ 重要：请将下方 feedAdpid 替换为你在 DCloud 广告平台创建的「信息流广告」广告位ID ★★★
+			// 获取方式：登录 https://uniad.dcloud.net.cn/ → 创建广告位 → 信息流广告 → 复制广告位ID
+			feedAdpid: '',
+
+			// 广告槽位列表
+			feedSlots: [],
+			feedSlotCounter: 0,
+			maxFeedSlots: 10,
+			initialSlotCount: 3,
+
+			// H5 模拟广告定时器
+			h5Timers: {},
 		};
 	},
 
 	computed: {
-		displayAmount() {
-			return Number(this.currentAmount) || 0;
+		/**
+		 * 可释放余额达到红包基数的百分比
+		 */
+		freezeProgress() {
+			const threshold = this.overview.redpacket_threshold || 1000
+			const balance = this.overview.ad_freeze_balance || 0
+			return Math.min(100, Math.round(balance / threshold * 100))
 		},
-		isExpired() {
-			return this.currentRedbag && this.currentRedbag.status === 'expired';
-		}
+
+		/**
+		 * 距离红包基数还差多少金币
+		 */
+		remainingToThreshold() {
+			const threshold = this.overview.redpacket_threshold || 1000
+			const balance = this.overview.ad_freeze_balance || 0
+			return Math.max(0, threshold - balance)
+		},
+
+		/**
+		 * 是否还能加载更多广告
+		 */
+		canLoadMore() {
+			return this.feedSlots.length < this.maxFeedSlots
+		},
 	},
 
 	mounted() {
 		this.$nextTick(() => {
-			this.calcScrollHeight();
-		});
+			this.calcScrollHeight()
+		})
 	},
 
 	methods: {
-		// ==================== ★ 广告收益回调 ====================
-
-		/**
-		 * 广告信息流获得奖励后的回调
-		 * @param {Object} data { message, amount, logId }
-		 */
-		handleAdRewarded(data) {
-			console.log('[RedBag] 广告奖励回调:', JSON.stringify(data));
-
-			// 更新消息状态
-			if (data.message) {
-				this.$set(data.message, 'adRewarded', true);
-				this.$set(data.message, 'adRewardAmount', data.amount);
-			}
-
-			// 刷新广告红包摘要（可能自动生成了新红包）
-			this.loadAdOverview();
-
-			if (data.amount > 0) {
-				// 添加一条系统提示消息
-				this.messages.push({
-					id: 'ad_reward_' + Date.now(),
-					type: 'system',
-					content: '观看广告获得 +' + data.amount + ' 金币，已存入待释放余额',
-					time: Date.now(),
-					sender: 'system'
-				});
-				this.scrollToBottom();
-			}
-		},
+		// ==================== 数据加载 ====================
 
 		/**
 		 * 加载广告收益概览
+		 * 包含：今日收益、累计收益、可释放余额、红包基数、未领取红包数
 		 */
 		async loadAdOverview() {
 			try {
-				const res = await this.$api.adOverview({});
+				const res = await this.$api.adOverview({})
 				if (res && res.code === 1 && res.data) {
-					this.adPacketBadge = res.data.unclaimed_packet_count || 0;
+					const d = res.data
+					this.overview = {
+						today_income: d.today_income || 0,
+						total_ad_income: d.total_ad_income || 0,
+						ad_freeze_balance: d.ad_freeze_balance || 0,
+						unclaimed_packet_count: d.unclaimed_packet_count || 0,
+						unclaimed_packet_amount: d.unclaimed_packet_amount || 0,
+						redpacket_threshold: d.redpacket_threshold || 1000,
+						reward_per_feed: d.reward_per_feed || 50,
+					}
+					this.adPacketBadge = this.overview.unclaimed_packet_count
+
+					// 如果刚刚自动生成了红包，显示提示
+					if (d.redpacket_just_created) {
+						uni.showToast({
+							title: '🎉 红包已生成！快去领取',
+							icon: 'none',
+							duration: 3000
+						})
+					}
 				}
 			} catch (e) {
-				// 静默处理
+				console.warn('[RedBag] loadAdOverview failed:', e)
+			}
+		},
+
+		// ==================== 信息流广告槽位管理 ====================
+
+		/**
+		 * 初始化广告槽位
+		 */
+		initFeedSlots() {
+			this.feedSlots = []
+			this.feedSlotCounter = 0
+			for (let i = 0; i < this.initialSlotCount; i++) {
+				this.addFeedSlot()
 			}
 		},
 
 		/**
-		 * 切换广告红包面板
+		 * 添加一个广告槽位
 		 */
+		addFeedSlot() {
+			if (this.feedSlots.length >= this.maxFeedSlots) return
+			this.feedSlotCounter++
+			this.feedSlots.push({
+				id: 'slot_' + this.feedSlotCounter + '_' + Date.now(),
+				status: '',
+				statusType: '',
+				reported: false,
+			})
+		},
+
+		/**
+		 * 加载更多广告
+		 */
+		loadMoreFeedAds() {
+			if (!this.canLoadMore) return
+			for (let i = 0; i < 2; i++) {
+				this.addFeedSlot()
+			}
+		},
+
+		// ==================== uni-ad 广告事件 ====================
+
+		/**
+		 * 广告加载成功
+		 */
+		onAdLoad(e, index) {
+			console.log('[RedBag] 广告加载成功, slot:', index)
+			const slot = this.feedSlots[index]
+			if (slot) {
+				this.$set(slot, 'status', '广告已展示')
+				this.$set(slot, 'statusType', 'success')
+			}
+		},
+
+		/**
+		 * 广告关闭 → 上报收益
+		 */
+		onAdClose(e, index) {
+			console.log('[RedBag] 广告关闭, slot:', index)
+			this.reportAdReward(index)
+		},
+
+		/**
+		 * 广告加载失败
+		 */
+		onAdError(e, index) {
+			console.warn('[RedBag] 广告加载失败, slot:', index, e)
+			const slot = this.feedSlots[index]
+			if (slot) {
+				this.$set(slot, 'status', '广告加载失败，请稍后再试')
+				this.$set(slot, 'statusType', 'error')
+			}
+		},
+
+		/**
+		 * H5 环境下点击模拟广告
+		 */
+		handleH5AdClick(index) {
+			const slot = this.feedSlots[index]
+			if (!slot || slot.reported) {
+				if (slot && slot.reported) {
+					uni.showToast({ title: '已获得奖励', icon: 'none' })
+				}
+				return
+			}
+
+			this.$set(slot, 'status', '观看广告中...')
+			this.$set(slot, 'statusType', 'loading')
+
+			const timer = setTimeout(() => {
+				this.reportAdReward(index)
+			}, 2000)
+			this.h5Timers[index] = timer
+		},
+
+		/**
+		 * 上报广告收益到后端
+		 * 后端处理流程：
+		 *   1. 记录广告收益日志
+		 *   2. 增加用户可释放余额 (ad_freeze_balance)
+		 *   3. 检查可释放余额是否 >= 红包基数 (redpacket_threshold)
+		 *   4. 若达标 → 自动生成红包 (AdRedPacket) → 清空可释放余额
+		 *   5. 用户点击领取红包 → 金币进入余额 (balance)
+		 */
+		async reportAdReward(index) {
+			const slot = this.feedSlots[index]
+			if (!slot || slot.reported) return
+
+			slot.reported = true
+			this.$set(slot, 'status', '收益结算中...')
+			this.$set(slot, 'statusType', 'loading')
+
+			try {
+				const transactionId = 'ad_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9)
+
+				const res = await this.$api.adCallback({
+					ad_type: 'feed',
+					adpid: this.feedAdpid || '',
+					ad_provider: 'uniad',
+					ad_source: 'redbag_page',
+					transaction_id: transactionId,
+				})
+
+				if (res && res.code === 1 && res.data) {
+					const amount = res.data.user_amount_coin || 0
+					this.$set(slot, 'status', '✅ 获得 +' + amount + ' 金币')
+					this.$set(slot, 'statusType', 'success')
+
+					if (amount > 0) {
+						uni.showToast({
+							title: '获得 +' + amount + ' 金币',
+							icon: 'none',
+							duration: 2000
+						})
+					}
+
+					// 后端自动生成了红包
+					if (res.data.redpacket_created) {
+						setTimeout(() => {
+							uni.showToast({
+								title: '🎉 红包已生成！' + (res.data.redpacket_amount || '') + '金币',
+								icon: 'none',
+								duration: 3000
+							})
+						}, 2200)
+					}
+
+					// 刷新概览数据
+					this.loadAdOverview()
+				} else {
+					slot.reported = false
+					const msg = (res && res.msg) || '奖励获取失败'
+					if (msg === '重复回调') {
+						this.$set(slot, 'status', '✅ 已记录')
+						this.$set(slot, 'statusType', 'success')
+						slot.reported = true
+					} else {
+						this.$set(slot, 'status', msg)
+						this.$set(slot, 'statusType', 'error')
+					}
+				}
+			} catch (e) {
+				slot.reported = false
+				this.$set(slot, 'status', '网络异常，请重试')
+				this.$set(slot, 'statusType', 'error')
+				console.error('[RedBag] reportAdReward failed:', e)
+			}
+		},
+
+		// ==================== 广告红包面板 ====================
+
 		toggleAdPacketPanel() {
-			this.showAdPacketPanel = !this.showAdPacketPanel;
+			this.showAdPacketPanel = !this.showAdPacketPanel
 			if (this.showAdPacketPanel) {
-				this.adPacketBadge = 0;
+				this.adPacketBadge = 0
 			}
 		},
 
-		/**
-		 * 广告红包领取成功回调
-		 */
+		async claimAllPackets() {
+			try {
+				uni.showLoading({ title: '领取中...', mask: true })
+				const res = await this.$api.adRedpacketClaimAll({})
+				uni.hideLoading()
+
+				if (res && res.code === 1) {
+					const total = res.data.total_amount || 0
+					const count = res.data.claim_count || 0
+					if (count > 0) {
+						uni.showToast({
+							title: '成功领取' + count + '个红包，+' + total + '金币',
+							icon: 'none',
+							duration: 3000
+						})
+						this.adPacketBadge = 0
+						this.loadAdOverview()
+					}
+				} else {
+					uni.showToast({ title: (res && res.msg) || '领取失败', icon: 'none' })
+				}
+			} catch (e) {
+				uni.hideLoading()
+				console.error('[RedBag] claimAllPackets failed:', e)
+			}
+		},
+
 		onAdPacketClaimed(data) {
-			console.log('[RedBag] 广告红包领取成功:', JSON.stringify(data));
-			if (data.amount > 0) {
+			console.log('[RedBag] 广告红包领取成功:', JSON.stringify(data))
+			if (data && data.amount > 0) {
 				uni.showToast({
 					title: '领取成功 +' + data.amount + ' 金币',
 					icon: 'none',
 					duration: 2000
-				});
-			}
-		},
-
-		// ==================== 红包自动过期机制 ====================
-
-		/**
-		 * 为新到达的红包启动自动过期计时器
-		 */
-		startRedbagExpireTimer(msgId) {
-			const delay = 2000 + Math.random() * 3000;
-			const timerId = setTimeout(() => {
-				const msg = this.messages.find(m => m.id === msgId);
-				if (msg && msg.status === 'unopened') {
-					this.$set(msg, 'status', 'expired');
-				}
-				delete this.redbagTimers[msgId];
-			}, delay);
-			this.redbagTimers[msgId] = timerId;
-		},
-
-		cancelRedbagExpireTimer(msgId) {
-			if (this.redbagTimers[msgId]) {
-				clearTimeout(this.redbagTimers[msgId]);
-				delete this.redbagTimers[msgId];
-			}
-		},
-
-		clearAllRedbagTimers() {
-			Object.keys(this.redbagTimers).forEach(msgId => {
-				clearTimeout(this.redbagTimers[msgId]);
-			});
-			this.redbagTimers = {};
-		},
-
-		// ==================== 红包点击 ====================
-
-		/**
-		 * 用户点击红包卡片 → 打开弹窗 → 调用 click 接口
-		 */
-		handleRedbagClick(msg) {
-			if (msg.status === 'expired') {
-				uni.showToast({ title: '已过期', icon: 'none' });
-				return;
-			}
-
-			if (msg.status === 'claimed') {
-				this.currentRedbag = msg;
-				this.currentAmount = msg.claimedAmount || msg.currentAmount || 0;
-				this.isClaimed = true;
-				this.isLoadingAmount = false;
-				this.currentMsgRef = msg;
-				this.showRedbagModal = true;
-				this.startCloseLock();
-				return;
-			}
-
-			this.cancelRedbagExpireTimer(msg.id);
-
-			this.currentRedbag = msg;
-			this.currentAmount = 0;
-			this.isClaimed = false;
-			this.isLoadingAmount = true;
-			this.currentMsgRef = msg;
-			this.showRedbagModal = true;
-			this.startCloseLock();
-
-			const taskId = (msg.taskData && msg.taskData.taskId) || 0;
-			if (taskId) {
-				this.doClickOnce(msg.id, taskId);
-			} else {
-				this.isLoadingAmount = false;
-			}
-		},
-
-		async doClickOnce(msgId, taskId) {
-			try {
-				const res = await this.$api.redpacketClick({ task_id: taskId, reset: 0 });
-				if (res && res.code === 1 && res.data) {
-					const amount = res.data.total_amount || 0;
-					this.currentAmount = amount;
-					this.isLoadingAmount = false;
-
-					const msg = this.messages.find(m => m.id === msgId);
-					if (msg) {
-						this.$set(msg, 'currentAmount', amount);
-						this.$set(msg, 'claimedAmount', amount);
-						this.$set(msg, 'status', 'opened');
-					}
-				} else {
-					this.isLoadingAmount = false;
-					console.warn('[RedBag] click接口异常:', res);
-					this.startRedbagExpireTimer(msgId);
-				}
-			} catch (e) {
-				this.isLoadingAmount = false;
-				console.error('[RedBag] click失败:', e);
-				this.startRedbagExpireTimer(msgId);
-				uni.showToast({ title: '网络异常，请重试', icon: 'none' });
-			}
-		},
-
-		// ==================== 红包领取 ====================
-
-		async claimRedbag() {
-			const taskId = (this.currentRedbag.taskData && this.currentRedbag.taskData.taskId) || 0;
-			try {
-				uni.showLoading({ title: '领取中...', mask: true });
-				const res = await this.$api.redpacketClaim({ task_id: taskId });
-				uni.hideLoading();
-
-				if (res && res.code === 1) {
-					this.isClaimed = true;
-
-					if (this.currentMsgRef) {
-						this.$set(this.currentMsgRef, 'status', 'claimed');
-						this.$set(this.currentMsgRef, 'claimedAmount', this.currentAmount);
-					}
-
-					const claimAmount = (res.data && res.data.amount) || this.currentAmount;
-					uni.showToast({
-						title: '领取成功 +' + claimAmount + ' 金币',
-						icon: 'none',
-						duration: 2000
-					});
-
-					setTimeout(() => {
-						this.jumpToMiniapp();
-					}, 2000);
-				} else {
-					const msg = (res && res.msg) || '领取失败';
-					uni.showToast({ title: msg, icon: 'none' });
-				}
-			} catch (e) {
-				uni.hideLoading();
-				console.error('[RedBag] claim失败:', e);
-			}
-		},
-
-		jumpToMiniapp() {
-			const resource = this.currentRedbag.taskData && this.currentRedbag.taskData.resource;
-			const miniappId = resource ? resource.miniapp_id : '';
-			const miniappPath = resource ? resource.miniapp_path : '';
-			const jumpUrl = (this.currentRedbag.taskData && this.currentRedbag.taskData.jump_url) || '';
-
-			// #ifdef MP-WEIXIN
-			if (miniappId) {
-				uni.navigateToMiniProgram({
-					appId: miniappId,
-					path: miniappPath || '',
-					success: () => {
-						console.log('[RedBag] 跳转小程序成功');
-					},
-					fail: (err) => {
-						console.warn('[RedBag] 跳转小程序失败:', err);
-						if (jumpUrl) {
-							uni.navigateTo({ url: '/pages/webview/webview?url=' + encodeURIComponent(jumpUrl) });
-						}
-					}
-				});
-			} else if (jumpUrl) {
-				uni.navigateTo({ url: '/pages/webview/webview?url=' + encodeURIComponent(jumpUrl) });
-			}
-			// #endif
-
-			// #ifdef H5
-			if (jumpUrl) {
-				window.location.href = jumpUrl;
-			} else {
-				uni.showToast({ title: '请在微信中打开小程序', icon: 'none' });
-			}
-			// #endif
-
-			// #ifdef APP-PLUS
-			if (jumpUrl) {
-				plus.runtime.openURL(jumpUrl);
-			} else {
-				uni.showToast({ title: '暂不支持跳转', icon: 'none' });
-			}
-			// #endif
-		},
-
-		// ==================== 关闭锁 ====================
-
-		startCloseLock() {
-			this.canCloseModal = false;
-			this.closeCountdown = 5;
-			if (this.closeCountdownTimer) {
-				clearInterval(this.closeCountdownTimer);
-			}
-			this.closeCountdownTimer = setInterval(() => {
-				this.closeCountdown--;
-				if (this.closeCountdown <= 0) {
-					this.canCloseModal = true;
-					clearInterval(this.closeCountdownTimer);
-					this.closeCountdownTimer = null;
-				}
-			}, 1000);
-		},
-
-		stopCloseLock() {
-			if (this.closeCountdownTimer) {
-				clearInterval(this.closeCountdownTimer);
-				this.closeCountdownTimer = null;
-			}
-			this.canCloseModal = false;
-			this.closeCountdown = 5;
-		},
-
-		tryCloseModal() {
-			if (!this.canCloseModal && !this.isClaimed) return;
-			this.closeRedbagModal();
-		},
-
-		closeRedbagModal() {
-			this.showRedbagModal = false;
-			this.isLoadingAmount = false;
-			this.isClaimed = false;
-			this.currentAmount = 0;
-			this.currentRedbag = {};
-			this.currentMsgRef = null;
-			this.stopCloseLock();
-		},
-
-		async resetRedbag() {
-			try {
-				await this.$api.redpacketReset({});
-			} catch (e) {
-				// 静默处理
-			}
-		},
-
-		// ==================== 任务卡片点击处理 ====================
-		handleTaskClick({ type, message, taskData }) {
-			const jumpUrl = taskData.jump_url || '';
-			const resource = taskData.resource || {};
-
-			switch (type) {
-				case 'chat':
-					uni.showToast({ title: '聊天任务 · 请按要求聊天', icon: 'none' });
-					break;
-
-				case 'download':
-				case 'download_app':
-					if (jumpUrl) {
-						// #ifdef H5
-						window.location.href = jumpUrl;
-						// #endif
-						// #ifdef APP-PLUS
-						plus.runtime.openURL(jumpUrl);
-						// #endif
-						// #ifdef MP-WEIXIN
-						uni.navigateTo({ url: '/pages/webview/webview?url=' + encodeURIComponent(jumpUrl) });
-						// #endif
-					} else {
-						uni.showToast({ title: '暂无下载链接', icon: 'none' });
-					}
-					break;
-
-				case 'adv':
-					uni.showToast({ title: '广告任务 · 请观看广告', icon: 'none' });
-					break;
-
-				case 'video':
-				case 'watch_video':
-					if (resource.video_url) {
-						uni.navigateTo({ url: '/pages/webview/webview?url=' + encodeURIComponent(resource.video_url) });
-					} else {
-						uni.showToast({ title: '暂无视频链接', icon: 'none' });
-					}
-					break;
-
-				default:
-					uni.showToast({ title: '未知任务类型', icon: 'none' });
+				})
+				this.loadAdOverview()
 			}
 		},
 
 		// ==================== 辅助方法 ====================
+
 		goBack() {
-			uni.navigateBack();
+			uni.navigateBack()
 		},
 
 		goWithdraw() {
-			uni.navigateTo({ url: '/pages/my/withdraw/index' });
-		},
-
-		scrollToBottom() {
-			this.$nextTick(() => {
-				this.scrollIntoViewId = 'bottom-anchor';
-			});
-		},
-
-		showTimeDivider(index) {
-			if (index === 0) return false;
-			const prev = this.messages[index - 1];
-			if (!prev) return false;
-			return (Date.now() - prev.time) > 5 * 60 * 1000;
-		},
-
-		formatTime(time) {
-			const d = new Date(time);
-			const h = d.getHours().toString().padStart(2, '0');
-			const m = d.getMinutes().toString().padStart(2, '0');
-			return h + ':' + m;
-		},
-
-		playVoice(msg) {
-			// 预留语音播放
+			uni.navigateTo({ url: '/pages/my/withdraw/index' })
 		},
 
 		calcScrollHeight() {
-			const sysInfo = uni.getSystemInfoSync();
-			const navH = 88;
-			const adH = 200;
-			const tabH = 100;
-			const statusBarH = sysInfo.statusBarHeight || 0;
-			this.scrollHeight = sysInfo.windowHeight - navH - adH - tabH - statusBarH;
+			const sysInfo = uni.getSystemInfoSync()
+			const navH = 88
+			const adH = 220
+			const cardH = 320
+			const tabH = 100
+			const statusBarH = sysInfo.statusBarHeight || 0
+			this.scrollHeight = sysInfo.windowHeight - navH - adH - cardH - tabH - statusBarH
+			if (this.scrollHeight < 200) {
+				this.scrollHeight = 200
+			}
 		},
 
-		getHistoryMsg() {
-			// 预留：加载更多历史消息
+		clearH5Timers() {
+			Object.keys(this.h5Timers).forEach(key => {
+				if (this.h5Timers[key]) {
+					clearTimeout(this.h5Timers[key])
+				}
+			})
+			this.h5Timers = {}
 		},
 	}
 }
@@ -651,13 +543,7 @@ export default {
 	flex-direction: column;
 }
 
-.chat-container {
-	flex: 1;
-	display: flex;
-	flex-direction: column;
-	overflow: hidden;
-}
-
+/* ==================== 导航栏 ==================== */
 .custom-navbar {
 	height: 88rpx;
 	background: #fff;
@@ -665,6 +551,7 @@ export default {
 	align-items: center;
 	padding: 0 20rpx;
 	border-bottom: 1rpx solid #eee;
+	flex-shrink: 0;
 }
 
 .navbar-content {
@@ -686,11 +573,6 @@ export default {
 	font-size: 32rpx;
 	font-weight: bold;
 	color: #333;
-}
-
-.group-count {
-	font-size: 24rpx;
-	color: #999;
 }
 
 .right-btns {
@@ -744,42 +626,277 @@ export default {
 	margin-left: 8rpx;
 }
 
+/* ==================== Banner 广告 ==================== */
 .ad-section {
-	height: 200rpx;
+	padding: 16rpx 20rpx;
+	flex-shrink: 0;
 }
 
-.message-list {
-	flex: 1;
-	padding: 20rpx;
+/* ==================== 收益概览卡片 ==================== */
+.income-card {
+	margin: 0 20rpx 20rpx;
+	background: #fff;
+	border-radius: 16rpx;
+	padding: 30rpx;
+	box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.06);
+	flex-shrink: 0;
 }
 
-.system-message {
+.income-stats {
+	display: flex;
+	justify-content: space-around;
+	margin-bottom: 30rpx;
+}
+
+.stat-item {
 	text-align: center;
-	padding: 16rpx 0;
-	color: #999;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+}
+
+.stat-label {
 	font-size: 24rpx;
+	color: #999;
+	margin-bottom: 8rpx;
 }
 
-.time-divider {
-	text-align: center;
-	padding: 20rpx 0;
-	color: #bbb;
+.stat-value {
+	font-size: 44rpx;
+	font-weight: bold;
+	color: #333;
+	line-height: 1.2;
+}
+
+.stat-value.accent {
+	color: #ff6b35;
+}
+
+.stat-unit {
 	font-size: 22rpx;
+	color: #bbb;
+	margin-top: 4rpx;
 }
 
-.connection-status {
-	text-align: center;
-	padding: 10rpx;
+.stat-divider {
+	width: 1rpx;
+	background: #eee;
+	align-self: stretch;
+}
+
+/* 红包基数进度条 */
+.threshold-section {
+	margin-bottom: 20rpx;
+}
+
+.threshold-header {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	margin-bottom: 12rpx;
+}
+
+.threshold-label {
+	font-size: 26rpx;
+	color: #666;
+	font-weight: 500;
+}
+
+.threshold-value {
 	font-size: 24rpx;
 	color: #999;
 }
 
-.connection-status.connected {
+.progress-bar {
+	height: 16rpx;
+	background: #f0f0f0;
+	border-radius: 8rpx;
+	overflow: hidden;
+}
+
+.progress-fill {
+	height: 100%;
+	background: linear-gradient(90deg, #ff9500, #ff6b00);
+	border-radius: 8rpx;
+	transition: width 0.5s ease;
+	min-width: 0;
+}
+
+.threshold-hint {
+	font-size: 24rpx;
+	color: #999;
+	margin-top: 10rpx;
+	display: block;
+}
+
+.threshold-hint.reached {
+	color: #ff6b35;
+	font-weight: 600;
+}
+
+/* 未领取红包提示 */
+.unclaimed-row {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: 20rpx 24rpx;
+	background: linear-gradient(135deg, #fff8f0, #fff5eb);
+	border-radius: 12rpx;
+	border: 1rpx solid #ffe8d0;
+}
+
+.unclaimed-left {
+	display: flex;
+	align-items: center;
+}
+
+.unclaimed-icon {
+	font-size: 36rpx;
+	margin-right: 12rpx;
+}
+
+.unclaimed-info {
+	font-size: 26rpx;
+	color: #ff6b35;
+	font-weight: 500;
+}
+
+.unclaimed-arrow {
+	font-size: 36rpx;
+	color: #ff6b35;
+	font-weight: bold;
+}
+
+/* ==================== 信息流广告列表 ==================== */
+.feed-scroll {
+	flex: 1;
+	padding: 0 20rpx 20rpx;
+}
+
+.feed-item {
+	margin-bottom: 20rpx;
+	background: #fff;
+	border-radius: 16rpx;
+	overflow: hidden;
+	box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.06);
+}
+
+.feed-header {
+	display: flex;
+	align-items: center;
+	padding: 16rpx 20rpx;
+	background: #fff8f0;
+	border-bottom: 1rpx solid #f0e6d8;
+}
+
+.feed-badge-wrap {
+	background: linear-gradient(135deg, #ff9500, #ff6b00);
+	padding: 4rpx 12rpx;
+	border-radius: 6rpx;
+	margin-right: 12rpx;
+}
+
+.feed-badge-text {
+	font-size: 20rpx;
+	color: #fff;
+	font-weight: bold;
+}
+
+.feed-title {
+	font-size: 26rpx;
+	color: #333;
+	font-weight: 500;
+}
+
+.feed-ad-area {
+	width: 100%;
+	min-height: 120px;
+}
+
+/* H5 模拟广告 */
+.feed-ad-h5 {
+	width: 100%;
+	padding: 40rpx 20rpx;
+	background: linear-gradient(135deg, #ff9500, #ff6b00);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	cursor: pointer;
+}
+
+.h5-content {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+}
+
+.h5-icon {
+	font-size: 56rpx;
+	margin-bottom: 12rpx;
+}
+
+.h5-text {
+	font-size: 28rpx;
+	color: #fff;
+	margin-bottom: 8rpx;
+}
+
+.h5-reward {
+	font-size: 32rpx;
+	color: #ffd700;
+	font-weight: bold;
+}
+
+/* 未配置广告位 */
+.feed-ad-empty {
+	padding: 40rpx 20rpx;
+	text-align: center;
+}
+
+.empty-text {
+	font-size: 24rpx;
+	color: #ccc;
+}
+
+/* 广告状态提示 */
+.feed-status-bar {
+	padding: 16rpx 20rpx;
+	text-align: center;
+}
+
+.feed-status-text {
+	font-size: 24rpx;
+}
+
+.feed-status-text.success {
 	color: #52c41a;
 }
 
-/* 广告红包面板 */
-.ad-packet-mask {
+.feed-status-text.error {
+	color: #999;
+}
+
+.feed-status-text.loading {
+	color: #1890ff;
+}
+
+/* 加载更多 */
+.load-more-area {
+	text-align: center;
+	padding: 30rpx 0;
+}
+
+.load-more-text {
+	font-size: 26rpx;
+	color: #999;
+}
+
+.load-more-text.no-more {
+	color: #ccc;
+}
+
+/* ==================== 广告红包面板 ==================== */
+.panel-mask {
 	position: fixed;
 	top: 0;
 	left: 0;
@@ -791,145 +908,49 @@ export default {
 	align-items: flex-end;
 }
 
-.ad-packet-popup {
+.panel-popup {
 	width: 100%;
 	background: #fff;
 	border-radius: 24rpx 24rpx 0 0;
 	max-height: 70vh;
+	display: flex;
+	flex-direction: column;
 }
 
-.popup-header {
+.panel-header {
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
 	padding: 30rpx;
 	border-bottom: 1rpx solid #f0f0f0;
+	flex-shrink: 0;
 }
 
-.popup-title {
+.panel-title {
 	font-size: 32rpx;
 	font-weight: bold;
 }
 
-.popup-close {
+.panel-close {
 	padding: 10rpx;
 }
 
-/* 红包弹窗 */
-.redbag-modal-mask {
-	position: fixed;
-	top: 0;
-	left: 0;
-	right: 0;
-	bottom: 0;
-	background: rgba(0, 0, 0, 0.7);
-	z-index: 1000;
-	display: flex;
-	align-items: center;
-	justify-content: center;
+.claim-all-bar {
+	padding: 16rpx 30rpx;
+	border-bottom: 1rpx solid #f0f0f0;
+	flex-shrink: 0;
 }
 
-.redbag-modal {
-	width: 600rpx;
-	background: linear-gradient(180deg, #e74c3c, #c0392b);
-	border-radius: 24rpx;
-	padding: 40rpx;
-	text-align: center;
-}
-
-.modal-header {
-	margin-bottom: 30rpx;
-}
-
-.modal-logo {
-	width: 120rpx;
-	height: 120rpx;
-	border-radius: 50%;
-	margin: 0 auto 20rpx;
-}
-
-.modal-title {
-	color: #ffd700;
-	font-size: 36rpx;
-	font-weight: bold;
-}
-
-.modal-amount-area {
-	padding: 40rpx 0;
-}
-
-.amount-circle {
-	margin: 0 auto;
-}
-
-.amount-number {
-	color: #fff;
-	font-size: 72rpx;
-	font-weight: bold;
-}
-
-.amount-number.loading-text {
-	color: rgba(255, 255, 255, 0.6);
-}
-
-.amount-label {
-	color: rgba(255, 255, 255, 0.8);
-	font-size: 26rpx;
-	display: block;
-	margin-top: 10rpx;
-}
-
-.amount-hint {
-	color: rgba(255, 255, 255, 0.9);
-	font-size: 28rpx;
-	margin-top: 20rpx;
-	display: block;
-}
-
-.modal-actions {
-	padding: 20rpx 0;
-}
-
-.action-btn {
-	margin: 0 auto;
-	width: 400rpx;
-	height: 80rpx;
-	line-height: 80rpx;
+.claim-all-btn {
+	background: linear-gradient(135deg, #ff6b35, #ff4d00);
 	border-radius: 40rpx;
+	padding: 16rpx 0;
 	text-align: center;
 }
 
-.claim-btn {
-	background: #ffd700;
-	color: #c0392b;
-	font-weight: bold;
-}
-
-.done-btn {
-	background: rgba(255, 255, 255, 0.3);
+.claim-all-text {
 	color: #fff;
-}
-
-.close-action-btn {
-	background: rgba(255, 255, 255, 0.2);
-	color: #fff;
-}
-
-.disabled-btn {
-	background: rgba(255, 255, 255, 0.2);
-	color: rgba(255, 255, 255, 0.5);
-}
-
-.modal-close {
-	margin-top: 20rpx;
-}
-
-.close-text {
-	color: rgba(255, 255, 255, 0.7);
 	font-size: 28rpx;
-}
-
-.close-disabled {
-	opacity: 0.4;
+	font-weight: bold;
 }
 </style>
