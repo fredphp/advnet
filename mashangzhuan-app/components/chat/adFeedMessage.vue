@@ -1,17 +1,17 @@
 <template>
         <view class="ad-feed-message">
                 <!-- 广告卡片（全宽平铺） -->
-                <view class="ad-card">
+                <view class="ad-card" :class="{ 'video-card': isVideo }">
                         <!-- 顶部标识栏 -->
-                        <view class="ad-card-header">
-                                <view class="ad-badge">
-                                        <text class="badge-text">广告</text>
+                        <view class="ad-card-header" :class="{ 'video-header': isVideo }">
+                                <view class="ad-badge" :class="{ 'video-badge': isVideo }">
+                                        <text class="badge-text">{{ isVideo ? '视频' : '广告' }}</text>
                                 </view>
-                                <text class="ad-card-title">观看广告赚金币</text>
-                                <text class="ad-reward-tag">+{{ rewardCoin }} 金币</text>
+                                <text class="ad-card-title">{{ isVideo ? '观看视频赚金币' : '浏览推荐赚金币' }}</text>
+                                <text class="ad-reward-tag" :class="{ 'video-reward-tag': isVideo }">+{{ rewardCoin }} 金币</text>
                         </view>
 
-                        <!-- uni-ad 信息流广告组件 -->
+                        <!-- uni-ad 广告组件 -->
                         <view class="ad-container" v-if="adpid">
                                 <!-- #ifdef APP-PLUS || MP-WEIXIN || MP -->
                                 <ad :adpid="adpid" unit-id="adunit" @load="onAdLoad" @error="onAdError" @close="onAdClose"
@@ -19,12 +19,17 @@
                                 <!-- #endif -->
 
                                 <!-- #ifdef H5 -->
-                                <!-- H5 环境下使用模拟广告或第三方广告SDK -->
-                                <view class="ad-placeholder" @click="handleAdClick">
+                                <view class="ad-placeholder" :class="{ 'video-placeholder': isVideo }" @click="handleAdClick">
                                         <view class="ad-placeholder-content">
-                                                <text class="ad-icon">🎁</text>
-                                                <text class="ad-text">点击观看广告赚金币</text>
-                                                <text class="ad-reward">+{{ rewardCoin }} 金币</text>
+                                                <view class="ad-icon-wrapper">
+                                                        <text class="ad-icon">{{ isVideo ? '🎬' : '📰' }}</text>
+                                                </view>
+                                                <text class="ad-text">{{ isVideo ? '观看视频广告赚更多金币' : '浏览推荐内容赚金币' }}</text>
+                                                <view class="ad-reward-badge">
+                                                        <text class="ad-reward-text">+{{ rewardCoin }}</text>
+                                                        <text class="ad-reward-unit">金币</text>
+                                                </view>
+                                                <text class="ad-hint-text">{{ isVideo ? '完整观看可获得奖励' : '浏览即可获得奖励' }}</text>
                                         </view>
                                 </view>
                                 <!-- #endif -->
@@ -36,7 +41,7 @@
                                         <view class="ad-placeholder-content">
                                                 <text class="ad-icon">📡</text>
                                                 <text class="ad-text">广告位未配置</text>
-                                                <text class="ad-hint">请联系管理员配置信息流广告位ID</text>
+                                                <text class="ad-hint">请联系管理员配置广告位ID</text>
                                         </view>
                                 </view>
                         </view>
@@ -46,7 +51,10 @@
                                 <text class="reward-tip-text">✅ 已获得 +{{ rewardAmount }} 金币</text>
                         </view>
                         <view class="ad-reward-tip loading-tip" v-else-if="loading">
-                                <text class="reward-tip-text">⏳ 广告加载中...</text>
+                                <view class="loading-content">
+                                        <text class="loading-spinner" v-if="isVideo">⏳</text>
+                                        <text class="reward-tip-text">{{ isVideo ? '视频播放中，请耐心观看...' : '加载中...' }}</text>
+                                </view>
                         </view>
                 </view>
         </view>
@@ -68,59 +76,52 @@ export default {
 
         data() {
                 return {
-                        adpid: '',       // uni-ad 广告位ID
-                        loading: false,  // 广告加载中
-                        rewarded: false, // 是否已获得奖励
-                        rewardAmount: 0, // 获得的奖励金额
-                        rewardCoin: 50,  // 预期奖励金币数
-                        hasReported: false, // 是否已回调
+                        adpid: '',
+                        loading: false,
+                        rewarded: false,
+                        rewardAmount: 0,
+                        rewardCoin: 50,
+                        hasReported: false,
+                        adType: 'feed', // feed=信息流, reward=激励视频
                 };
         },
 
+        computed: {
+                isVideo() {
+                        return this.adType === 'reward';
+                }
+        },
+
         created() {
-                // 从消息数据中获取广告位ID
                 const taskData = this.message.taskData || {};
                 const resource = taskData.resource || {};
 
-                // 广告位ID优先级：resource.adpid > taskData.adpid > 配置默认值
                 this.adpid = resource.adpid || taskData.adpid || '';
 
-                // 奖励金币数
+                // ★ 广告类型：从 taskData 读取，默认 feed
+                this.adType = taskData.ad_type || 'feed';
+
                 if (taskData.reward_coin) {
                         this.rewardCoin = taskData.reward_coin;
                 }
         },
 
         methods: {
-                /**
-                 * 广告加载成功
-                 */
                 onAdLoad(e) {
-                        console.log('[AdFeed] 广告加载成功:', e);
+                        console.log('[' + (this.isVideo ? 'AdVideo' : 'AdFeed') + '] 广告加载成功:', e);
                         this.loading = false;
                 },
 
-                /**
-                 * 广告加载失败
-                 */
                 onAdError(e) {
-                        console.warn('[AdFeed] 广告加载失败:', e);
+                        console.warn('[' + (this.isVideo ? 'AdVideo' : 'AdFeed') + '] 广告加载失败:', e);
                         this.loading = false;
                 },
 
-                /**
-                 * 广告关闭回调
-                 * uni-ad 激励广告：用户完整观看后关闭才触发奖励
-                 * uni-ad 信息流广告：展示即可触发
-                 */
                 onAdClose(e) {
-                        console.log('[AdFeed] 广告关闭:', e);
+                        console.log('[' + (this.isVideo ? 'AdVideo' : 'AdFeed') + '] 广告关闭:', e);
                         this.reportAdReward();
                 },
 
-                /**
-                 * H5 环境下点击模拟广告
-                 */
                 handleAdClick() {
                         if (this.rewarded) {
                                 uni.showToast({ title: '已获得奖励', icon: 'none' });
@@ -129,26 +130,23 @@ export default {
 
                         this.loading = true;
 
-                        // 模拟观看广告 2 秒
+                        // 信息流：模拟2秒，激励视频：模拟5秒
+                        const duration = this.isVideo ? 5000 : 2000;
                         setTimeout(() => {
                                 this.loading = false;
                                 this.reportAdReward();
-                        }, 2000);
+                        }, duration);
                 },
 
-                /**
-                 * 上报广告奖励到后端
-                 */
                 async reportAdReward() {
                         if (this.hasReported) return;
                         this.hasReported = true;
 
                         try {
-                                // 生成唯一 transaction_id（防止重复回调）
-                                const transactionId = 'ad_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+                                const transactionId = 'ad_' + this.adType + '_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
 
                                 const res = await this.$api.adCallback({
-                                        ad_type: 'feed',
+                                        ad_type: this.adType,
                                         adpid: this.adpid,
                                         ad_provider: 'uniad',
                                         ad_source: 'redbag_page',
@@ -159,15 +157,14 @@ export default {
                                         this.rewarded = true;
                                         this.rewardAmount = res.data.user_amount_coin || 0;
 
-                                        // ★ 打印金币分配明细到控制台
-                                        console.log('========== 💰 信息流广告金币分配明细 ==========');
+                                        const adLabel = this.isVideo ? '激励视频广告' : '信息流广告';
+                                        console.log('========== 💰 ' + adLabel + '金币分配明细 ==========');
                                         console.log('📢 广告位ID:', this.adpid);
                                         console.log('💰 广告平台给出总金币:', res.data.total_reward_coin || 0);
                                         console.log('📊 平台抽成比例:', (res.data.platform_rate !== undefined ? (res.data.platform_rate * 100).toFixed(0) + '%' : '未返回'));
                                         console.log('🏦 平台抽成金币:', res.data.platform_amount_coin || 0);
                                         console.log('👤 用户实际获得金币:', res.data.user_amount_coin || 0);
                                         console.log('🆔 收益记录ID:', res.data.log_id);
-                                        console.log('📦 完整回调数据:', JSON.stringify(res.data, null, 2));
                                         console.log('================================================');
 
                                         if (this.rewardAmount > 0) {
@@ -178,10 +175,10 @@ export default {
                                                 });
                                         }
 
-                                        // 通知父组件更新（传递完整分配数据）
                                         this.$emit('ad-rewarded', {
                                                 message: this.message,
                                                 amount: this.rewardAmount,
+                                                adType: this.adType,
                                                 totalRewardCoin: res.data.total_reward_coin || 0,
                                                 platformRate: res.data.platform_rate,
                                                 platformCoin: res.data.platform_amount_coin || 0,
@@ -189,7 +186,7 @@ export default {
                                                 logId: res.data.log_id,
                                         });
                                 } else {
-                                        this.hasReported = false; // 失败后允许重试
+                                        this.hasReported = false;
                                         const msg = (res && res.msg) || '奖励获取失败';
                                         if (msg !== '重复回调') {
                                                 uni.showToast({ title: msg, icon: 'none' });
@@ -199,7 +196,7 @@ export default {
                                 }
                         } catch (e) {
                                 this.hasReported = false;
-                                console.error('[AdFeed] 上报广告奖励失败:', e);
+                                console.error('[' + (this.isVideo ? 'AdVideo' : 'AdFeed') + '] 上报广告奖励失败:', e);
                         }
                 },
 
@@ -215,7 +212,7 @@ export default {
 </script>
 
 <style lang="scss" scoped>
-/* 全宽平铺，用负边距抵消父容器的 padding */
+/* 全宽平铺 */
 .ad-feed-message {
         width: auto;
         margin-left: -20rpx;
@@ -225,7 +222,7 @@ export default {
         padding: 0;
 }
 
-/* 广告卡片 - 全宽撑满 */
+/* 广告卡片 */
 .ad-card {
         width: 100%;
         background-color: #fff;
@@ -233,7 +230,8 @@ export default {
         box-shadow: 0 1rpx 4rpx rgba(0, 0, 0, 0.04);
 }
 
-/* 顶部标识栏 */
+/* ==================== 信息流广告样式（橙色系） ==================== */
+
 .ad-card-header {
         display: flex;
         align-items: center;
@@ -270,7 +268,27 @@ export default {
         flex-shrink: 0;
 }
 
-/* 广告容器 - 全宽 */
+/* ==================== 激励视频广告样式（蓝紫色系） ==================== */
+
+.video-card {
+        box-shadow: 0 2rpx 8rpx rgba(99, 102, 241, 0.12);
+}
+
+.video-header {
+        background: linear-gradient(135deg, #eef2ff, #f0f0ff);
+        border-bottom: 1rpx solid #e0e0ff;
+}
+
+.video-badge {
+        background: linear-gradient(135deg, #6366f1, #8b5cf6);
+}
+
+.video-reward-tag {
+        color: #6366f1;
+}
+
+/* ==================== 广告容器 ==================== */
+
 .ad-container {
         width: 100%;
         min-height: 120px;
@@ -290,6 +308,7 @@ export default {
         margin-top: 4rpx;
 }
 
+/* 信息流广告占位 - 橙色 */
 .ad-placeholder {
         width: 100%;
         padding: 30rpx 20rpx;
@@ -300,30 +319,79 @@ export default {
         cursor: pointer;
 }
 
+/* 激励视频广告占位 - 紫色渐变 + 视频图标 */
+.video-placeholder {
+        background: linear-gradient(135deg, #6366f1, #8b5cf6);
+        min-height: 160px;
+}
+
 .ad-placeholder-content {
         display: flex;
         flex-direction: column;
         align-items: center;
 }
 
+.ad-icon-wrapper {
+        width: 80rpx;
+        height: 80rpx;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.2);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 12rpx;
+}
+
+.video-placeholder .ad-icon-wrapper {
+        width: 100rpx;
+        height: 100rpx;
+        background: rgba(255, 255, 255, 0.25);
+        margin-bottom: 16rpx;
+}
+
 .ad-icon {
-        font-size: 48rpx;
-        margin-bottom: 8rpx;
+        font-size: 40rpx;
+}
+
+.video-placeholder .ad-icon {
+        font-size: 52rpx;
 }
 
 .ad-text {
         font-size: 28rpx;
         color: #fff;
         margin-bottom: 8rpx;
+        font-weight: 500;
 }
 
-.ad-reward {
-        font-size: 32rpx;
+.ad-reward-badge {
+        display: flex;
+        align-items: baseline;
+        background: rgba(255, 255, 255, 0.2);
+        padding: 6rpx 24rpx;
+        border-radius: 30rpx;
+        margin-bottom: 10rpx;
+}
+
+.ad-reward-text {
+        font-size: 36rpx;
         color: #ffd700;
         font-weight: bold;
 }
 
-/* 奖励提示条 */
+.ad-reward-unit {
+        font-size: 22rpx;
+        color: rgba(255, 255, 255, 0.85);
+        margin-left: 4rpx;
+}
+
+.ad-hint-text {
+        font-size: 22rpx;
+        color: rgba(255, 255, 255, 0.65);
+}
+
+/* ==================== 奖励提示条 ==================== */
+
 .ad-reward-tip {
         padding: 14rpx 24rpx;
         text-align: center;
@@ -334,6 +402,22 @@ export default {
                 background-color: #fffbeb;
                 border-top-color: #fde68a;
         }
+}
+
+.loading-content {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+}
+
+.loading-spinner {
+        margin-right: 8rpx;
+        animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
 }
 
 .reward-tip-text {

@@ -234,6 +234,8 @@ export default {
                                 reward_per_feed: 50,
                                 ad_income_enabled: 0,
                                 platform_rate: 0.30,
+                                rewarded_video_adpid: '',
+                                reward_per_video: 200,
                         },
 
                         // 在线人数（模拟显示，不依赖WebSocket）
@@ -295,7 +297,8 @@ export default {
                  */
 
                 handleAdRewarded(data) {
-                        console.log('========== 🧧 红包页面广告奖励回调 ==========');
+                        const adLabel = data.adType === 'reward' ? '激励视频广告' : '信息流广告';
+                        console.log('========== 🧧 ' + adLabel + '奖励回调 ==========');
                         console.log('💰 广告平台给出总金币:', data.totalRewardCoin || 0);
                         console.log('📊 系统平台抽成比例:', this.adConfig.platform_rate ? (this.adConfig.platform_rate * 100).toFixed(0) + '%' : '未获取');
                         console.log('🏦 平台抽成金币:', data.platformCoin || 0);
@@ -351,6 +354,9 @@ export default {
                                         this.adConfig.reward_per_feed = data.reward_per_feed || 50;
                                         this.adConfig.ad_income_enabled = data.ad_income_enabled || 0;
                                         this.adConfig.platform_rate = data.platform_rate || 0.30;
+                                        // ★ 激励视频广告配置
+                                        this.adConfig.rewarded_video_adpid = data.rewarded_video_adpid || '';
+                                        this.adConfig.reward_per_video = (data.reward_per_video || data.reward_per_feed * 4 || 200);
 
                                         // 检查广告配置并提示
                                         this.checkAdConfigAndHint();
@@ -512,17 +518,39 @@ export default {
                                 this.pushCounter = 0;
                                 this.pushChatCountBeforeAd = 2 + Math.floor(Math.random() * 3);
 
-                                // 推送信息流广告
-                                if (this.adConfig.feed_adpid) {
-                                        const adMsg = this.createAdFeedMessage(
+                                // ★ 随机决定推信息流还是激励视频广告（激励视频概率更低，约30%）
+                                const hasFeedAdpid = !!this.adConfig.feed_adpid;
+                                const hasVideoAdpid = !!this.adConfig.rewarded_video_adpid;
+
+                                if (hasFeedAdpid && hasVideoAdpid) {
+                                        // 两种广告都有 → 70%信息流，30%激励视频
+                                        if (Math.random() < 0.3) {
+                                                this.messages.push(this.createAdVideoMessage(
+                                                        this.adConfig.rewarded_video_adpid,
+                                                        this.adConfig.reward_per_video || 200
+                                                ));
+                                                console.log('[RedBag] 推送激励视频广告, adpid=' + this.adConfig.rewarded_video_adpid);
+                                        } else {
+                                                this.messages.push(this.createAdFeedMessage(
+                                                        this.adConfig.feed_adpid,
+                                                        this.adConfig.reward_per_feed || 50
+                                                ));
+                                                console.log('[RedBag] 推送信息流广告, adpid=' + this.adConfig.feed_adpid);
+                                        }
+                                } else if (hasFeedAdpid) {
+                                        this.messages.push(this.createAdFeedMessage(
                                                 this.adConfig.feed_adpid,
-                                                this.adConfig.reward_per_feed || 50,
-                                                Date.now()
-                                        );
-                                        this.messages.push(adMsg);
+                                                this.adConfig.reward_per_feed || 50
+                                        ));
                                         console.log('[RedBag] 推送信息流广告, adpid=' + this.adConfig.feed_adpid);
+                                } else if (hasVideoAdpid) {
+                                        this.messages.push(this.createAdVideoMessage(
+                                                this.adConfig.rewarded_video_adpid,
+                                                this.adConfig.reward_per_video || 200
+                                        ));
+                                        console.log('[RedBag] 推送激励视频广告, adpid=' + this.adConfig.rewarded_video_adpid);
                                 } else {
-                                        // 没配置 adpid 时，推一条聊天消息代替
+                                        // 没配置广告位时，推一条聊天消息代替
                                         this.messages.push(this.createFakeChatMessage(names, msgs));
                                 }
                         } else {
@@ -579,6 +607,31 @@ export default {
                                         avatar: '/static/image/ad-avatar.png'
                                 },
                                 taskData: {
+                                        ad_type: 'feed',
+                                        adpid: adpid,
+                                        reward_coin: rewardCoin,
+                                        resource: {
+                                                adpid: adpid
+                                        }
+                                }
+                        };
+                },
+
+                /**
+                 * 创建一条激励视频广告消息对象
+                 */
+                createAdVideoMessage(adpid, rewardCoin) {
+                        return {
+                                id: 'ad_video_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6),
+                                type: 'ad_feed', // 复用同一个组件渲染，通过 taskData.ad_type 区分
+                                time: Date.now(),
+                                sender: 'system',
+                                user: {
+                                        nickname: '视频推荐',
+                                        avatar: '/static/image/ad-avatar.png'
+                                },
+                                taskData: {
+                                        ad_type: 'reward',
                                         adpid: adpid,
                                         reward_coin: rewardCoin,
                                         resource: {
