@@ -252,7 +252,8 @@ export default {
                 this.generateInitialMessages();
                 // ★ 启动持续推送（此时 avatarList 已就绪，feed_adpid 已就绪）
                 this.startContinuousPush();
-                // ★ 激励视频推送将在 loadAdOverview 配置加载完成后自动启动（已通过 await 保证）
+                // ★ 记录页面启动时间，用于激励视频间隔计算（首次需等待一个完整间隔后才推送）
+                this.rewardedVideoLastPushTime = Date.now();
                 // ★ 启动红包检查轮询（每10秒检查是否有新红包推送到聊天）
                 this.startAdRedPacketPolling();
                 // ★ 页面加载时立即执行一次结算检查（不等轮询定时器）
@@ -265,10 +266,8 @@ export default {
         },
 
         onUnload() {
-                // 停止持续推送
+                // 停止持续推送（激励视频已合并到持续推送中，无需单独停止）
                 this.stopContinuousPush();
-                // 停止激励视频推送
-                this.stopRewardedVideoPush();
                 // 停止红包轮询
                 this.stopAdRedPacketPolling();
                 // 离开页面时清理所有红包过期计时器
@@ -333,8 +332,7 @@ export default {
                         pushChatCountBeforeAd: 0,          // 下一批聊天消息还需要推几条才插广告
                         maxMessages: 150,                 // 消息列表最大保留数量（防止内存溢出）
 
-                        // ★ 激励视频推送定时器
-                        rewardedVideoPushTimer: null,     // 激励视频推送定时器
+                        // ★ 激励视频推送（已合并到持续推送逻辑中）
                         rewardedVideoLastPushTime: 0,     // 上次推送激励视频的时间戳
 
                         // ★ 头像相关
@@ -436,8 +434,7 @@ export default {
                                         // ★ 保存待释放金币余额
                                         this.freezeBalance = res.data.ad_freeze_balance || 0;
 
-                                        // ★ 配置加载完成后启动激励视频推送（解决竞态：onLoad同步调用时adpid仍为空）
-                                        this.startRewardedVideoPush();
+                                        // ★ 激励视频推送已合并到 doPushOneMessage() 中，配置通过 adConfig 自动生效
 
                                         // 检查广告配置并提示
                                         this.checkAdConfigAndHint();
@@ -599,8 +596,16 @@ export default {
                                 this.pushCounter = 0;
                                 this.pushChatCountBeforeAd = 2 + Math.floor(Math.random() * 3);
 
-                                // 推送信息流广告
-                                if (this.adConfig.feed_adpid) {
+                                // ★ 优先判断是否到了推送激励视频的时间
+                                if (this.shouldPushRewardedVideo()) {
+                                        const videoMsg = this.createRewardedVideoMessage(
+                                                this.adConfig.rewarded_video_adpid,
+                                                this.adConfig.reward_per_video || 200
+                                        );
+                                        this.messages.push(videoMsg);
+                                        console.log('[RedBag] 推送激励视频广告, adpid=' + this.adConfig.rewarded_video_adpid + ', 奖励=' + (this.adConfig.reward_per_video || 200) + '金币');
+                                } else if (this.adConfig.feed_adpid) {
+                                        // 未到激励视频时间 → 推送信息流广告
                                         const adMsg = this.createAdFeedMessage(
                                                 this.adConfig.feed_adpid,
                                                 this.adConfig.reward_per_feed || 50,
@@ -630,6 +635,26 @@ export default {
                         }
 
                         this.scrollToBottom();
+                },
+
+                // ==================== ★ 激励视频推送管理 ====================
+
+                /**
+                 * ★ 判断是否到了推送激励视频的时间
+                 * 每隔 rewarded_video_interval 秒（默认120秒）在信息流广告位置插入一条激励视频
+                 */
+                shouldPushRewardedVideo() {
+                        if (!this.adConfig.rewarded_video_adpid) return false;
+
+                        const intervalMs = (this.adConfig.rewarded_video_interval || 120) * 1000;
+                        const now = Date.now();
+
+                        // 如果从未推送过，或者距上次推送已超过间隔时间，则该推激励视频
+                        if (this.rewardedVideoLastPushTime === 0 || (now - this.rewardedVideoLastPushTime) >= intervalMs) {
+                                this.rewardedVideoLastPushTime = now;
+                                return true;
+                        }
+                        return false;
                 },
 
                 /**
@@ -709,82 +734,7 @@ export default {
                         };
                 },
 
-                // ==================== ★ 激励视频推送管理 ====================
 
-                /**
-                 * 启动激励视频定时推送
-                 * 每隔 rewarded_video_interval 秒（默认120秒）推送一条激励视频广告
-                 */
-                startRewardedVideoPush() {
-                        // 防止重复启动
-                        if (this.rewardedVideoPushTimer) return;
-
-                        // 如果没有配置激励视频 adpid，则不启动
-                        if (!this.adConfig.rewarded_video_adpid) {
-                                console.log('[RedBag] 未配置激励视频广告位ID，跳过激励视频推送');
-                                return;
-                        }
-
-                        // 记录启动时间，延迟一个间隔后首次推送
-                        this.rewardedVideoLastPushTime = Date.now();
-                        const intervalMs = (this.adConfig.rewarded_video_interval || 120) * 1000;
-
-                        console.log('[RedBag] 激励视频推送已启动，间隔=' + this.adConfig.rewarded_video_interval + '秒');
-
-                        const scheduleNext = () => {
-                                this.rewardedVideoPushTimer = setTimeout(() => {
-                                        this.doPushRewardedVideo();
-                                        scheduleNext(); // 递归调度
-                                }, intervalMs);
-                        };
-
-                        // 延迟一个间隔后首次推送激励视频
-                        this.rewardedVideoPushTimer = setTimeout(() => {
-                                this.doPushRewardedVideo();
-                                scheduleNext();
-                        }, intervalMs);
-                },
-
-                /**
-                 * 停止激励视频推送
-                 */
-                stopRewardedVideoPush() {
-                        if (this.rewardedVideoPushTimer) {
-                                clearTimeout(this.rewardedVideoPushTimer);
-                                this.rewardedVideoPushTimer = null;
-                                console.log('[RedBag] 激励视频推送已停止');
-                        }
-                },
-
-                /**
-                 * 推送一条激励视频广告消息
-                 */
-                doPushRewardedVideo() {
-                        if (!this.adConfig.rewarded_video_adpid) {
-                                console.log('[RedBag] 激励视频 adpid 未配置，跳过推送');
-                                return;
-                        }
-
-                        // 如果 adpid 发生变化（后台热更新配置），则更新
-                        if (this.adConfig.rewarded_video_adpid) {
-                                const videoMsg = this.createRewardedVideoMessage(
-                                        this.adConfig.rewarded_video_adpid,
-                                        this.adConfig.reward_per_video || 200
-                                );
-                                this.messages.push(videoMsg);
-                                this.rewardedVideoLastPushTime = Date.now();
-
-                                console.log('[RedBag] 推送激励视频广告, adpid=' + this.adConfig.rewarded_video_adpid + ', 奖励=' + (this.adConfig.reward_per_video || 200) + '金币');
-
-                                // 性能保护
-                                if (this.messages.length > this.maxMessages) {
-                                        const removeCount = this.messages.length - this.maxMessages;
-                                        this.messages.splice(0, removeCount);
-                                }
-
-                                this.scrollToBottom();
-                        }
-                },
 
                 /**
                  * 切换广告红包面板
