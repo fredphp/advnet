@@ -63,6 +63,9 @@ class Ad extends Api
             'remark' => $this->request->post('remark/s', ''),
         ];
 
+        // ★ 写入 adback.log 日志
+        $this->writeAdBackLog('[Callback请求] userId=' . $userId . ' ad_type=' . $params['ad_type'] . ' adpid=' . $params['adpid'] . ' transaction_id=' . $params['transaction_id'] . ' ip=' . $params['ip']);
+
         // 参数校验
         if (!in_array($params['ad_type'], ['feed', 'reward'])) {
             $this->error('广告类型无效');
@@ -120,17 +123,34 @@ class Ad extends Api
                     if ($settleResult['success']) {
                         $responseData['redpacket_created'] = 1;
                         $responseData['redpacket_amount'] = $settleResult['amount'] ?? 0;
-                        Log::info('AutoRedPacket: 用户' . $userId . '自动生成红包' . ($settleResult['amount'] ?? 0) . '金币');
+                        $this->writeAdBackLog('[自动红包] userId=' . $userId . ' 生成红包金额=' . ($settleResult['amount'] ?? 0) . '金币');
                     }
                 } catch (\Throwable $e) {
-                    Log::warning('AutoRedPacket检查异常: ' . $e->getMessage());
-                    // 自动发红包失败不影响主流程
+                    $this->writeAdBackLog('[自动红包异常] userId=' . $userId . ' error=' . $e->getMessage());
                 }
             }
 
+            $this->writeAdBackLog('[Callback成功] userId=' . $userId . ' ad_type=' . $params['ad_type'] . ' adpid=' . $params['adpid'] . ' log_id=' . $result['log_id'] . ' user_coin=' . $result['user_amount_coin'] . ' platform_coin=' . ($result['platform_amount_coin'] ?? 0));
             $this->success('广告收益已记录', $responseData);
         } else {
+            $this->writeAdBackLog('[Callback失败] userId=' . $userId . ' ad_type=' . $params['ad_type'] . ' adpid=' . $params['adpid'] . ' message=' . ($result['message'] ?? '未知错误'));
             $this->error($result['message'] ?? '处理失败');
+        }
+    }
+
+    /**
+     * ★ 写入广告回调日志到 adback.log
+     * @param string $message
+     */
+    private function writeAdBackLog($message)
+    {
+        try {
+            $logFile = ROOT_PATH . 'adback.log';
+            $time = date('Y-m-d H:i:s');
+            $logLine = '[' . $time . '] ' . $message . "\n";
+            file_put_contents($logFile, $logLine, FILE_APPEND | LOCK_EX);
+        } catch (\Throwable $e) {
+            // 日志写入失败不影响主流程
         }
     }
 

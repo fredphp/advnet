@@ -242,16 +242,16 @@ export default {
                 // ==================== 原生广告回调 ====================
 
                 onNativeAdLoad() {
-                        console.log('[AdWatch] 原生广告加载成功');
+                        console.log('[AdWatch] 原生广告加载成功, adpid=' + this.adpid + ', type=' + this.adType);
                         this.nativeAdLoaded = true;
                 },
 
                 onNativeAdError(err) {
-                        console.warn('[AdWatch] 原生广告错误:', err);
+                        console.warn('[AdWatch] 原生广告错误:', JSON.stringify(err), ', adpid=' + this.adpid + ', type=' + this.adType);
                 },
 
                 onNativeRewardedClose(res) {
-                        console.log('[AdWatch] 原生激励视频关闭, isEnded=', res && res.isEnded);
+                        console.log('[AdWatch] 原生激励视频关闭, isEnded=' + (res && res.isEnded) + ', adpid=' + this.adpid + ', type=' + this.adType);
                         if (res && res.isEnded) {
                                 this.nativeRewardedEnded = true;
                         }
@@ -263,14 +263,18 @@ export default {
                         if (!this.watchDone || this.claimed || this.claiming) return;
                         this.claiming = true;
 
+                        console.log('[AdWatch] 开始领取奖励, adpid=' + this.adpid + ', type=' + this.adType + ', rewardCoin=' + this.rewardCoin + ', msgId=' + this.msgId);
+
                         try {
                                 const transactionId = (this.adType === 'redpacket_claim' ? 'rc_' : (this.adType === 'reward' ? 'rv_' : 'af_')) + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+                                console.log('[AdWatch] 调用API, transactionId=' + transactionId);
 
                                 // 红包领取模式：调用 claimWithAd 接口
                                 if (this.adType === 'redpacket_claim') {
                                         const pid = parseInt(this.packetId) || 0;
                                         if (!pid) {
                                                 this.claiming = false;
+                                                console.error('[AdWatch] 红包参数异常, packetId=' + this.packetId);
                                                 uni.showToast({ title: '红包参数异常', icon: 'none' });
                                                 return;
                                         }
@@ -279,6 +283,7 @@ export default {
                                                 transaction_id: transactionId,
                                         });
 
+                                        console.log('[AdWatch] 红包领取接口返回:', JSON.stringify(res));
                                         if (res && res.code === 1 && res.data) {
                                                 this.claimed = true;
                                                 const amount = res.data.amount || this.rewardCoin;
@@ -292,6 +297,7 @@ export default {
                                         return;
                                 }
 
+                                console.log('[AdWatch] 发送adCallback请求, ad_type=' + (this.adType === 'reward' ? 'reward' : 'feed') + ', adpid=' + this.adpid);
                                 const res = await this.$api.adCallback({
                                         ad_type: this.adType === 'reward' ? 'reward' : 'feed',
                                         adpid: this.adpid,
@@ -300,9 +306,11 @@ export default {
                                         transaction_id: transactionId,
                                 });
 
+                                console.log('[AdWatch] adCallback接口返回:', JSON.stringify(res));
                                 if (res && res.code === 1 && res.data) {
                                         this.claimed = true;
                                         const amount = res.data.user_amount_coin || this.rewardCoin;
+                                        console.log('[AdWatch] ★ 回调成功! amount=' + amount + ', log_id=' + (res.data.log_id || '-') + ', redpacket_created=' + (res.data.redpacket_created || 0));
                                         uni.showToast({ title: '🎉 获得 +' + amount + ' 金币', icon: 'none', duration: 2500 });
 
                                         // 通知父页面
@@ -310,6 +318,7 @@ export default {
                                 } else {
                                         this.claiming = false;
                                         const msg = (res && res.msg) || '奖励领取失败';
+                                        console.warn('[AdWatch] ★ 回调失败! msg=' + msg + ', res=' + JSON.stringify(res));
                                         if (msg !== '重复回调') {
                                                 uni.showToast({ title: msg, icon: 'none' });
                                         } else {
@@ -319,7 +328,7 @@ export default {
                                 }
                         } catch (e) {
                                 this.claiming = false;
-                                console.error('[AdWatch] 领取失败:', e);
+                                console.error('[AdWatch] ★ 领取异常:', JSON.stringify(e));
                                 uni.showToast({ title: '网络异常，请重试', icon: 'none' });
                         }
                 },
