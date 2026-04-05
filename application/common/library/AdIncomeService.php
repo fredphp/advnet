@@ -269,179 +269,34 @@ class AdIncomeService
     }
 
     /**
-     * 定时任务：将 ad_freeze_balance 转换为红包
+     * ★ 已废弃：定时任务旧版结算（直接消费 freeze_balance 创建真实红包）
+     *
+     * 新流程使用 checkAndAutoSettle() 创建通知红包（不消费 freeze_balance）
+     * 用户通过 claimFreezeBalance() 主动领取时才消费 freeze_balance
+     *
+     * 此方法保留仅为兼容旧 cron 任务，实际不再执行任何操作。
      *
      * @param int $batchSize 每批处理数量
-     * @return array 处理结果
+     * @return array 处理结果（始终返回空结果）
+     * @deprecated 请使用 checkAndAutoSettle() + claimFreezeBalance() 新流程
      */
     public function settleToRedPacket($batchSize = 100)
     {
-        $result = [
+        Log::info('settleToRedPacket: 旧版批量结算已废弃，新流程使用 checkAndAutoSettle + claimFreezeBalance');
+        return [
             'total_users' => 0,
             'packets_created' => 0,
             'total_coin' => 0,
-            'errors' => [],
+            'errors' => ['旧版批量结算已废弃，不再执行'],
         ];
-
-        try {
-            // 1. 查询 ad_freeze_balance > 0 的用户
-            $accounts = Db::name('coin_account')
-                ->where('ad_freeze_balance', '>', 0)
-                ->limit($batchSize)
-                ->select();
-
-            $result['total_users'] = count($accounts);
-
-            if (empty($accounts)) {
-                return $result;
-            }
-
-            // 2. 获取红包基数额度和最小金额配置
-            $threshold = (int)$this->getConfig('redpacket_threshold', 1000);
-            $minAmount = (int)$this->getConfig('min_redpacket_amount', 100);
-            $expireHours = (int)$this->getConfig('redpacket_expire_hours', 48);
-            $expireTime = time() + $expireHours * 3600;
-
-            foreach ($accounts as $account) {
-                try {
-                    Db::startTrans();
-
-                    $userId = (int)$account['user_id'];
-                    $freezeBalance = (int)round($account['ad_freeze_balance']);
-
-                    // ★ 跳过未达到红包基数额度的用户（与 checkAndAutoSettle 保持一致）
-                    if ($freezeBalance < $threshold) {
-                        Db::rollback();
-                        continue;
-                    }
-
-                    // 跳过金额不足的用户
-                    if ($freezeBalance < $minAmount) {
-                        Db::rollback();
-                        continue;
-                    }
-
-                    // 获取分布式锁
-                    $lockKey = self::LOCK_PREFIX . $userId;
-                    $lock = $this->getLock($lockKey, 10);
-
-                    if (!$lock) {
-                        Db::rollback();
-                        Log::warning("AdSettle: 用户{$userId}获取锁失败");
-                        continue;
-                    }
-
-                    try {
-                        // 重新加锁查询
-                        $freshAccount = Db::name('coin_account')
-                            ->where('user_id', $userId)
-                            ->lock(true)
-                            ->find();
-
-                        $currentFreeze = (int)round($freshAccount['ad_freeze_balance']);
-
-                        // ★ 重新检查红包基数额度（防止并发修改）
-                        if ($currentFreeze < $threshold) {
-                            Db::rollback();
-                            $this->releaseLock($lockKey);
-                            continue;
-                        }
-
-                        if ($currentFreeze < $minAmount) {
-                            Db::rollback();
-                            $this->releaseLock($lockKey);
-                            continue;
-                        }
-
-                        // ★ 获取待释放的收益记录（跨分表查找）
-                        $pendingRecords = AdIncomeLogSplit::getPendingRecords($userId);
-
-                        if (empty($pendingRecords)) {
-                            Db::rollback();
-                            $this->releaseLock($lockKey);
-                            continue;
-                        }
-
-                        // 计算实际可释放金额（取 pending 记录总和和 ad_freeze_balance 的较小值）
-                        $pendingTotal = 0;
-                        $sourceIds = [];
-                        foreach ($pendingRecords as $record) {
-                            $pendingTotal += (int)$record['user_amount_coin'];
-                            $sourceIds[] = $record['id'];
-                        }
-
-                        $packetAmount = min($pendingTotal, $currentFreeze);
-                        $packetAmount = max(0, $packetAmount);
-
-                        if ($packetAmount < $minAmount) {
-                            Db::rollback();
-                            $this->releaseLock($lockKey);
-                            continue;
-                        }
-
-                        // ★ 创建红包（写入分表）
-                        $packetData = [
-                            'user_id' => $userId,
-                            'amount' => $packetAmount,
-                            'source' => AdRedPacket::SOURCE_AD_INCOME,
-                            'source_ids' => implode(',', $sourceIds),
-                            'status' => AdRedPacket::STATUS_UNCLAIMED,
-                            'expire_time' => $expireTime,
-                        ];
-                        $packetResult = AdRedPacketSplit::createPacket($packetData);
-                        if (!$packetResult['success']) {
-                            throw new Exception($packetResult['message'] ?? '红包创建失败');
-                        }
-
-                        // 清空 ad_freeze_balance
-                        $affected = Db::name('coin_account')
-                            ->where('user_id', $userId)
-                            ->where('version', $freshAccount['version'])
-                            ->update([
-                                'ad_freeze_balance' => 0,
-                                'version' => (int)$freshAccount['version'] + 1,
-                                'updatetime' => time(),
-                            ]);
-
-                        if ($affected === 0) {
-                            throw new Exception('账户更新失败');
-                        }
-
-                        // ★ 标记收益记录为已释放（跨分表更新）
-                        AdIncomeLogSplit::batchUpdateStatus(
-                            $userId,
-                            [AdIncomeLog::STATUS_CONFIRMED],
-                            AdIncomeLog::STATUS_RELEASED
-                        );
-
-                        Db::commit();
-
-                        $result['packets_created']++;
-                        $result['total_coin'] += $packetAmount;
-
-                    } catch (Exception $e) {
-                        Db::rollback();
-                        $result['errors'][] = "用户{$userId}: " . $e->getMessage();
-                        Log::error("AdSettle 用户{$userId}失败: " . $e->getMessage());
-                    } finally {
-                        $this->releaseLock($lockKey);
-                    }
-
-                } catch (\Throwable $e) {
-                    Log::error("AdSettle 处理用户{$account['user_id']}异常: " . $e->getMessage());
-                    $result['errors'][] = "用户{$account['user_id']}: " . $e->getMessage();
-                }
-            }
-
-        } catch (\Throwable $e) {
-            Log::error('AdSettle 批量处理失败: ' . $e->getMessage());
-        }
-
-        return $result;
     }
 
     /**
      * 领取广告红包
+     *
+     * ★ 新逻辑：区分通知红包和真实红包
+     * - 通知红包（source=freeze_notify, amount=0）→ 转发到 claimFreezeBalance
+     * - 真实红包（source=ad_income, amount>0）→ 直接发放金币到 balance
      *
      * @param int $userId 用户ID
      * @param int $packetId 红包ID
@@ -508,9 +363,22 @@ class AdIncomeService
                 return $result;
             }
 
+            // ★ 判断红包类型：通知红包 → 走 claimFreezeBalance 流程
+            $source = $packet['source'] ?? '';
             $amount = (int)round($packet['amount']);
 
-            // ★ 更新红包状态（跨分表更新）
+            if ($source === 'freeze_notify' || $amount <= 0) {
+                Db::rollback();
+                $this->releaseLock($lockKey);
+
+                // ★ 通知红包：走 claimFreezeBalance 流程（ad_freeze_balance → balance）
+                Log::info("ClaimRedPacket: 用户{$userId}红包{$packetId}为通知红包，转发到claimFreezeBalance");
+                $freezeResult = $this->claimFreezeBalance($userId);
+                return $freezeResult;
+            }
+
+            // ★ 真实红包：直接发放金币到 balance
+            // 更新红包状态（跨分表更新）
             if (isset($packet['_from_table'])) {
                 Db::name($packet['_from_table'])->where('id', $packetId)
                     ->update([
@@ -543,9 +411,10 @@ class AdIncomeService
                 $result['message'] = '领取成功';
             } else {
                 // 金币发放失败，回滚红包状态
-                $packet->status = AdRedPacket::STATUS_UNCLAIMED;
-                $packet->claim_time = null;
-                $packet->save();
+                if (isset($packet['_from_table'])) {
+                    Db::name($packet['_from_table'])->where('id', $packetId)
+                        ->update(['status' => AdRedPacket::STATUS_UNCLAIMED, 'claim_time' => null, 'updatetime' => time()]);
+                }
                 $result['message'] = $coinResult['message'] ?? '发放失败';
             }
 
@@ -1142,7 +1011,7 @@ class AdIncomeService
                 'freeze_balance_claim',
                 'freeze_balance_claim',
                 0,
-                '领取待释放金币'
+                '领取待释放金币(空闲钱包→可提现金币)'
             );
 
             if ($coinResult['success']) {
@@ -1159,6 +1028,21 @@ class AdIncomeService
                     }
                 } catch (\Throwable $e) {
                     Log::warning("ClaimFreezeBalance: 标记通知红包失败: " . $e->getMessage());
+                }
+
+                // ★ 完整记录链：标记相关 ad_income_log 为已释放状态
+                // 保持 ad_income_log 的状态流转：PENDING → CONFIRMED → RELEASED
+                try {
+                    $releasedCount = AdIncomeLogSplit::batchUpdateStatus(
+                        $userId,
+                        [AdIncomeLog::STATUS_CONFIRMED],
+                        AdIncomeLog::STATUS_RELEASED
+                    );
+                    if ($releasedCount > 0) {
+                        Log::info("ClaimFreezeBalance: 用户{$userId}标记{$releasedCount}条广告收益记录为RELEASED");
+                    }
+                } catch (\Throwable $e) {
+                    Log::warning("ClaimFreezeBalance: 标记收益记录RELEASED失败: " . $e->getMessage());
                 }
             } else {
                 // 金币发放失败，回滚 ad_freeze_balance

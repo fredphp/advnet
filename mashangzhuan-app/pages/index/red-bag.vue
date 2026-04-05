@@ -172,28 +172,50 @@
                 <view class="freeze-modal-mask" v-if="showFreezeBagModal" @click="closeFreezeBagModal">
                         <view class="freeze-modal" @click.stop>
                                 <view class="freeze-modal-header">
-                                        <text class="freeze-modal-title">🎉 待领取金币</text>
+                                        <text class="freeze-modal-title">{{ freezeClaimed ? '🎉 领取成功' : '🎉 待领取金币' }}</text>
                                 </view>
                                 <view class="freeze-modal-body">
                                         <view class="freeze-amount-area">
-                                                <text class="freeze-amount-number">{{ freezeBalance }}</text>
+                                                <text class="freeze-amount-number">{{ freezeClaimed ? freezeClaimAmount : freezeBalance }}</text>
                                                 <text class="freeze-amount-unit">金币</text>
                                         </view>
-                                        <text class="freeze-amount-desc">观看激励视频后即可领取</text>
+                                        <!-- 已领取 -->
+                                        <text class="freeze-amount-desc" v-if="freezeClaimed">
+                                                已转入可提现金币余额
+                                        </text>
+                                        <!-- 从观看视频返回但领取失败：可重试领取 -->
+                                        <text class="freeze-amount-desc" v-else-if="showFreezeClaimButton && !freezeClaiming">
+                                                观看完成，点击下方按钮领取金币
+                                        </text>
+                                        <!-- 未观看视频 -->
+                                        <text class="freeze-amount-desc" v-else-if="!showFreezeClaimButton">
+                                                观看激励视频后即可领取
+                                        </text>
+                                        <!-- 领取中 -->
+                                        <text class="freeze-amount-desc" v-else-if="freezeClaiming">
+                                                领取中，请稍候...
+                                        </text>
                                 </view>
                                 <view class="freeze-modal-actions">
+                                        <!-- 领取中 -->
                                         <view v-if="freezeClaiming" class="freeze-action-btn freeze-action-disabled">
                                                 <text class="freeze-action-text">领取中...</text>
                                         </view>
+                                        <!-- 已领取 -->
                                         <view v-else-if="freezeClaimed" class="freeze-action-btn freeze-action-done">
                                                 <text class="freeze-action-text">已领取 {{ freezeClaimAmount }} 金币</text>
                                         </view>
+                                        <!-- ★ 从观看视频返回时：显示"直接领取"按钮（领取失败时可重试） -->
+                                        <view v-else-if="showFreezeClaimButton" class="freeze-action-btn freeze-action-claim" @click="claimFreezeBalance">
+                                                <text class="freeze-action-text">领取 {{ freezeBalance }} 金币</text>
+                                        </view>
+                                        <!-- 未观看视频：显示"观看视频领取"按钮 -->
                                         <view v-else class="freeze-action-btn freeze-action-claim" @click="goFreezeClaim">
                                                 <text class="freeze-action-text">观看视频领取</text>
                                         </view>
                                 </view>
                                 <view class="freeze-modal-close" @click="closeFreezeBagModal">
-                                        <text class="freeze-close-text">关闭</text>
+                                        <text class="freeze-close-text">{{ freezeClaimed ? '关闭' : '取消' }}</text>
                                 </view>
                         </view>
                 </view>
@@ -249,6 +271,13 @@ export default {
         onShow() {
                 // 每次显示页面时刷新广告红包摘要
                 this.loadAdOverview();
+                // ★ 监听广告观看结果事件（用于 freeze_claim 返回后弹出领取界面）
+                uni.$on('ad-watch-result', this.onAdWatchResult);
+        },
+
+        onHide() {
+                // 页面隐藏时移除事件监听（避免重复监听）
+                uni.$off('ad-watch-result', this.onAdWatchResult);
         },
 
         onUnload() {
@@ -262,6 +291,8 @@ export default {
                 this.stopCloseLock();
                 // 离开页面时重置累加数据
                 this.resetRedbag();
+                // 移除事件监听
+                uni.$off('ad-watch-result', this.onAdWatchResult);
                 // 重置待释放金币弹窗状态
                 this.showFreezeBagModal = false;
                 this.freezeClaimed = false;
@@ -341,6 +372,7 @@ export default {
                         freezeClaiming: false,           // 是否正在领取中
                         freezeClaimed: false,            // 是否已领取
                         freezeClaimAmount: 0,            // 领取到的金额
+                        showFreezeClaimButton: false,    // 是否显示"直接领取"按钮（从观看视频返回时为true）
                 };
         },
 
@@ -960,8 +992,9 @@ export default {
 
                 /**
                  * 打开待领取红包弹窗
+                 * @param {boolean} showClaimButton - 是否显示"直接领取"按钮（从观看视频返回时显示）
                  */
-                openFreezeBagModal() {
+                openFreezeBagModal(showClaimButton = false) {
                         if (this.freezeBalance <= 0) {
                                 uni.showToast({ title: '暂无可领取的金币', icon: 'none' });
                                 return;
@@ -969,6 +1002,7 @@ export default {
                         this.freezeClaimed = false;
                         this.freezeClaiming = false;
                         this.freezeClaimAmount = 0;
+                        this.showFreezeClaimButton = showClaimButton;
                         this.showFreezeBagModal = true;
                 },
 
@@ -981,6 +1015,66 @@ export default {
                                 // 领取成功后刷新数据
                                 this.freezeClaimed = false;
                                 this.loadAdOverview();
+                        }
+                },
+
+                /**
+                 * ★ 监听广告观看结果事件
+                 * freeze_claim: 观看页已自动领取，弹窗显示领取结果
+                 */
+                onAdWatchResult(data) {
+                        console.log('[RedBag] 收到 ad-watch-result 事件:', JSON.stringify(data));
+                        if (data && data.adType === 'freeze_claim') {
+                                const extra = data.progress || {};
+                                // ★ 观看页已自动调用 claimFreezeBalance API
+                                if (extra.freezeClaimed) {
+                                        // 领取成功：刷新数据并弹窗显示"已领取"
+                                        this.freezeClaimed = true;
+                                        this.freezeClaimAmount = extra.freezeClaimAmount || data.amount || 0;
+                                        this.loadAdOverview().then(() => {
+                                                setTimeout(() => {
+                                                        this.showFreezeClaimButton = false;
+                                                        this.showFreezeBagModal = true;
+                                                }, 500);
+                                        });
+                                } else if (data.success) {
+                                        // 观看完成但领取失败：刷新数据，弹窗可重试
+                                        this.loadAdOverview().then(() => {
+                                                setTimeout(() => {
+                                                        this.openFreezeBagModal(true);
+                                                }, 500);
+                                        });
+                                }
+                        }
+                },
+
+                /**
+                 * ★ 在红包页面直接领取待释放金币（调用 claimFreezeBalance API）
+                 */
+                async claimFreezeBalance() {
+                        if (this.freezeClaiming || this.freezeClaimed) return;
+                        this.freezeClaiming = true;
+
+                        try {
+                                const transactionId = 'fc_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+                                const res = await this.$api.adClaimFreezeBalance({
+                                        transaction_id: transactionId,
+                                });
+
+                                console.log('[RedBag] claimFreezeBalance 返回:', JSON.stringify(res));
+                                if (res && res.code === 1 && res.data) {
+                                        this.freezeClaimed = true;
+                                        this.freezeClaimAmount = res.data.amount || 0;
+                                        uni.showToast({ title: '🎉 领取成功 +' + this.freezeClaimAmount + ' 金币', icon: 'none', duration: 2000 });
+                                } else {
+                                        this.freezeClaiming = false;
+                                        const msg = (res && res.msg) || '领取失败';
+                                        uni.showToast({ title: msg, icon: 'none' });
+                                }
+                        } catch (e) {
+                                this.freezeClaiming = false;
+                                console.error('[RedBag] claimFreezeBalance 异常:', JSON.stringify(e));
+                                uni.showToast({ title: '网络异常，请重试', icon: 'none' });
                         }
                 },
 
