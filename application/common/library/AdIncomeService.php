@@ -758,6 +758,84 @@ class AdIncomeService
     }
 
     /**
+     * 确保 ad_view_counter 表存在（自动建表）
+     *
+     * 首次使用阈值奖励功能时，若表不存在则自动创建。
+     * 同时检查并插入 advn_config 中缺失的阈值配置项。
+     *
+     * @return bool 表是否可用
+     */
+    protected function ensureAdViewCounterTable()
+    {
+        static $ensured = false;
+        if ($ensured) {
+            return true;
+        }
+
+        try {
+            // 检查表是否存在
+            $prefix = \think\Config::get('database.prefix');
+            $fullTable = $prefix . 'ad_view_counter';
+            $rows = Db::query("SHOW TABLES LIKE '{$fullTable}'");
+
+            if (empty($rows)) {
+                // 表不存在 → 自动创建
+                $sql = "CREATE TABLE IF NOT EXISTS `{$fullTable}` (
+                    `id` BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                    `user_id` INT UNSIGNED NOT NULL COMMENT '用户ID',
+                    `ad_type` VARCHAR(20) NOT NULL DEFAULT 'feed' COMMENT '广告类型: feed=信息流, reward=激励视频',
+                    `view_date` DATE NOT NULL COMMENT '浏览日期',
+                    `view_count` INT UNSIGNED NOT NULL DEFAULT 0 COMMENT '当前轮已浏览次数',
+                    `reward_count` INT UNSIGNED NOT NULL DEFAULT 0 COMMENT '当日已领奖次数',
+                    `createtime` INT UNSIGNED DEFAULT 0,
+                    `updatetime` INT UNSIGNED DEFAULT 0,
+                    UNIQUE KEY `uk_user_type_date` (`user_id`, `ad_type`, `view_date`),
+                    KEY `idx_user_id` (`user_id`),
+                    KEY `idx_view_date` (`view_date`)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='广告浏览计数器（按天自动重置）'";
+                Db::execute($sql);
+                Log::info('ensureAdViewCounterTable: 自动创建 advn_ad_view_counter 表成功');
+            }
+
+            // 确保配置项存在
+            $this->ensureConfigExists('feed_reward_threshold', 'ad', '信息流奖励阈值（次）', 'number', '5', '用户浏览多少次信息流广告后发放一次奖励，0=每次都发', 310);
+            $this->ensureConfigExists('video_reward_threshold', 'ad', '激励视频奖励阈值（次）', 'number', '3', '用户观看多少次激励视频后发放一次奖励，0=每次都发', 311);
+
+            $ensured = true;
+            return true;
+        } catch (\Throwable $e) {
+            Log::error('ensureAdViewCounterTable 失败: ' . $e->getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * 确保单条配置存在（不存在则插入，存在则跳过）
+     */
+    protected function ensureConfigExists($name, $group, $title, $type, $value, $remark, $weigh)
+    {
+        try {
+            $count = Db::name('config')->where('name', $name)->where('`group`', $group)->count();
+            if ($count == 0) {
+                Db::name('config')->insert([
+                    'name'     => $name,
+                    '`group`' => $group,
+                    'title'    => $title,
+                    'type'     => $type,
+                    'value'    => $value,
+                    'remark'   => $remark,
+                    'weigh'    => $weigh,
+                    'status'   => 'normal',
+                    'updatetime'=> time(),
+                    'createtime'=> time(),
+                ]);
+            }
+        } catch (\Throwable $e) {
+            // 配置插入失败不影响主流程
+        }
+    }
+
+    /**
      * 记录广告浏览并检查阈值奖励
      *
      * 流程：浏览+1 → 检查是否达到阈值 → 达到则触发奖励写入 ad_freeze_balance
@@ -782,6 +860,12 @@ class AdIncomeService
         $userId = (int)$userId;
         if ($userId <= 0) {
             $result['message'] = '用户ID无效';
+            return $result;
+        }
+
+        // ★ 自动建表（首次使用时确保表存在）
+        if (!$this->ensureAdViewCounterTable()) {
+            $result['message'] = '系统初始化中，请稍后重试';
             return $result;
         }
 
@@ -905,11 +989,18 @@ class AdIncomeService
         $feedReward     = (int)$this->getConfig('reward_per_feed', 50);
         $videoReward    = (int)$this->getConfig('reward_per_video', 200);
 
-        // 批量查询（一条SQL）
-        $counters = Db::name('ad_view_counter')
-            ->where('user_id', $userId)
-            ->where('view_date', $today)
-            ->select();
+        // ★ 确保表存在（防止首次调用时表未创建导致 overview 接口异常）
+        $counters = [];
+        try {
+            $this->ensureAdViewCounterTable();
+            // 批量查询（一条SQL）
+            $counters = Db::name('ad_view_counter')
+                ->where('user_id', $userId)
+                ->where('view_date', $today)
+                ->select();
+        } catch (\Throwable $e) {
+            Log::warning('getAdViewProgress 查询失败: ' . $e->getMessage());
+        }
 
         $feedData  = ['view_count' => 0, 'reward_count' => 0];
         $videoData = ['view_count' => 0, 'reward_count' => 0];
