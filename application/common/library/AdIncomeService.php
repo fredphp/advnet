@@ -999,6 +999,115 @@ class AdIncomeService
     }
 
     /**
+     * 领取待释放金币（空闲钱包）
+     *
+     * 将 ad_freeze_balance 转移到 balance
+     * 前端调用时机：用户观看激励视频后
+     *
+     * @param int $userId
+     * @return array
+     */
+    public function claimFreezeBalance($userId)
+    {
+        $result = [
+            'success' => false,
+            'message' => '',
+            'amount' => 0,
+            'balance' => 0,
+        ];
+
+        $userId = (int)$userId;
+        if ($userId <= 0) {
+            $result['message'] = '用户ID无效';
+            return $result;
+        }
+
+        // 获取分布式锁
+        $lockKey = self::AD_LOCK_PREFIX . 'freeze_claim:' . $userId;
+        $lock = $this->getLock($lockKey, 10);
+
+        if (!$lock) {
+            $result['message'] = '操作频繁，请稍后重试';
+            return $result;
+        }
+
+        try {
+            Db::startTrans();
+
+            // 锁定用户账户行
+            $account = Db::name('coin_account')
+                ->where('user_id', $userId)
+                ->lock(true)
+                ->find();
+
+            if (!$account) {
+                Db::rollback();
+                $result['message'] = '账户不存在';
+                return $result;
+            }
+
+            $amount = (int)round($account['ad_freeze_balance']);
+
+            if ($amount <= 0) {
+                Db::rollback();
+                $result['message'] = '暂无可领取的待释放金币';
+                return $result;
+            }
+
+            // 清空 ad_freeze_balance，乐观锁更新
+            $affected = Db::name('coin_account')
+                ->where('user_id', $userId)
+                ->where('version', $account['version'])
+                ->update([
+                    'ad_freeze_balance' => 0,
+                    'version' => (int)$account['version'] + 1,
+                    'updatetime' => time(),
+                ]);
+
+            if ($affected === 0) {
+                throw new Exception('账户更新失败，请重试');
+            }
+
+            Db::commit();
+
+            // 通过 CoinService 将金币加入 balance（独立事务）
+            $coinService = new CoinService();
+            $coinResult = $coinService->addCoin(
+                $userId,
+                $amount,
+                'freeze_balance_claim',
+                'freeze_balance_claim',
+                0,
+                '领取待释放金币'
+            );
+
+            if ($coinResult['success']) {
+                $result['success'] = true;
+                $result['amount'] = $amount;
+                $result['balance'] = $coinResult['balance'];
+                $result['message'] = '领取成功';
+            } else {
+                // 金币发放失败，回滚 ad_freeze_balance
+                Db::name('coin_account')
+                    ->where('user_id', $userId)
+                    ->update([
+                        'ad_freeze_balance' => Db::raw('ad_freeze_balance + ' . $amount),
+                    ]);
+                $result['message'] = $coinResult['message'] ?? '发放失败';
+            }
+
+        } catch (\Throwable $e) {
+            Db::rollback();
+            $result['message'] = $e->getMessage();
+            Log::error('ClaimFreezeBalance error userId=' . $userId . ': ' . $e->getMessage());
+        } finally {
+            $this->releaseLock($lockKey);
+        }
+
+        return $result;
+    }
+
+    /**
      * 创建金币账户
      */
     protected function createCoinAccount($userId)

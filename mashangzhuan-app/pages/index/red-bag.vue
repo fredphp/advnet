@@ -32,6 +32,20 @@
                                 <ad-banner></ad-banner>
                         </view>
 
+                        <!-- ★ 待释放金币红包卡片 -->
+                        <view class="freeze-bag-card" v-if="freezeBalance > 0" @click="openFreezeBagModal">
+                                <view class="freeze-bag-left">
+                                        <text class="freeze-bag-icon">🧧</text>
+                                        <view class="freeze-bag-info">
+                                                <text class="freeze-bag-title">待领取金币</text>
+                                                <text class="freeze-bag-amount">{{ freezeBalance }} 金币</text>
+                                        </view>
+                                </view>
+                                <view class="freeze-bag-btn">
+                                        <text class="freeze-bag-btn-text">立即领取</text>
+                                </view>
+                        </view>
+
                         <!-- 消息列表 -->
                         <scroll-view class="message-list" scroll-y scroll-with-animation
                                 :style="{height: scrollHeight + 'px'}"
@@ -168,6 +182,36 @@
                         </view>
                 </view>
 
+                <!-- ★ 待释放金币领取弹窗 -->
+                <view class="freeze-modal-mask" v-if="showFreezeBagModal" @click="closeFreezeBagModal">
+                        <view class="freeze-modal" @click.stop>
+                                <view class="freeze-modal-header">
+                                        <text class="freeze-modal-title">🎉 待领取金币</text>
+                                </view>
+                                <view class="freeze-modal-body">
+                                        <view class="freeze-amount-area">
+                                                <text class="freeze-amount-number">{{ freezeBalance }}</text>
+                                                <text class="freeze-amount-unit">金币</text>
+                                        </view>
+                                        <text class="freeze-amount-desc">观看激励视频后即可领取</text>
+                                </view>
+                                <view class="freeze-modal-actions">
+                                        <view v-if="freezeClaiming" class="freeze-action-btn freeze-action-disabled">
+                                                <text class="freeze-action-text">领取中...</text>
+                                        </view>
+                                        <view v-else-if="freezeClaimed" class="freeze-action-btn freeze-action-done">
+                                                <text class="freeze-action-text">已领取 {{ freezeClaimAmount }} 金币</text>
+                                        </view>
+                                        <view v-else class="freeze-action-btn freeze-action-claim" @click="goFreezeClaim">
+                                                <text class="freeze-action-text">观看视频领取</text>
+                                        </view>
+                                </view>
+                                <view class="freeze-modal-close" @click="closeFreezeBagModal">
+                                        <text class="freeze-close-text">关闭</text>
+                                </view>
+                        </view>
+                </view>
+
                 <!-- 底部导航 -->
                 <fa-tabbar></fa-tabbar>
         </view>
@@ -229,6 +273,10 @@ export default {
                 this.stopCloseLock();
                 // 离开页面时重置累加数据
                 this.resetRedbag();
+                // 重置待释放金币弹窗状态
+                this.showFreezeBagModal = false;
+                this.freezeClaimed = false;
+                this.freezeClaiming = false;
         },
 
         data() {
@@ -297,6 +345,13 @@ export default {
                         adRedPacketPollTimer: null,        // 红包轮询定时器
                         lastKnownRedPacketCount: 0,        // 上次已知的红包数量
                         pushedRedPacketIds: [],             // 已推送到聊天流的红包ID（避免重复推送）
+
+                        // ★ 待释放金币红包
+                        freezeBalance: 0,              // 当前待释放金币余额
+                        showFreezeBagModal: false,       // 是否显示待领取红包弹窗
+                        freezeClaiming: false,           // 是否正在领取中
+                        freezeClaimed: false,            // 是否已领取
+                        freezeClaimAmount: 0,            // 领取到的金额
                 };
         },
 
@@ -373,6 +428,9 @@ export default {
                                         // ★ 保存广告浏览进度
                                         this.feedViewProgress = res.data.feed_view_progress || null;
                                         this.rewardViewProgress = res.data.reward_view_progress || null;
+
+                                        // ★ 保存待释放金币余额
+                                        this.freezeBalance = res.data.ad_freeze_balance || 0;
 
                                         // ★ 配置加载完成后启动激励视频推送（解决竞态：onLoad同步调用时adpid仍为空）
                                         this.startRewardedVideoPush();
@@ -883,6 +941,55 @@ export default {
                                         duration: 2000
                                 });
                         }
+                },
+
+                // ==================== ★ 待释放金币领取 ====================
+
+                /**
+                 * 打开待领取红包弹窗
+                 */
+                openFreezeBagModal() {
+                        if (this.freezeBalance <= 0) {
+                                uni.showToast({ title: '暂无可领取的金币', icon: 'none' });
+                                return;
+                        }
+                        this.freezeClaimed = false;
+                        this.freezeClaiming = false;
+                        this.freezeClaimAmount = 0;
+                        this.showFreezeBagModal = true;
+                },
+
+                /**
+                 * 关闭待领取红包弹窗
+                 */
+                closeFreezeBagModal() {
+                        this.showFreezeBagModal = false;
+                        if (this.freezeClaimed) {
+                                // 领取成功后刷新数据
+                                this.freezeClaimed = false;
+                                this.loadAdOverview();
+                        }
+                },
+
+                /**
+                 * 跳转到观看激励视频页面领取冻结金币
+                 */
+                goFreezeClaim() {
+                        this.showFreezeBagModal = false;
+                        const params = {
+                                type: 'freeze_claim',
+                                rewardCoin: this.freezeBalance,
+                                watchSeconds: 30,
+                                msgId: 'freeze_' + Date.now(),
+                        };
+                        const query = Object.keys(params).map(k => k + '=' + params[k]).join('&');
+                        uni.navigateTo({
+                                url: '/pages/ad/watch?' + query,
+                                fail: (err) => {
+                                        console.error('[RedBag] 跳转领取页失败:', err);
+                                        uni.showToast({ title: '页面跳转失败', icon: 'none' });
+                                }
+                        });
                 },
 
                 // ==================== 红包自动过期机制 ====================
@@ -1541,5 +1648,161 @@ export default {
 
 .close-disabled {
         opacity: 0.4;
+}
+
+/* ★ 待释放金币红包卡片 */
+.freeze-bag-card {
+        margin: 0 20rpx 16rpx;
+        padding: 24rpx 30rpx;
+        background: linear-gradient(135deg, #fff5f5, #fff0e6);
+        border-radius: 16rpx;
+        border: 1rpx solid #ffe0d0;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-shrink: 0;
+}
+
+.freeze-bag-left {
+        display: flex;
+        align-items: center;
+}
+
+.freeze-bag-icon {
+        font-size: 48rpx;
+        margin-right: 20rpx;
+}
+
+.freeze-bag-info {
+        display: flex;
+        flex-direction: column;
+}
+
+.freeze-bag-title {
+        font-size: 26rpx;
+        color: #999;
+        margin-bottom: 6rpx;
+}
+
+.freeze-bag-amount {
+        font-size: 36rpx;
+        font-weight: 800;
+        color: #e74c3c;
+}
+
+.freeze-bag-btn {
+        padding: 14rpx 36rpx;
+        background: linear-gradient(135deg, #ff6b35, #e74c3c);
+        border-radius: 36rpx;
+}
+
+.freeze-bag-btn-text {
+        font-size: 26rpx;
+        color: #fff;
+        font-weight: 600;
+}
+
+/* ★ 待释放金币领取弹窗 */
+.freeze-modal-mask {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.7);
+        z-index: 1001;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+}
+
+.freeze-modal {
+        width: 600rpx;
+        background: linear-gradient(180deg, #e74c3c, #c0392b);
+        border-radius: 24rpx;
+        padding: 40rpx;
+        text-align: center;
+}
+
+.freeze-modal-header {
+        margin-bottom: 20rpx;
+}
+
+.freeze-modal-title {
+        color: #ffd700;
+        font-size: 36rpx;
+        font-weight: bold;
+}
+
+.freeze-modal-body {
+        padding: 30rpx 0;
+}
+
+.freeze-amount-area {
+        display: flex;
+        align-items: baseline;
+        justify-content: center;
+        margin-bottom: 16rpx;
+}
+
+.freeze-amount-number {
+        color: #fff;
+        font-size: 80rpx;
+        font-weight: 800;
+        font-variant-numeric: tabular-nums;
+}
+
+.freeze-amount-unit {
+        color: rgba(255, 255, 255, 0.8);
+        font-size: 28rpx;
+        margin-left: 8rpx;
+}
+
+.freeze-amount-desc {
+        color: rgba(255, 255, 255, 0.9);
+        font-size: 26rpx;
+}
+
+.freeze-modal-actions {
+        padding: 20rpx 0;
+}
+
+.freeze-action-btn {
+        height: 88rpx;
+        border-radius: 44rpx;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+}
+
+.freeze-action-text {
+        font-size: 30rpx;
+        font-weight: 700;
+        color: #fff;
+}
+
+.freeze-action-claim {
+        background: linear-gradient(135deg, #ffd700, #ffaa00);
+}
+
+.freeze-action-claim .freeze-action-text {
+        color: #c0392b;
+}
+
+.freeze-action-done {
+        background: rgba(255, 255, 255, 0.2);
+}
+
+.freeze-action-disabled {
+        background: rgba(255, 255, 255, 0.15);
+}
+
+.freeze-modal-close {
+        margin-top: 10rpx;
+}
+
+.freeze-close-text {
+        color: rgba(255, 255, 255, 0.6);
+        font-size: 26rpx;
 }
 </style>

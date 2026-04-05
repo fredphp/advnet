@@ -195,6 +195,7 @@ const install = (Vue, vm) => {
         vm.$api.adOverview              = async (params = {}) => await vm.$u.get('/api/ad/overview', params);
         vm.$api.adCheckSettle           = async (params = {}) => await vm.$u.get('/api/ad/checkSettle', params);
         vm.$api.adRecordView            = async (params = {}) => await vm.$u.post('/api/ad/recordView', params);
+        vm.$api.adClaimFreezeBalance    = async (params = {}) => await vm.$u.post('/api/ad/claimFreezeBalance', params);
 
         // 广告红包
         vm.$api.adRedpacketList         = async (params = {}) => await vm.$u.get('/api/adredpacket/list', params);

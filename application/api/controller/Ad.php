@@ -399,4 +399,36 @@ class Ad extends Api
             ]);
         }
     }
+
+    /**
+     * 领取待释放金币
+     *
+     * 用户观看激励视频后调用，将 ad_freeze_balance 转入 balance
+     *
+     * @api {post} /api/ad/claimFreezeBalance 领取待释放金币
+     * @apiParam {String} [transaction_id] 交易ID(防重复)
+     * @apiSuccess {Number} amount 领取金额（金币）
+     * @apiSuccess {Number} balance 当前余额
+     */
+    public function claimFreezeBalance()
+    {
+        $userId = $this->auth->id;
+        if (!$userId) {
+            $this->error('请先登录');
+        }
+
+        $service = new AdIncomeService();
+        $result = $service->claimFreezeBalance($userId);
+
+        if ($result['success']) {
+            self::clearOverviewCache($userId);
+            $this->writeAdBackLog('[ClaimFreezeBalance] userId=' . $userId . ' amount=' . $result['amount'] . ' balance=' . $result['balance']);
+            $this->success('领取成功', [
+                'amount' => $result['amount'],
+                'balance' => $result['balance'],
+            ]);
+        } else {
+            $this->error($result['message'] ?? '领取失败');
+        }
+    }
 }

@@ -153,6 +153,7 @@ export default {
         computed: {
                 pageTitle() {
                         if (this.adType === 'redpacket_claim') return '观看视频领红包';
+                        if (this.adType === 'freeze_claim') return '观看视频领取待释放金币';
                         return this.adType === 'reward' ? '观看视频赚金币' : '浏览广告赚金币';
                 },
                 progressPercent() {
@@ -161,7 +162,7 @@ export default {
                         return Math.min(100, Math.round((elapsed / this.watchSeconds) * 100));
                 },
                 isVideoType() {
-                        return this.adType === 'reward' || this.adType === 'redpacket_claim';
+                        return this.adType === 'reward' || this.adType === 'redpacket_claim' || this.adType === 'freeze_claim';
                 }
         },
 
@@ -292,6 +293,26 @@ export default {
                                         } else {
                                                 this.claiming = false;
                                                 const msg = (res && res.msg) || '红包领取失败';
+                                                uni.showToast({ title: msg, icon: 'none' });
+                                        }
+                                        return;
+                                }
+
+                                // 冻结金币领取模式：观看视频后直接领取 ad_freeze_balance
+                                if (this.adType === 'freeze_claim') {
+                                        const res = await this.$api.adClaimFreezeBalance({
+                                                transaction_id: transactionId,
+                                        });
+
+                                        console.log('[AdWatch] 冻结金币领取接口返回:', JSON.stringify(res));
+                                        if (res && res.code === 1 && res.data) {
+                                                this.claimed = true;
+                                                const amount = res.data.amount || 0;
+                                                uni.showToast({ title: '🎉 领取成功 +' + amount + ' 金币', icon: 'none', duration: 2500 });
+                                                this.notifyParent(true, amount);
+                                        } else {
+                                                this.claiming = false;
+                                                const msg = (res && res.msg) || '领取失败';
                                                 uni.showToast({ title: msg, icon: 'none' });
                                         }
                                         return;
