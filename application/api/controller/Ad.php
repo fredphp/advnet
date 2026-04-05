@@ -222,12 +222,12 @@ class Ad extends Api
             $data['feed_view_progress'] = $viewProgress['feed'];
             $data['reward_view_progress'] = $viewProgress['reward'];
             $data['feed_reward_threshold'] = (int)($adConfig['feed_reward_threshold'] ?? 5);
-            $data['video_reward_threshold'] = (int)($adConfig['video_reward_threshold'] ?? 3);
+            $data['video_reward_threshold'] = (int)($adConfig['video_reward_threshold'] ?? 1);
         } catch (\Throwable $e) {
             $data['feed_view_progress'] = ['view_count' => 0, 'threshold' => 5, 'remaining' => 5, 'reward_count' => 0, 'reward_coin' => 50, 'progress_percent' => 0];
-            $data['reward_view_progress'] = ['view_count' => 0, 'threshold' => 3, 'remaining' => 3, 'reward_count' => 0, 'reward_coin' => 200, 'progress_percent' => 0];
+            $data['reward_view_progress'] = ['view_count' => 0, 'threshold' => 1, 'remaining' => 1, 'reward_count' => 0, 'reward_coin' => 200, 'progress_percent' => 0];
             $data['feed_reward_threshold'] = 5;
-            $data['video_reward_threshold'] = 3;
+            $data['video_reward_threshold'] = 1;
         }
 
         // ★ 广告配置数据（adpid、金币奖励等）非敏感信息，不做加密

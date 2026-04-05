@@ -871,15 +871,18 @@ class AdIncomeService
             return $result;
         }
 
-        // ★ 自动建表（首次使用时确保表存在）
+        // ★ 自动建表 + 自动修正旧配置值
         if (!$this->ensureAdViewCounterTable()) {
             $result['message'] = '系统初始化中，请稍后重试';
             return $result;
         }
 
+        // ★ 刷新可能被 auto-migration 更新的配置（ensureAdViewCounterTable 会将旧的 3 更新为 1）
+        $this->config['video_reward_threshold'] = (int)SystemConfigService::get('ad.video_reward_threshold', null, 1);
+
         // 获取阈值配置
         $threshold = $adType === 'reward'
-            ? (int)$this->getConfig('video_reward_threshold', 3)
+            ? (int)$this->getConfig('video_reward_threshold', 1)
             : (int)$this->getConfig('feed_reward_threshold', 5);
 
         $result['threshold'] = $threshold;
@@ -1009,7 +1012,7 @@ class AdIncomeService
         $today = date('Y-m-d');
 
         $feedThreshold  = (int)$this->getConfig('feed_reward_threshold', 5);
-        $videoThreshold = (int)$this->getConfig('video_reward_threshold', 3);
+        $videoThreshold = (int)$this->getConfig('video_reward_threshold', 1);
         $feedReward     = (int)$this->getConfig('reward_per_feed', 50);
         $videoReward    = (int)$this->getConfig('reward_per_video', 200);
 

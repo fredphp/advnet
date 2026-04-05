@@ -198,8 +198,8 @@ class SystemConfigService
             'rewarded_video_adpid' => '',
             // 信息流广告奖励阈值（次）：浏览N次后发放一次奖励，0=每次都发
             'feed_reward_threshold' => 5,
-            // 激励视频奖励阈值（次）：观看N次后发放一次奖励，0=每次都发
-            'video_reward_threshold' => 3,
+            // 激励视频奖励阈值（次）：观看N次后发放一次奖励，0=每次都发，1=每次都发
+            'video_reward_threshold' => 1,
             // 红包页信息流广告数量
             'feed_ad_count' => 3,
             // 激励视频推送间隔(秒)
