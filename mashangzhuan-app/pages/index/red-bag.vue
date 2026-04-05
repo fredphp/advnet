@@ -225,6 +225,7 @@ import AdBanner from '@/components/ad/adBanner.vue'
 import AdFeedMessage from '@/components/chat/adFeedMessage.vue'
 import RewardedVideoMessage from '@/components/chat/rewardedVideoMessage.vue'
 import AdRedPacketList from '@/components/ad/adRedPacketList.vue'
+import { decryptData } from '@/common/crypto.js'
 
 export default {
         components: {
@@ -414,33 +415,41 @@ export default {
                         try {
                                 const res = await this.$api.adOverview({});
                                 if (res && res.code === 1 && res.data) {
-                                        this.adPacketBadge = res.data.unclaimed_packet_count || 0;
+                                        // ★ 后端默认开启数据加密，res.data 可能是加密字符串
+                                        // decryptData 会自动判断：字符串→解密，对象→直接返回
+                                        const data = decryptData(res.data);
+                                        if (!data) {
+                                                console.warn('[RedBag] overview 数据解密失败');
+                                                return;
+                                        }
+
+                                        this.adPacketBadge = data.unclaimed_packet_count || 0;
 
                                         // ★ 保存广告配置供持续推送使用
-                                        this.adConfig.feed_adpid = res.data.feed_adpid || '';
-                                        this.adConfig.feed_ad_count = res.data.feed_ad_count || 3;
-                                        this.adConfig.reward_per_feed = res.data.reward_per_feed || 50;
-                                        this.adConfig.ad_income_enabled = res.data.ad_income_enabled || 0;
+                                        this.adConfig.feed_adpid = data.feed_adpid || '';
+                                        this.adConfig.feed_ad_count = data.feed_ad_count || 3;
+                                        this.adConfig.reward_per_feed = data.reward_per_feed || 50;
+                                        this.adConfig.ad_income_enabled = data.ad_income_enabled || 0;
 
                                         // ★ 保存激励视频广告配置
-                                        this.adConfig.rewarded_video_adpid = res.data.rewarded_video_adpid || '';
-                                        this.adConfig.reward_per_video = res.data.reward_per_video || 200;
-                                        this.adConfig.rewarded_video_interval = res.data.rewarded_video_interval || 120;
+                                        this.adConfig.rewarded_video_adpid = data.rewarded_video_adpid || '';
+                                        this.adConfig.reward_per_video = data.reward_per_video || 200;
+                                        this.adConfig.rewarded_video_interval = data.rewarded_video_interval || 120;
 
                                         // ★ 保存广告浏览进度
-                                        this.feedViewProgress = res.data.feed_view_progress || null;
-                                        this.rewardViewProgress = res.data.reward_view_progress || null;
+                                        this.feedViewProgress = data.feed_view_progress || null;
+                                        this.rewardViewProgress = data.reward_view_progress || null;
 
                                         // ★ 保存待释放金币余额
-                                        this.freezeBalance = res.data.ad_freeze_balance || 0;
+                                        this.freezeBalance = data.ad_freeze_balance || 0;
 
-                                        // ★ 激励视频推送已合并到 doPushOneMessage() 中，配置通过 adConfig 自动生效
+                                        console.log('[RedBag] 广告配置加载成功, feed_adpid=' + this.adConfig.feed_adpid + ', rewarded_video_adpid=' + this.adConfig.rewarded_video_adpid);
 
                                         // 检查广告配置并提示
                                         this.checkAdConfigAndHint();
                                 }
                         } catch (e) {
-                                // 静默处理
+                                console.warn('[RedBag] 加载广告配置失败:', e);
                         }
                 },
 
