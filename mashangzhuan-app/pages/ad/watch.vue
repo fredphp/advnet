@@ -95,7 +95,13 @@
                                         </view>
                                         <view class="countdown-text-area">
                                                 <text class="countdown-main-text" v-if="!watchDone">
-                                                        请观看广告 {{ watchRemaining }}秒后领取奖励
+                                                        {{ isClaimMode ? '请观看广告 ' + watchRemaining + '秒后领取奖励' : '请观看广告 ' + watchRemaining + '秒' }}
+                                                </text>
+                                                <text class="countdown-main-text text-done" v-else-if="claiming">
+                                                        观看完成，奖励自动发放中...
+                                                </text>
+                                                <text class="countdown-main-text text-done" v-else-if="claimed">
+                                                        奖励已发放到待释放余额
                                                 </text>
                                                 <text class="countdown-main-text text-done" v-else>
                                                         观看完成，快来领取奖励吧！
@@ -113,17 +119,17 @@
                                 <view class="action-btn action-back" @click="handleBack" v-if="!watchDone && !claiming">
                                         <text class="action-text">返回（未完成，无奖励）</text>
                                 </view>
-                                <!-- 已完成：领取奖励按钮 -->
-                                <view class="action-btn action-claim" @click="claimReward" v-else-if="watchDone && !claimed">
+                                <!-- 激励视频自动领取中 -->
+                                <view class="action-btn action-claiming" v-else-if="claiming">
+                                        <text class="action-text">奖励发放中...</text>
+                                </view>
+                                <!-- 红包/冻结领取模式：手动领取按钮（非reward类型才显示） -->
+                                <view class="action-btn action-claim" @click="claimReward" v-else-if="watchDone && !claimed && isClaimMode">
                                         <text class="action-text">领取 +{{ rewardCoin }} 金币</text>
                                 </view>
-                                <!-- 已领取：返回按钮 -->
+                                <!-- 已完成/已自动发放：返回按钮 -->
                                 <view class="action-btn action-done" @click="goBack" v-else-if="claimed">
                                         <text class="action-text">返回红包群</text>
-                                </view>
-                                <!-- 领取中 -->
-                                <view class="action-btn action-claiming" v-else-if="claiming">
-                                        <text class="action-text">领取中...</text>
                                 </view>
                         </view>
                 </view>
@@ -163,6 +169,13 @@ export default {
                 },
                 isVideoType() {
                         return this.adType === 'reward' || this.adType === 'redpacket_claim' || this.adType === 'freeze_claim';
+                },
+                /**
+                 * 是否为手动领取模式（红包领取 / 冻结金币领取需要手动点击）
+                 * reward 类型（直接看激励视频）：倒计时结束自动发放，不需要领取按钮
+                 */
+                isClaimMode() {
+                        return this.adType === 'redpacket_claim' || this.adType === 'freeze_claim';
                 }
         },
 
@@ -194,22 +207,25 @@ export default {
 
         // 拦截物理返回键（Android）
         onBackPress() {
-                if (!this.watchDone && !this.claimed) {
+                // 未完成 或 正在自动发放中：阻止返回
+                if ((!this.watchDone || this.claiming) && !this.claimed) {
                         uni.showModal({
                                 title: '提示',
-                                content: '观看不足' + this.watchSeconds + '秒，现在返回将无法获得奖励。确定返回吗？',
+                                content: this.claiming ? '奖励发放中，请稍候...' : '观看不足' + this.watchSeconds + '秒，现在返回将无法获得奖励。确定返回吗？',
                                 confirmText: '确定返回',
                                 cancelText: '继续观看',
                                 success: (res) => {
                                         if (res.confirm) {
+                                                this.clearWatchTimer();
                                                 this.notifyParent(false);
                                                 uni.navigateBack();
                                         }
                                 }
                         });
-                        return true; // 阻止默认返回
+                        return true;
                 }
-                if (this.watchDone && !this.claimed) {
+                // 红包/冻结模式：观看完成但未手动领取
+                if (this.watchDone && !this.claimed && this.isClaimMode) {
                         uni.showToast({ title: '请先领取奖励', icon: 'none' });
                         return true;
                 }
@@ -228,7 +244,14 @@ export default {
                                         this.watchDone = true;
                                         this.clearWatchTimer();
                                         uni.vibrateShort({ type: 'medium' });
-                                        uni.showToast({ title: '观看完成！', icon: 'none', duration: 1500 });
+
+                                        // ★ 激励视频直接观看：倒计时结束自动发放奖励，无需手动领取
+                                        if (this.adType === 'reward') {
+                                                console.log('[AdWatch] 激励视频观看完毕，自动发放奖励');
+                                                this.claimReward();
+                                        } else {
+                                                uni.showToast({ title: '观看完成！', icon: 'none', duration: 1500 });
+                                        }
                                 }
                         }, 1000);
                 },
@@ -380,10 +403,11 @@ export default {
                 // ==================== 返回 ====================
 
                 handleBack() {
-                        if (!this.watchDone && !this.claimed) {
+                        // 未完成 或 正在自动发放中
+                        if ((!this.watchDone || this.claiming) && !this.claimed) {
                                 uni.showModal({
                                         title: '提示',
-                                        content: '观看不足' + this.watchSeconds + '秒，现在返回将无法获得奖励。确定返回吗？',
+                                        content: this.claiming ? '奖励发放中，请稍候...' : '观看不足' + this.watchSeconds + '秒，现在返回将无法获得奖励。确定返回吗？',
                                         confirmText: '确定返回',
                                         cancelText: '继续观看',
                                         success: (res) => {
@@ -394,7 +418,8 @@ export default {
                                                 }
                                         }
                                 });
-                        } else if (this.watchDone && !this.claimed) {
+                        } else if (this.watchDone && !this.claimed && this.isClaimMode) {
+                                // 红包/冻结模式：提醒先领取
                                 uni.showToast({ title: '请先领取奖励', icon: 'none' });
                         } else {
                                 this.goBack();
