@@ -431,4 +431,107 @@ class Ad extends Api
             $this->error($result['message'] ?? '领取失败');
         }
     }
+
+    /**
+     * ★ 获取聊天资源（系统用户昵称头像 + 消息模板）
+     *
+     * 前端页面加载时调用，带版本号实现增量更新缓存。
+     * - 系统用户：member_type=1 或 user_type=1 的用户，取 nickname + avatar
+     * - 消息模板：advn_red_packet_resource 中 type='chat' 的资源
+     *
+     * 缓存策略：
+     * - 服务端 ThinkPHP Cache 存储版本号和数据（10分钟TTL）
+     * - 前端 uni.setStorageSync 本地缓存
+     * - 后台管理增删改资源/系统用户时调用 refreshChatResourcesCache() 递增版本号
+     *
+     * @api {get} /api/ad/chatResources 获取聊天资源
+     * @apiParam {Number} [version] 客户端本地缓存的版本号
+     * @apiSuccess {Number} version 当前数据版本号
+     * @apiSuccess {Boolean} updated 数据是否有更新
+     * @apiSuccess {Array} users 系统用户列表 [{id, nickname, avatar}]
+     * @apiSuccess {Array} messages 消息模板列表 [{id, description}]
+     */
+    public function chatResources()
+    {
+        // 1. 获取当前版本号
+        $version = (int)Cache::get('chat_resources:version', 1);
+        $clientVersion = (int)$this->request->get('version/d', 0);
+
+        // 2. 客户端版本一致 → 无需更新，直接返回
+        if ($clientVersion > 0 && $clientVersion === $version) {
+            $this->success('已是最新', ['version' => $version, 'updated' => false]);
+        }
+
+        // 3. 尝试读取服务端数据缓存（key 绑定版本号，版本变化自动失效）
+        $cacheKey = 'chat_resources:data:v' . $version;
+        $data = Cache::get($cacheKey);
+
+        if (!$data) {
+            // 4. 查询系统用户（member_type=1 或 user_type=1，状态正常）
+            $users = Db::name('user')
+                ->where('status', 'normal')
+                ->where(function ($query) {
+                    $query->where('member_type', 1)->whereOr('user_type', 1);
+                })
+                ->field('id,nickname,avatar')
+                ->order('id', 'desc')
+                ->select();
+
+            // 系统用户不足 5 人时，补充普通用户填充（确保聊天群看起来热闹）
+            if (count($users) < 5) {
+                $systemIds = array_column($users, 'id');
+                $extraUsers = Db::name('user')
+                    ->where('status', 'normal')
+                    ->where('id', 'not in', empty($systemIds) ? [0] : $systemIds)
+                    ->field('id,nickname,avatar')
+                    ->orderRaw('RAND()')
+                    ->limit(10)
+                    ->select();
+                $users = array_merge($users, $extraUsers);
+            }
+
+            // 5. 查询聊天消息模板（type='chat', status='normal'）
+            $messages = Db::name('red_packet_resource')
+                ->where('type', 'chat')
+                ->where('status', 'normal')
+                ->field('id,description')
+                ->order('weigh', 'desc')
+                ->order('id', 'desc')
+                ->select();
+
+            $data = [
+                'users' => $users,
+                'messages' => $messages,
+            ];
+
+            // 缓存 10 分钟
+            Cache::set($cacheKey, $data, 600);
+        }
+
+        $data['version'] = $version;
+        $data['updated'] = true;
+
+        $this->success('获取成功', $data);
+    }
+
+    /**
+     * ★ 刷新聊天资源缓存版本号
+     *
+     * 在后台管理增删改「红包资源」或「系统用户」时调用，
+     * 递增版本号使前端下次请求时获取最新数据。
+     *
+     * 使用方式（在后台控制器中）:
+     *   \app\api\controller\Ad::refreshChatResourcesCache();
+     */
+    public static function refreshChatResourcesCache()
+    {
+        try {
+            $version = (int)Cache::get('chat_resources:version', 1);
+            Cache::set('chat_resources:version', $version + 1);
+            // 清除旧版本数据缓存
+            Cache::delete('chat_resources:data:v' . $version);
+        } catch (\Throwable $e) {
+            Log::warning('刷新聊天资源缓存失败: ' . $e->getMessage());
+        }
+    }
 }

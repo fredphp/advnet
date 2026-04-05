@@ -211,6 +211,9 @@ const install = (Vue, vm) => {
 
         // 头像列表
         vm.$api.getAvatarList            = async (params = {}) => await vm.$u.get('/api/avatar/list', params);
+
+        // ★ 聊天资源（系统用户昵称头像 + 消息模板，带版本缓存）
+        vm.$api.chatResources            = async (params = {}) => await vm.$u.get('/api/ad/chatResources', params);
 }
 
 export default {

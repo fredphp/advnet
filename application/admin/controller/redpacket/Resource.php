@@ -93,6 +93,8 @@ class Resource extends Backend
                 }
                 
                 if ($result !== false) {
+                    // ★ 刷新聊天资源缓存（资源变更时通知前端更新）
+                    \app\api\controller\Ad::refreshChatResourcesCache();
                     $this->success();
                 } else {
                     $this->error(__('No rows were inserted'));
@@ -135,6 +137,8 @@ class Resource extends Backend
                     $this->error($e->getMessage());
                 }
                 if ($result !== false) {
+                    // ★ 刷新聊天资源缓存（资源变更时通知前端更新）
+                    \app\api\controller\Ad::refreshChatResourcesCache();
                     $this->success();
                 } else {
                     $this->error(__('No rows were updated'));
@@ -274,10 +278,12 @@ class Resource extends Backend
             }
             
             if ($count) {
-                $this->success();
-            } else {
-                $this->error(__('No rows were deleted'));
-            }
+                    // ★ 刷新聊天资源缓存（资源删除时通知前端更新）
+                    \app\api\controller\Ad::refreshChatResourcesCache();
+                    $this->success();
+                } else {
+                    $this->error(__('No rows were deleted'));
+                }
         }
         $this->error(__('Parameter %s can not be empty', 'ids'));
     }

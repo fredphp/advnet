@@ -241,16 +241,15 @@ export default {
                 this.groupId = opt.group_id || 'default_group';
                 this.user_info = uni.getStorageSync('user_info') || {};
 
-                // ★ 并行加载头像列表和广告配置，等两者都完成后再生成消息和启动推送
-                // 解决刷新页面时消息先出但头像未加载导致的"无头像"问题
+                // ★ 并行加载广告配置和聊天资源，等两者都完成后再生成消息和启动推送
                 await Promise.all([
-                        this.loadAvatarList(),
+                        this.loadChatResources(),
                         this.loadAdOverview()
                 ]);
 
-                // ★ 头像和配置都加载完成后，再生成初始消息（确保每条消息都有正确的头像）
+                // ★ 资源和配置都加载完成后，再生成初始消息
                 this.generateInitialMessages();
-                // ★ 启动持续推送（此时 avatarList 已就绪，feed_adpid 已就绪）
+                // ★ 启动持续推送（此时聊天资源已就绪，feed_adpid 已就绪）
                 this.startContinuousPush();
                 // ★ 记录页面启动时间，用于激励视频间隔计算（首次需等待一个完整间隔后才推送）
                 this.rewardedVideoLastPushTime = Date.now();
@@ -335,9 +334,10 @@ export default {
                         // ★ 激励视频推送（已合并到持续推送逻辑中）
                         rewardedVideoLastPushTime: 0,     // 上次推送激励视频的时间戳
 
-                        // ★ 头像相关
-                        avatarList: [],                    // 后台头像URL列表
-                        nicknameAvatarMap: {},              // 昵称→头像的固定映射（同一用户始终同一头像）
+                        // ★ 聊天资源（从后端 API 获取，带版本缓存）
+                        chatNames: [],             // 系统用户列表 [{nickname, avatar}]
+                        chatMsgs: [],              // 聊天消息模板列表 [string]
+                        chatResourcesVersion: 0,   // 当前本地缓存的版本号
 
                         // ★ 广告浏览进度（从 overview 接口获取）
                         feedViewProgress: null,
@@ -444,53 +444,136 @@ export default {
                         }
                 },
 
-                // ==================== ★ 头像管理 ====================
+                // ==================== ★ 聊天资源管理 ====================
 
                 /**
-                 * 从后端加载头像列表（带缓存）
+                 * ★ 加载聊天资源（系统用户 + 消息模板）
+                 * 带版本号缓存：客户端版本与服务端一致时直接使用本地缓存
                  */
-                async loadAvatarList() {
+                async loadChatResources() {
                         try {
-                                const res = await this.$api.getAvatarList({});
-                                if (res && res.code === 1 && res.data && res.data.avatars) {
-                                        this.avatarList = res.data.avatars;
-                                        console.log('[RedBag] 加载头像列表成功，数量:', this.avatarList.length);
+                                // 读取本地缓存版本
+                                const cached = uni.getStorageSync('chat_resources') || {};
+                                const localVersion = cached.version || 0;
+
+                                const res = await this.$api.chatResources({ version: localVersion });
+                                if (res && res.code === 1 && res.data) {
+                                        if (res.data.updated && res.data.users && res.data.messages) {
+                                                // 服务端数据有更新 → 解析并缓存到本地
+                                                const names = (res.data.users || []).map(u => ({
+                                                        nickname: u.nickname || ('用户' + u.id),
+                                                        avatar: u.avatar || '/static/image/avatar.png'
+                                                }));
+                                                const msgs = (res.data.messages || [])
+                                                        .map(m => m.description)
+                                                        .filter(d => d && d.trim());
+
+                                                const cacheData = {
+                                                        version: res.data.version,
+                                                        names: names,
+                                                        msgs: msgs,
+                                                        updateTime: Date.now()
+                                                };
+                                                uni.setStorageSync('chat_resources', cacheData);
+
+                                                this.chatNames = names;
+                                                this.chatMsgs = msgs;
+                                                this.chatResourcesVersion = res.data.version;
+                                                console.log('[RedBag] 聊天资源已更新, users=' + names.length + ', msgs=' + msgs.length + ', version=' + res.data.version);
+                                        } else {
+                                                // 版本未变化 → 使用本地缓存
+                                                if (cached.names && cached.names.length > 0) {
+                                                        this.chatNames = cached.names;
+                                                        this.chatMsgs = cached.msgs || [];
+                                                        this.chatResourcesVersion = cached.version;
+                                                        console.log('[RedBag] 使用本地缓存聊天资源, users=' + cached.names.length);
+                                                } else {
+                                                        // 本地缓存为空 → 使用兜底数据
+                                                        this._useFallbackChatData();
+                                                }
+                                        }
+                                } else {
+                                        // 接口失败 → 尝试本地缓存
+                                        const cached = uni.getStorageSync('chat_resources') || {};
+                                        if (cached.names && cached.names.length > 0) {
+                                                this.chatNames = cached.names;
+                                                this.chatMsgs = cached.msgs || [];
+                                        } else {
+                                                this._useFallbackChatData();
+                                        }
                                 }
                         } catch (e) {
-                                console.warn('[RedBag] 加载头像列表失败:', e);
+                                console.warn('[RedBag] 加载聊天资源失败:', e);
+                                // 异常 → 使用本地缓存或兜底数据
+                                const cached = uni.getStorageSync('chat_resources') || {};
+                                if (cached.names && cached.names.length > 0) {
+                                        this.chatNames = cached.names;
+                                        this.chatMsgs = cached.msgs || [];
+                                } else {
+                                        this._useFallbackChatData();
+                                }
                         }
                 },
 
                 /**
-                 * 根据昵称获取头像URL
-                 * 同一昵称始终返回同一头像（通过nicknameAvatarMap缓存映射）
-                 * 新昵称随机分配一个头像
+                 * ★ 兜底聊天数据（本地缓存和接口都不可用时使用）
+                 */
+                _useFallbackChatData() {
+                        this.chatNames = [
+                                { nickname: '小明的妈妈', avatar: '/static/image/avatar.png' },
+                                { nickname: '赚钱达人', avatar: '/static/image/avatar.png' },
+                                { nickname: '金币猎手', avatar: '/static/image/avatar.png' },
+                                { nickname: '福利小能手', avatar: '/static/image/avatar.png' },
+                                { nickname: '幸运星', avatar: '/static/image/avatar.png' },
+                        ];
+                        this.chatMsgs = [
+                                '今天又赚了不少金币 💰', '有没有人一起领红包呀',
+                                '看广告真的能赚钱！', '每天来签到领红包',
+                                '这个平台太良心了', '刚提现了，速度很快',
+                        ];
+                        console.warn('[RedBag] 使用兜底聊天数据');
+                },
+
+                /**
+                 * ★ 根据昵称从 chatNames 中获取头像
                  */
                 getAvatarForNickname(nickname) {
                         if (!nickname) return '/static/image/avatar.png';
 
-                        // 已有映射，直接返回
-                        if (this.nicknameAvatarMap[nickname]) {
-                                return this.nicknameAvatarMap[nickname];
-                        }
+                        const user = this.chatNames.find(n => n.nickname === nickname);
+                        if (user) return user.avatar;
 
-                        // 没有头像列表或列表为空，使用默认头像
-                        if (!this.avatarList || this.avatarList.length === 0) {
-                                return '/static/image/avatar.png';
-                        }
+                        return '/static/image/avatar.png';
+                },
 
-                        // 基于昵称hash值确定性地选一个头像（同一昵称hash相同）
-                        let hash = 0;
-                        for (let i = 0; i < nickname.length; i++) {
-                                hash = ((hash << 5) - hash) + nickname.charCodeAt(i);
-                                hash = hash & hash; // 转为32位整数
+                /**
+                 * ★ 从 chatNames 中随机选一个用户（用于广告头像）
+                 */
+                getRandomAdAvatar() {
+                        if (this.chatNames && this.chatNames.length > 0) {
+                                return this.chatNames[Math.floor(Math.random() * this.chatNames.length)].avatar;
                         }
-                        const index = Math.abs(hash) % this.avatarList.length;
-                        const avatar = this.avatarList[index];
+                        return '/static/image/avatar.png';
+                },
 
-                        // 存入映射
-                        this.nicknameAvatarMap[nickname] = avatar;
-                        return avatar;
+                /**
+                 * ★ 从 chatNames 中随机选一个昵称
+                 */
+                getRandomNickname() {
+                        if (this.chatNames && this.chatNames.length > 0) {
+                                return this.chatNames[Math.floor(Math.random() * this.chatNames.length)].nickname;
+                        }
+                        return '匿名用户';
+                },
+
+                /**
+                 * ★ 从 chatMsgs 中随机选一条消息
+                 */
+                getRandomChatMsg() {
+                        if (this.chatMsgs && this.chatMsgs.length > 0) {
+                                return this.chatMsgs[Math.floor(Math.random() * this.chatMsgs.length)];
+                        }
+                        return '大家好！';
                 },
 
                 // ==================== ★ 信息流广告消息管理 ====================
@@ -507,19 +590,10 @@ export default {
                                 sender: 'system'
                         });
 
-                        // 初始几条聊天消息
-                        const names = ['小明的妈妈', '赚钱达人', '金币猎手', '福利小能手', '幸运星', '福利王', '金币收藏家'];
-                        const msgs = [
-                                '今天又赚了不少金币 💰', '有没有人一起领红包呀',
-                                '看广告真的能赚钱！', '每天来签到领红包',
-                                '这个平台太良心了', '刚提现了，速度很快',
-                                '大家加油赚金币！', '新人有福利吗',
-                                '每天看几个广告就能提现', '推荐给朋友了一起赚'
-                        ];
-
+                        // ★ 从后端获取的用户/消息中随机生成初始聊天消息
                         const count = 3 + Math.floor(Math.random() * 3);
                         for (let i = 0; i < count; i++) {
-                                this.messages.push(this.createFakeChatMessage(names, msgs));
+                                this.messages.push(this.createFakeChatMessage());
                         }
 
                         // 初始化推送计数：随机 2-4 条聊天后插一条广告
@@ -573,21 +647,6 @@ export default {
                  * 推送一条消息（聊天或广告，根据计数器决定）
                  */
                 doPushOneMessage() {
-                        const names = ['小明的妈妈', '赚钱达人', '金币猎手', '福利小能手', '幸运星', '福利王', '金币收藏家', '宝妈小丽', '打工人阿强', '学生党小陈', '自由职业者', '退休大叔', '宝妈二丫', '程序员小哥'];
-                        const msgs = [
-                                '今天又赚了不少金币 💰', '有没有人一起领红包呀',
-                                '看广告真的能赚钱！', '每天来签到领红包',
-                                '这个平台太良心了', '刚提现了，速度很快',
-                                '大家加油赚金币！', '新人有福利吗',
-                                '每天看几个广告就能提现', '推荐给朋友了一起赚',
-                                '哈哈哈又抢到一个大红包', '今天运气不错 🎉',
-                                '有没有人一起组队', '坚持每天签到金币更多',
-                                '上个月提现了200，太开心了', '这个是真的能赚',
-                                '刚刚看了一个广告赚了50金币', '大家注意签到别漏了',
-                                '红包群就是给力', '又到账了，开心',
-                                '有没有大佬分享一下经验', '感觉每天赚得越来越多了'
-                        ];
-
                         this.pushCounter++;
 
                         // 判断是否该推广告了
@@ -615,11 +674,11 @@ export default {
                                         console.log('[RedBag] 推送信息流广告, adpid=' + this.adConfig.feed_adpid);
                                 } else {
                                         // 没配置 adpid 时，推一条聊天消息代替
-                                        this.messages.push(this.createFakeChatMessage(names, msgs));
+                                        this.messages.push(this.createFakeChatMessage());
                                 }
                         } else {
-                                // 推送普通聊天消息
-                                this.messages.push(this.createFakeChatMessage(names, msgs));
+                                // ★ 推送普通聊天消息（从后端资源中随机选取）
+                                this.messages.push(this.createFakeChatMessage());
                         }
 
                         // ★ 性能保护：限制消息列表最大数量，超出时删除最旧的消息
@@ -660,14 +719,13 @@ export default {
                 /**
                  * 创建一条模拟聊天消息
                  */
-                createFakeChatMessage(names, msgs) {
-                        const nameIdx = Math.floor(Math.random() * names.length);
-                        const msgIdx = Math.floor(Math.random() * msgs.length);
-                        const nickname = names[nameIdx];
+                createFakeChatMessage() {
+                        const nickname = this.getRandomNickname();
+                        const content = this.getRandomChatMsg();
                         return {
                                 id: 'fake_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6),
                                 type: 'text',
-                                content: msgs[msgIdx],
+                                content: content,
                                 time: Date.now(),
                                 sender: nickname,
                                 user: {
@@ -675,16 +733,6 @@ export default {
                                         avatar: this.getAvatarForNickname(nickname)
                                 }
                         };
-                },
-
-                /**
-                 * 获取一个随机的广告头像（从已加载的头像列表中选取）
-                 */
-                getRandomAdAvatar() {
-                        if (this.avatarList && this.avatarList.length > 0) {
-                                return this.avatarList[Math.floor(Math.random() * this.avatarList.length)];
-                        }
-                        return '/static/image/avatar.png';
                 },
 
                 /**
