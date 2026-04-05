@@ -288,7 +288,8 @@ class AdIncomeService
                 return $result;
             }
 
-            // 2. 获取红包最小金额和过期时间配置
+            // 2. 获取红包基数额度和最小金额配置
+            $threshold = (int)$this->getConfig('redpacket_threshold', 1000);
             $minAmount = (int)$this->getConfig('min_redpacket_amount', 100);
             $expireHours = (int)$this->getConfig('redpacket_expire_hours', 48);
             $expireTime = time() + $expireHours * 3600;
@@ -299,6 +300,12 @@ class AdIncomeService
 
                     $userId = (int)$account['user_id'];
                     $freezeBalance = (int)round($account['ad_freeze_balance']);
+
+                    // ★ 跳过未达到红包基数额度的用户（与 checkAndAutoSettle 保持一致）
+                    if ($freezeBalance < $threshold) {
+                        Db::rollback();
+                        continue;
+                    }
 
                     // 跳过金额不足的用户
                     if ($freezeBalance < $minAmount) {
@@ -324,6 +331,13 @@ class AdIncomeService
                             ->find();
 
                         $currentFreeze = (int)round($freshAccount['ad_freeze_balance']);
+
+                        // ★ 重新检查红包基数额度（防止并发修改）
+                        if ($currentFreeze < $threshold) {
+                            Db::rollback();
+                            $this->releaseLock($lockKey);
+                            continue;
+                        }
 
                         if ($currentFreeze < $minAmount) {
                             Db::rollback();
