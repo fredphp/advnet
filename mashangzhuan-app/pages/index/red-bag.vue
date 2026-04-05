@@ -32,20 +32,6 @@
                                 <ad-banner></ad-banner>
                         </view>
 
-                        <!-- ★ 待释放金币红包卡片 -->
-                        <view class="freeze-bag-card" v-if="freezeBalance > 0" @click="openFreezeBagModal">
-                                <view class="freeze-bag-left">
-                                        <text class="freeze-bag-icon">🧧</text>
-                                        <view class="freeze-bag-info">
-                                                <text class="freeze-bag-title">待领取金币</text>
-                                                <text class="freeze-bag-amount">{{ freezeBalance }} 金币</text>
-                                        </view>
-                                </view>
-                                <view class="freeze-bag-btn">
-                                        <text class="freeze-bag-btn-text">立即领取</text>
-                                </view>
-                        </view>
-
                         <!-- 消息列表 -->
                         <scroll-view class="message-list" scroll-y scroll-with-animation
                                 :style="{height: scrollHeight + 'px'}"
@@ -238,7 +224,7 @@ export default {
         },
 
         async onLoad(opt) {
-                console.log('[RedBag] ★ 页面加载 v20250704-a (广告修复版)');
+                console.log('[RedBag] ★ 页面加载 v20250705-b (展示即计费版)');
                 this.groupId = opt.group_id || 'default_group';
                 this.user_info = uni.getStorageSync('user_info') || {};
 
@@ -390,11 +376,12 @@ export default {
                                 this.$set(data.message, 'adRewardAmount', data.amount);
                         }
 
-                        // 刷新广告红包摘要（可能自动生成了新红包）
+                        // 刷新广告红包摘要（可能自动生成了新红包，触发结算检查）
                         this.loadAdOverview();
 
-                        if (data.amount > 0) {
-                                // 根据广告类型显示不同的系统提示
+                        // ★ 新流程：信息流广告展示即计费，不显示金币系统消息
+                        // 只有激励视频完成时才显示提示（因为激励视频需要用户主动操作）
+                        if (data.amount > 0 && !data.silent) {
                                 const adType = data.adType || 'feed';
                                 const adTypeText = adType === 'reward' ? '观看激励视频' : '浏览信息流广告';
                                 this.messages.push({
@@ -1664,59 +1651,7 @@ export default {
         opacity: 0.4;
 }
 
-/* ★ 待释放金币红包卡片 */
-.freeze-bag-card {
-        margin: 0 20rpx 16rpx;
-        padding: 24rpx 30rpx;
-        background: linear-gradient(135deg, #fff5f5, #fff0e6);
-        border-radius: 16rpx;
-        border: 1rpx solid #ffe0d0;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        flex-shrink: 0;
-}
-
-.freeze-bag-left {
-        display: flex;
-        align-items: center;
-}
-
-.freeze-bag-icon {
-        font-size: 48rpx;
-        margin-right: 20rpx;
-}
-
-.freeze-bag-info {
-        display: flex;
-        flex-direction: column;
-}
-
-.freeze-bag-title {
-        font-size: 26rpx;
-        color: #999;
-        margin-bottom: 6rpx;
-}
-
-.freeze-bag-amount {
-        font-size: 36rpx;
-        font-weight: 800;
-        color: #e74c3c;
-}
-
-.freeze-bag-btn {
-        padding: 14rpx 36rpx;
-        background: linear-gradient(135deg, #ff6b35, #e74c3c);
-        border-radius: 36rpx;
-}
-
-.freeze-bag-btn-text {
-        font-size: 26rpx;
-        color: #fff;
-        font-weight: 600;
-}
-
-/* ★ 待释放金币领取弹窗 */
+/* ★ 待释放金币领取弹窗（通过红包通知触发，非页面展示） */
 .freeze-modal-mask {
         position: fixed;
         top: 0;
