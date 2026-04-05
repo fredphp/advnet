@@ -879,8 +879,11 @@ export default {
                  */
                 pushAdRedPacketToChat(packet) {
                         const amount = packet.amount || 0;
-                        const names = ['赚钱达人', '福利小能手', '幸运星', '金币收藏家', '宝妈小丽', '自由职业者', '退休大叔', '程序员小哥'];
-                        const nickname = names[Math.floor(Math.random() * names.length)];
+                        // ★ 使用 chatNames 中的真实用户（昵称+头像匹配），不再硬编码
+                        const fallbackNames = ['赚钱达人', '福利小能手', '幸运星', '金币收藏家', '宝妈小丽', '自由职业者', '退休大叔', '程序员小哥'];
+                        const nickname = (this.chatNames && this.chatNames.length > 0)
+                                ? this.chatNames[Math.floor(Math.random() * this.chatNames.length)].nickname
+                                : fallbackNames[Math.floor(Math.random() * fallbackNames.length)];
 
                         const redbagMsg = {
                                 id: 'ad_redbag_' + packet.id,

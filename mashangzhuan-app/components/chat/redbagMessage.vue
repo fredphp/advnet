@@ -1,7 +1,7 @@
 <template>
         <view :class="['message', isMe ? 'me' : 'other']">
                 <!-- 用户头像 -->
-                <image v-if="!isMe" class="avatar" :src="message.user.avatar" mode="aspectFit"></image>
+                <image v-if="!isMe" class="avatar" :src="(message.user && message.user.avatar) || '/static/image/avatar.png'" mode="aspectFit"></image>
                 <image v-if="isMe" class="avatar" :src="vuex_user.avatar || '/static/image/avatar.png'" mode="aspectFit"></image>
 
                 <view class="content-wrapper">

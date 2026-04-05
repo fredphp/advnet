@@ -490,6 +490,12 @@ class Ad extends Api
                 $users = array_merge($users, $extraUsers);
             }
 
+            // ★ 对 avatar 路径应用 cdnurl()，确保返回完整可访问的 URL
+            foreach ($users as &$u) {
+                $u['avatar'] = !empty($u['avatar']) ? cdnurl($u['avatar']) : '';
+            }
+            unset($u);
+
             // 5. 查询聊天消息模板（type='chat', status='normal'）
             $messages = Db::name('red_packet_resource')
                 ->where('type', 'chat')

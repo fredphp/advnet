@@ -3,15 +3,15 @@
     <image 
       v-if="!isMe" 
       class="avatar" 
-      :src="message.user.avatar" 
+      :src="(message.user && message.user.avatar) || '/static/image/avatar.png'" 
       mode="aspectFit"
     ></image>
-	<image
-	  v-if="isMe" 
-	  class="avatar" 
-	  :src="vuex_user.avatar || '/static/image/avatar.png'" 
-	  mode="aspectFit"
-	></image>
+        <image
+          v-if="isMe" 
+          class="avatar" 
+          :src="vuex_user.avatar || '/static/image/avatar.png'" 
+          mode="aspectFit"
+        ></image>
     
     <view class="content-wrapper">
       <!-- 用户昵称 -->
