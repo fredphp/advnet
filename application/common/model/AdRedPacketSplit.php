@@ -155,6 +155,35 @@ class AdRedPacketSplit extends SplitTableModel
     }
 
     /**
+     * 标记用户所有未领取红包为已领取（跨所有表）
+     * 用于 claimFreezeBalance 成功后，同步更新通知红包状态
+     * @param int $userId
+     * @return int 更新的记录数
+     */
+    public static function markAllClaimed($userId)
+    {
+        $model = new self();
+        $total = 0;
+
+        $allTables = array_unique(array_merge([$model->baseTable], $model->getTableList()));
+        $now = time();
+
+        foreach ($allTables as $table) {
+            $affected = Db::name($table)
+                ->where('user_id', $userId)
+                ->where('status', self::STATUS_UNCLAIMED)
+                ->update([
+                    'status' => self::STATUS_CLAIMED,
+                    'claim_time' => $now,
+                    'updatetime' => $now,
+                ]);
+            $total += $affected;
+        }
+
+        return $total;
+    }
+
+    /**
      * 获取用户所有红包列表（跨表分页）
      * @param int $userId
      * @param int $page

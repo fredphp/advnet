@@ -673,7 +673,6 @@ class AdIncomeService
             }
 
             // 获取最小红包金额和过期时间配置
-            $minAmount = (int)$this->getConfig('min_redpacket_amount', 100);
             $expireHours = (int)$this->getConfig('redpacket_expire_hours', 48);
 
             // 查询用户当前冻结余额
@@ -693,33 +692,15 @@ class AdIncomeService
                 return $result;
             }
 
-            // ★ 检查是否有待释放的收益记录（跨分表查找）
-            $pendingRecords = AdIncomeLogSplit::getPendingRecords($userId);
-
-            // ★ 兜底逻辑：如果没有 CONFIRMED 记录，直接用 freeze_balance 作为红包金额
-            // （应对直接写入 freeze_balance 但无对应记录的场景）
-            if (empty($pendingRecords)) {
-                $packetAmount = $freezeBalance;
-                $sourceIds = [];
-            } else {
-                // 计算可释放金额（取 pending 记录总和和冻结余额的较小值）
-                $pendingTotal = 0;
-                $sourceIds = [];
-                foreach ($pendingRecords as $record) {
-                    $pendingTotal += (int)$record['user_amount_coin'];
-                    $sourceIds[] = $record['id'];
-                }
-
-                $packetAmount = min($pendingTotal, $freezeBalance);
-                $packetAmount = max(0, $packetAmount);
-            }
-
-            // 低于最小红包金额 → 不生成红包
-            if ($packetAmount < $minAmount) {
+            // ★ 去重检查：如果该用户已有未领取的广告红包通知，不重复创建
+            $unclaimed = AdRedPacketSplit::getUnclaimedSummary($userId);
+            if ($unclaimed['count'] > 0) {
                 return $result;
             }
 
-            // 获取分布式锁（防止并发）
+            // ★ 新流程：只创建通知红包，不消费 ad_freeze_balance
+            // 红包 amount 设为 0（仅作通知），实际金币仍在 ad_freeze_balance 中
+            // 用户点击红包 → 查看当前 ad_freeze_balance → 观看激励视频 → claimFreezeBalance()
             $lockKey = self::LOCK_PREFIX . 'auto:' . $userId;
             $lock = $this->getLock($lockKey, 10);
 
@@ -731,91 +712,36 @@ class AdIncomeService
             try {
                 Db::startTrans();
 
-                // 重新加锁查询（防止并发修改）
-                $freshAccount = Db::name('coin_account')
-                    ->where('user_id', $userId)
-                    ->lock(true)
-                    ->find();
-
-                $currentFreeze = (int)round($freshAccount['ad_freeze_balance']);
-
-                // 再次检查是否仍满足条件
-                if ($currentFreeze < $threshold) {
-                    Db::rollback();
-                    return $result;
-                }
-
-                // ★ 重新检查 pending 记录（跨分表查找）
-                $freshPending = AdIncomeLogSplit::getPendingRecords($userId);
-
-                if (empty($freshPending)) {
-                    // 兜底：直接用冻结余额
-                    $finalAmount = $currentFreeze;
-                    $freshSourceIds = [];
-                } else {
-                    $freshPendingTotal = 0;
-                    $freshSourceIds = [];
-                    foreach ($freshPending as $record) {
-                        $freshPendingTotal += (int)$record['user_amount_coin'];
-                        $freshSourceIds[] = $record['id'];
-                    }
-
-                    $finalAmount = min($freshPendingTotal, $currentFreeze);
-                    $finalAmount = max(0, $finalAmount);
-                }
-
-                if ($finalAmount < $minAmount) {
+                // 再次确认没有未领取红包（防并发）
+                $freshUnclaimed = AdRedPacketSplit::getUnclaimedSummary($userId);
+                if ($freshUnclaimed['count'] > 0) {
                     Db::rollback();
                     return $result;
                 }
 
                 $expireTime = time() + $expireHours * 3600;
 
-                // ★ 创建红包（写入分表）
+                // ★ 创建通知红包（amount=0 仅作通知标识）
                 $packetData = [
                     'user_id' => $userId,
-                    'amount' => $finalAmount,
-                    'source' => AdRedPacket::SOURCE_AD_INCOME,
-                    'source_ids' => !empty($freshSourceIds) ? implode(',', $freshSourceIds) : 'freeze_balance',
+                    'amount' => 0,  // ★ 通知红包不携带金额，实际金币在 ad_freeze_balance
+                    'source' => 'freeze_notify',  // ★ 新来源标识
+                    'source_ids' => '',
                     'status' => AdRedPacket::STATUS_UNCLAIMED,
                     'expire_time' => $expireTime,
                 ];
                 $packetResult = AdRedPacketSplit::createPacket($packetData);
                 if (!$packetResult['success']) {
-                    throw new Exception($packetResult['message'] ?? '红包创建失败');
-                }
-
-                // 清空 ad_freeze_balance
-                $affected = Db::name('coin_account')
-                    ->where('user_id', $userId)
-                    ->where('version', $freshAccount['version'])
-                    ->update([
-                        'ad_freeze_balance' => 0,
-                        'version' => (int)$freshAccount['version'] + 1,
-                        'updatetime' => time(),
-                    ]);
-
-                if ($affected === 0) {
-                    throw new Exception('账户更新失败');
-                }
-
-                // 如果有对应的 pending 记录，标记为已释放（跨分表更新）
-                if (!empty($freshPending)) {
-                    AdIncomeLogSplit::batchUpdateStatus(
-                        $userId,
-                        [AdIncomeLog::STATUS_CONFIRMED],
-                        AdIncomeLog::STATUS_RELEASED
-                    );
+                    throw new Exception($packetResult['message'] ?? '红包通知创建失败');
                 }
 
                 Db::commit();
 
                 $result['success'] = true;
-                $result['amount'] = $finalAmount;
-                $result['message'] = '自动生成红包 ' . $finalAmount . ' 金币';
+                $result['amount'] = $freezeBalance;  // 返回当前 freeze 余额供前端提示
+                $result['message'] = '待释放金币已达到' . $freezeBalance . '，请领取';
 
-                $sourceNote = empty($freshSourceIds) ? '(兜底模式)' : '';
-                Log::info("AutoSettle: 用户{$userId}冻结余额{$currentFreeze}达到阈值{$threshold}，自动生成红包{$finalAmount}金币{$sourceNote}");
+                Log::info("AutoSettle: 用户{$userId}冻结余额{$freezeBalance}达到阈值{$threshold}，发送通知红包(不消费freeze)");
 
             } catch (Exception $e) {
                 Db::rollback();
@@ -1106,6 +1032,16 @@ class AdIncomeService
                 $result['amount'] = $amount;
                 $result['balance'] = $coinResult['balance'];
                 $result['message'] = '领取成功';
+
+                // ★ 同步标记所有未领取的通知红包为已领取
+                try {
+                    $markedCount = AdRedPacketSplit::markAllClaimed($userId);
+                    if ($markedCount > 0) {
+                        Log::info("ClaimFreezeBalance: 用户{$userId}同步标记{$markedCount}个通知红包为已领取");
+                    }
+                } catch (\Throwable $e) {
+                    Log::warning("ClaimFreezeBalance: 标记通知红包失败: " . $e->getMessage());
+                }
             } else {
                 // 金币发放失败，回滚 ad_freeze_balance
                 Db::name('coin_account')

@@ -888,7 +888,8 @@ export default {
                  * @param {Object} packet 红包对象
                  */
                 pushAdRedPacketToChat(packet) {
-                        const amount = packet.amount || 0;
+                        // ★ 通知红包 amount=0，显示当前 freezeBalance 作为红包金额
+                        const amount = packet.amount > 0 ? packet.amount : this.freezeBalance;
                         // ★ 使用 chatNames 中的真实用户（昵称+头像匹配），不再硬编码
                         const fallbackNames = ['赚钱达人', '福利小能手', '幸运星', '金币收藏家', '宝妈小丽', '自由职业者', '退休大叔', '程序员小哥'];
                         const nickname = (this.chatNames && this.chatNames.length > 0)
@@ -898,7 +899,7 @@ export default {
                         const redbagMsg = {
                                 id: 'ad_redbag_' + packet.id,
                                 type: 'redbag',
-                                content: '恭喜发财，快来领红包！',
+                                content: '你有待释放金币，快来领取！',
                                 time: Date.now(),
                                 sender: nickname,
                                 user: {
@@ -908,16 +909,16 @@ export default {
                                 status: 'unopened',
                                 amount: amount,
                                 backgroundImage: '/static/image/redbag-icon.png',
-                                displayTitle: '广告收益红包',
+                                displayTitle: '待释放金币红包',
                                 taskData: {
                                         taskId: 0,
                                         packetId: packet.id,
-                                        isAdRedPacket: true,  // 标记为广告红包
+                                        isAdRedPacket: true,  // 标记为广告红包（通知类型）
                                 }
                         };
 
                         this.messages.push(redbagMsg);
-                        console.log('[RedBag] 推送广告红包到聊天, id=' + packet.id + ', 金额=' + amount);
+                        console.log('[RedBag] 推送广告红包通知到聊天, id=' + packet.id + ', freezeBalance=' + this.freezeBalance);
 
                         // ★ 5秒后自动标记为"已领完"（模拟其他群成员抢完）
                         setTimeout(() => {
@@ -1070,25 +1071,13 @@ export default {
                                 return;
                         }
 
-                        // ★ 广告红包：跳转到观看广告页面领取（新流程）
+                        // ★ 广告红包（通知）：打开待释放金币弹窗，查看 freeze_balance 并领取
                         const taskData = msg.taskData || {};
                         if (taskData.isAdRedPacket && taskData.packetId) {
+                                // ★ 新流程：点击红包 → 显示当前 ad_freeze_balance 金额
+                                // 用户点击"观看视频领取" → 跳转激励视频 → claimFreezeBalance() → balance
                                 this.cancelRedbagExpireTimer(msg.id);
-                                const params = {
-                                        type: 'redpacket_claim',
-                                        packet_id: taskData.packetId,
-                                        rewardCoin: msg.amount || 0,
-                                        watchSeconds: 30,
-                                        msgId: msg.id,
-                                };
-                                const query = Object.keys(params).map(k => k + '=' + params[k]).join('&');
-                                uni.navigateTo({
-                                        url: '/pages/ad/watch?' + query,
-                                        fail: (err) => {
-                                                console.error('[RedBag] 跳转广告观看页失败:', err);
-                                                uni.showToast({ title: '页面跳转失败', icon: 'none' });
-                                        }
-                                });
+                                this.openFreezeBagModal();
                                 return;
                         }
 
