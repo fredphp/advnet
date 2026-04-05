@@ -51,12 +51,14 @@
                                         <ad-feed-message
                                                 v-if="msg.type === 'ad_feed'"
                                                 :message="msg"
+                                                :feed-progress="feedViewProgress"
                                                 @ad-rewarded="handleAdRewarded" />
 
                                         <!-- 激励视频广告消息 -->
                                         <rewarded-video-message
                                                 v-if="msg.type === 'rewarded_video'"
                                                 :message="msg"
+                                                :reward-progress="rewardViewProgress"
                                                 @ad-rewarded="handleAdRewarded" />
 
                                         <!-- 普通聊天/下载/广告/视频 任务卡片 -->
@@ -287,6 +289,10 @@ export default {
                         avatarList: [],                    // 后台头像URL列表
                         nicknameAvatarMap: {},              // 昵称→头像的固定映射（同一用户始终同一头像）
 
+                        // ★ 广告浏览进度（从 overview 接口获取）
+                        feedViewProgress: null,
+                        rewardViewProgress: null,
+
                         // ★ 广告红包轮询
                         adRedPacketPollTimer: null,        // 红包轮询定时器
                         lastKnownRedPacketCount: 0,        // 上次已知的红包数量
@@ -363,6 +369,10 @@ export default {
                                         this.adConfig.rewarded_video_adpid = res.data.rewarded_video_adpid || '';
                                         this.adConfig.reward_per_video = res.data.reward_per_video || 200;
                                         this.adConfig.rewarded_video_interval = res.data.rewarded_video_interval || 120;
+
+                                        // ★ 保存广告浏览进度
+                                        this.feedViewProgress = res.data.feed_view_progress || null;
+                                        this.rewardViewProgress = res.data.reward_view_progress || null;
 
                                         // ★ 配置加载完成后启动激励视频推送（解决竞态：onLoad同步调用时adpid仍为空）
                                         this.startRewardedVideoPush();

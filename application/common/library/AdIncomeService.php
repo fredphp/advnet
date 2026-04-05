@@ -57,6 +57,8 @@ class AdIncomeService
             'reward_per_video' => SystemConfigService::get('ad.reward_per_video', null, 200),
             'callback_secret' => SystemConfigService::get('ad.callback_secret', null, ''),
             'redpacket_threshold' => SystemConfigService::get('ad.redpacket_threshold', null, 1000),
+            'feed_reward_threshold' => SystemConfigService::get('ad.feed_reward_threshold', null, 5),
+            'video_reward_threshold' => SystemConfigService::get('ad.video_reward_threshold', null, 3),
         ];
     }
 
@@ -807,6 +809,193 @@ class AdIncomeService
         }
 
         return $result;
+    }
+
+    /**
+     * 记录广告浏览并检查阈值奖励
+     *
+     * 流程：浏览+1 → 检查是否达到阈值 → 达到则触发奖励写入 ad_freeze_balance
+     *
+     * @param int $userId 用户ID
+     * @param string $adType 广告类型: feed=信息流, reward=激励视频
+     * @param array $params 广告回调参数（触发奖励时传递给 handleAdCallback）
+     * @return array ['view_count'=>int, 'threshold'=>int, 'reward_given'=>bool, 'amount'=>int, 'message'=>string]
+     */
+    public function recordAdViewAndCheckReward($userId, $adType, array $params = [])
+    {
+        $result = [
+            'view_count'     => 0,
+            'threshold'      => 0,
+            'reward_given'   => false,
+            'amount'         => 0,
+            'message'        => '',
+            'total_today_views'   => 0,
+            'total_today_rewards' => 0,
+        ];
+
+        $userId = (int)$userId;
+        if ($userId <= 0) {
+            $result['message'] = '用户ID无效';
+            return $result;
+        }
+
+        // 获取阈值配置
+        $threshold = $adType === 'reward'
+            ? (int)$this->getConfig('video_reward_threshold', 3)
+            : (int)$this->getConfig('feed_reward_threshold', 5);
+
+        $result['threshold'] = $threshold;
+
+        // 阈值为0 → 每次都发（兼容旧逻辑，直接走回调）
+        if ($threshold <= 0) {
+            $callbackResult = $this->handleAdCallback($userId, $params);
+            if ($callbackResult['success']) {
+                $result['reward_given'] = true;
+                $result['amount'] = $callbackResult['user_amount_coin'];
+                $result['view_count'] = 0;
+                $result['message'] = '即时奖励模式';
+            } else {
+                $result['message'] = $callbackResult['message'] ?? '处理失败';
+            }
+            return $result;
+        }
+
+        $today = date('Y-m-d');
+        $now = time();
+
+        // 获取分布式锁
+        $lockKey = self::AD_LOCK_PREFIX . 'view:' . $userId . ':' . $adType;
+        $lock = $this->getLock($lockKey, 5);
+        if (!$lock) {
+            $result['message'] = '操作频繁，请稍后重试';
+            return $result;
+        }
+
+        try {
+            // 查找或创建今日计数记录
+            $exists = Db::name('ad_view_counter')
+                ->where('user_id', $userId)
+                ->where('ad_type', $adType)
+                ->where('view_date', $today)
+                ->find();
+
+            if ($exists) {
+                $newCount = (int)$exists['view_count'] + 1;
+                Db::name('ad_view_counter')
+                    ->where('id', $exists['id'])
+                    ->update(['view_count' => $newCount, 'updatetime' => $now]);
+                $result['view_count'] = $newCount;
+                $result['total_today_views'] = $newCount;
+                $result['total_today_rewards'] = (int)$exists['reward_count'];
+            } else {
+                Db::name('ad_view_counter')->insert([
+                    'user_id'     => $userId,
+                    'ad_type'     => $adType,
+                    'view_date'   => $today,
+                    'view_count'  => 1,
+                    'reward_count' => 0,
+                    'createtime'  => $now,
+                    'updatetime'  => $now,
+                ]);
+                $result['view_count'] = 1;
+                $result['total_today_views'] = 1;
+                $result['total_today_rewards'] = 0;
+            }
+
+            // ★ 检查是否达到阈值
+            if ($result['view_count'] >= $threshold) {
+                // 达到阈值 → 触发广告回调（写入 ad_income_log + ad_freeze_balance）
+                $callbackResult = $this->handleAdCallback($userId, $params);
+
+                if ($callbackResult['success']) {
+                    $result['reward_given'] = true;
+                    $result['amount'] = $callbackResult['user_amount_coin'];
+                    $result['message'] = '恭喜获得 ' . $callbackResult['user_amount_coin'] . ' 金币，已存入待释放余额';
+
+                    // 重置浏览计数，累加领奖次数
+                    Db::name('ad_view_counter')
+                        ->where('user_id', $userId)
+                        ->where('ad_type', $adType)
+                        ->where('view_date', $today)
+                        ->update([
+                            'view_count'   => 0,
+                            'reward_count' => Db::raw('reward_count + 1'),
+                            'updatetime'   => $now,
+                        ]);
+
+                    $result['view_count'] = 0; // 已重置
+                    $result['total_today_rewards']++;
+                } else {
+                    $result['message'] = $callbackResult['message'] ?? '奖励发放失败';
+                }
+            } else {
+                $remaining = $threshold - $result['view_count'];
+                $result['message'] = '已记录浏览，再浏览 ' . $remaining . ' 次可获得奖励';
+            }
+
+        } catch (\Throwable $e) {
+            $result['message'] = '系统异常';
+            Log::error('RecordAdView error userId=' . $userId . ': ' . $e->getMessage());
+        } finally {
+            $this->releaseLock($lockKey);
+        }
+
+        return $result;
+    }
+
+    /**
+     * 获取用户当日广告浏览进度
+     *
+     * @param int $userId
+     * @return array ['feed' => [...], 'reward' => [...]]
+     */
+    public function getAdViewProgress($userId)
+    {
+        $userId = (int)$userId;
+        $today = date('Y-m-d');
+
+        $feedThreshold  = (int)$this->getConfig('feed_reward_threshold', 5);
+        $videoThreshold = (int)$this->getConfig('video_reward_threshold', 3);
+        $feedReward     = (int)$this->getConfig('reward_per_feed', 50);
+        $videoReward    = (int)$this->getConfig('reward_per_video', 200);
+
+        // 批量查询（一条SQL）
+        $counters = Db::name('ad_view_counter')
+            ->where('user_id', $userId)
+            ->where('view_date', $today)
+            ->select();
+
+        $feedData  = ['view_count' => 0, 'reward_count' => 0];
+        $videoData = ['view_count' => 0, 'reward_count' => 0];
+
+        foreach ($counters as $c) {
+            if ($c['ad_type'] === 'feed') {
+                $feedData['view_count']   = (int)$c['view_count'];
+                $feedData['reward_count']  = (int)$c['reward_count'];
+            } elseif ($c['ad_type'] === 'reward') {
+                $videoData['view_count']  = (int)$c['view_count'];
+                $videoData['reward_count'] = (int)$c['reward_count'];
+            }
+        }
+
+        return [
+            'feed' => [
+                'view_count'       => $feedData['view_count'],
+                'threshold'        => $feedThreshold,
+                'remaining'        => max(0, $feedThreshold - $feedData['view_count']),
+                'reward_count'     => $feedData['reward_count'],
+                'reward_coin'      => $feedReward,
+                'progress_percent' => $feedThreshold > 0 ? min(100, round(($feedData['view_count'] / $feedThreshold) * 100)) : 0,
+            ],
+            'reward' => [
+                'view_count'       => $videoData['view_count'],
+                'threshold'        => $videoThreshold,
+                'remaining'        => max(0, $videoThreshold - $videoData['view_count']),
+                'reward_count'     => $videoData['reward_count'],
+                'reward_coin'      => $videoReward,
+                'progress_percent' => $videoThreshold > 0 ? min(100, round(($videoData['view_count'] / $videoThreshold) * 100)) : 0,
+            ],
+        ];
     }
 
     /**

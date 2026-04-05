@@ -211,6 +211,20 @@ class Ad extends Api
         $data['rewarded_video_interval'] = (int)($adConfig['rewarded_video_interval'] ?? 120);
         $data['settle_interval'] = (int)($adConfig['settle_interval'] ?? 30);
 
+        // ★ 广告浏览进度（阈值奖励机制）
+        try {
+            $viewProgress = $service->getAdViewProgress($userId);
+            $data['feed_view_progress'] = $viewProgress['feed'];
+            $data['reward_view_progress'] = $viewProgress['reward'];
+            $data['feed_reward_threshold'] = (int)($adConfig['feed_reward_threshold'] ?? 5);
+            $data['video_reward_threshold'] = (int)($adConfig['video_reward_threshold'] ?? 3);
+        } catch (\Throwable $e) {
+            $data['feed_view_progress'] = ['view_count' => 0, 'threshold' => 5, 'remaining' => 5, 'reward_count' => 0, 'reward_coin' => 50, 'progress_percent' => 0];
+            $data['reward_view_progress'] = ['view_count' => 0, 'threshold' => 3, 'remaining' => 3, 'reward_count' => 0, 'reward_coin' => 200, 'progress_percent' => 0];
+            $data['feed_reward_threshold'] = 5;
+            $data['video_reward_threshold'] = 3;
+        }
+
         // ★ 加密 data 字段（复用已加载的配置判断，不再额外查库）
         $encryptEnabled = isset($adConfig['data_encrypt']) ? (int)$adConfig['data_encrypt'] : 1;
         if ($encryptEnabled) {
@@ -286,6 +300,103 @@ class Ad extends Api
     {
         if ($e instanceof HttpResponseException) {
             throw $e;
+        }
+    }
+
+    /**
+     * ★ 记录广告浏览并检查阈值奖励
+     *
+     * 调用时机：用户在 watch.vue 完成倒计时后点击领取
+     * 核心逻辑：浏览+1 → 达到阈值 → 触发 handleAdCallback 写入 ad_freeze_balance
+     *
+     * @api {post} /api/ad/recordView 记录广告浏览
+     * @apiParam {String} ad_type 广告类型: feed=信息流, reward=激励视频
+     * @apiParam {String} [adpid] 广告位ID
+     * @apiParam {String} [ad_provider] 广告平台
+     * @apiParam {String} [ad_source] 广告来源页面
+     * @apiParam {String} [transaction_id] 交易ID（防重复）
+     * @apiSuccess {Number} view_count 当前浏览次数
+     * @apiSuccess {Number} threshold 奖励阈值
+     * @apiSuccess {Boolean} reward_given 是否发放了奖励
+     * @apiSuccess {Number} amount 奖励金额（金币）
+     * @apiSuccess {String} message 提示信息
+     */
+    public function recordView()
+    {
+        $userId = $this->auth->id;
+        if (!$userId) {
+            $this->error('请先登录');
+        }
+
+        $adType = $this->request->post('ad_type/s', 'feed');
+        if (!in_array($adType, ['feed', 'reward'])) {
+            $this->error('广告类型无效');
+        }
+
+        // 收集参数（达到阈值时传递给 handleAdCallback）
+        $params = [
+            'ad_type'        => $adType,
+            'adpid'          => $this->request->post('adpid/s', ''),
+            'ad_provider'    => $this->request->post('ad_provider/s', 'uniad'),
+            'ad_source'      => $this->request->post('ad_source/s', 'redbag_page'),
+            'transaction_id' => $this->request->post('transaction_id/s', ''),
+            'ip'             => $this->request->ip(),
+            'user_agent'     => $this->request->header('user-agent', ''),
+            'device_id'      => $this->request->header('X-Device-Id', ''),
+            'remark'         => 'threshold_reward',
+        ];
+
+        $this->writeAdBackLog('[RecordView] userId=' . $userId . ' ad_type=' . $adType . ' adpid=' . $params['adpid']);
+
+        // 频率限制：同一用户每5秒最多一次
+        $rateLimitKey = 'ad_record_rate:' . $userId;
+        try {
+            $cache = think\Cache::get($rateLimitKey);
+            if ($cache) {
+                $this->error('操作太频繁，请稍后再试');
+            }
+            think\Cache::set($rateLimitKey, 1, 5);
+        } catch (\Throwable $e) {}
+
+        $service = new AdIncomeService();
+        $result = $service->recordAdViewAndCheckReward($userId, $adType, $params);
+
+        if ($result['reward_given']) {
+            // 奖励已发放 → 清除 overview 缓存
+            self::clearOverviewCache($userId);
+
+            $responseData = [
+                'view_count'          => $result['view_count'],
+                'threshold'           => $result['threshold'],
+                'reward_given'        => true,
+                'amount'              => $result['amount'],
+                'message'             => $result['message'],
+                'total_today_views'   => $result['total_today_views'] ?? 0,
+                'total_today_rewards' => $result['total_today_rewards'] ?? 0,
+                'redpacket_created'   => 0,
+            ];
+
+            // 检查是否自动生成红包
+            try {
+                $settleResult = $service->checkAndAutoSettle($userId);
+                if ($settleResult['success']) {
+                    $responseData['redpacket_created'] = 1;
+                    $responseData['redpacket_amount'] = $settleResult['amount'] ?? 0;
+                }
+            } catch (\Throwable $e) {}
+
+            $this->writeAdBackLog('[RecordView-奖励] userId=' . $userId . ' ad_type=' . $adType . ' amount=' . $result['amount']);
+            $this->success('奖励已发放', $responseData);
+        } else {
+            $this->success('浏览已记录', [
+                'view_count'          => $result['view_count'],
+                'threshold'           => $result['threshold'],
+                'reward_given'        => false,
+                'amount'              => 0,
+                'message'             => $result['message'],
+                'total_today_views'   => $result['total_today_views'] ?? 0,
+                'total_today_rewards' => $result['total_today_rewards'] ?? 0,
+            ]);
         }
     }
 }

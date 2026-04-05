@@ -297,8 +297,8 @@ export default {
                                         return;
                                 }
 
-                                console.log('[AdWatch] 发送adCallback请求, ad_type=' + (this.adType === 'reward' ? 'reward' : 'feed') + ', adpid=' + this.adpid);
-                                const res = await this.$api.adCallback({
+                                console.log('[AdWatch] 发送adRecordView请求, ad_type=' + (this.adType === 'reward' ? 'reward' : 'feed') + ', adpid=' + this.adpid);
+                                const res = await this.$api.adRecordView({
                                         ad_type: this.adType === 'reward' ? 'reward' : 'feed',
                                         adpid: this.adpid,
                                         ad_provider: 'uniad',
@@ -306,25 +306,33 @@ export default {
                                         transaction_id: transactionId,
                                 });
 
-                                console.log('[AdWatch] adCallback接口返回:', JSON.stringify(res));
+                                console.log('[AdWatch] adRecordView接口返回:', JSON.stringify(res));
                                 if (res && res.code === 1 && res.data) {
                                         this.claimed = true;
-                                        const amount = res.data.user_amount_coin || this.rewardCoin;
-                                        console.log('[AdWatch] ★ 回调成功! amount=' + amount + ', log_id=' + (res.data.log_id || '-') + ', redpacket_created=' + (res.data.redpacket_created || 0));
-                                        uni.showToast({ title: '🎉 获得 +' + amount + ' 金币', icon: 'none', duration: 2500 });
+                                        const amount = res.data.amount || this.rewardCoin;
+                                        console.log('[AdWatch] ★ 浏览记录成功! reward_given=' + (res.data.reward_given ? '是' : '否') + ', amount=' + amount + ', view_count=' + (res.data.view_count || 0) + '/' + (res.data.threshold || '?'));
 
-                                        // 通知父页面
-                                        this.notifyParent(true, amount);
+                                        if (res.data.reward_given) {
+                                                // 达到阈值 → 发放了奖励
+                                                uni.showToast({ title: '🎉 获得 +' + amount + ' 金币', icon: 'none', duration: 2500 });
+                                                this.notifyParent(true, amount);
+                                        } else {
+                                                // 未达阈值 → 浏览已记录，提示剩余次数
+                                                const msg = res.data.message || '浏览已记录';
+                                                uni.showToast({ title: msg, icon: 'none', duration: 2500 });
+                                                // 仍通知父页面（用于更新进度显示）
+                                                this.notifyParent(false, 0, {
+                                                        view_count: res.data.view_count || 0,
+                                                        threshold: res.data.threshold || 0,
+                                                        total_today_views: res.data.total_today_views || 0,
+                                                        total_today_rewards: res.data.total_today_rewards || 0,
+                                                });
+                                        }
                                 } else {
                                         this.claiming = false;
-                                        const msg = (res && res.msg) || '奖励领取失败';
-                                        console.warn('[AdWatch] ★ 回调失败! msg=' + msg + ', res=' + JSON.stringify(res));
-                                        if (msg !== '重复回调') {
-                                                uni.showToast({ title: msg, icon: 'none' });
-                                        } else {
-                                                this.claimed = true;
-                                                this.notifyParent(true, this.rewardCoin);
-                                        }
+                                        const msg = (res && res.msg) || '操作失败';
+                                        console.warn('[AdWatch] ★ recordView失败! msg=' + msg);
+                                        uni.showToast({ title: msg, icon: 'none' });
                                 }
                         } catch (e) {
                                 this.claiming = false;
@@ -337,13 +345,14 @@ export default {
                  * 通知父页面（红包群页面）广告观看结果
                  * 使用 uni.$emit 事件总线
                  */
-                notifyParent(success, amount) {
+                notifyParent(success, amount, extra) {
                         uni.$emit('ad-watch-result', {
                                 msgId: this.msgId,
                                 adType: this.adType,
                                 success: success,
                                 amount: amount || this.rewardCoin,
                                 adpid: this.adpid,
+                                progress: extra || null,
                         });
                 },
 
