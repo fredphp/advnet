@@ -4,10 +4,11 @@ namespace app\admin\controller\adincome;
 
 use app\common\controller\Backend;
 use app\common\model\AdIncomeLog;
+use app\common\model\AdIncomeLogSplit;
 use think\Db;
 
 /**
- * 广告收益记录管理
+ * 广告收益记录管理（支持分表查询）
  */
 class Log extends Backend
 {
@@ -22,22 +23,17 @@ class Log extends Backend
     }
     
     /**
-     * 收益记录列表
+     * 收益记录列表（跨分表分页查询）
      */
     public function index()
     {
         if ($this->request->isAjax()) {
             list($where, $sort, $order, $offset, $limit) = $this->buildparams();
             
-            $total = Db::name('ad_income_log')->where($where)->count();
-            $list = Db::name('ad_income_log')
-                ->alias('ail')
-                ->join('user u', 'u.id = ail.user_id', 'LEFT')
-                ->field('ail.*, u.username, u.nickname, u.mobile')
-                ->where($where)
-                ->order("ail.{$sort}", $order)
-                ->limit($offset, $limit)
-                ->select();
+            // ★ 使用分表模型进行跨表分页查询
+            $result = AdIncomeLogSplit::paginateAllTables($where, $sort, $order, $offset, $limit);
+            $total = $result['total'];
+            $list = $result['rows'];
             
             foreach ($list as &$row) {
                 $row['ad_type_text'] = AdIncomeLog::$typeList[$row['ad_type']] ?? '未知';
@@ -57,15 +53,17 @@ class Log extends Backend
      */
     public function detail($ids = null)
     {
-        $row = Db::name('ad_income_log')
-            ->alias('ail')
-            ->join('user u', 'u.id = ail.user_id', 'LEFT')
-            ->field('ail.*, u.username, u.nickname, u.mobile, u.avatar')
-            ->where('ail.id', $ids)
-            ->find();
+        // ★ 跨分表查找记录
+        $row = AdIncomeLogSplit::findById($ids);
         
         if (!$row) {
             $this->error('未找到记录');
+        }
+        
+        // 关联用户信息
+        $user = Db::name('user')->where('id', $row['user_id'])->field('username, nickname, mobile, avatar')->find();
+        if ($user) {
+            $row = array_merge($row, $user);
         }
         
         $row['ad_type_text'] = AdIncomeLog::$typeList[$row['ad_type']] ?? '未知';
@@ -79,43 +77,19 @@ class Log extends Backend
     }
     
     /**
-     * 统计概览
+     * 统计概览（跨分表统计）
      */
     public function summary()
     {
         $todayStart = strtotime(date('Y-m-d'));
         $monthStart = strtotime(date('Y-m-01'));
         
-        $todayStats = Db::name('ad_income_log')
-            ->where('status', 'in', [1, 2])
-            ->where('createtime', '>=', $todayStart)
-            ->field('COUNT(*) as count, SUM(user_amount_coin) as user_coin, SUM(platform_amount_coin) as platform_coin, SUM(amount_coin) as total_coin')
-            ->find();
+        $todayStats = AdIncomeLogSplit::getRangeStats($todayStart, time());
+        $monthStats = AdIncomeLogSplit::getRangeStats($monthStart, time());
+        $totalStats = AdIncomeLogSplit::getRangeStats(0, time());
         
-        $monthStats = Db::name('ad_income_log')
-            ->where('status', 'in', [1, 2])
-            ->where('createtime', '>=', $monthStart)
-            ->field('COUNT(*) as count, SUM(user_amount_coin) as user_coin, SUM(platform_amount_coin) as platform_coin, SUM(amount_coin) as total_coin')
-            ->find();
-        
-        $totalStats = Db::name('ad_income_log')
-            ->where('status', 'in', [1, 2])
-            ->field('COUNT(*) as count, SUM(user_amount_coin) as user_coin, SUM(platform_amount_coin) as platform_coin, SUM(amount_coin) as total_coin')
-            ->find();
-        
-        $providerStats = Db::name('ad_income_log')
-            ->where('status', 'in', [1, 2])
-            ->where('createtime', '>=', $monthStart)
-            ->group('ad_provider')
-            ->field('ad_provider, COUNT(*) as count, SUM(user_amount_coin) as user_coin')
-            ->select();
-        
-        $typeStats = Db::name('ad_income_log')
-            ->where('status', 'in', [1, 2])
-            ->where('createtime', '>=', $monthStart)
-            ->group('ad_type')
-            ->field('ad_type, COUNT(*) as count, SUM(user_amount_coin) as user_coin')
-            ->select();
+        $providerStats = AdIncomeLogSplit::getGroupStats($monthStart, time(), 'ad_provider');
+        $typeStats = AdIncomeLogSplit::getGroupStats($monthStart, time(), 'ad_type');
         
         $this->success('', null, [
             'today' => $todayStats,

@@ -31,6 +31,14 @@ class SplitTableService
             'type' => 'year',
             'description' => '任务参与记录分表',
         ],
+        'ad_income_log' => [
+            'type' => 'month',
+            'description' => '广告收益记录分表（按月）',
+        ],
+        'ad_red_packet' => [
+            'type' => 'month',
+            'description' => '广告红包分表（按月）',
+        ],
     ];
 
     // 缓存键

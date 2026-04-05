@@ -5,7 +5,11 @@ namespace app\common\model;
 use think\Model;
 
 /**
- * 广告收益记录模型
+ * 广告收益记录模型（保留用于向后兼容）
+ *
+ * ★ 注意：新增数据已通过 AdIncomeLogSplit 写入月度分表
+ * ★ 本模型保留用于向后兼容，静态查询方法已委托给分表模型
+ * ★ 主表中的数据为分表迁移前的历史数据
  */
 class AdIncomeLog extends Model
 {
@@ -92,75 +96,32 @@ class AdIncomeLog extends Model
     }
 
     /**
-     * 根据交易ID查找记录（防重复回调）
+     * ★ 根据交易ID查找记录（跨分表查找，委托给 AdIncomeLogSplit）
      * @param string $transactionId
-     * @return AdIncomeLog|null
+     * @return array|null
      */
     public static function findByTransactionId($transactionId)
     {
-        if (empty($transactionId)) {
-            return null;
-        }
-        return self::where('transaction_id', $transactionId)->find();
+        return AdIncomeLogSplit::findByTransactionId($transactionId);
     }
 
     /**
-     * 获取用户今日广告收益
+     * ★ 获取用户今日广告收益（跨分表统计）
      * @param int $userId
      * @return int 金币数
      */
     public static function getTodayIncome($userId)
     {
-        $todayStart = strtotime(date('Y-m-d'));
-        return (int)self::where('user_id', $userId)
-            ->where('status', 'in', [self::STATUS_CONFIRMED, self::STATUS_RELEASED])
-            ->where('createtime', '>=', $todayStart)
-            ->sum('user_amount_coin');
+        return AdIncomeLogSplit::getTodayIncome($userId);
     }
 
     /**
-     * 获取用户待释放的收益记录（用于生成红包）
+     * ★ 获取用户待释放的收益记录（跨分表查找）
      * @param int $userId
      * @return array
      */
     public static function getPendingRecords($userId)
     {
-        return self::where('user_id', $userId)
-            ->where('status', self::STATUS_CONFIRMED)
-            ->order('id', 'asc')
-            ->select();
-    }
-
-    /**
-     * 获取广告收益统计
-     * @param array $filters
-     * @return array
-     */
-    public static function getStats($filters = [])
-    {
-        $query = self::where('status', '>', 0);
-
-        if (!empty($filters['user_id'])) {
-            $query->where('user_id', $filters['user_id']);
-        }
-        if (!empty($filters['ad_type'])) {
-            $query->where('ad_type', $filters['ad_type']);
-        }
-        if (!empty($filters['ad_provider'])) {
-            $query->where('ad_provider', $filters['ad_provider']);
-        }
-        if (!empty($filters['start_time'])) {
-            $query->where('createtime', '>=', $filters['start_time']);
-        }
-        if (!empty($filters['end_time'])) {
-            $query->where('createtime', '<=', $filters['end_time']);
-        }
-
-        return [
-            'total_amount' => $query->sum('amount'),
-            'total_user_coin' => (int)$query->sum('user_amount_coin'),
-            'total_platform_coin' => (int)$query->sum('platform_amount_coin'),
-            'count' => $query->count(),
-        ];
+        return AdIncomeLogSplit::getPendingRecords($userId);
     }
 }

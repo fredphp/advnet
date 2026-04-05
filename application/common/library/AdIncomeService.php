@@ -8,7 +8,9 @@ use think\Exception;
 use think\Cache;
 use app\common\model\CoinAccount;
 use app\common\model\AdIncomeLog;
+use app\common\model\AdIncomeLogSplit;
 use app\common\model\AdRedPacket;
+use app\common\model\AdRedPacketSplit;
 use app\common\model\CoinLog;
 
 /**
@@ -102,9 +104,9 @@ class AdIncomeService
         $adSource = $params['ad_source'] ?? 'redbag_page';
         $transactionId = $params['transaction_id'] ?? '';
 
-        // 防重复回调：同一 transaction_id 只处理一次
+        // 防重复回调：同一 transaction_id 只处理一次（跨分表查找）
         if (!empty($transactionId)) {
-            $existing = AdIncomeLog::findByTransactionId($transactionId);
+            $existing = AdIncomeLogSplit::findByTransactionId($transactionId);
             if ($existing) {
                 $result['message'] = '重复回调';
                 $result['log_id'] = $existing['id'];
@@ -131,8 +133,8 @@ class AdIncomeService
             return $result;
         }
 
-        // 检查每日上限
-        $todayIncome = AdIncomeLog::getTodayIncome($userId);
+        // 检查每日上限（跨分表统计）
+        $todayIncome = AdIncomeLogSplit::getTodayIncome($userId);
         $dailyLimit = (int)$this->getConfig('daily_reward_limit', 50000);
         if ($todayIncome + $rewardCoin > $dailyLimit) {
             $rewardCoin = max(0, $dailyLimit - $todayIncome);
@@ -193,9 +195,12 @@ class AdIncomeService
                 'remark' => $params['remark'] ?? '',
             ];
 
-            $log = new AdIncomeLog();
-            $log->allowField(true)->save($logData);
-            $logId = $log->id;
+            // ★ 使用分表模型插入收益日志
+            $splitResult = AdIncomeLogSplit::createLog($logData);
+            if (!$splitResult['success']) {
+                throw new Exception($splitResult['message'] ?? '收益日志写入失败');
+            }
+            $logId = $splitResult['id'];
 
             // 4. 更新 advn_coin_account：增加 ad_freeze_balance 和 total_ad_income
             $account = Db::name('coin_account')
@@ -345,11 +350,8 @@ class AdIncomeService
                             continue;
                         }
 
-                        // 获取待释放的收益记录
-                        $pendingRecords = AdIncomeLog::where('user_id', $userId)
-                            ->where('status', AdIncomeLog::STATUS_CONFIRMED)
-                            ->order('id', 'asc')
-                            ->select();
+                        // ★ 获取待释放的收益记录（跨分表查找）
+                        $pendingRecords = AdIncomeLogSplit::getPendingRecords($userId);
 
                         if (empty($pendingRecords)) {
                             Db::rollback();
@@ -374,15 +376,19 @@ class AdIncomeService
                             continue;
                         }
 
-                        // 创建红包
-                        $packet = new AdRedPacket();
-                        $packet->user_id = $userId;
-                        $packet->amount = $packetAmount;
-                        $packet->source = AdRedPacket::SOURCE_AD_INCOME;
-                        $packet->source_ids = implode(',', $sourceIds);
-                        $packet->status = AdRedPacket::STATUS_UNCLAIMED;
-                        $packet->expire_time = $expireTime;
-                        $packet->save();
+                        // ★ 创建红包（写入分表）
+                        $packetData = [
+                            'user_id' => $userId,
+                            'amount' => $packetAmount,
+                            'source' => AdRedPacket::SOURCE_AD_INCOME,
+                            'source_ids' => implode(',', $sourceIds),
+                            'status' => AdRedPacket::STATUS_UNCLAIMED,
+                            'expire_time' => $expireTime,
+                        ];
+                        $packetResult = AdRedPacketSplit::createPacket($packetData);
+                        if (!$packetResult['success']) {
+                            throw new Exception($packetResult['message'] ?? '红包创建失败');
+                        }
 
                         // 清空 ad_freeze_balance
                         $affected = Db::name('coin_account')
@@ -398,13 +404,12 @@ class AdIncomeService
                             throw new Exception('账户更新失败');
                         }
 
-                        // 标记收益记录为已释放
-                        AdIncomeLog::where('user_id', $userId)
-                            ->where('status', AdIncomeLog::STATUS_CONFIRMED)
-                            ->update([
-                                'status' => AdIncomeLog::STATUS_RELEASED,
-                                'updatetime' => time(),
-                            ]);
+                        // ★ 标记收益记录为已释放（跨分表更新）
+                        AdIncomeLogSplit::batchUpdateStatus(
+                            $userId,
+                            [AdIncomeLog::STATUS_CONFIRMED],
+                            AdIncomeLog::STATUS_RELEASED
+                        );
 
                         Db::commit();
 
@@ -468,11 +473,8 @@ class AdIncomeService
         try {
             Db::startTrans();
 
-            // 查找红包
-            $packet = AdRedPacket::where('id', $packetId)
-                ->where('user_id', $userId)
-                ->lock(true)
-                ->find();
+            // ★ 查找红包（跨分表查找）
+            $packet = AdRedPacketSplit::findById($packetId);
 
             if (!$packet) {
                 $this->error('红包不存在');
@@ -495,18 +497,25 @@ class AdIncomeService
 
             // 检查过期
             if ($packet['expire_time'] > 0 && time() > $packet['expire_time']) {
-                $packet->status = AdRedPacket::STATUS_EXPIRED;
-                $packet->save();
+                if (isset($packet['_from_table'])) {
+                    Db::name($packet['_from_table'])->where('id', $packetId)
+                        ->update(['status' => AdRedPacket::STATUS_EXPIRED, 'updatetime' => time()]);
+                }
                 $result['message'] = '红包已过期';
                 return $result;
             }
 
             $amount = (int)round($packet['amount']);
 
-            // 更新红包状态
-            $packet->status = AdRedPacket::STATUS_CLAIMED;
-            $packet->claim_time = time();
-            $packet->save();
+            // ★ 更新红包状态（跨分表更新）
+            if (isset($packet['_from_table'])) {
+                Db::name($packet['_from_table'])->where('id', $packetId)
+                    ->update([
+                        'status' => AdRedPacket::STATUS_CLAIMED,
+                        'claim_time' => time(),
+                        'updatetime' => time(),
+                    ]);
+            }
 
             // 通过 CoinService 发放金币到 balance
             Db::commit();
@@ -612,11 +621,11 @@ class AdIncomeService
         // 获取账户信息
         $account = Db::name('coin_account')->where('user_id', $userId)->find();
 
-        // 获取未领取红包
-        $unclaimedSummary = AdRedPacket::getUnclaimedSummary($userId);
+        // ★ 获取未领取红包（跨分表统计）
+        $unclaimedSummary = AdRedPacketSplit::getUnclaimedSummary($userId);
 
-        // 获取今日广告收益
-        $todayIncome = AdIncomeLog::getTodayIncome($userId);
+        // 获取今日广告收益（跨分表统计）
+        $todayIncome = AdIncomeLogSplit::getTodayIncome($userId);
 
         // 获取累计广告收益
         $totalAdIncome = $account ? (int)round($account['total_ad_income']) : 0;
@@ -684,11 +693,8 @@ class AdIncomeService
                 return $result;
             }
 
-            // ★ 检查是否有待释放的收益记录
-            $pendingRecords = AdIncomeLog::where('user_id', $userId)
-                ->where('status', AdIncomeLog::STATUS_CONFIRMED)
-                ->order('id', 'asc')
-                ->select();
+            // ★ 检查是否有待释放的收益记录（跨分表查找）
+            $pendingRecords = AdIncomeLogSplit::getPendingRecords($userId);
 
             // ★ 兜底逻辑：如果没有 CONFIRMED 记录，直接用 freeze_balance 作为红包金额
             // （应对直接写入 freeze_balance 但无对应记录的场景）
@@ -739,11 +745,8 @@ class AdIncomeService
                     return $result;
                 }
 
-                // ★ 重新检查 pending 记录（兜底）
-                $freshPending = AdIncomeLog::where('user_id', $userId)
-                    ->where('status', AdIncomeLog::STATUS_CONFIRMED)
-                    ->order('id', 'asc')
-                    ->select();
+                // ★ 重新检查 pending 记录（跨分表查找）
+                $freshPending = AdIncomeLogSplit::getPendingRecords($userId);
 
                 if (empty($freshPending)) {
                     // 兜底：直接用冻结余额
@@ -768,15 +771,19 @@ class AdIncomeService
 
                 $expireTime = time() + $expireHours * 3600;
 
-                // 创建红包
-                $packet = new AdRedPacket();
-                $packet->user_id = $userId;
-                $packet->amount = $finalAmount;
-                $packet->source = AdRedPacket::SOURCE_AD_INCOME;
-                $packet->source_ids = !empty($freshSourceIds) ? implode(',', $freshSourceIds) : 'freeze_balance';
-                $packet->status = AdRedPacket::STATUS_UNCLAIMED;
-                $packet->expire_time = $expireTime;
-                $packet->save();
+                // ★ 创建红包（写入分表）
+                $packetData = [
+                    'user_id' => $userId,
+                    'amount' => $finalAmount,
+                    'source' => AdRedPacket::SOURCE_AD_INCOME,
+                    'source_ids' => !empty($freshSourceIds) ? implode(',', $freshSourceIds) : 'freeze_balance',
+                    'status' => AdRedPacket::STATUS_UNCLAIMED,
+                    'expire_time' => $expireTime,
+                ];
+                $packetResult = AdRedPacketSplit::createPacket($packetData);
+                if (!$packetResult['success']) {
+                    throw new Exception($packetResult['message'] ?? '红包创建失败');
+                }
 
                 // 清空 ad_freeze_balance
                 $affected = Db::name('coin_account')
@@ -792,14 +799,13 @@ class AdIncomeService
                     throw new Exception('账户更新失败');
                 }
 
-                // 如果有对应的 pending 记录，标记为已释放
+                // 如果有对应的 pending 记录，标记为已释放（跨分表更新）
                 if (!empty($freshPending)) {
-                    AdIncomeLog::where('user_id', $userId)
-                        ->where('status', AdIncomeLog::STATUS_CONFIRMED)
-                        ->update([
-                            'status' => AdIncomeLog::STATUS_RELEASED,
-                            'updatetime' => time(),
-                        ]);
+                    AdIncomeLogSplit::batchUpdateStatus(
+                        $userId,
+                        [AdIncomeLog::STATUS_CONFIRMED],
+                        AdIncomeLog::STATUS_RELEASED
+                    );
                 }
 
                 Db::commit();

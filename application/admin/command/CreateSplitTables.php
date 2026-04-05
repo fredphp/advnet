@@ -41,6 +41,14 @@ class CreateSplitTables extends Command
             'class' => 'app\common\model\UserRedPacketAccumulateSplit',
             'base_table' => 'user_red_packet_accumulate',
         ],
+        'adincome' => [
+            'class' => 'app\common\model\AdIncomeLogSplit',
+            'base_table' => 'ad_income_log',
+        ],
+        'adredpacket' => [
+            'class' => 'app\common\model\AdRedPacketSplit',
+            'base_table' => 'ad_red_packet',
+        ],
     ];
 
     protected function configure()

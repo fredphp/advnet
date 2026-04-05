@@ -4,10 +4,11 @@ namespace app\admin\controller\adincome;
 
 use app\common\controller\Backend;
 use app\common\model\AdRedPacket;
+use app\common\model\AdRedPacketSplit;
 use think\Db;
 
 /**
- * 广告红包管理
+ * 广告红包管理（支持分表查询）
  */
 class Redpacket extends Backend
 {
@@ -22,22 +23,17 @@ class Redpacket extends Backend
     }
     
     /**
-     * 红包列表
+     * 红包列表（跨分表分页查询）
      */
     public function index()
     {
         if ($this->request->isAjax()) {
             list($where, $sort, $order, $offset, $limit) = $this->buildparams();
             
-            $total = Db::name('ad_red_packet')->where($where)->count();
-            $list = Db::name('ad_red_packet')
-                ->alias('arp')
-                ->join('user u', 'u.id = arp.user_id', 'LEFT')
-                ->field('arp.*, u.username, u.nickname, u.mobile')
-                ->where($where)
-                ->order("arp.{$sort}", $order)
-                ->limit($offset, $limit)
-                ->select();
+            // ★ 使用分表模型进行跨表分页查询
+            $result = AdRedPacketSplit::paginateAllTables($where, $sort, $order, $offset, $limit);
+            $total = $result['total'];
+            $list = $result['rows'];
             
             foreach ($list as &$row) {
                 $row['status_text'] = AdRedPacket::$statusList[$row['status']] ?? '未知';
@@ -59,32 +55,37 @@ class Redpacket extends Backend
      */
     public function detail($ids = null)
     {
-        $row = Db::name('ad_red_packet')
-            ->alias('arp')
-            ->join('user u', 'u.id = arp.user_id', 'LEFT')
-            ->field('arp.*, u.username, u.nickname, u.mobile, u.avatar')
-            ->where('arp.id', $ids)
-            ->find();
+        // ★ 跨分表查找记录
+        $row = AdRedPacketSplit::findById($ids);
         
         if (!$row) {
             $this->error('未找到记录');
+        }
+        
+        // 关联用户信息
+        $user = Db::name('user')->where('id', $row['user_id'])->field('username, nickname, mobile, avatar')->find();
+        if ($user) {
+            $row = array_merge($row, $user);
         }
         
         $row['status_text'] = AdRedPacket::$statusList[$row['status']] ?? '未知';
         $row['createtime_text'] = date('Y-m-d H:i:s', $row['createtime']);
         $row['claim_time_text'] = $row['claim_time'] ? date('Y-m-d H:i:s', $row['claim_time']) : '';
         $row['expire_time_text'] = $row['expire_time'] ? date('Y-m-d H:i:s', $row['expire_time']) : '';
+        $row['source_text'] = $row['source'] == 'ad_income' ? '广告收益' : '其他';
         
         $sourceIds = $row['source_ids'] ? explode(',', $row['source_ids']) : [];
         $incomeLogs = [];
-        if (!empty($sourceIds)) {
-            $incomeLogs = Db::name('ad_income_log')
-                ->where('id', 'in', $sourceIds)
-                ->field('id, ad_type, ad_provider, amount, user_amount_coin, platform_amount_coin, status, createtime')
-                ->select();
-            foreach ($incomeLogs as &$log) {
-                $log['status_text'] = \app\common\model\AdIncomeLog::$statusList[$log['status']] ?? '未知';
-                $log['createtime_text'] = date('Y-m-d H:i:s', $log['createtime']);
+        if (!empty($sourceIds) && $row['source_ids'] !== 'freeze_balance') {
+            // 按来源表查找收益记录
+            foreach ($sourceIds as $logId) {
+                $logId = (int)$logId;
+                $logRow = AdIncomeLogSplit::findById($logId);
+                if ($logRow) {
+                    $logRow['status_text'] = \app\common\model\AdIncomeLog::$statusList[$logRow['status']] ?? '未知';
+                    $logRow['createtime_text'] = date('Y-m-d H:i:s', $logRow['createtime']);
+                    $incomeLogs[] = $logRow;
+                }
             }
         }
         
@@ -94,20 +95,14 @@ class Redpacket extends Backend
     }
     
     /**
-     * 红包统计
+     * 红包统计（跨分表统计）
      */
     public function summary()
     {
         $todayStart = strtotime(date('Y-m-d'));
         
-        $todayStats = Db::name('ad_red_packet')
-            ->where('createtime', '>=', $todayStart)
-            ->field('COUNT(*) as total, SUM(CASE WHEN status=0 THEN 1 ELSE 0 END) as unclaimed, SUM(CASE WHEN status=1 THEN 1 ELSE 0 END) as claimed, SUM(CASE WHEN status=2 THEN 1 ELSE 0 END) as expired, SUM(amount) as total_amount, SUM(CASE WHEN status=1 THEN amount ELSE 0 END) as claimed_amount')
-            ->find();
-        
-        $totalStats = Db::name('ad_red_packet')
-            ->field('COUNT(*) as total, SUM(CASE WHEN status=0 THEN 1 ELSE 0 END) as unclaimed, SUM(CASE WHEN status=1 THEN 1 ELSE 0 END) as claimed, SUM(CASE WHEN status=2 THEN 1 ELSE 0 END) as expired, SUM(amount) as total_amount, SUM(CASE WHEN status=1 THEN amount ELSE 0 END) as claimed_amount, SUM(CASE WHEN status=2 THEN amount ELSE 0 END) as expired_amount')
-            ->find();
+        $todayStats = AdRedPacketSplit::getStats($todayStart, time());
+        $totalStats = AdRedPacketSplit::getStats();
         
         $pendingUsers = Db::name('coin_account')
             ->where('ad_freeze_balance', '>', 0)
@@ -125,12 +120,13 @@ class Redpacket extends Backend
     }
     
     /**
-     * 手动过期处理
+     * 手动过期处理（跨所有分表）
      */
     public function expire()
     {
         if ($this->request->isPost()) {
-            $count = AdRedPacket::expirePackets();
+            // ★ 跨所有表处理过期红包
+            $count = AdRedPacketSplit::expireAllPackets();
             $this->success("处理完成，过期 {$count} 个红包");
         }
         return $this->view->fetch();
