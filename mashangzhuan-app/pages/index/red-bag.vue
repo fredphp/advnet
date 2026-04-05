@@ -225,7 +225,6 @@ import AdBanner from '@/components/ad/adBanner.vue'
 import AdFeedMessage from '@/components/chat/adFeedMessage.vue'
 import RewardedVideoMessage from '@/components/chat/rewardedVideoMessage.vue'
 import AdRedPacketList from '@/components/ad/adRedPacketList.vue'
-import { decryptData } from '@/common/crypto.js'
 
 export default {
         components: {
@@ -414,12 +413,12 @@ export default {
                 async loadAdOverview() {
                         try {
                                 const res = await this.$api.adOverview({});
+                                console.log('[RedBag] overview 响应: code=' + (res ? res.code : 'null') + ', dataType=' + typeof (res && res.data));
                                 if (res && res.code === 1 && res.data) {
-                                        // ★ 后端默认开启数据加密，res.data 可能是加密字符串
-                                        // decryptData 会自动判断：字符串→解密，对象→直接返回
-                                        const data = decryptData(res.data);
+                                        // ★ 后端已关闭加密，res.data 直接是对象
+                                        const data = (typeof res.data === 'object') ? res.data : null;
                                         if (!data) {
-                                                console.warn('[RedBag] overview 数据解密失败');
+                                                console.warn('[RedBag] overview 数据格式异常, raw:', typeof res.data, String(res.data).substring(0, 100));
                                                 return;
                                         }
 
@@ -443,13 +442,15 @@ export default {
                                         // ★ 保存待释放金币余额
                                         this.freezeBalance = data.ad_freeze_balance || 0;
 
-                                        console.log('[RedBag] 广告配置加载成功, feed_adpid=' + this.adConfig.feed_adpid + ', rewarded_video_adpid=' + this.adConfig.rewarded_video_adpid);
+                                        console.log('[RedBag] 广告配置加载成功, feed_adpid=' + this.adConfig.feed_adpid + ', rewarded_video_adpid=' + this.adConfig.rewarded_video_adpid + ', enabled=' + this.adConfig.ad_income_enabled);
 
                                         // 检查广告配置并提示
                                         this.checkAdConfigAndHint();
+                                } else {
+                                        console.warn('[RedBag] overview 接口返回异常:', res ? JSON.stringify(res).substring(0, 200) : 'null response');
                                 }
                         } catch (e) {
-                                console.warn('[RedBag] 加载广告配置失败:', e);
+                                console.warn('[RedBag] 加载广告配置失败:', e.message || e);
                         }
                 },
 
@@ -672,18 +673,16 @@ export default {
                                         );
                                         this.messages.push(videoMsg);
                                         console.log('[RedBag] 推送激励视频广告, adpid=' + this.adConfig.rewarded_video_adpid + ', 奖励=' + (this.adConfig.reward_per_video || 200) + '金币');
-                                } else if (this.adConfig.feed_adpid) {
-                                        // 未到激励视频时间 → 推送信息流广告
+                                } else {
+                                        // ★ 无论是否配置了 adpid，都推送信息流广告卡片
+                                        // adpid 仅在用户点击播放时才需要，卡片 UI 本身不依赖它
                                         const adMsg = this.createAdFeedMessage(
                                                 this.adConfig.feed_adpid,
                                                 this.adConfig.reward_per_feed || 50,
                                                 Date.now()
                                         );
                                         this.messages.push(adMsg);
-                                        console.log('[RedBag] 推送信息流广告, adpid=' + this.adConfig.feed_adpid);
-                                } else {
-                                        // 没配置 adpid 时，推一条聊天消息代替
-                                        this.messages.push(this.createFakeChatMessage());
+                                        console.log('[RedBag] 推送信息流广告, adpid=' + (this.adConfig.feed_adpid || '(未配置)'));
                                 }
                         } else {
                                 // ★ 推送普通聊天消息（从后端资源中随机选取）

@@ -225,11 +225,8 @@ class Ad extends Api
             $data['video_reward_threshold'] = 3;
         }
 
-        // ★ 加密 data 字段（复用已加载的配置判断，不再额外查库）
-        $encryptEnabled = isset($adConfig['data_encrypt']) ? (int)$adConfig['data_encrypt'] : 1;
-        if ($encryptEnabled) {
-            $data = DataEncryptService::encrypt($data);
-        }
+        // ★ 广告配置数据（adpid、金币奖励等）非敏感信息，不做加密
+        // 保证前端各平台都能正确解析数据
 
         // 缓存结果 30 秒
         try {
