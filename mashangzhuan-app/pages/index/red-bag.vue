@@ -194,6 +194,7 @@ export default {
         onLoad(opt) {
                 this.groupId = opt.group_id || 'default_group';
                 this.user_info = uni.getStorageSync('user_info') || {};
+                // ★ 先加载广告配置，配置加载完成后再启动依赖配置的定时器
                 this.loadAdOverview();
                 // ★ 加载头像列表
                 this.loadAvatarList();
@@ -201,8 +202,7 @@ export default {
                 this.generateInitialMessages();
                 // ★ 启动持续推送（聊天消息 + 信息流广告交替，永不停止）
                 this.startContinuousPush();
-                // ★ 启动激励视频推送（每120秒推一条激励视频广告）
-                this.startRewardedVideoPush();
+                // ★ 激励视频推送将在 loadAdOverview 配置加载完成后自动启动（不再在此处同步调用）
                 // ★ 启动红包检查轮询（每10秒检查是否有新红包推送到聊天）
                 this.startAdRedPacketPolling();
                 // ★ 页面加载时立即执行一次结算检查（不等轮询定时器）
@@ -363,6 +363,9 @@ export default {
                                         this.adConfig.rewarded_video_adpid = res.data.rewarded_video_adpid || '';
                                         this.adConfig.reward_per_video = res.data.reward_per_video || 200;
                                         this.adConfig.rewarded_video_interval = res.data.rewarded_video_interval || 120;
+
+                                        // ★ 配置加载完成后启动激励视频推送（解决竞态：onLoad同步调用时adpid仍为空）
+                                        this.startRewardedVideoPush();
 
                                         // 检查广告配置并提示
                                         this.checkAdConfigAndHint();
