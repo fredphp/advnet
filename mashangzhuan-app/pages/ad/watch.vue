@@ -8,7 +8,9 @@
                         <view class="nav-title">
                                 <text class="nav-title-text">{{ pageTitle }}</text>
                         </view>
-                        <view class="nav-placeholder"></view>
+                        <view class="nav-close" @click="forceBack">
+                                <text class="close-text">关闭</text>
+                        </view>
                 </view>
 
                 <!-- 广告内容区 -->
@@ -132,6 +134,8 @@
                                         <text class="action-text">返回红包群</text>
                                 </view>
                         </view>
+                        <!-- 底部安全距离占位 -->
+                        <view style="height: env(safe-area-inset-bottom);"></view>
                 </view>
         </view>
 </template>
@@ -311,8 +315,10 @@ export default {
                                         if (res && res.code === 1 && res.data) {
                                                 this.claimed = true;
                                                 const amount = res.data.amount || this.rewardCoin;
-                                                uni.showToast({ title: '🧧 红包领取成功 +' + amount + ' 金币', icon: 'none', duration: 2500 });
+                                                uni.showToast({ title: '🧧 红包领取成功 +' + amount + ' 金币', icon: 'none', duration: 1500 });
                                                 this.notifyParent(true, amount);
+                                                // ★ 红包领取成功后自动返回上一页
+                                                setTimeout(() => { this.goBack(); }, 1500);
                                         } else {
                                                 this.claiming = false;
                                                 const msg = (res && res.msg) || '红包领取失败';
@@ -331,8 +337,10 @@ export default {
                                         if (res && res.code === 1 && res.data) {
                                                 this.claimed = true;
                                                 const amount = res.data.amount || 0;
-                                                uni.showToast({ title: '🎉 领取成功 +' + amount + ' 金币', icon: 'none', duration: 2500 });
+                                                uni.showToast({ title: '🎉 领取成功 +' + amount + ' 金币', icon: 'none', duration: 1500 });
                                                 this.notifyParent(true, amount);
+                                                // ★ 冻结金币领取成功后自动返回上一页
+                                                setTimeout(() => { this.goBack(); }, 1500);
                                         } else {
                                                 this.claiming = false;
                                                 const msg = (res && res.msg) || '领取失败';
@@ -358,12 +366,14 @@ export default {
 
                                         if (res.data.reward_given) {
                                                 // 达到阈值 → 发放了奖励
-                                                uni.showToast({ title: '🎉 获得 +' + amount + ' 金币', icon: 'none', duration: 2500 });
+                                                uni.showToast({ title: '🎉 获得 +' + amount + ' 金币', icon: 'none', duration: 1500 });
                                                 this.notifyParent(true, amount);
+                                                // ★ 激励视频奖励自动发放成功后自动返回上一页
+                                                setTimeout(() => { this.goBack(); }, 1500);
                                         } else {
                                                 // 未达阈值 → 浏览已记录，提示剩余次数
                                                 const msg = res.data.message || '浏览已记录';
-                                                uni.showToast({ title: msg, icon: 'none', duration: 2500 });
+                                                uni.showToast({ title: msg, icon: 'none', duration: 2000 });
                                                 // 仍通知父页面（用于更新进度显示）
                                                 this.notifyParent(false, 0, {
                                                         view_count: res.data.view_count || 0,
@@ -371,6 +381,8 @@ export default {
                                                         total_today_views: res.data.total_today_views || 0,
                                                         total_today_rewards: res.data.total_today_rewards || 0,
                                                 });
+                                                // ★ 未达阈值也自动返回（浏览已记录，无需停留）
+                                                setTimeout(() => { this.goBack(); }, 2000);
                                         }
                                 } else {
                                         this.claiming = false;
@@ -430,10 +442,19 @@ export default {
                         // 恢复返回手势
                         // #ifdef APP-PLUS
                         try {
-                                const webview = this.$scope.$getAppWebview();
+                                const webview = this.$scope.$getAppwebview();
                                 if (webview) webview.setStyle({ 'popGesture': 'close' });
                         } catch (e) {}
                         // #endif
+                        uni.navigateBack();
+                },
+
+                /**
+                 * ★ 强制返回（导航栏关闭按钮，任何状态都可点击）
+                 */
+                forceBack() {
+                        this.clearWatchTimer();
+                        this.claiming = false;
                         uni.navigateBack();
                 }
         }
@@ -475,6 +496,18 @@ export default {
 
 .nav-placeholder {
         width: 60rpx;
+}
+
+.nav-close {
+        width: 80rpx;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+}
+
+.close-text {
+        font-size: 28rpx;
+        color: #666;
 }
 
 /* 广告内容区 */
