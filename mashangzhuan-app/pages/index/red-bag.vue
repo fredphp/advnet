@@ -237,18 +237,22 @@ export default {
                 AdRedPacketList,
         },
 
-        onLoad(opt) {
+        async onLoad(opt) {
                 this.groupId = opt.group_id || 'default_group';
                 this.user_info = uni.getStorageSync('user_info') || {};
-                // ★ 先加载广告配置，配置加载完成后再启动依赖配置的定时器
-                this.loadAdOverview();
-                // ★ 加载头像列表
-                this.loadAvatarList();
-                // 生成初始聊天消息（系统欢迎语）
+
+                // ★ 并行加载头像列表和广告配置，等两者都完成后再生成消息和启动推送
+                // 解决刷新页面时消息先出但头像未加载导致的"无头像"问题
+                await Promise.all([
+                        this.loadAvatarList(),
+                        this.loadAdOverview()
+                ]);
+
+                // ★ 头像和配置都加载完成后，再生成初始消息（确保每条消息都有正确的头像）
                 this.generateInitialMessages();
-                // ★ 启动持续推送（聊天消息 + 信息流广告交替，永不停止）
+                // ★ 启动持续推送（此时 avatarList 已就绪，feed_adpid 已就绪）
                 this.startContinuousPush();
-                // ★ 激励视频推送将在 loadAdOverview 配置加载完成后自动启动（不再在此处同步调用）
+                // ★ 激励视频推送将在 loadAdOverview 配置加载完成后自动启动（已通过 await 保证）
                 // ★ 启动红包检查轮询（每10秒检查是否有新红包推送到聊天）
                 this.startAdRedPacketPolling();
                 // ★ 页面加载时立即执行一次结算检查（不等轮询定时器）
@@ -649,6 +653,16 @@ export default {
                 },
 
                 /**
+                 * 获取一个随机的广告头像（从已加载的头像列表中选取）
+                 */
+                getRandomAdAvatar() {
+                        if (this.avatarList && this.avatarList.length > 0) {
+                                return this.avatarList[Math.floor(Math.random() * this.avatarList.length)];
+                        }
+                        return '/static/image/avatar.png';
+                },
+
+                /**
                  * 创建一条信息流广告消息对象
                  */
                 createAdFeedMessage(adpid, rewardCoin, index) {
@@ -659,7 +673,7 @@ export default {
                                 sender: 'system',
                                 user: {
                                         nickname: '广告推荐',
-                                        avatar: '/static/image/ad-avatar.png'
+                                        avatar: this.getRandomAdAvatar()
                                 },
                                 taskData: {
                                         adpid: adpid,
@@ -682,7 +696,7 @@ export default {
                                 sender: 'system',
                                 user: {
                                         nickname: '限时福利',
-                                        avatar: '/static/image/ad-avatar.png'
+                                        avatar: this.getRandomAdAvatar()
                                 },
                                 taskData: {
                                         adpid: adpid,

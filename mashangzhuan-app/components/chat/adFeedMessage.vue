@@ -1,12 +1,21 @@
 <template>
         <view class="ad-feed-message">
+                <!-- ★ 顶部：发送者信息条（与 rewardedVideoMessage 保持一致风格） -->
+                <view class="msg-header">
+                        <image class="msg-avatar" :src="message.user ? message.user.avatar : '/static/image/avatar.png'" mode="aspectFill"></image>
+                        <text class="msg-nickname">{{ message.user ? message.user.nickname : '广告推荐' }}</text>
+                        <view class="header-tag">
+                                <text class="tag-text">信息流</text>
+                        </view>
+                        <view class="header-time">
+                                <text class="time-text">{{ formatTime(message.time) }}</text>
+                        </view>
+                </view>
+
                 <!-- 广告卡片（全宽平铺） -->
                 <view class="ad-card" @click="handleWatchAd">
                         <!-- 顶部标识栏 -->
                         <view class="ad-card-header">
-                                <view class="ad-badge">
-                                        <text class="badge-text">信息流</text>
-                                </view>
                                 <text class="ad-card-title">浏览信息流赚金币</text>
                                 <text class="ad-reward-tag">+{{ displayRewardCoin }} 金币</text>
                         </view>
@@ -133,6 +142,15 @@ export default {
 
         methods: {
                 /**
+                 * 格式化时间
+                 */
+                formatTime(timestamp) {
+                        if (!timestamp) return '';
+                        const date = new Date(timestamp);
+                        return date.getHours().toString().padStart(2, '0') + ':' + date.getMinutes().toString().padStart(2, '0');
+                },
+
+                /**
                  * 更新进度数据（从 props 或 message 获取）
                  */
                 updateProgress() {
@@ -175,12 +193,52 @@ export default {
 
 <style lang="scss" scoped>
 .ad-feed-message {
-        width: auto;
-        margin-left: -20rpx;
-        margin-right: -20rpx;
-        margin-top: 0;
-        margin-bottom: 0;
+        width: 100%;
         padding: 0;
+        margin: 0;
+}
+
+/* ★ 发送者信息条（与 rewardedVideoMessage 风格一致） */
+.msg-header {
+        display: flex;
+        align-items: center;
+        padding: 16rpx 24rpx 10rpx;
+}
+
+.msg-avatar {
+        width: 52rpx;
+        height: 52rpx;
+        border-radius: 50%;
+        margin-right: 12rpx;
+        flex-shrink: 0;
+}
+
+.msg-nickname {
+        font-size: 24rpx;
+        color: #999;
+        font-weight: 400;
+}
+
+.header-tag {
+        margin-left: 12rpx;
+        background: linear-gradient(135deg, #ff9500, #ff6b00);
+        padding: 2rpx 12rpx;
+        border-radius: 6rpx;
+}
+
+.tag-text {
+        font-size: 20rpx;
+        color: #fff;
+        font-weight: 600;
+}
+
+.header-time {
+        margin-left: auto;
+}
+
+.time-text {
+        font-size: 22rpx;
+        color: #ccc;
 }
 
 .ad-card {
@@ -196,20 +254,6 @@ export default {
         padding: 16rpx 24rpx;
         background: linear-gradient(135deg, #fff5eb, #fff9f3);
         border-bottom: 1rpx solid #f5e6d3;
-}
-
-.ad-badge {
-        background: linear-gradient(135deg, #ff9500, #ff6b00);
-        padding: 4rpx 14rpx;
-        border-radius: 6rpx;
-        margin-right: 12rpx;
-        flex-shrink: 0;
-}
-
-.badge-text {
-        font-size: 20rpx;
-        color: #fff;
-        font-weight: bold;
 }
 
 .ad-card-title {

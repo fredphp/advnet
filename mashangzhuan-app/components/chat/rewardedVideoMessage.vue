@@ -2,7 +2,7 @@
         <view class="rewarded-video-message">
                 <!-- 顶部：发送者信息条 -->
                 <view class="msg-header">
-                        <image class="avatar" :src="message.user ? message.user.avatar : '/static/image/ad-avatar.png'" mode="aspectFill"></image>
+                        <image class="avatar" :src="message.user ? message.user.avatar : '/static/image/avatar.png'" mode="aspectFill"></image>
                         <text class="nickname">{{ message.user ? message.user.nickname : '限时福利' }}</text>
                         <view class="header-tag">
                                 <text class="tag-text">激励视频</text>
