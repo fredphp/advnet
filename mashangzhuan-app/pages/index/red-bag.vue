@@ -238,6 +238,7 @@ export default {
         },
 
         async onLoad(opt) {
+                console.log('[RedBag] ★ 页面加载 v20250704-a (广告修复版)');
                 this.groupId = opt.group_id || 'default_group';
                 this.user_info = uni.getStorageSync('user_info') || {};
 
@@ -661,6 +662,7 @@ export default {
 
                         // 判断是否该推广告了
                         if (this.pushCounter >= this.pushChatCountBeforeAd) {
+                                console.log('[RedBag] ★ 到达广告位, pushCounter=' + this.pushCounter + ', threshold=' + this.pushChatCountBeforeAd);
                                 // 重置计数器，随机 2-4 条后下次再推广告
                                 this.pushCounter = 0;
                                 this.pushChatCountBeforeAd = 2 + Math.floor(Math.random() * 3);

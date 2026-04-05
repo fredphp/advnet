@@ -175,8 +175,13 @@ class Ad extends Api
         // ★ 接口级缓存：同一用户 30 秒内重复请求直接返回缓存（前端频繁轮询场景）
         $cacheKey = 'ad_overview:' . $userId;
         $cached = Cache::get($cacheKey);
-        if ($cached !== null) {
+        // ★ 验证缓存数据必须是数组（旧的加密时代可能存入了 string/false 等无效值）
+        if (is_array($cached)) {
             $this->success('获取成功', $cached);
+        } elseif ($cached !== null) {
+            // 缓存数据格式异常（非数组）→ 删除脏缓存，重新生成
+            try { Cache::delete($cacheKey); } catch (\Throwable $e) {}
+            Log::warning('AdOverview: 缓存数据格式异常，已清除, type=' . gettype($cached));
         }
 
         // ★ 性能优化：一次性批量加载全部 ad 分组配置（1次调用替代12+次）
