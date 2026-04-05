@@ -60,7 +60,7 @@ class AdIncomeService
             'callback_secret' => SystemConfigService::get('ad.callback_secret', null, ''),
             'redpacket_threshold' => SystemConfigService::get('ad.redpacket_threshold', null, 1000),
             'feed_reward_threshold' => SystemConfigService::get('ad.feed_reward_threshold', null, 5),
-            'video_reward_threshold' => SystemConfigService::get('ad.video_reward_threshold', null, 3),
+            'video_reward_threshold' => SystemConfigService::get('ad.video_reward_threshold', null, 1),
         ];
     }
 
@@ -802,7 +802,12 @@ class AdIncomeService
 
             // 确保配置项存在
             $this->ensureConfigExists('feed_reward_threshold', 'ad', '信息流奖励阈值（次）', 'number', '5', '用户浏览多少次信息流广告后发放一次奖励，0=每次都发', 310);
-            $this->ensureConfigExists('video_reward_threshold', 'ad', '激励视频奖励阈值（次）', 'number', '3', '用户观看多少次激励视频后发放一次奖励，0=每次都发', 311);
+            $this->ensureConfigExists('video_reward_threshold', 'ad', '激励视频奖励阈值（次）', 'number', '1', '用户观看多少次激励视频后发放一次奖励，0=每次都发，1=每次都发', 311);
+
+            // ★ 修正旧默认值：如果 video_reward_threshold 仍为旧默认值 3，自动更新为 1
+            try {
+                Db::name('config')->where('name', 'video_reward_threshold')->where('`group`', 'ad')->where('value', '3')->update(['value' => '1', 'updatetime' => time()]);
+            } catch (\Throwable $e) {}
 
             $ensured = true;
             return true;
@@ -881,6 +886,14 @@ class AdIncomeService
 
         // 阈值为0 → 每次都发（兼容旧逻辑，直接走回调）
         if ($threshold <= 0) {
+            // ★ 即时模式也显式设置 reward_coin，确保 handleAdCallback 使用正确金额
+            $rewardPerView = $adType === 'reward'
+                ? (int)$this->getConfig('reward_per_video', 200)
+                : (int)$this->getConfig('reward_per_feed', 50);
+            if ($rewardPerView > 0) {
+                $params['reward_coin'] = $rewardPerView;
+            }
+
             $callbackResult = $this->handleAdCallback($userId, $params);
             if ($callbackResult['success']) {
                 $result['reward_given'] = true;
