@@ -117,7 +117,10 @@ class AdIncomeService
 
         // 计算奖励金币数（根据广告类型）
         $rewardCoin = 0;
-        if (isset($params['amount']) && floatval($params['amount']) > 0) {
+        // ★ 优先使用直接指定的金币数（阈值批量奖励场景）
+        if (isset($params['reward_coin']) && (int)$params['reward_coin'] > 0) {
+            $rewardCoin = (int)$params['reward_coin'];
+        } elseif (isset($params['amount']) && floatval($params['amount']) > 0) {
             // 如果广告联盟返回了真实金额，按汇率转换
             $amountYuan = floatval($params['amount']);
             $rewardCoin = SystemConfigService::cashToCoin($amountYuan);
@@ -934,6 +937,14 @@ class AdIncomeService
 
             // ★ 检查是否达到阈值
             if ($result['view_count'] >= $threshold) {
+                // ★ 计算批量奖励金额 = 阈值次数 × 单次奖励
+                // 例：threshold=5, reward_per_feed=50 → 批量奖励=250
+                $rewardPerView = $adType === 'reward'
+                    ? (int)$this->getConfig('reward_per_video', 200)
+                    : (int)$this->getConfig('reward_per_feed', 50);
+                $batchReward = $threshold * $rewardPerView;
+                $params['reward_coin'] = $batchReward;
+
                 // 达到阈值 → 触发广告回调（写入 ad_income_log + ad_freeze_balance）
                 $callbackResult = $this->handleAdCallback($userId, $params);
 

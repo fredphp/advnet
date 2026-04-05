@@ -29,7 +29,7 @@
                             <tr><th width="30%">总金额(金币)</th><td><strong>{$row.amount_coin}</strong></td></tr>
                             <tr><th>平台抽成(金币)</th><td>{$row.platform_amount_coin}</td></tr>
                             <tr><th>用户获得(金币)</th><td class="text-success"><strong>{$row.user_amount_coin}</strong></td></tr>
-                            <tr><th>平台抽成比例</th><td>{$row.platform_rate*100|default=0}%</td></tr>
+                            <tr><th>平台抽成比例</th><td>{$row.platform_rate ? $row.platform_rate*100 : 0}%</td></tr>
                             <tr><th>总金额(元)</th><td>{$row.amount}</td></tr>
                             <tr><th>平台抽成(元)</th><td>{$row.platform_amount}</td></tr>
                             <tr><th>用户获得(元)</th><td>{$row.user_amount}</td></tr>
