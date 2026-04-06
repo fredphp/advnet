@@ -384,6 +384,30 @@ export default {
                                                 uni.showToast({ title: '红包参数异常', icon: 'none' });
                                                 return;
                                         }
+
+                                        // ★ App端原生广告已加载：DCloud服务端回调已将广告奖励写入ad_freeze_balance
+                                        // 只需领取红包即可，不需要客户端再上报广告（避免双重计费）
+                                        // #ifdef APP-PLUS || MP-WEIXIN || MP
+                                        if (this.adpid && this.nativeAdLoaded) {
+                                                console.log('[AdWatch] 红包领取：原生广告已加载，跳过广告上报，直接领取红包');
+                                                const res = await this.$api.adRedpacketClaim({
+                                                        packet_id: pid,
+                                                });
+                                                if (res && res.code === 1 && res.data) {
+                                                        this.claimed = true;
+                                                        const amount = res.data.amount || 0;
+                                                        uni.showToast({ title: '🧧 红包领取成功 +' + amount + ' 金币', icon: 'none', duration: 1500 });
+                                                        this.notifyParent(true, amount);
+                                                        setTimeout(() => { this.goBack(); }, 1500);
+                                                } else {
+                                                        this.claiming = false;
+                                                        const msg = (res && res.msg) || '红包领取失败';
+                                                        uni.showToast({ title: msg, icon: 'none' });
+                                                }
+                                                return;
+                                        }
+                                        // #endif
+
                                         const res = await this.$api.adRedpacketClaimWithAd({
                                                 packet_id: pid,
                                                 transaction_id: transactionId,
@@ -411,6 +435,19 @@ export default {
                                         this.claiming = false;
                                         return;
                                 }
+
+                                // ★ App端原生广告已加载：DCloud服务端回调将处理奖励
+                                // 跳过客户端recordView，避免双重计费
+                                // #ifdef APP-PLUS || MP-WEIXIN || MP
+                                if (this.adpid && this.nativeAdLoaded) {
+                                        console.log('[AdWatch] 原生广告已加载，依赖DCloud服务端回调，跳过客户端上报');
+                                        this.claimed = true;
+                                        this.notifyParent(true, 0, { serverCallback: true });
+                                        uni.showToast({ title: '观看完成，奖励将通过广告回调发放', icon: 'none', duration: 2000 });
+                                        setTimeout(() => { this.goBack(); }, 2000);
+                                        return;
+                                }
+                                // #endif
 
                                 console.log('[AdWatch] 发送adRecordView请求, ad_type=' + (this.adType === 'reward' ? 'reward' : 'feed') + ', adpid=' + this.adpid);
                                 const res = await this.$api.adRecordView({

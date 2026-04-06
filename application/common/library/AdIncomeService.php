@@ -160,7 +160,10 @@ class AdIncomeService
             Db::startTrans();
 
             // 1. 计算抽成
-            $platformRate = floatval($this->getConfig('platform_rate', 0.30));
+            // ★ 只有真实广告（有CPM收益，来自DCloud等服务端回调）才扣除平台分成
+            // H5模拟广告没有真实广告成本，不扣分成，用户获得完整奖励
+            $hasRealAmount = isset($params['amount']) && floatval($params['amount']) > 0;
+            $platformRate = $hasRealAmount ? floatval($this->getConfig('platform_rate', 0.30)) : 0;
             $platformCoin = (int)round($rewardCoin * $platformRate);
             $userCoin = $rewardCoin - $platformCoin;
 
