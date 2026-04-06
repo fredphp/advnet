@@ -8,8 +8,8 @@
                     <div class="panel-body">
                         <table class="table table-bordered">
                             <tr><th width="30%">ID</th><td>{$row.id}</td></tr>
-                            <tr><th>用户</th><td>{$row.nickname|default=$row.username} (ID:{$row.user_id})</td></tr>
-                            <tr><th>金额(金币)</th><td><strong class="text-danger">{$row.amount}</strong></td></tr>
+                            <tr><th>用户</th><td>{$row.nickname|default=$row.username} (ID:{$row.user_id}){if condition="$row.mobile"} 手机:{$row.mobile}{/if}</td></tr>
+                            <tr><th>金额(金币)</th><td>{if condition="$row.source eq 'freeze_notify'"}<span class="text-muted">通知红包（实际金额见 ad_freeze_balance）</span>{else/}<strong class="text-danger">{$row.amount}</strong>{/if}</td></tr>
                             <tr><th>状态</th><td>{$row.status_text}</td></tr>
                             <tr><th>来源</th><td>{$row.source_text}</td></tr>
                             <tr><th>创建时间</th><td>{$row.createtime_text}</td></tr>

@@ -35,13 +35,32 @@ class Redpacket extends Backend
             $total = $result['total'];
             $list = $result['rows'];
             
+            // ★ 批量查询用户信息（避免N+1查询）
+            $userIds = array_unique(array_column($list, 'user_id'));
+            $userMap = [];
+            if (!empty($userIds)) {
+                $users = Db::name('user')
+                    ->whereIn('id', $userIds)
+                    ->field('id, username, nickname, mobile')
+                    ->select();
+                foreach ($users as $u) {
+                    $userMap[$u['id']] = $u;
+                }
+            }
+            
             foreach ($list as &$row) {
                 $row['status_text'] = AdRedPacket::$statusList[$row['status']] ?? '未知';
-                $row['source_text'] = $row['source'] == 'ad_income' ? '广告收益' : '其他';
+                $row['source_text'] = $row['source'] == 'freeze_notify' ? '通知红包' : ($row['source'] == 'ad_income' ? '广告收益' : ($row['source'] ?? '其他'));
                 $row['createtime_text'] = date('Y-m-d H:i:s', $row['createtime']);
                 $row['claim_time_text'] = $row['claim_time'] ? date('Y-m-d H:i:s', $row['claim_time']) : '';
                 $row['expire_time_text'] = $row['expire_time'] ? date('Y-m-d H:i:s', $row['expire_time']) : '';
                 $row['is_expired'] = ($row['expire_time'] > 0 && time() > $row['expire_time'] && $row['status'] == 0) ? 1 : 0;
+                
+                // ★ 关联用户信息
+                $userInfo = $userMap[$row['user_id']] ?? null;
+                $row['username'] = $userInfo['username'] ?? '';
+                $row['nickname'] = $userInfo['nickname'] ?? '';
+                $row['mobile'] = $userInfo['mobile'] ?? '';
             }
             
             $result = ['total' => $total, 'rows' => $list];
@@ -72,7 +91,7 @@ class Redpacket extends Backend
         $row['createtime_text'] = date('Y-m-d H:i:s', $row['createtime']);
         $row['claim_time_text'] = $row['claim_time'] ? date('Y-m-d H:i:s', $row['claim_time']) : '';
         $row['expire_time_text'] = $row['expire_time'] ? date('Y-m-d H:i:s', $row['expire_time']) : '';
-        $row['source_text'] = $row['source'] == 'ad_income' ? '广告收益' : '其他';
+        $row['source_text'] = $row['source'] == 'freeze_notify' ? '通知红包' : ($row['source'] == 'ad_income' ? '广告收益' : ($row['source'] ?? '其他'));
         
         $sourceIds = $row['source_ids'] ? explode(',', $row['source_ids']) : [];
         $incomeLogs = [];
