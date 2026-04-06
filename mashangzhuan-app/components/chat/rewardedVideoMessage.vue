@@ -223,7 +223,7 @@ export default {
 .rewarded-video-message {
         width: 100%;
         padding: 100rpx 0;
-        margin: 50rpx 0;
+        margin: 0;
 }
 
 .msg-header {

@@ -1,17 +1,5 @@
 <template>
 	<view class="ad-feed-message">
-		<!-- ★ 顶部：发送者信息条（与 rewardedVideoMessage 保持一致风格） -->
-		<view class="msg-header">
-			<image class="msg-avatar" :src="message.user ? message.user.avatar : '/static/image/avatar.png'" mode="aspectFill"></image>
-			<text class="msg-nickname">{{ message.user ? message.user.nickname : '广告推荐' }}</text>
-			<view class="header-tag">
-				<text class="tag-text">信息流</text>
-			</view>
-			<view class="header-time">
-				<text class="time-text">{{ formatTime(message.time) }}</text>
-			</view>
-		</view>
-
 		<!-- 广告卡片（展示即计费，无需点击） -->
 		<view class="ad-card">
 
@@ -157,48 +145,7 @@ export default {
 	margin-bottom: 20rpx;
 }
 
-/* ★ 发送者信息条（与 rewardedVideoMessage 风格一致） */
-.msg-header {
-	display: flex;
-	align-items: center;
-	padding: 16rpx 24rpx 10rpx;
-}
 
-.msg-avatar {
-	width: 52rpx;
-	height: 52rpx;
-	border-radius: 50%;
-	margin-right: 12rpx;
-	flex-shrink: 0;
-}
-
-.msg-nickname {
-	font-size: 24rpx;
-	color: #999;
-	font-weight: 400;
-}
-
-.header-tag {
-	margin-left: 12rpx;
-	background: linear-gradient(135deg, #ff9500, #ff6b00);
-	padding: 2rpx 12rpx;
-	border-radius: 6rpx;
-}
-
-.tag-text {
-	font-size: 20rpx;
-	color: #fff;
-	font-weight: 600;
-}
-
-.header-time {
-	margin-left: auto;
-}
-
-.time-text {
-	font-size: 22rpx;
-	color: #ccc;
-}
 
 .ad-card {
 	width: 100%;
