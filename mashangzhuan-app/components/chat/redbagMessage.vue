@@ -2,20 +2,24 @@
 	<view :class="['message', isMe ? 'me' : 'other']">
 		<!-- 用户头像 -->
 		<image v-if="!isMe" class="avatar" :src="(message.user && message.user.avatar) || '/static/image/avatar.png'" mode="aspectFill"></image>
+		<image v-if="isMe" class="avatar" :src="vuex_user.avatar || '/static/image/avatar.png'" mode="aspectFill"></image>
 
 		<view class="content-wrapper">
 			<!-- 用户昵称 -->
 			<text v-if="!isMe" class="nickname">{{ message.user.nickname }}</text>
 
-			<!-- 微信红包气泡 -->
-			<view :class="['redbag-bubble', statusClass]" @click="handleClick">
+			<!-- 微信红包样式：左侧图标 + 右侧文字，整体圆角矩形 -->
+			<view :class="['redbag-card', statusClass]" @click="handleClick">
 				<!-- 左侧红包图标 -->
-				<view class="redbag-icon-box">
-					<text class="redbag-emoji">🧧</text>
+				<view class="redbag-icon-wrap">
+					<view class="redbag-icon-inner">
+						<text class="redbag-emoji">🧧</text>
+					</view>
 				</view>
 				<!-- 右侧文字 -->
-				<view class="redbag-text-box">
-					<text class="redbag-title">{{ isExpired ? '已领完' : '恭喜，大吉大利' }}</text>
+				<view class="redbag-text-wrap">
+					<text class="redbag-title">{{ mainTitle }}</text>
+					<text class="redbag-desc">{{ mainDesc }}</text>
 				</view>
 			</view>
 		</view>
@@ -39,20 +43,31 @@ export default {
 		vuex_user() {
 			return this.$store ? this.$store.state.vuex_user : {};
 		},
-		isExpired() {
-			return this.message.status === 'expired';
-		},
 		statusClass() {
-			if (this.isExpired) return 'expired';
-			if (this.message.status === 'claimed') return 'claimed';
-			if (this.message.status === 'opened') return 'opened';
+			const s = this.message.status;
+			if (s === 'expired') return 'expired';
+			if (s === 'claimed') return 'claimed';
 			return '';
+		},
+		mainTitle() {
+			if (this.message.status === 'expired') return '已领完';
+			if (this.message.status === 'claimed') return '已领取';
+			return '恭喜发财，大吉大利';
+		},
+		mainDesc() {
+			if (this.message.status === 'expired') return '红包已过期';
+			if (this.message.status === 'claimed') return '领取红包';
+			const taskData = this.message.taskData || {};
+			if (taskData.isAdRedPacket && this.message.amount > 0) {
+				return '待释放金币 ' + this.message.amount + ' 个';
+			}
+			return '领取红包';
 		}
 	},
 	methods: {
 		handleClick() {
 			if (this.message.status === 'expired') {
-				uni.showToast({ title: '红包已领完', icon: 'none' });
+				uni.showToast({ title: '红包已过期', icon: 'none' });
 				return;
 			}
 			this.$emit('open-redbag', this.message);
@@ -65,86 +80,81 @@ export default {
 .message {
 	display: flex;
 	flex-direction: row;
-	margin-bottom: 30rpx;
-	padding: 0 20rpx;
 	align-items: flex-start;
+	margin-bottom: 28rpx;
+	padding: 0 20rpx;
 
 	&.me {
 		flex-direction: row-reverse;
-
-		.avatar {
-			margin: 0 0 0 16rpx;
-		}
 	}
 }
 
+/* 头像 */
 .avatar {
-	width: 80rpx;
-	height: 80rpx;
-	border-radius: 50%;
+	width: 76rpx;
+	height: 76rpx;
+	border-radius: 8rpx;
 	margin: 0 16rpx 0 0;
 	flex-shrink: 0;
-	background: #f5f5f5;
+	background: #eee;
 }
 
 .content-wrapper {
 	display: flex;
 	flex-direction: column;
-	max-width: 75%;
+	max-width: 65%;
 	flex: 1;
 }
 
 .nickname {
-	font-size: 24rpx;
+	font-size: 22rpx;
 	color: #999;
-	margin-bottom: 8rpx;
+	margin-bottom: 6rpx;
 	margin-left: 4rpx;
 }
 
-/* ==================== 红包气泡 ==================== */
-.redbag-bubble {
+/* ==================== 微信红包卡片 ==================== */
+.redbag-card {
 	display: flex;
 	flex-direction: row;
 	align-items: center;
-	width: 480rpx;
-	height: 96rpx;
+	height: auto;
 	border-radius: 12rpx;
 	overflow: hidden;
-	background: linear-gradient(135deg, #FA9D3B 0%, #E8611A 50%, #D04B18 100%);
-	box-shadow: 0 4rpx 16rpx rgba(208, 75, 24, 0.2);
+	// 微信红包橙色
+	background: #FA9D3B;
+	min-width: 360rpx;
+	max-width: 480rpx;
+	box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.1);
+
+	/* 已过期：颜色变淡 */
+	&.expired {
+		background: #D8D8D8;
+	}
 
 	/* 已领取：颜色变淡 */
 	&.claimed {
-		background: linear-gradient(135deg, #F0D0B0 0%, #E8BFA0 50%, #D8B09A 100%);
-		box-shadow: 0 2rpx 8rpx rgba(200, 170, 150, 0.2);
-	}
-
-	/* 已拆开：颜色变淡 */
-	&.opened {
-		background: linear-gradient(135deg, #F5C8A0 0%, #E8B48A 50%, #D8A478 100%);
-		box-shadow: 0 2rpx 8rpx rgba(216, 164, 120, 0.2);
-	}
-
-	/* 已过期（已领完）：颜色明显变淡，灰色调 */
-	&.expired {
-		background: linear-gradient(135deg, #D5C4B8 0%, #C8B8AC 50%, #B8A89C 100%);
-		box-shadow: 0 2rpx 8rpx rgba(180, 160, 140, 0.15);
-
-		.redbag-icon-box {
-			opacity: 0.5;
-		}
+		background: #E8C4BE;
 	}
 }
 
-/* 左侧红包图标 */
-.redbag-icon-box {
+/* 左侧红包图标区域 */
+.redbag-icon-wrap {
+	flex-shrink: 0;
 	width: 96rpx;
 	height: 96rpx;
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	flex-shrink: 0;
-	background: rgba(0, 0, 0, 0.08);
+	background: rgba(0, 0, 0, 0.06);
+}
+
+.redbag-icon-inner {
+	width: 64rpx;
+	height: 64rpx;
+	display: flex;
+	align-items: center;
+	justify-content: center;
 }
 
 .redbag-emoji {
@@ -152,23 +162,40 @@ export default {
 	line-height: 1;
 }
 
-/* 右侧文字 */
-.redbag-text-box {
+/* 右侧文字区域 */
+.redbag-text-wrap {
 	flex: 1;
 	display: flex;
-	align-items: center;
-	padding: 0 24rpx;
+	flex-direction: column;
+	justify-content: center;
+	padding: 18rpx 24rpx;
 }
 
 .redbag-title {
-	font-size: 30rpx;
+	font-size: 28rpx;
 	color: #FFFFFF;
-	font-weight: 600;
-	line-height: 1.3;
+	font-weight: 500;
+	line-height: 1.5;
 }
 
-/* 过期状态文字颜色 */
-.expired .redbag-title {
-	color: rgba(255, 255, 255, 0.6);
+.redbag-desc {
+	font-size: 22rpx;
+	color: rgba(255, 255, 255, 0.7);
+	line-height: 1.5;
+	margin-top: 2rpx;
+}
+
+/* 过期/领取状态文字颜色调整 */
+.expired .redbag-title,
+.claimed .redbag-title {
+	color: #FFFFFF;
+}
+
+.expired .redbag-desc {
+	color: rgba(255, 255, 255, 0.5);
+}
+
+.claimed .redbag-desc {
+	color: rgba(255, 255, 255, 0.55);
 }
 </style>
