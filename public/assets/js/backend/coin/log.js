@@ -46,6 +46,8 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
                             "invite": "邀请",
                             "red_packet": "红包",
                             "ad_red_packet": "广告红包",
+                            "ad_freeze_claim": "广告金币领取",
+                            "freeze_balance_claim": "广告金币领取",
                             "admin": "后台"
                         }},
                         {field: 'title', title: '标题', operate: 'LIKE'},

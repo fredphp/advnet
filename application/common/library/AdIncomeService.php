@@ -1019,20 +1019,79 @@ class AdIncomeService
                 throw new Exception('账户更新失败，请重试');
             }
 
-            // ★ 写入 coin_log 流水（同一事务内）
+            // ★ 按广告类型查询待释放金额分布，分类型写入 coin_log
+            $adTypeStats = [];
+            try {
+                $pendingRecords = AdIncomeLogSplit::getPendingRecords($userId);
+                foreach ($pendingRecords as $rec) {
+                    $adType = $rec['ad_type'] ?? 'unknown';
+                    if (!isset($adTypeStats[$adType])) {
+                        $adTypeStats[$adType] = 0;
+                    }
+                    $adTypeStats[$adType] += (int)$rec['user_amount_coin'];
+                }
+            } catch (\Throwable $e) {
+                Log::warning("ClaimFreezeBalance: 查询广告类型分布失败: " . $e->getMessage());
+            }
+
+            // 构建按广告类型的流水配置
+            $adTypeLogConfig = [
+                'feed'   => [
+                    'type'          => 'freeze_balance_claim_feed',
+                    'relation_type' => 'ad_freeze_claim',
+                    'description'   => '领取待释放金币(信息流广告→可提现金币)',
+                ],
+                'reward' => [
+                    'type'          => 'freeze_balance_claim_reward',
+                    'relation_type' => 'ad_freeze_claim',
+                    'description'   => '领取待释放金币(激励视频广告→可提现金币)',
+                ],
+            ];
+
             $tableName = CoinLog::getOrCreateTable();
-            Db::name($tableName)->insert([
-                'user_id'        => $userId,
-                'type'           => 'freeze_balance_claim',
-                'amount'         => $amount,
-                'balance_before' => $balanceBefore,
-                'balance_after'  => $balanceAfter,
-                'relation_type'  => 'freeze_balance_claim',
-                'relation_id'    => 0,
-                'description'    => '领取待释放金币(空闲钱包→可提现金币)',
-                'createtime'     => time(),
-                'create_date'    => date('Y-m-d'),
-            ]);
+            $loggedAmount = 0;
+
+            foreach ($adTypeStats as $adType => $adAmount) {
+                if ($adAmount <= 0) continue;
+                $config = $adTypeLogConfig[$adType] ?? null;
+                if (!$config) {
+                    // 未知广告类型，归入通用流水
+                    $config = [
+                        'type'          => 'freeze_balance_claim',
+                        'relation_type' => 'ad_freeze_claim',
+                        'description'   => '领取待释放金币(广告→可提现金币)',
+                    ];
+                }
+                $loggedAmount += $adAmount;
+                Db::name($tableName)->insert([
+                    'user_id'        => $userId,
+                    'type'           => $config['type'],
+                    'amount'         => $adAmount,
+                    'balance_before' => $balanceBefore,
+                    'balance_after'  => $balanceBefore + $loggedAmount,
+                    'relation_type'  => $config['relation_type'],
+                    'relation_id'    => 0,
+                    'description'    => $config['description'],
+                    'createtime'     => time(),
+                    'create_date'    => date('Y-m-d'),
+                ]);
+            }
+
+            // 兜底：如果未能按类型拆分，写入一条通用流水
+            if ($loggedAmount <= 0 && $amount > 0) {
+                Db::name($tableName)->insert([
+                    'user_id'        => $userId,
+                    'type'           => 'freeze_balance_claim',
+                    'amount'         => $amount,
+                    'balance_before' => $balanceBefore,
+                    'balance_after'  => $balanceAfter,
+                    'relation_type'  => 'ad_freeze_claim',
+                    'relation_id'    => 0,
+                    'description'    => '领取待释放金币(广告→可提现金币)',
+                    'createtime'     => time(),
+                    'create_date'    => date('Y-m-d'),
+                ]);
+            }
 
             // ★ 同一事务内标记通知红包和收益记录状态
             try {
