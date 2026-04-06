@@ -375,7 +375,8 @@ export default {
                                 const transactionId = (this.adType === 'redpacket_claim' ? 'rc_' : (this.adType === 'reward' ? 'rv_' : 'af_')) + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
                                 console.log('[AdWatch] 调用API, transactionId=' + transactionId);
 
-                                // 红包领取模式：调用 claimWithAd 接口
+                                // ★ 红包领取模式：纯领取，不上报广告
+                                // 广告奖励已在观看时写入 ad_freeze_balance，领取时只需将冻结金币转为可提现金币
                                 if (this.adType === 'redpacket_claim') {
                                         const pid = parseInt(this.packetId) || 0;
                                         if (!pid) {
@@ -385,41 +386,16 @@ export default {
                                                 return;
                                         }
 
-                                        // ★ App端原生广告已加载：DCloud服务端回调已将广告奖励写入ad_freeze_balance
-                                        // 只需领取红包即可，不需要客户端再上报广告（避免双重计费）
-                                        // #ifdef APP-PLUS || MP-WEIXIN || MP
-                                        if (this.adpid && this.nativeAdLoaded) {
-                                                console.log('[AdWatch] 红包领取：原生广告已加载，跳过广告上报，直接领取红包');
-                                                const res = await this.$api.adRedpacketClaim({
-                                                        packet_id: pid,
-                                                });
-                                                if (res && res.code === 1 && res.data) {
-                                                        this.claimed = true;
-                                                        const amount = res.data.amount || 0;
-                                                        uni.showToast({ title: '🧧 红包领取成功 +' + amount + ' 金币', icon: 'none', duration: 1500 });
-                                                        this.notifyParent(true, amount);
-                                                        setTimeout(() => { this.goBack(); }, 1500);
-                                                } else {
-                                                        this.claiming = false;
-                                                        const msg = (res && res.msg) || '红包领取失败';
-                                                        uni.showToast({ title: msg, icon: 'none' });
-                                                }
-                                                return;
-                                        }
-                                        // #endif
-
-                                        const res = await this.$api.adRedpacketClaimWithAd({
+                                        console.log('[AdWatch] 红包领取：纯领取模式，不上报广告');
+                                        const res = await this.$api.adRedpacketClaim({
                                                 packet_id: pid,
-                                                transaction_id: transactionId,
                                         });
 
-                                        console.log('[AdWatch] 红包领取接口返回:', JSON.stringify(res));
                                         if (res && res.code === 1 && res.data) {
                                                 this.claimed = true;
-                                                const amount = res.data.amount || this.rewardCoin;
+                                                const amount = res.data.amount || 0;
                                                 uni.showToast({ title: '🧧 红包领取成功 +' + amount + ' 金币', icon: 'none', duration: 1500 });
                                                 this.notifyParent(true, amount);
-                                                // ★ 红包领取成功后自动返回上一页
                                                 setTimeout(() => { this.goBack(); }, 1500);
                                         } else {
                                                 this.claiming = false;
