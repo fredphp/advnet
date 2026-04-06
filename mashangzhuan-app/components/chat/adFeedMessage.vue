@@ -14,13 +14,6 @@
 
 		<!-- 广告卡片（展示即计费，无需点击） -->
 		<view class="ad-card">
-			<!-- 顶部标识栏 -->
-			<view class="ad-card-header">
-				<text class="ad-card-title">浏览信息流赚金币</text>
-				<view class="ad-reward-tag-wrap">
-					<text class="ad-reward-tag"></text>
-				</view>
-			</view>
 
 			<!-- 广告内容区 -->
 			<view class="ad-container">
@@ -161,6 +154,7 @@ export default {
 	width: 100%;
 	padding: 0;
 	margin: 0;
+	margin-bottom: 20rpx;
 }
 
 /* ★ 发送者信息条（与 rewardedVideoMessage 风格一致） */

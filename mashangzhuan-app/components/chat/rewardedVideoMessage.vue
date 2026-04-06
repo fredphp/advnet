@@ -44,20 +44,7 @@
                                 </view>
                         </view>
 
-                        <!-- ★ 浏览进度条 -->
-                        <view class="video-progress-section" v-if="threshold > 0 && !rewarded">
-                                <view class="video-progress-track">
-                                        <view class="video-progress-fill" :style="{ width: progressPercent + '%' }"></view>
-                                </view>
-                                <text class="video-progress-text">已观看 {{ viewCount }}/{{ threshold }} 次，再观看 {{ remaining }} 次获得奖励</text>
-                        </view>
 
-                        <!-- 底部提示 -->
-                        <view class="card-footer">
-                                <text class="footer-text" v-if="!rewarded && threshold <= 0">点击跳转观看{{ watchSeconds }}秒视频获得金币奖励</text>
-                                <text class="footer-text" v-else-if="!rewarded && threshold > 0">点击跳转观看，累计{{ threshold }}次可获得{{ rewardCoin }}金币</text>
-                                <text class="footer-text footer-done-text" v-else>奖励已发放到待释放余额</text>
-                        </view>
                 </view>
         </view>
 </template>
@@ -235,8 +222,8 @@ export default {
 <style lang="scss" scoped>
 .rewarded-video-message {
         width: 100%;
-        padding: 0;
-        margin: 0;
+        padding: 100rpx 0;
+        margin: 50rpx 0;
 }
 
 .msg-header {
@@ -441,19 +428,4 @@ export default {
         display: block;
 }
 
-.card-footer {
-        padding: 12rpx 24rpx;
-        background-color: #fafafa;
-        border-top: 1rpx solid #f0f0f0;
-}
-
-.footer-text {
-        font-size: 20rpx;
-        color: #bbb;
-        text-align: center;
-}
-
-.footer-done-text {
-        color: #52c41a;
-}
 </style>
