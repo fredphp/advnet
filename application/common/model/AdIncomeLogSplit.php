@@ -353,6 +353,107 @@ class AdIncomeLogSplit extends SplitTableModel
     }
 
     /**
+     * 获取指定范围内的独立用户数（跨分表）
+     * @param int $startTime
+     * @param int $endTime
+     * @return int
+     */
+    public static function getDistinctUserCount($startTime, $endTime)
+    {
+        $model = new self();
+        $allUserIds = [];
+
+        // 主表
+        $rows = Db::name($model->baseTable)
+            ->where('createtime', '>=', $startTime)
+            ->where('createtime', '<=', $endTime)
+            ->where('status', 'in', [1, 2])
+            ->group('user_id')
+            ->field('user_id')
+            ->select();
+        foreach ($rows as $row) {
+            $allUserIds[$row['user_id']] = true;
+        }
+
+        // 分表
+        $tables = $model->getTableList(date('Y-m-d', $startTime), date('Y-m-d', $endTime));
+        foreach ($tables as $table) {
+            if ($table === $model->baseTable) continue;
+            $rows = Db::name($table)
+                ->where('createtime', '>=', $startTime)
+                ->where('createtime', '<=', $endTime)
+                ->where('status', 'in', [1, 2])
+                ->group('user_id')
+                ->field('user_id')
+                ->select();
+            foreach ($rows as $row) {
+                $allUserIds[$row['user_id']] = true;
+            }
+        }
+
+        return count($allUserIds);
+    }
+
+    /**
+     * 获取用户收益排行（跨分表，按user_id分组聚合后排序）
+     * @param int $startTime
+     * @param int $endTime
+     * @param int $limit
+     * @return array [['user_id'=>1, 'count'=>5, 'total_coin'=>250], ...]
+     */
+    public static function getUserRanking($startTime, $endTime, $limit = 10)
+    {
+        $model = new self();
+        $userStats = [];
+
+        // 主表
+        $rows = Db::name($model->baseTable)
+            ->where('createtime', '>=', $startTime)
+            ->where('createtime', '<=', $endTime)
+            ->where('status', 'in', [1, 2])
+            ->group('user_id')
+            ->field('user_id, COUNT(*) as cnt, SUM(user_amount_coin) as total_coin')
+            ->select();
+        foreach ($rows as $row) {
+            $uid = $row['user_id'];
+            if (!isset($userStats[$uid])) {
+                $userStats[$uid] = ['user_id' => intval($uid), 'count' => 0, 'total_coin' => 0];
+            }
+            $userStats[$uid]['count'] += intval($row['cnt']);
+            $userStats[$uid]['total_coin'] += intval($row['total_coin']);
+        }
+
+        // 分表
+        $tables = $model->getTableList(date('Y-m-d', $startTime), date('Y-m-d', $endTime));
+        foreach ($tables as $table) {
+            if ($table === $model->baseTable) continue;
+            $rows = Db::name($table)
+                ->where('createtime', '>=', $startTime)
+                ->where('createtime', '<=', $endTime)
+                ->where('status', 'in', [1, 2])
+                ->group('user_id')
+                ->field('user_id, COUNT(*) as cnt, SUM(user_amount_coin) as total_coin')
+                ->select();
+            foreach ($rows as $row) {
+                $uid = $row['user_id'];
+                if (!isset($userStats[$uid])) {
+                    $userStats[$uid] = ['user_id' => intval($uid), 'count' => 0, 'total_coin' => 0];
+                }
+                $userStats[$uid]['count'] += intval($row['cnt']);
+                $userStats[$uid]['total_coin'] += intval($row['total_coin']);
+            }
+        }
+
+        // 按total_coin降序排序
+        $list = array_values($userStats);
+        usort($list, function ($a, $b) {
+            return $b['total_coin'] <=> $a['total_coin'];
+        });
+
+        return array_slice($list, 0, $limit);
+    }
+
+    /**
      * 获取分表列表列表（用于后台管理分页查询）
      * 根据时间范围确定查哪些表，然后合并结果
      * @param array $where 查询条件

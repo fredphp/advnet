@@ -3,6 +3,7 @@
 namespace app\admin\controller\adincome;
 
 use app\common\controller\Backend;
+use app\common\model\AdIncomeLogSplit;
 use think\Db;
 
 /**
@@ -71,62 +72,59 @@ class Stat extends Backend
                     $title = '今日统计';
             }
 
-            // 1. 概览统计
-            $overview = $this->safeQuery(
-                ['total_records' => 0, 'total_coin' => 0, 'user_coin' => 0, 'platform_coin' => 0, 'user_count' => 0],
+            // 1. 概览统计（跨分表）
+            $rangeStats = $this->safeQuery(
+                ['count' => 0, 'user_coin' => 0, 'platform_coin' => 0, 'total_coin' => 0],
                 function () use ($startTime, $endTime) {
-                    $row = Db::name('ad_income_log')
-                        ->where('status', 'in', [1, 2])
-                        ->where('createtime', 'between', [$startTime, $endTime])
-                        ->field('COUNT(*) as total_records, SUM(amount_coin) as total_coin, SUM(user_amount_coin) as user_coin, SUM(platform_amount_coin) as platform_coin, COUNT(DISTINCT user_id) as user_count')
-                        ->find();
-                    return $row ?: ['total_records' => 0, 'total_coin' => 0, 'user_coin' => 0, 'platform_coin' => 0, 'user_count' => 0];
+                    return AdIncomeLogSplit::getRangeStats($startTime, $endTime);
                 }
             );
 
-            // 2. 按类型统计
+            // 独立用户数（跨分表）
+            $userCount = $this->safeQuery(0, function () use ($startTime, $endTime) {
+                return AdIncomeLogSplit::getDistinctUserCount($startTime, $endTime);
+            });
+
+            $overview = [
+                'total_records'  => $rangeStats['count'],
+                'total_coin'     => $rangeStats['total_coin'],
+                'user_coin'      => $rangeStats['user_coin'],
+                'platform_coin'  => $rangeStats['platform_coin'],
+                'user_count'     => $userCount,
+            ];
+
+            // 2. 按类型统计（跨分表）
             $typeStats = $this->safeQuery([], function () use ($startTime, $endTime) {
-                $list = Db::name('ad_income_log')
-                    ->where('status', 'in', [1, 2])
-                    ->where('createtime', 'between', [$startTime, $endTime])
-                    ->group('ad_type')
-                    ->field('ad_type, COUNT(*) as count, SUM(user_amount_coin) as user_coin')
-                    ->select();
+                $list = AdIncomeLogSplit::getGroupStats($startTime, $endTime, 'ad_type', 'user_amount_coin');
                 $result = [];
                 foreach ($list as $row) {
-                    $result[] = ['ad_type' => $row['ad_type'], 'count' => intval($row['count']), 'user_coin' => intval($row['user_coin'])];
+                    $result[] = ['ad_type' => $row['ad_type'], 'count' => $row['cnt'], 'user_coin' => $row['total']];
                 }
                 return $result;
             });
 
-            // 3. 按平台统计
+            // 3. 按平台统计（跨分表）
             $providerStats = $this->safeQuery([], function () use ($startTime, $endTime) {
-                $list = Db::name('ad_income_log')
-                    ->where('status', 'in', [1, 2])
-                    ->where('createtime', 'between', [$startTime, $endTime])
-                    ->group('ad_provider')
-                    ->field('ad_provider, COUNT(*) as count, SUM(user_amount_coin) as user_coin')
-                    ->select();
+                $list = AdIncomeLogSplit::getGroupStats($startTime, $endTime, 'ad_provider', 'user_amount_coin');
                 $result = [];
                 foreach ($list as $row) {
-                    $result[] = ['ad_provider' => $row['ad_provider'], 'count' => intval($row['count']), 'user_coin' => intval($row['user_coin'])];
+                    $result[] = ['ad_provider' => $row['ad_provider'], 'count' => $row['cnt'], 'user_coin' => $row['total']];
                 }
                 return $result;
             });
 
-            // 4. 用户排行
+            // 4. 用户排行（跨分表）
             $userRanking = $this->safeQuery([], function () use ($startTime, $endTime) {
-                $list = Db::name('ad_income_log')
-                    ->where('status', 'in', [1, 2])
-                    ->where('createtime', 'between', [$startTime, $endTime])
-                    ->group('user_id')
-                    ->field('user_id, COUNT(*) as count, SUM(user_amount_coin) as total_coin')
-                    ->order('total_coin', 'desc')
-                    ->limit(10)
-                    ->select();
+                $list = AdIncomeLogSplit::getUserRanking($startTime, $endTime, 10);
                 $result = [];
                 foreach ($list as $row) {
-                    $result[] = ['user_id' => intval($row['user_id']), 'count' => intval($row['count']), 'total_coin' => intval($row['total_coin']), 'nickname' => '', 'username' => ''];
+                    $result[] = [
+                        'user_id'     => $row['user_id'],
+                        'count'       => $row['count'],
+                        'total_coin'  => $row['total_coin'],
+                        'nickname'    => '',
+                        'username'    => '',
+                    ];
                 }
                 return $result;
             });
@@ -152,11 +150,11 @@ class Stat extends Backend
             }
 
             $this->success('', null, [
-                'title'         => $title,
-                'overview'      => $overview,
-                'type_stats'    => $typeStats,
-                'provider_stats' => $providerStats,
-                'user_ranking'  => $userRanking,
+                'title'           => $title,
+                'overview'        => $overview,
+                'type_stats'      => $typeStats,
+                'provider_stats'  => $providerStats,
+                'user_ranking'    => $userRanking,
             ]);
         }
         return $this->view->fetch();
