@@ -1047,7 +1047,11 @@ export default {
                  * 打开待领取红包弹窗
                  * @param {boolean} showClaimButton - 是否显示"直接领取"按钮（从观看视频返回时显示）
                  */
-                openFreezeBagModal(showClaimButton = false) {
+                async openFreezeBagModal(showClaimButton = false) {
+                        // ★ 首次打开时先刷新最新的 freezeBalance，避免使用过期数据
+                        if (!showClaimButton) {
+                                await this.loadAdOverview();
+                        }
                         if (this.freezeBalance <= 0) {
                                 uni.showToast({ title: '暂无可领取的金币', icon: 'none' });
                                 return;
@@ -1069,8 +1073,12 @@ export default {
                 closeFreezeBagModal() {
                         this.showFreezeBagModal = false;
                         if (this.freezeClaimed) {
-                                // 领取成功后刷新数据
+                                // ★ 领取成功后重置所有状态，防止下次打开时显示旧数据
                                 this.freezeClaimed = false;
+                                this.freezeSnapshotAmount = 0;
+                                this.freezeClaimAmount = 0;
+                                this.showFreezeClaimButton = false;
+                                // 刷新最新余额
                                 this.loadAdOverview();
                         }
                 },
@@ -1164,8 +1172,9 @@ export default {
                  */
                 goFreezeClaim() {
                         this.showFreezeBagModal = false;
-                        // ★ 快照当前冻结余额，传给观看页，观看完成后用此金额领取
-                        this.freezeSnapshotAmount = this.freezeBalance;
+                        // ★ 不在此处重新快照！freezeSnapshotAmount 已在 openFreezeBagModal 中捕获。
+                        // 如果在此处重新读取 this.freezeBalance，期间可能被轮询刷新（如信息流广告新增奖励），
+                        // 导致快照金额与用户看到的不一致（例如弹窗显示750，但此处读到1000）。
                         const params = {
                                 type: 'freeze_claim',
                                 rewardCoin: this.freezeSnapshotAmount,
