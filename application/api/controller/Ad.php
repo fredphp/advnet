@@ -14,14 +14,201 @@ use think\exception\HttpResponseException;
 /**
  * 广告接口
  *
- * 处理广告联盟回调、获取广告收益概览
- * URL映射: /api/ad/callback, /api/ad/overview
+ * 处理广告联盟回调、广告收益概览、浏览记录、冻结金币领取、聊天资源
+ * URL映射: /api/ad/serverNotify, /api/ad/callback, /api/ad/overview, /api/ad/recordView, /api/ad/claimFreezeBalance, /api/ad/chatResources
  */
 class Ad extends Api
 {
-    // 所有接口都需要登录
-    protected $noNeedLogin = [];
+    // serverNotify 无需登录（DCloud广告联盟服务端回调），其余需要登录
+    protected $noNeedLogin = ['serverNotify'];
     protected $noNeedRight = ['*'];
+
+    /**
+     * ★ DCloud 广告联盟服务端回调
+     *
+     * DCloud 广告联盟在用户完成广告观看后，会向开发者配置的回调URL发送服务端通知。
+     * 此接口用于接收并验证 DCloud 的服务端回调，处理广告收益。
+     *
+     * DCloud 回调参数：
+     *   - adpid: String, DCloud广告位id
+     *   - provider: String, 广告服务商 (china/global)
+     *   - platform: String, 平台 (iOS/Android/weixin-mp)
+     *   - sign: String, 签名 = sha256(secret:trans_id)
+     *   - trans_id: String, 交易id（唯一标识一次广告观看）
+     *   - user_id: String, 用户id（调用SDK时透传的用户唯一标识）
+     *   - extra: String, 自定义数据
+     *   - cpm: int, 千次曝光收益（单位：分），cpm/1000 为本次收益（元）
+     *
+     * @api {post} /api/ad/serverNotify DCloud广告服务端回调
+     * @apiParam {String} adpid DCloud广告位id
+     * @apiParam {String} provider 广告服务商
+     * @apiParam {String} platform 平台
+     * @apiParam {String} sign 签名 sha256(secret:trans_id)
+     * @apiParam {String} trans_id 交易id
+     * @apiParam {String} user_id 用户id
+     * @apiParam {String} [extra] 自定义数据
+     * @apiParam {int} [cpm] 千次曝光收益（分）
+     */
+    public function serverNotify()
+    {
+        // ★ 获取原始请求体（DCloud 可能以 POST form 或 JSON 发送）
+        $input = file_get_contents('php://input');
+        $request = $this->request;
+
+        // 收集 DCloud 标准回调参数
+        $adpid = $request->post('adpid/s', '');
+        $provider = $request->post('provider/s', '');
+        $platform = $request->post('platform/s', '');
+        $sign = $request->post('sign/s', '');
+        $transId = $request->post('trans_id/s', '');
+        $userIdStr = $request->post('user_id/s', '');
+        $extra = $request->post('extra/s', '');
+        $cpm = $request->post('cpm/d', 0);
+
+        Log::info('[AdServerNotify] 收到DCloud回调: adpid=' . $adpid . ', provider=' . $provider . ', platform=' . $platform . ', trans_id=' . $transId . ', user_id=' . $userIdStr . ', cpm=' . $cpm . ', sign=' . substr($sign, 0, 8) . '..., raw_body=' . substr($input, 0, 500));
+
+        // ==================== 参数校验 ====================
+
+        if (empty($adpid) || empty($transId)) {
+            Log::warning('[AdServerNotify] 缺少必要参数: adpid=' . $adpid . ', trans_id=' . $transId);
+            $this->error('缺少必要参数');
+        }
+
+        // ==================== 签名验证 ====================
+
+        $secret = $this->getCallbackSecret();
+        if (empty($secret)) {
+            Log::error('[AdServerNotify] 未配置回调密钥(callback_secret)');
+            $this->error('系统配置错误');
+        }
+
+        // 签名算法: sign = sha256(secret:trans_id)
+        $expectedSign = hash('sha256', $secret . ':' . $transId);
+
+        if (empty($sign) || !hash_equals($expectedSign, $sign)) {
+            Log::warning('[AdServerNotify] 签名验证失败: expected=' . $expectedSign . ', received=' . $sign . ', trans_id=' . $transId);
+            $this->error('签名验证失败');
+        }
+
+        Log::info('[AdServerNotify] 签名验证通过, trans_id=' . $transId);
+
+        // ==================== 用户识别 ====================
+
+        $userId = (int)$userIdStr;
+        if ($userId <= 0) {
+            // 尝试从 extra 字段解析（前端可能在 extra 中传递 user_id）
+            if (!empty($extra)) {
+                $extraData = json_decode($extra, true);
+                if (is_array($extraData) && isset($extraData['user_id'])) {
+                    $userId = (int)$extraData['user_id'];
+                }
+            }
+
+            if ($userId <= 0) {
+                Log::warning('[AdServerNotify] 无效的用户ID: user_id=' . $userIdStr . ', extra=' . $extra);
+                $this->error('无效的用户ID');
+            }
+        }
+
+        // 验证用户是否存在
+        $user = Db::name('user')->where('id', $userId)->field('id,status')->find();
+        if (!$user) {
+            Log::warning('[AdServerNotify] 用户不存在: user_id=' . $userId);
+            $this->error('用户不存在');
+        }
+
+        // ==================== 判断广告类型 ====================
+
+        // 通过 adpid 与配置的广告位对比来判断广告类型
+        $service = new AdIncomeService();
+        $feedAdpid = $service->getConfig('feed_adpid', '');
+        $videoAdpid = $service->getConfig('rewarded_video_adpid', '');
+
+        if ($adpid === $videoAdpid || strpos($transId, 'rv_') === 0 || strpos($transId, 'video') !== false) {
+            $adType = 'reward';
+        } else {
+            $adType = 'feed';
+        }
+
+        // ==================== 计算收益金额 ====================
+
+        // 如果有 cpm（千次曝光收益，单位：分），则实际收益 = cpm / 1000 元
+        $amountYuan = 0;
+        if ($cpm > 0) {
+            $amountYuan = round($cpm / 1000, 4); // 分 → 元
+        }
+
+        // ==================== 构造 handleAdCallback 参数 ====================
+
+        $params = [
+            'ad_type'        => $adType,
+            'adpid'          => $adpid,
+            'ad_provider'    => 'uniad',  // DCloud 统一为 uniad
+            'ad_source'      => 'dcloud_server_callback',
+            'amount'         => $amountYuan,
+            'transaction_id' => 'dcloud_' . $transId,  // 加前缀区分来源
+            'ip'             => $request->ip(),
+            'user_agent'     => $request->header('user-agent', ''),
+            'device_id'      => '',
+            'remark'         => 'DCloud服务端回调|provider=' . $provider . '|platform=' . $platform . '|cpm=' . $cpm . '|extra=' . $extra,
+        ];
+
+        // 如果 cpm > 0，按实际收益计算金币；否则使用配置的固定奖励
+        if ($amountYuan <= 0) {
+            unset($params['amount']); // 不传 amount，让 handleAdCallback 使用固定奖励
+        }
+
+        // ==================== 防重复处理 ====================
+
+        $dedupeKey = 'dcloud_callback:' . $transId;
+        try {
+            $cache = \think\Cache::get($dedupeKey);
+            if ($cache) {
+                Log::info('[AdServerNotify] 重复回调已忽略: trans_id=' . $transId);
+                // DCloud 回调返回 200 表示成功（幂等）
+                echo json_encode(['code' => 0, 'msg' => '重复回调']);
+                exit;
+            }
+            \think\Cache::set($dedupeKey, 1, 86400); // 24小时防重复
+        } catch (\Throwable $e) {
+            // 缓存异常不影响主流程（handleAdCallback 内部也有 transaction_id 防重复）
+        }
+
+        // ==================== 处理广告收益 ====================
+
+        $result = $service->handleAdCallback($userId, $params);
+
+        if ($result['success']) {
+            Log::info('[AdServerNotify] 处理成功: userId=' . $userId . ', adType=' . $adType . ', amount=' . $amountYuan . '元, userCoin=' . ($result['user_amount_coin'] ?? 0) . ', platformCoin=' . ($result['platform_amount_coin'] ?? 0));
+
+            // ★ 处理成功后检查是否需要生成通知红包
+            try {
+                $settleResult = $service->checkAndAutoSettle($userId);
+                if ($settleResult['success']) {
+                    Log::info('[AdServerNotify] 自动生成通知红包: userId=' . $userId . ', amount=' . ($settleResult['amount'] ?? 0));
+                }
+            } catch (\Throwable $e) {
+                Log::warning('[AdServerNotify] 检查红包生成失败: ' . $e->getMessage());
+            }
+
+            // DCloud 回调返回 200 即可
+            echo json_encode([
+                'code' => 0,
+                'msg'  => 'success',
+                'data' => [
+                    'log_id'              => $result['log_id'],
+                    'user_amount_coin'    => $result['user_amount_coin'] ?? 0,
+                    'platform_amount_coin' => $result['platform_amount_coin'] ?? 0,
+                ],
+            ]);
+            exit;
+        } else {
+            Log::warning('[AdServerNotify] 处理失败: userId=' . $userId . ', msg=' . ($result['message'] ?? ''));
+            // 即使处理失败也返回 200（避免 DCloud 重试导致问题）
+            echo json_encode(['code' => 1, 'msg' => $result['message'] ?? '处理失败']);
+            exit;
+        }
+    }
 
     /**
      * 广告回调 - 记录广告收益
@@ -151,6 +338,16 @@ class Ad extends Api
             file_put_contents($logFile, $logLine, FILE_APPEND | LOCK_EX);
         } catch (\Throwable $e) {
             // 日志写入失败不影响主流程
+        }
+    }
+
+    /**
+     * 在 catch(\Throwable) 中重新抛出 HttpResponseException
+     */
+    private function rethrowHttpResponseException(\Throwable $e)
+    {
+        if ($e instanceof HttpResponseException) {
+            throw $e;
         }
     }
 
@@ -520,6 +717,14 @@ class Ad extends Api
         $data['updated'] = true;
 
         $this->success('获取成功', $data);
+    }
+
+    /**
+     * 获取回调密钥
+     */
+    private function getCallbackSecret()
+    {
+        return \app\common\library\SystemConfigService::get('ad.callback_secret', null, '');
     }
 
     /**
