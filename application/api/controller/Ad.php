@@ -412,6 +412,7 @@ class Ad extends Api
         $data['reward_per_video'] = (int)($adConfig['reward_per_video'] ?? 200);
         $data['rewarded_video_interval'] = (int)($adConfig['rewarded_video_interval'] ?? 120);
         $data['settle_interval'] = (int)($adConfig['settle_interval'] ?? 30);
+        $data['ad_idle_timeout'] = (int)($adConfig['ad_idle_timeout'] ?? 30);
 
         // ★ 广告浏览进度（阈值奖励机制）
         try {

@@ -204,6 +204,8 @@ class SystemConfigService
             'feed_ad_count' => 3,
             // 激励视频推送间隔(秒)
             'rewarded_video_interval' => 120,
+            // 广告空闲超时(秒)，用户不操作超过此时间不再计费，防止挂机刷广告
+            'ad_idle_timeout' => 30,
         ],
         
         // ==================== 系统配置 ====================
