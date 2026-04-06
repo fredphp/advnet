@@ -1,50 +1,54 @@
 <template>
         <view class="rewarded-video-message">
-                <!-- 顶部：发送者信息条 -->
+                <!-- 顶部：发送者信息条（与普通消息风格一致） -->
                 <view class="msg-header">
-                        <image class="avatar" :src="message.user ? message.user.avatar : '/static/image/avatar.png'" mode="aspectFill"></image>
+                        <image class="avatar" :src="message.user ? message.user.avatar : '/static/image/avatar.png'" mode="aspectFit"></image>
                         <text class="nickname">{{ message.user ? message.user.nickname : '限时福利' }}</text>
-                        <view class="header-tag">
-                                <text class="tag-text">激励视频</text>
-                        </view>
-                        <view class="header-time">
-                                <text class="time-text">{{ formatTime(message.time) }}</text>
-                        </view>
                 </view>
 
                 <!-- ★ 激励视频卡片 -->
                 <view class="video-card" @click="handleWatchVideo">
-                        <view class="card-body">
-                                <!-- 未观看 -->
-                                <view class="video-prompt" v-if="!rewarded">
-                                        <view class="prompt-left">
-                                                <view class="play-icon-wrap">
-                                                        <text class="play-icon">▶</text>
-                                                </view>
-                                                <view class="prompt-info">
-                                                        <text class="prompt-title">完整观看视频赚大额金币</text>
-                                                        <text class="prompt-desc">观看{{ watchSeconds }}秒视频即可获得奖励</text>
-                                                </view>
+                        <!-- 未观看：视频预览 + 播放按钮 + 奖励信息 -->
+                        <view class="card-preview" v-if="!rewarded">
+                                <!-- 视频封面区域 -->
+                                <view class="video-cover">
+                                        <view class="cover-gradient">
+                                                <text class="cover-icon">🎬</text>
                                         </view>
-                                        <view class="prompt-right">
-                                                <view class="reward-chip">
-                                                        <text class="chip-text">+{{ rewardCoin }} 金币</text>
-                                                </view>
-                                                <view class="watch-arrow">
-                                                        <text class="arrow-text">›</text>
-                                                </view>
+                                        <!-- 播放按钮 -->
+                                        <view class="play-btn">
+                                                <text class="play-btn-icon">▶</text>
+                                        </view>
+                                        <!-- 时长标签 -->
+                                        <view class="duration-tag">
+                                                <text class="duration-text">{{ watchSeconds }}s</text>
                                         </view>
                                 </view>
-
-                                <!-- 已观看 -->
-                                <view class="video-state state-done" v-else>
-                                        <text class="state-icon">✓</text>
-                                        <text class="state-text">已获得 +{{ rewardAmount }} 金币</text>
-                                        <text class="state-hint" v-if="cooldownText">{{ cooldownText }}</text>
+                                <!-- 底部信息条 -->
+                                <view class="card-info">
+                                        <view class="info-left">
+                                                <text class="info-title">观看视频赚金币</text>
+                                                <text class="info-desc">完整观看即可获得奖励</text>
+                                        </view>
+                                        <view class="info-right">
+                                                <view class="reward-badge">
+                                                        <text class="reward-badge-text">+{{ rewardCoin }}</text>
+                                                        <text class="reward-badge-unit">金币</text>
+                                                </view>
+                                        </view>
                                 </view>
                         </view>
 
-
+                        <!-- 已观看：完成状态 -->
+                        <view class="card-done" v-else>
+                                <view class="done-icon-wrap">
+                                        <text class="done-icon">✓</text>
+                                </view>
+                                <view class="done-info">
+                                        <text class="done-title">已获得 +{{ rewardAmount }} 金币</text>
+                                        <text class="done-desc" v-if="cooldownText">{{ cooldownText }}</text>
+                                </view>
+                        </view>
                 </view>
         </view>
 </template>
@@ -55,7 +59,6 @@ export default {
         props: {
                 message: { type: Object, default: () => ({}) },
                 isMe: { type: Boolean, default: false },
-                // ★ 从父组件传入的浏览进度
                 rewardProgress: {
                         type: Object,
                         default: () => null
@@ -74,7 +77,6 @@ export default {
                         cooldownTimer: null,
                         cooldownSeconds: 120,
                         watchSeconds: 30,
-                        // ★ 进度数据
                         viewCount: 0,
                         threshold: 0,
                         remaining: 0,
@@ -99,7 +101,6 @@ export default {
                 if (taskData.cooldown) this.cooldownSeconds = taskData.cooldown;
                 if (taskData.watch_seconds) this.watchSeconds = taskData.watch_seconds;
 
-                // ★ 初始化进度数据
                 this.updateProgress();
 
                 // 监听广告观看页返回的结果
@@ -116,7 +117,6 @@ export default {
                                 });
                                 this.startCooldown();
                         } else if (data.progress) {
-                                // ★ 未达阈值 → 更新进度显示
                                 this.viewCount = data.progress.view_count || 0;
                                 this.threshold = data.progress.threshold || this.threshold;
                                 this.remaining = this.threshold > 0 ? Math.max(0, this.threshold - this.viewCount) : 0;
@@ -127,7 +127,6 @@ export default {
         },
 
         watch: {
-                // ★ 监听父组件传入的进度变化
                 rewardProgress: {
                         handler(val) {
                                 if (val) this.updateProgress();
@@ -145,9 +144,6 @@ export default {
         },
 
         methods: {
-                /**
-                 * 更新进度数据（从 props 获取）
-                 */
                 updateProgress() {
                         if (this.rewardProgress) {
                                 this.viewCount = this.rewardProgress.view_count || 0;
@@ -157,9 +153,6 @@ export default {
                         }
                 },
 
-                /**
-                 * 点击 → 跳转到广告观看页面
-                 */
                 handleWatchVideo() {
                         if (this.rewarded && this.isCooldown) {
                                 uni.showToast({ title: '冷却中，请稍后再试', icon: 'none' });
@@ -183,8 +176,6 @@ export default {
                                 }
                         });
                 },
-
-                // ==================== 冷却倒计时 ====================
 
                 startCooldown() {
                         this.isCooldown = true;
@@ -222,21 +213,23 @@ export default {
 <style lang="scss" scoped>
 .rewarded-video-message {
         width: 100%;
-        padding: 100rpx 0;
-        margin: 0;
+        padding: 0;
+        margin-bottom: 24rpx;
 }
 
+/* 发送者信息条（与 chatMessage 风格一致） */
 .msg-header {
         display: flex;
         align-items: center;
-        padding: 16rpx 24rpx 10rpx;
+        margin-bottom: 8rpx;
+        padding: 0 24rpx;
 }
 
 .avatar {
-        width: 52rpx;
-        height: 52rpx;
+        width: 80rpx;
+        height: 80rpx;
         border-radius: 50%;
-        margin-right: 12rpx;
+        margin-right: 20rpx;
         flex-shrink: 0;
 }
 
@@ -246,186 +239,180 @@ export default {
         font-weight: 400;
 }
 
-.header-tag {
-        margin-left: 12rpx;
-        background: linear-gradient(135deg, #ff6b35, #ff3838);
-        padding: 2rpx 12rpx;
-        border-radius: 6rpx;
-}
-
-.tag-text {
-        font-size: 20rpx;
-        color: #fff;
-        font-weight: 600;
-}
-
-.header-time {
-        margin-left: auto;
-}
-
-.time-text {
-        font-size: 22rpx;
-        color: #ccc;
-}
-
+/* ★ 激励视频卡片 */
 .video-card {
-        margin: 0 16rpx;
+        margin: 0 24rpx 0 120rpx; /* 对齐文字区域：头像80+间距20+昵称区~20 */
         border-radius: 16rpx;
         overflow: hidden;
         background: #fff;
-        box-shadow: 0 2rpx 12rpx rgba(255, 56, 56, 0.08);
+        box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.06);
         cursor: pointer;
 }
 
-.card-body {
-        padding: 28rpx 24rpx;
+/* === 未观看状态 === */
+.card-preview {
+        width: 100%;
 }
 
-.video-prompt {
+/* 视频封面区域 */
+.video-cover {
+        width: 100%;
+        height: 260rpx;
+        position: relative;
+        background: linear-gradient(145deg, #1a1a2e, #16213e);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        overflow: hidden;
+}
+
+.cover-gradient {
+        width: 100%;
+        height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: radial-gradient(circle at center, rgba(255, 107, 53, 0.15) 0%, transparent 70%);
+}
+
+.cover-icon {
+        font-size: 80rpx;
+        opacity: 0.3;
+}
+
+/* 播放按钮 */
+.play-btn {
+        position: absolute;
+        width: 96rpx;
+        height: 96rpx;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.9);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 4rpx 20rpx rgba(0, 0, 0, 0.3);
+}
+
+.play-btn-icon {
+        font-size: 32rpx;
+        color: #ff3838;
+        margin-left: 6rpx;
+}
+
+/* 时长标签 */
+.duration-tag {
+        position: absolute;
+        right: 16rpx;
+        bottom: 16rpx;
+        background: rgba(0, 0, 0, 0.6);
+        padding: 4rpx 14rpx;
+        border-radius: 8rpx;
+}
+
+.duration-text {
+        font-size: 22rpx;
+        color: #fff;
+        font-weight: 500;
+}
+
+/* 底部信息条 */
+.card-info {
         display: flex;
         align-items: center;
         justify-content: space-between;
+        padding: 20rpx 24rpx;
+        border-top: 1rpx solid #f5f5f5;
 }
 
-.prompt-left {
+.info-left {
+        display: flex;
+        flex-direction: column;
+        flex: 1;
+        min-width: 0;
+}
+
+.info-title {
+        font-size: 28rpx;
+        color: #333;
+        font-weight: 600;
+        line-height: 1.4;
+}
+
+.info-desc {
+        font-size: 22rpx;
+        color: #999;
+        margin-top: 4rpx;
+}
+
+.info-right {
+        flex-shrink: 0;
+        margin-left: 20rpx;
+}
+
+.reward-badge {
+        display: flex;
+        align-items: baseline;
+        background: linear-gradient(135deg, #ff6b35, #ff3838);
+        padding: 8rpx 20rpx;
+        border-radius: 12rpx;
+        box-shadow: 0 4rpx 12rpx rgba(255, 56, 56, 0.25);
+}
+
+.reward-badge-text {
+        font-size: 32rpx;
+        color: #fff;
+        font-weight: 800;
+}
+
+.reward-badge-unit {
+        font-size: 20rpx;
+        color: rgba(255, 255, 255, 0.85);
+        font-weight: 500;
+        margin-left: 4rpx;
+}
+
+/* === 已观看完成状态 === */
+.card-done {
         display: flex;
         align-items: center;
-        flex: 1;
+        padding: 32rpx 24rpx;
+        background: #f8fdf5;
+        border: 2rpx solid #d4edda;
 }
 
-.play-icon-wrap {
-        width: 80rpx;
-        height: 80rpx;
-        border-radius: 20rpx;
-        background: linear-gradient(135deg, #ff6b35, #ff3838);
+.done-icon-wrap {
+        width: 64rpx;
+        height: 64rpx;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #52c41a, #389e0d);
         display: flex;
         align-items: center;
         justify-content: center;
         margin-right: 20rpx;
         flex-shrink: 0;
-        box-shadow: 0 4rpx 12rpx rgba(255, 56, 56, 0.25);
 }
 
-.play-icon {
+.done-icon {
         font-size: 32rpx;
         color: #fff;
-        margin-left: 4rpx;
+        font-weight: bold;
 }
 
-.prompt-info {
+.done-info {
         display: flex;
         flex-direction: column;
+        flex: 1;
 }
 
-.prompt-title {
+.done-title {
         font-size: 28rpx;
-        color: #333;
+        color: #52c41a;
         font-weight: 600;
-        margin-bottom: 6rpx;
 }
 
-.prompt-desc {
+.done-desc {
         font-size: 22rpx;
         color: #999;
-}
-
-.prompt-right {
-        display: flex;
-        align-items: center;
-        flex-shrink: 0;
-        margin-left: 16rpx;
-}
-
-.reward-chip {
-        background: linear-gradient(135deg, #ff6b35, #ff3838);
-        padding: 14rpx 24rpx;
-        border-radius: 32rpx;
-        box-shadow: 0 4rpx 12rpx rgba(255, 56, 56, 0.3);
-}
-
-.chip-text {
-        font-size: 26rpx;
-        color: #fff;
-        font-weight: 700;
-        white-space: nowrap;
-}
-
-.watch-arrow {
-        margin-left: 12rpx;
-        width: 40rpx;
-        height: 40rpx;
-        border-radius: 50%;
-        background: #f5f5f5;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-}
-
-.arrow-text {
-        font-size: 28rpx;
-        color: #ccc;
-        font-weight: bold;
-}
-
-.video-state {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        padding: 24rpx 0;
-}
-
-.state-done {
-        flex-direction: column;
-        padding: 20rpx 0;
-}
-
-.state-icon {
-        font-size: 44rpx;
-        color: #52c41a;
-        font-weight: bold;
-        margin-bottom: 8rpx;
-}
-
-.state-text {
-        font-size: 26rpx;
-        color: #666;
-        font-weight: 500;
-}
-
-.state-hint {
-        font-size: 22rpx;
-        color: #bbb;
         margin-top: 4rpx;
 }
-
-/* ★ 浏览进度条 */
-.video-progress-section {
-        padding: 16rpx 24rpx;
-        background: #fff5f5;
-        border-top: 1rpx solid #ffe0e0;
-}
-
-.video-progress-track {
-        width: 100%;
-        height: 12rpx;
-        background: #ffe0e0;
-        border-radius: 6rpx;
-        overflow: hidden;
-        margin-bottom: 10rpx;
-}
-
-.video-progress-fill {
-        height: 100%;
-        background: linear-gradient(90deg, #ff6b35, #ff3838);
-        border-radius: 6rpx;
-        transition: width 0.5s ease;
-}
-
-.video-progress-text {
-        font-size: 22rpx;
-        color: #ff3838;
-        text-align: center;
-        display: block;
-}
-
 </style>
