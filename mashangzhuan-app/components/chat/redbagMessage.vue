@@ -85,14 +85,13 @@ export default {
         }
 }
 
-/* 头像 */
+/* 头像（与 chatMessage 保持一致） */
 .avatar {
-        width: 76rpx;
-        height: 76rpx;
-        border-radius: 8rpx;
-        margin: 0 16rpx 0 0;
+        width: 80rpx;
+        height: 80rpx;
+        border-radius: 50%;
+        margin: 0 20rpx;
         flex-shrink: 0;
-        background: #eee;
 }
 
 .content-wrapper {
@@ -103,10 +102,10 @@ export default {
 }
 
 .nickname {
-        font-size: 22rpx;
+        font-size: 24rpx;
         color: #999;
-        margin-bottom: 6rpx;
-        margin-left: 4rpx;
+        margin-bottom: 8rpx;
+        margin-left: 10rpx;
 }
 
 /* ==================== 微信红包卡片 ==================== */
