@@ -1,242 +1,255 @@
 <template>
-        <view :class="['message', isMe ? 'me' : 'other']">
-                <!-- 用户头像 -->
-                <image v-if="!isMe" class="avatar" :src="(message.user && message.user.avatar) || '/static/image/avatar.png'" mode="aspectFit"></image>
-                <image v-if="isMe" class="avatar" :src="vuex_user.avatar || '/static/image/avatar.png'" mode="aspectFit"></image>
+	<view :class="['message', isMe ? 'me' : 'other']">
+		<!-- 用户头像（左侧，带红包主题边框） -->
+		<view class="avatar-wrapper">
+			<image class="avatar" :src="(message.user && message.user.avatar) || '/static/image/avatar.png'" mode="aspectFill"></image>
+		</view>
 
-                <view class="content-wrapper">
-                        <!-- 用户昵称 -->
-                        <text v-if="!isMe" class="nickname">{{ message.user.nickname }}</text>
+		<view class="content-wrapper">
+			<!-- 用户昵称 -->
+			<text v-if="!isMe" class="nickname">{{ message.user.nickname }}</text>
 
-                        <!-- 红包消息卡片 -->
-                        <view :class="['redbag-card', cardStatusClass]" @click="handleClick">
-                                <view class="redbag-content">
-                                        <view class="redbag-icon-wrapper">
-                                                <image class="redbag-icon" :src="message.backgroundImage || '/static/image/redbag-icon.png'" mode="aspectFit"></image>
-                                        </view>
-                                        <view class="redbag-info">
-                                                <text class="redbag-text">{{ message.content || '恭喜发财' }}</text>
-                                                <!-- 未领取：显示点击提示 -->
-                                                <text v-if="message.status === 'unopened'" class="redbag-hint">点击拆红包</text>
-                                                <!-- 已拆开：显示金额 -->
-                                                <text v-else-if="message.status === 'opened'" class="redbag-amount-final">
-                                                        {{ message.claimedAmount || message.currentAmount || message.amount || 0 }} 金币
-                                                </text>
-                                                <!-- 已领取：显示金额+已领取 -->
-                                                <text v-else-if="message.status === 'claimed'" class="redbag-amount-final">
-                                                        {{ message.claimedAmount || message.currentAmount || message.amount || 0 }} 金币 · 已领取
-                                                </text>
-                                                <!-- 已过期 -->
-                                                <text v-else-if="message.status === 'expired'" class="redbag-expired">已过期</text>
-                                        </view>
-                                </view>
-                                <view class="redbag-footer">
-                                        <text class="footer-text">{{ footerText }}</text>
-                                </view>
-                        </view>
-                </view>
-        </view>
+			<!-- 微信红包气泡 -->
+			<view :class="['redbag-bubble', cardStatusClass]" @click="handleClick">
+				<!-- 左侧红包图标区域 -->
+				<view class="redbag-left">
+					<view class="redbag-icon-area">
+						<text class="redbag-icon-text">🧧</text>
+					</view>
+				</view>
+				<!-- 右侧文字区域 -->
+				<view class="redbag-right">
+					<text class="redbag-title">{{ displayTitle }}</text>
+					<text class="redbag-subtitle">{{ displaySubtitle }}</text>
+				</view>
+			</view>
+		</view>
+	</view>
 </template>
 
 <script>
 export default {
-        name: 'RedbagMessage',
-        props: {
-                message: {
-                        type: Object,
-                        required: true
-                },
-                isMe: {
-                        type: Boolean,
-                        default: false
-                }
-        },
-        computed: {
-                vuex_user() {
-                        return this.$store ? this.$store.state.vuex_user : {};
-                },
-                cardStatusClass() {
-                        const s = this.message.status;
-                        if (s === 'claimed' || s === 'expired') return 'claimed';
-                        if (s === 'opened') return 'opened';
-                        return '';
-                },
-                footerText() {
-                        const taskData = this.message.taskData || {};
-                        if (this.message.status === 'expired') return '已过期';
-                        if (this.message.status === 'claimed') return '已领取';
-                        if (this.message.status === 'opened') return '已拆开 · 待领取';
-                        const resourceName = taskData.resource && taskData.resource.name ? taskData.resource.name : '小程序红包';
-                        return resourceName;
-                }
-        },
-        methods: {
-                handleClick() {
-                        // 已过期，不触发事件
-                        if (this.message.status === 'expired') {
-                                uni.showToast({ title: '已过期', icon: 'none' });
-                                return;
-                        }
-                        // 所有其他状态（unopened / opened / claimed）都允许点击打开弹窗
-                        this.$emit('open-redbag', this.message);
-                }
-        }
+	name: 'RedbagMessage',
+	props: {
+		message: {
+			type: Object,
+			required: true
+		},
+		isMe: {
+			type: Boolean,
+			default: false
+		}
+	},
+	computed: {
+		vuex_user() {
+			return this.$store ? this.$store.state.vuex_user : {};
+		},
+		cardStatusClass() {
+			const s = this.message.status;
+			if (s === 'expired') return 'status-expired';
+			if (s === 'claimed') return 'status-claimed';
+			if (s === 'opened') return 'status-opened';
+			return 'status-unopened';
+		},
+		// 主标题
+		displayTitle() {
+			const s = this.message.status;
+			if (s === 'expired') return '已过期的红包';
+			if (s === 'claimed') return (this.message.claimedAmount || this.message.currentAmount || this.message.amount || 0) + '金币 · 已领取';
+			if (s === 'opened') return '已拆开的红包';
+			// 未领取：优先使用 displayTitle，否则用祝福语
+			return this.message.displayTitle || '恭喜发财，大吉大利';
+		},
+		// 副标题
+		displaySubtitle() {
+			const s = this.message.status;
+			if (s === 'expired') return '红包已过期';
+			if (s === 'claimed') return '领取红包';
+			if (s === 'opened') return '查看详情';
+			// 未领取
+			const taskData = this.message.taskData || {};
+			if (taskData.isAdRedPacket && this.message.amount > 0) {
+				return '待释放金币 ' + this.message.amount + ' 个';
+			}
+			return '领取红包';
+		}
+	},
+	methods: {
+		handleClick() {
+			if (this.message.status === 'expired') {
+				uni.showToast({ title: '红包已过期', icon: 'none' });
+				return;
+			}
+			this.$emit('open-redbag', this.message);
+		}
+	}
 }
 </script>
 
 <style lang="scss" scoped>
 .message {
-        display: flex;
-        margin-bottom: 30rpx;
-        padding: 0 20rpx;
+	display: flex;
+	flex-direction: row;
+	margin-bottom: 30rpx;
+	padding: 0 20rpx;
+	align-items: flex-start;
 
-        &.me {
-                flex-direction: row-reverse;
+	&.me {
+		flex-direction: row-reverse;
+	}
+}
 
-                .content-wrapper {
-                        align-items: flex-end;
-                }
-        }
+/* 头像：圆形 + 红色边框，模拟微信红包发送者 */
+.avatar-wrapper {
+	flex-shrink: 0;
+	margin: 0 16rpx 0 0;
 }
 
 .avatar {
-        width: 80rpx;
-        height: 80rpx;
-        border-radius: 50%;
-        margin: 0 20rpx;
-        flex-shrink: 0;
+	width: 80rpx;
+	height: 80rpx;
+	border-radius: 50%;
+	border: 2rpx solid #e74c3c;
+	background: #f5f5f5;
 }
 
 .content-wrapper {
-        display: flex;
-        flex-direction: column;
-        max-width: 70%;
+	display: flex;
+	flex-direction: column;
+	max-width: 75%;
+	flex: 1;
 }
 
 .nickname {
-        font-size: 24rpx;
-        color: #999;
-        margin-bottom: 8rpx;
-        margin-left: 10rpx;
+	font-size: 24rpx;
+	color: #999;
+	margin-bottom: 8rpx;
+	margin-left: 4rpx;
 }
 
-.redbag-card {
-        background: linear-gradient(135deg, #e74c3c 0%, #c0392b 50%, #a93226 100%);
-        border-radius: 16rpx;
-        overflow: hidden;
-        min-width: 400rpx;
-        box-shadow: 0 4rpx 16rpx rgba(231, 76, 60, 0.3);
-        position: relative;
+/* ==================== 微信红包气泡 ==================== */
+.redbag-bubble {
+	display: flex;
+	flex-direction: row;
+	align-items: center;
+	min-width: 420rpx;
+	max-width: 520rpx;
+	border-radius: 12rpx;
+	overflow: hidden;
+	// 微信红包经典橙色
+	background: linear-gradient(135deg, #FA9D3B 0%, #E8611A 50%, #D04B18 100%);
+	box-shadow: 0 4rpx 20rpx rgba(224, 75, 24, 0.25);
+	position: relative;
 
-        &::before {
-                content: '';
-                position: absolute;
-                top: -40rpx;
-                right: -40rpx;
-                width: 120rpx;
-                height: 120rpx;
-                border-radius: 50%;
-                background: rgba(255, 255, 255, 0.08);
-        }
+	&::before {
+		content: '';
+		position: absolute;
+		top: -60rpx;
+		right: -60rpx;
+		width: 160rpx;
+		height: 160rpx;
+		border-radius: 50%;
+		background: rgba(255, 255, 255, 0.06);
+	}
 
-        &::after {
-                content: '';
-                position: absolute;
-                bottom: -20rpx;
-                left: -20rpx;
-                width: 80rpx;
-                height: 80rpx;
-                border-radius: 50%;
-                background: rgba(255, 255, 255, 0.05);
-        }
+	/* ---- 未领取状态 ---- */
+	&.status-unopened {
+		background: linear-gradient(135deg, #FA9D3B 0%, #E8611A 50%, #D04B18 100%);
+		box-shadow: 0 4rpx 20rpx rgba(224, 75, 24, 0.25);
+	}
 
-        &.opened {
-                background: linear-gradient(135deg, #f5b7b1 0%, #f1948a 50%, #ec7063 100%);
-                box-shadow: 0 4rpx 12rpx rgba(236, 112, 99, 0.2);
-        }
+	/* ---- 已拆开状态 ---- */
+	&.status-opened {
+		background: linear-gradient(135deg, #F5C088 0%, #E8986A 50%, #D98A5C 100%);
+		box-shadow: 0 2rpx 12rpx rgba(217, 138, 92, 0.2);
+	}
 
-        &.claimed {
-                background: linear-gradient(135deg, #f0d9d5 0%, #e8c4be 100%);
-                box-shadow: 0 2rpx 8rpx rgba(232, 196, 190, 0.3);
+	/* ---- 已领取状态 ---- */
+	&.status-claimed {
+		background: linear-gradient(135deg, #F0D9D5 0%, #E8C4BE 100%);
+		box-shadow: 0 2rpx 8rpx rgba(200, 180, 170, 0.3);
+	}
 
-                .redbag-icon-wrapper {
-                        opacity: 0.5;
-                }
-        }
+	/* ---- 已过期状态 ---- */
+	&.status-expired {
+		background: linear-gradient(135deg, #D5D5D5 0%, #BFBFBF 50%, #ABABAB 100%);
+		box-shadow: 0 2rpx 8rpx rgba(170, 170, 170, 0.2);
+	}
 }
 
-.redbag-content {
-        display: flex;
-        align-items: center;
-        padding: 28rpx 24rpx;
+/* 左侧红包图标区域 */
+.redbag-left {
+	flex-shrink: 0;
+	width: 120rpx;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 24rpx 0;
+	position: relative;
+
+	// 右边分隔线
+	&::after {
+		content: '';
+		position: absolute;
+		right: 0;
+		top: 20%;
+		height: 60%;
+		width: 1rpx;
+		background: rgba(255, 255, 255, 0.15);
+	}
 }
 
-.redbag-icon-wrapper {
-        width: 90rpx;
-        height: 90rpx;
-        background: rgba(255, 255, 255, 0.15);
-        border-radius: 16rpx;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        margin-right: 20rpx;
-        flex-shrink: 0;
+.redbag-icon-area {
+	width: 72rpx;
+	height: 72rpx;
+	display: flex;
+	align-items: center;
+	justify-content: center;
 }
 
-.redbag-icon {
-        width: 64rpx;
-        height: 64rpx;
-        border-radius: 8rpx;
+.redbag-icon-text {
+	font-size: 52rpx;
+	line-height: 1;
 }
 
-.redbag-info {
-        display: flex;
-        flex-direction: column;
-        flex: 1;
+/* 右侧文字区域 */
+.redbag-right {
+	flex: 1;
+	display: flex;
+	flex-direction: column;
+	justify-content: center;
+	padding: 24rpx 28rpx;
 }
 
-.redbag-text {
-        font-size: 30rpx;
-        color: #fff;
-        font-weight: 500;
-        margin-bottom: 8rpx;
+.redbag-title {
+	font-size: 30rpx;
+	color: #FFFFFF;
+	font-weight: 600;
+	line-height: 1.4;
+	margin-bottom: 6rpx;
+	word-break: break-all;
 }
 
-.redbag-hint {
-        font-size: 24rpx;
-        color: rgba(255, 255, 255, 0.7);
-        animation: pulse 1.5s ease-in-out infinite;
+.redbag-subtitle {
+	font-size: 24rpx;
+	color: rgba(255, 255, 255, 0.75);
+	line-height: 1.4;
 }
 
-@keyframes pulse {
-        0%, 100% { opacity: 0.7; }
-        50% { opacity: 1; }
+/* 已领取/过期时文字颜色调整 */
+.status-claimed .redbag-title {
+	color: #8B4513;
 }
 
-.redbag-amount-final {
-        font-size: 32rpx;
-        font-weight: 600;
-        color: #ffe082;
+.status-claimed .redbag-subtitle {
+	color: rgba(139, 69, 19, 0.6);
 }
 
-.redbag-claimed {
-        font-size: 24rpx;
-        color: rgba(255, 255, 255, 0.6);
+.status-expired .redbag-title {
+	color: #FFFFFF;
 }
 
-.redbag-expired {
-        font-size: 24rpx;
-        color: rgba(255, 255, 255, 0.5);
-}
-
-.redbag-footer {
-        background: rgba(255, 255, 255, 0.1);
-        padding: 14rpx 24rpx;
-        border-top: 1rpx solid rgba(255, 255, 255, 0.08);
-}
-
-.footer-text {
-        font-size: 22rpx;
-        color: rgba(255, 255, 255, 0.8);
+.status-expired .redbag-subtitle {
+	color: rgba(255, 255, 255, 0.5);
 }
 </style>
