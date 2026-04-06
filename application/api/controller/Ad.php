@@ -242,7 +242,9 @@ class Ad extends Api
             'adpid' => $this->request->post('adpid/s', ''),
             'ad_provider' => $this->request->post('ad_provider/s', 'uniad'),
             'ad_source' => $this->request->post('ad_source/s', 'redbag_page'),
-            'amount' => $this->request->post('amount/f', 0),
+            // ★ 安全：不使用客户端提交的 amount（客户端可能伪造大金额）
+            // 真实 CPM 金额仅通过 serverNotify（DCloud 签名验证）处理
+            // 'amount' => $this->request->post('amount/f', 0),
             'transaction_id' => $this->request->post('transaction_id/s', ''),
             'ip' => $this->request->ip(),
             'user_agent' => $this->request->header('user-agent', ''),
@@ -408,7 +410,7 @@ class Ad extends Api
         $data['reward_per_feed'] = (int)($adConfig['reward_per_feed'] ?? 50);
         $data['ad_income_enabled'] = (int)($adConfig['ad_income_enabled'] ?? 1);
         $data['enabled_providers'] = $adConfig['enabled_providers'] ?? 'uniad';
-        $data['platform_rate'] = (float)($adConfig['platform_rate'] ?? 0.30);
+        // ★ platform_rate 不再暴露给前端（属于平台内部信息）
         $data['reward_per_video'] = (int)($adConfig['reward_per_video'] ?? 200);
         $data['rewarded_video_interval'] = (int)($adConfig['rewarded_video_interval'] ?? 120);
         $data['settle_interval'] = (int)($adConfig['settle_interval'] ?? 30);
@@ -606,6 +608,16 @@ class Ad extends Api
         if (!$userId) {
             $this->error('请先登录');
         }
+
+        // ★ 频率限制：同一用户每10秒最多一次领取（防止并发/重复请求）
+        $rateLimitKey = 'ad_freeze_claim_rate:' . $userId;
+        try {
+            $cache = think\Cache::get($rateLimitKey);
+            if ($cache) {
+                $this->error('操作太频繁，请稍后再试');
+            }
+            think\Cache::set($rateLimitKey, 1, 10);
+        } catch (\Throwable $e) {}
 
         $service = new AdIncomeService();
         $result = $service->claimFreezeBalance($userId);

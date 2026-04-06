@@ -118,64 +118,20 @@ class AdRedPacket extends Api
     }
 
     /**
-     * 观看广告后领取红包
+     * ★ 已废弃：观看广告后领取红包
      *
-     * @api {post} /api/adredpacket/claimWithAd 观看广告后领取红包
-     * @apiParam {Number} packet_id 红包ID
-     * @apiParam {String} [transaction_id] 广告交易ID(防重复)
-     * @apiSuccess {Number} amount 领取金额(金币)
-     * @apiSuccess {Number} balance 当前余额
-     * @apiSuccess {Number} ad_reward_coin 广告奖励金币
+     * 旧流程：先调用 handleAdCallback 写入 freeze，再领取红包
+     * 新流程：所有红包领取走纯 claim（claim 或 claimFreezeBalance），不在领取时额外上报广告
+     * 保留此方法仅为向前兼容，实际不再执行任何操作。
+     *
+     * @deprecated 请使用 claim() 或 claimAll() 代替
+     * @api {post} /api/adredpacket/claimWithAd 观看广告后领取红包（已废弃）
      */
     public function claimWithAd()
     {
-        $userId = $this->auth->id;
-        if (!$userId) {
-            $this->error('请先登录');
-        }
-
-        $packetId = $this->request->post('packet_id/d', 0);
-        $transactionId = $this->request->post('transaction_id/s', '');
-
-        if (!$packetId) {
-            $this->error('红包ID不能为空');
-        }
-
-        $service = new AdIncomeService();
-
-        // Step 1: 记录广告回调，将奖励写入 ad_freeze_balance
-        $adResult = $service->handleAdCallback($userId, [
-            'ad_type' => 'reward',
-            'adpid' => \app\common\library\SystemConfigService::get('ad.rewarded_video_adpid', null, ''),
-            'ad_provider' => 'uniad',
-            'ad_source' => 'redbag_claim',
-            'transaction_id' => $transactionId,
-            'ip' => $this->request->ip(),
-            'user_agent' => $this->request->header('user-agent', ''),
-            'device_id' => $this->request->header('X-Device-Id', ''),
-            'remark' => '领取广告红包-观看激励视频',
-        ]);
-
-        if (!$adResult['success']) {
-            $msg = $adResult['message'];
-            if ($msg !== '重复回调') {
-                $this->error('广告奖励记录失败: ' . $msg);
-            }
-        }
-
-        // Step 2: 领取红包 (将 ad_freeze_balance 转为 balance)
-        $claimResult = $service->claimRedPacket($userId, $packetId);
-
-        if ($claimResult['success']) {
-            Ad::clearOverviewCache($userId);
-            $this->success('领取成功', [
-                'amount' => $claimResult['amount'],
-                'balance' => $claimResult['balance'],
-                'ad_reward_coin' => $adResult['user_amount_coin'] ?? 0,
-            ]);
-        } else {
-            $this->error($claimResult['message'] ?? '领取失败');
-        }
+        // ★ 此方法已废弃，统一使用 claim() 纯领取流程
+        Log::info('[AdRedPacket] claimWithAd已废弃，拒绝请求');
+        $this->error('此接口已废弃，请使用普通领取');
     }
 
     /**

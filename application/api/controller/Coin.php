@@ -52,6 +52,11 @@ class Coin extends Api
         $type = $this->request->get('type/s', '');
         $month = $this->request->get('month/s', date('Ym'));
         
+        // ★ 安全校验：month 必须为6位数字（格式YYYYMM），防止表名注入
+        if (!preg_match('/^\d{6}$/', $month)) {
+            $this->error('月份参数格式错误');
+        }
+        
         $tableName = 'coin_log_' . $month;
         
         // 检查分表是否存在
