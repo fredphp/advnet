@@ -1,12 +1,6 @@
 <template>
         <view class="rewarded-video-message">
-                <!-- 顶部：发送者信息条（与普通消息风格一致） -->
-                <view class="msg-header">
-                        <image class="avatar" :src="message.user ? message.user.avatar : '/static/image/avatar.png'" mode="aspectFit"></image>
-                        <text class="nickname">{{ message.user ? message.user.nickname : '限时福利' }}</text>
-                </view>
-
-                <!-- ★ 激励视频卡片 -->
+                <!-- ★ 激励视频卡片（全宽广告，无发送者信息） -->
                 <view class="video-card" @click="handleWatchVideo">
                         <!-- 未观看：视频预览 + 播放按钮 + 奖励信息 -->
                         <view class="card-preview" v-if="!rewarded">
@@ -214,38 +208,15 @@ export default {
 .rewarded-video-message {
         width: 100%;
         padding: 0;
-        margin-bottom: 24rpx;
+        margin-bottom: 20rpx;
 }
 
-/* 发送者信息条（与 chatMessage 风格一致） */
-.msg-header {
-        display: flex;
-        align-items: center;
-        margin-bottom: 8rpx;
-        padding: 0 24rpx;
-}
-
-.avatar {
-        width: 80rpx;
-        height: 80rpx;
-        border-radius: 50%;
-        margin-right: 20rpx;
-        flex-shrink: 0;
-}
-
-.nickname {
-        font-size: 24rpx;
-        color: #999;
-        font-weight: 400;
-}
-
-/* ★ 激励视频卡片 */
+/* ★ 激励视频卡片（全宽广告） */
 .video-card {
-        margin: 0 24rpx 0 120rpx; /* 对齐文字区域：头像80+间距20+昵称区~20 */
-        border-radius: 16rpx;
+        margin: 0;
+        border-radius: 0;
         overflow: hidden;
         background: #fff;
-        box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.06);
         cursor: pointer;
 }
 
