@@ -476,10 +476,13 @@ export default {
 
                 /**
                  * 加载广告收益概览
+                 * @param {boolean} forceRefresh - 是否强制刷新（跳过前端缓存，确保获取最新数据）
                  */
-                async loadAdOverview() {
+                async loadAdOverview(forceRefresh = false) {
                         try {
-                                const res = await this.$api.adOverview({});
+                                // ★ 强制刷新时添加时间戳参数，防止浏览器/CDN 缓存
+                                const params = forceRefresh ? { _t: Date.now() } : {};
+                                const res = await this.$api.adOverview(params);
                                 console.log('[RedBag] overview 响应: code=' + (res ? res.code : 'null') + ', dataType=' + typeof (res && res.data));
                                 if (res && res.code === 1 && res.data) {
                                         // ★ 后端已关闭加密，res.data 直接是对象
@@ -1049,8 +1052,10 @@ export default {
                  */
                 async openFreezeBagModal(showClaimButton = false) {
                         // ★ 首次打开时先刷新最新的 freezeBalance，避免使用过期数据
+                        // ★ 使用 forceRefresh=true 确保获取最新数据（后端已支持版本化缓存）
                         if (!showClaimButton) {
-                                await this.loadAdOverview();
+                                await this.loadAdOverview(true);
+                                console.log('[RedBag] openFreezeBagModal: freezeBalance=' + this.freezeBalance + ', snapshot之前=' + this.freezeSnapshotAmount);
                         }
                         if (this.freezeBalance <= 0) {
                                 uni.showToast({ title: '暂无可领取的金币', icon: 'none' });
@@ -1063,6 +1068,7 @@ export default {
                         // ★ 如果不是从观看视频返回（即首次打开），快照当前冻结余额
                         if (!showClaimButton) {
                                 this.freezeSnapshotAmount = this.freezeBalance;
+                                console.log('[RedBag] openFreezeBagModal: 快照金额=' + this.freezeSnapshotAmount);
                         }
                         this.showFreezeBagModal = true;
                 },
@@ -1078,8 +1084,8 @@ export default {
                                 this.freezeSnapshotAmount = 0;
                                 this.freezeClaimAmount = 0;
                                 this.showFreezeClaimButton = false;
-                                // 刷新最新余额
-                                this.loadAdOverview();
+                                // ★ 强制刷新最新余额（后端版本化缓存保证返回最新数据）
+                                this.loadAdOverview(true);
                         }
                 },
 
@@ -1100,7 +1106,8 @@ export default {
                                         this.freezeClaiming = false;
                                         this.freezeClaimAmount = 0;
                                         this.showFreezeClaimButton = true;
-                                        this.loadAdOverview().then(() => {
+                                        // ★ 强制刷新余额，确保 freezeBalance 是最新的
+                                        this.loadAdOverview(true).then(() => {
                                                 setTimeout(() => {
                                                         this.showFreezeBagModal = true;
                                                 }, 500);

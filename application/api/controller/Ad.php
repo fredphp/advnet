@@ -372,7 +372,9 @@ class Ad extends Api
         }
 
         // ★ 接口级缓存：同一用户 30 秒内重复请求直接返回缓存（前端频繁轮询场景）
-        $cacheKey = 'ad_overview:' . $userId;
+        // ★ 使用版本化缓存 key，避免 clearOverviewCache 后并发 overview 请求用旧数据重新覆盖缓存
+        $version = (int)(Cache::get('ad_overview_version:' . $userId) ?: 0);
+        $cacheKey = 'ad_overview:' . $userId . ':v' . $version;
         $cached = Cache::get($cacheKey);
         // ★ 验证缓存数据必须是数组（旧的加密时代可能存入了 string/false 等无效值）
         if (is_array($cached)) {
@@ -380,7 +382,7 @@ class Ad extends Api
         } elseif ($cached !== null) {
             // 缓存数据格式异常（非数组）→ 删除脏缓存，重新生成
             try { Cache::delete($cacheKey); } catch (\Throwable $e) {}
-            Log::warning('AdOverview: 缓存数据格式异常，已清除, type=' . gettype($cached));
+            Log::warning('AdOverview: 缓存数据格式异常，已清除, type=' . gettype($cached) . ', key=' . $cacheKey);
         }
 
         // ★ 性能优化：一次性批量加载全部 ad 分组配置（1次调用替代12+次）
@@ -433,9 +435,18 @@ class Ad extends Api
         // ★ 广告配置数据（adpid、金币奖励等）非敏感信息，不做加密
         // 保证前端各平台都能正确解析数据
 
-        // 缓存结果 30 秒
+        // 缓存结果 30 秒（使用版本化 key，避免并发请求覆盖新版本缓存）
         try {
-            Cache::set($cacheKey, $data, 30);
+            // ★ 重新读取版本号，确保写入的是最新版本的 key
+            // 防止本请求执行期间版本被递增（如 claimFreezeBalance 清除缓存）
+            $currentVersion = (int)(Cache::get('ad_overview_version:' . $userId) ?: 0);
+            $writeKey = 'ad_overview:' . $userId . ':v' . $currentVersion;
+            if ($writeKey === $cacheKey) {
+                Cache::set($cacheKey, $data, 30);
+            } else {
+                // 版本已变化（说明执行期间有数据变更），不写入旧版本缓存
+                Log::info('AdOverview: 版本已变化(' . $version . '->' . $currentVersion . ')，跳过缓存写入');
+            }
         } catch (\Throwable $e) {
             // 缓存写入失败不影响响应
         }
@@ -445,6 +456,10 @@ class Ad extends Api
 
     /**
      * 清除 overview 接口缓存（在数据变更时调用）
+     * ★ 使用版本递增机制：递增版本号后，旧的缓存 key 自然失效
+     * 比直接 Cache::delete 更安全：并发 overview 请求在 delete 后可能用旧数据重新写入缓存
+     * 而版本递增后，并发请求写入的是旧版本 key，不影响新版本的缓存读取
+     * 
      * @param int|array $userId 用户ID或ID数组
      */
     public static function clearOverviewCache($userId)
@@ -452,7 +467,9 @@ class Ad extends Api
         $ids = is_array($userId) ? $userId : [$userId];
         foreach ($ids as $id) {
             try {
-                Cache::delete('ad_overview:' . (int)$id);
+                // ★ 递增版本号，使旧版本缓存 key 失效
+                $version = (int)(Cache::get('ad_overview_version:' . (int)$id) ?: 0) + 1;
+                Cache::set('ad_overview_version:' . (int)$id, $version, 300);
             } catch (\Throwable $e) {}
         }
     }
