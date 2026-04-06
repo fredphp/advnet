@@ -493,16 +493,6 @@ class Ad extends Api
     }
 
     /**
-     * 在 catch(\Throwable) 中重新抛出 HttpResponseException
-     */
-    private function rethrowHttpResponseException(\Throwable $e)
-    {
-        if ($e instanceof HttpResponseException) {
-            throw $e;
-        }
-    }
-
-    /**
      * ★ 记录广告浏览并检查阈值奖励
      *
      * 调用时机：用户在 watch.vue 完成倒计时后点击领取
