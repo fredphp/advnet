@@ -749,14 +749,15 @@ export default {
                  * 创建一条信息流广告消息对象
                  */
                 createAdFeedMessage(adpid, rewardCoin, index) {
+                        const nick = this.getRandomNickname();
                         return {
                                 id: 'ad_feed_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6),
                                 type: 'ad_feed',
                                 time: Date.now(),
                                 sender: 'system',
                                 user: {
-                                        nickname: '广告推荐',
-                                        avatar: this.getRandomAdAvatar()
+                                        nickname: nick,
+                                        avatar: this.getAvatarForNickname(nick)
                                 },
                                 taskData: {
                                         adpid: adpid,
@@ -772,14 +773,15 @@ export default {
                  * 创建一条激励视频广告消息对象
                  */
                 createRewardedVideoMessage(adpid, rewardCoin) {
+                        const nick = this.getRandomNickname();
                         return {
                                 id: 'rewarded_video_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6),
                                 type: 'rewarded_video',
                                 time: Date.now(),
                                 sender: 'system',
                                 user: {
-                                        nickname: '限时福利',
-                                        avatar: this.getRandomAdAvatar()
+                                        nickname: nick,
+                                        avatar: this.getAvatarForNickname(nick)
                                 },
                                 taskData: {
                                         adpid: adpid,
