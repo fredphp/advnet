@@ -18,7 +18,7 @@
 			<view class="ad-card-header">
 				<text class="ad-card-title">浏览信息流赚金币</text>
 				<view class="ad-reward-tag-wrap">
-					<text class="ad-reward-tag">+{{ displayRewardCoin }} 金币</text>
+					<text class="ad-reward-tag"></text>
 				</view>
 			</view>
 
@@ -31,12 +31,6 @@
 						<text class="ad-preview-desc">浏览即可获得金币奖励</text>
 					</view>
 				</view>
-			</view>
-
-			<!-- ★ 底部提示 -->
-			<view class="ad-card-footer">
-				<text class="footer-text" v-if="!rewarded">正在浏览中，自动累加金币奖励...</text>
-				<text class="footer-text footer-done" v-else>✅ 本次浏览奖励已记录</text>
 			</view>
 		</view>
 	</view>
@@ -278,20 +272,4 @@ export default {
 	color: #999;
 }
 
-/* 底部提示 */
-.ad-card-footer {
-	padding: 14rpx 24rpx;
-	text-align: center;
-	background-color: #fffbf5;
-	border-top: 1rpx solid #fff0e0;
-}
-
-.footer-text {
-	font-size: 22rpx;
-	color: #bbb;
-}
-
-.footer-done {
-	color: #38a169;
-}
 </style>
