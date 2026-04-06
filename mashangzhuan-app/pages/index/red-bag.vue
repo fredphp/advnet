@@ -913,7 +913,8 @@ export default {
 
                 /**
                  * ★ 推送一条红包消息到信息流
-                 * 使用随机的系统用户头像和昵称，不自动过期，用户可随时领取
+                 * 使用随机的系统用户头像和昵称，5秒后自动过期（模拟群内被抢完）
+                 * 过期后下次 settle_interval 间隔到达时会继续推送新红包
                  */
                 pushRedBagToFeed() {
                         const nickname = this.getRandomNickname();
@@ -947,6 +948,16 @@ export default {
 
                         this.messages.push(redbagMsg);
                         console.log('[RedBag] 红包已推送到信息流, freezeBalance=' + this.freezeBalance + ', badge=' + this.adPacketBadge);
+
+                        // ★ 5秒后自动标记为"已领完"（模拟其他群成员抢完），下次轮询会继续推送新红包
+                        const msgId = redbagMsg.id;
+                        setTimeout(() => {
+                                const msg = this.messages.find(m => m.id === msgId);
+                                if (msg && msg.status === 'unopened') {
+                                        this.$set(msg, 'status', 'expired');
+                                        console.log('[RedBag] 红包已过期, id=' + msgId);
+                                }
+                        }, 5000);
 
                         this.scrollToBottom();
                 },
