@@ -59,7 +59,7 @@ class AdIncomeService
             'reward_per_video' => SystemConfigService::get('ad.reward_per_video', null, 200),
             'callback_secret' => SystemConfigService::get('ad.callback_secret', null, ''),
             'redpacket_threshold' => SystemConfigService::get('ad.redpacket_threshold', null, 1000),
-            'feed_reward_threshold' => SystemConfigService::get('ad.feed_reward_threshold', null, 5),
+            'feed_reward_threshold' => SystemConfigService::get('ad.feed_reward_threshold', null, 1),
             'video_reward_threshold' => SystemConfigService::get('ad.video_reward_threshold', null, 1),
         ];
     }
@@ -737,7 +737,7 @@ class AdIncomeService
             }
 
             // 确保配置项存在
-            $this->ensureConfigExists('feed_reward_threshold', 'ad', '信息流奖励阈值（次）', 'number', '5', '用户浏览多少次信息流广告后发放一次奖励，0=每次都发', 310);
+            $this->ensureConfigExists('feed_reward_threshold', 'ad', '信息流奖励阈值（次）', 'number', '1', '用户浏览多少次信息流广告后发放一次奖励，0或1=每次都发', 310);
             $this->ensureConfigExists('video_reward_threshold', 'ad', '激励视频奖励阈值（次）', 'number', '1', '用户观看多少次激励视频后发放一次奖励，0=每次都发，1=每次都发', 311);
 
             // ★ 修正旧默认值：如果 video_reward_threshold 仍为旧默认值 3，自动更新为 1
@@ -819,7 +819,7 @@ class AdIncomeService
         // 获取阈值配置
         $threshold = $adType === 'reward'
             ? (int)$this->getConfig('video_reward_threshold', 1)
-            : (int)$this->getConfig('feed_reward_threshold', 5);
+            : (int)$this->getConfig('feed_reward_threshold', 1);
 
         $result['threshold'] = $threshold;
 
@@ -889,13 +889,11 @@ class AdIncomeService
 
             // ★ 检查是否达到阈值
             if ($result['view_count'] >= $threshold) {
-                // ★ 计算批量奖励金额 = 阈值次数 × 单次奖励
-                // 例：threshold=5, reward_per_feed=50 → 批量奖励=250
+                // ★ 每次浏览单独计算奖励（threshold=1时每次都发放）
                 $rewardPerView = $adType === 'reward'
                     ? (int)$this->getConfig('reward_per_video', 200)
                     : (int)$this->getConfig('reward_per_feed', 50);
-                $batchReward = $threshold * $rewardPerView;
-                $params['reward_coin'] = $batchReward;
+                $params['reward_coin'] = $rewardPerView;
 
                 // 达到阈值 → 触发广告回调（写入 ad_income_log + ad_freeze_balance）
                 $callbackResult = $this->handleAdCallback($userId, $params);
@@ -947,7 +945,7 @@ class AdIncomeService
         $userId = (int)$userId;
         $today = date('Y-m-d');
 
-        $feedThreshold  = (int)$this->getConfig('feed_reward_threshold', 5);
+        $feedThreshold  = (int)$this->getConfig('feed_reward_threshold', 1);
         $videoThreshold = (int)$this->getConfig('video_reward_threshold', 1);
         $feedReward     = (int)$this->getConfig('reward_per_feed', 50);
         $videoReward    = (int)$this->getConfig('reward_per_video', 200);

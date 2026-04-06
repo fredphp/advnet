@@ -232,7 +232,7 @@ export default {
         },
 
         async onLoad(opt) {
-                console.log('[RedBag] ★ 页面加载 v20250705-c (30s红包推送版)');
+                console.log('[RedBag] ★ 页面加载 v20250705-d (时间控制广告推送+每次浏览奖励版)');
                 this.groupId = opt.group_id || 'default_group';
                 this.user_info = uni.getStorageSync('user_info') || {};
 
@@ -341,9 +341,11 @@ export default {
 
                         // ★ 持续推送相关
                         pushTimer: null,                  // 持续推送定时器
-                        pushCounter: 0,                   // 推送计数（用于判断何时插广告）
-                        pushChatCountBeforeAd: 0,          // 下一批聊天消息还需要推几条才插广告
                         maxMessages: 150,                 // 消息列表最大保留数量（防止内存溢出）
+
+                        // ★ 信息流广告时间控制推送（1分钟内推送4-10条，即每6-15秒推送1条）
+                        feedAdLastPushTime: 0,            // 上次推送信息流广告的时间戳
+                        feedAdNextInterval: 0,            // 下次推送信息流广告的随机间隔（毫秒）
 
                         // ★ 激励视频推送（已合并到持续推送逻辑中）
                         rewardedVideoLastPushTime: 0,     // 上次推送激励视频的时间戳
@@ -698,9 +700,9 @@ export default {
                                 this.messages.push(this.createFakeChatMessage());
                         }
 
-                        // 初始化推送计数：随机 2-4 条聊天后插一条广告
-                        this.pushChatCountBeforeAd = 2 + Math.floor(Math.random() * 3);
-                        this.pushCounter = 0;
+                        // 初始化信息流广告时间控制：随机 6-15 秒后推送第一条信息流广告
+                        this.feedAdNextInterval = 6000 + Math.random() * 9000;
+                        this.feedAdLastPushTime = Date.now();
 
                         this.$nextTick(() => {
                                 this.scrollToBottom();
@@ -709,14 +711,15 @@ export default {
 
                 /**
                  * ★ 启动持续推送定时器
-                 * 模拟聊天群消息流：每隔 2-5 秒推一条，每 2-4 条聊天后插一条信息流广告
+                 * 模拟聊天群消息流：每隔 2-5 秒推一条聊天消息
+                 * 信息流广告单独按时间控制：每 6-15 秒推送一条（即1分钟内4-10条）
                  * 不会停止，直到页面卸载
                  */
                 startContinuousPush() {
                         // 防止重复启动
                         if (this.pushTimer) return;
 
-                        // 每次推送间隔 2-5 秒随机
+                        // 聊天消息推送间隔 2-5 秒随机
                         const scheduleNext = () => {
                                 const delay = 2000 + Math.random() * 3000;
                                 this.pushTimer = setTimeout(() => {
@@ -731,7 +734,7 @@ export default {
                                 scheduleNext();
                         }, 1000);
 
-                        console.log('[RedBag] 持续推送已启动');
+                        console.log('[RedBag] 持续推送已启动（信息流广告时间控制：每6-15秒推送1条）');
                 },
 
                 /**
@@ -746,37 +749,43 @@ export default {
                 },
 
                 /**
-                 * 推送一条消息（聊天或广告，根据计数器决定）
+                 * 推送一条消息（聊天或广告，根据时间控制决定）
+                 * ★ 信息流广告采用时间控制：每 6-15 秒随机推送一条（1分钟内4-10条）
+                 * ★ 激励视频仍按原逻辑：每 rewarded_video_interval 秒推送一次
                  */
                 doPushOneMessage() {
-                        this.pushCounter++;
+                        const now = Date.now();
 
-                        // 判断是否该推广告了
-                        if (this.pushCounter >= this.pushChatCountBeforeAd) {
-                                console.log('[RedBag] ★ 到达广告位, pushCounter=' + this.pushCounter + ', threshold=' + this.pushChatCountBeforeAd);
-                                // 重置计数器，随机 2-4 条后下次再推广告
-                                this.pushCounter = 0;
-                                this.pushChatCountBeforeAd = 2 + Math.floor(Math.random() * 3);
+                        // ★ 判断是否该推送信息流广告（时间控制：距上次推送 >= feedAdNextInterval）
+                        const shouldPushFeedAd = (this.feedAdLastPushTime > 0)
+                                && (now - this.feedAdLastPushTime >= this.feedAdNextInterval);
 
-                                // ★ 优先判断是否到了推送激励视频的时间
-                                if (this.shouldPushRewardedVideo()) {
-                                        const videoMsg = this.createRewardedVideoMessage(
-                                                this.adConfig.rewarded_video_adpid,
-                                                this.adConfig.reward_per_video || 200
-                                        );
-                                        this.messages.push(videoMsg);
-                                        console.log('[RedBag] 推送激励视频广告, adpid=' + this.adConfig.rewarded_video_adpid + ', 奖励=' + (this.adConfig.reward_per_video || 200) + '金币');
-                                } else {
-                                        // ★ 无论是否配置了 adpid，都推送信息流广告卡片
-                                        // adpid 仅在用户点击播放时才需要，卡片 UI 本身不依赖它
-                                        const adMsg = this.createAdFeedMessage(
-                                                this.adConfig.feed_adpid,
-                                                this.adConfig.reward_per_feed || 50,
-                                                Date.now()
-                                        );
-                                        this.messages.push(adMsg);
-                                        console.log('[RedBag] 推送信息流广告, adpid=' + (this.adConfig.feed_adpid || '(未配置)'));
-                                }
+                        // ★ 判断是否该推送激励视频（时间控制：每 rewarded_video_interval 秒）
+                        const shouldPushVideo = this.shouldPushRewardedVideo();
+
+                        if (shouldPushVideo) {
+                                // 推送激励视频（优先级高于信息流广告）
+                                const videoMsg = this.createRewardedVideoMessage(
+                                        this.adConfig.rewarded_video_adpid,
+                                        this.adConfig.reward_per_video || 200
+                                );
+                                this.messages.push(videoMsg);
+                                console.log('[RedBag] 推送激励视频广告, adpid=' + this.adConfig.rewarded_video_adpid + ', 奖励=' + (this.adConfig.reward_per_video || 200) + '金币');
+                                // 推送激励视频后重置信息流广告计时（避免广告扎堆）
+                                this.feedAdLastPushTime = now;
+                                this.feedAdNextInterval = 6000 + Math.random() * 9000;
+                        } else if (shouldPushFeedAd) {
+                                // ★ 推送信息流广告（时间控制：每6-15秒推送1条）
+                                const adMsg = this.createAdFeedMessage(
+                                        this.adConfig.feed_adpid,
+                                        this.adConfig.reward_per_feed || 50,
+                                        Date.now()
+                                );
+                                this.messages.push(adMsg);
+                                console.log('[RedBag] 推送信息流广告, adpid=' + (this.adConfig.feed_adpid || '(未配置)') + ', 间隔=' + Math.round(this.feedAdNextInterval / 1000) + '秒');
+                                // 重置下次推送间隔（6-15秒随机）
+                                this.feedAdLastPushTime = now;
+                                this.feedAdNextInterval = 6000 + Math.random() * 9000;
                         } else {
                                 // ★ 推送普通聊天消息（从后端资源中随机选取）
                                 this.messages.push(this.createFakeChatMessage());

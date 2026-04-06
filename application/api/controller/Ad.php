@@ -424,12 +424,12 @@ class Ad extends Api
             $viewProgress = $service->getAdViewProgress($userId);
             $data['feed_view_progress'] = $viewProgress['feed'];
             $data['reward_view_progress'] = $viewProgress['reward'];
-            $data['feed_reward_threshold'] = (int)($adConfig['feed_reward_threshold'] ?? 5);
+            $data['feed_reward_threshold'] = (int)($adConfig['feed_reward_threshold'] ?? 1);
             $data['video_reward_threshold'] = (int)($adConfig['video_reward_threshold'] ?? 1);
         } catch (\Throwable $e) {
-            $data['feed_view_progress'] = ['view_count' => 0, 'threshold' => 5, 'remaining' => 5, 'reward_count' => 0, 'reward_coin' => 50, 'progress_percent' => 0];
+            $data['feed_view_progress'] = ['view_count' => 0, 'threshold' => 1, 'remaining' => 1, 'reward_count' => 0, 'reward_coin' => 50, 'progress_percent' => 0];
             $data['reward_view_progress'] = ['view_count' => 0, 'threshold' => 1, 'remaining' => 1, 'reward_count' => 0, 'reward_coin' => 200, 'progress_percent' => 0];
-            $data['feed_reward_threshold'] = 5;
+            $data['feed_reward_threshold'] = 1;
             $data['video_reward_threshold'] = 1;
         }
 
