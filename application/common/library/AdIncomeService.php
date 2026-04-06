@@ -518,12 +518,20 @@ class AdIncomeService
         // 获取冻结余额
         $freezeBalance = $account ? (int)round($account['ad_freeze_balance']) : 0;
 
+        // ★ coin_balance：用户可提现金币余额
+        $coinBalance = $account ? (int)round($account['balance']) : 0;
+
+        // ★ unclaimed_packet_amount 包含真实红包金额 + freeze_balance
+        // 因为通知红包 amount=0 但实际金币在 ad_freeze_balance 中
+        $unclaimedPacketAmount = $unclaimedSummary['total_amount'] + $freezeBalance;
+
         return [
             'today_income' => $todayIncome,
             'total_ad_income' => $totalAdIncome,
             'ad_freeze_balance' => $freezeBalance,
+            'coin_balance' => $coinBalance,
             'unclaimed_packet_count' => $unclaimedSummary['count'],
-            'unclaimed_packet_amount' => $unclaimedSummary['total_amount'],
+            'unclaimed_packet_amount' => $unclaimedPacketAmount,
         ];
     }
 

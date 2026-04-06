@@ -12,6 +12,11 @@
                                                 <text class="group-count">({{ onlineCount }})</text>
                                         </view>
                                         <view class="right-btns">
+                                                <!-- ★ 金币余额显示 -->
+                                                <view class="coin-balance-btn" v-if="coinBalance > 0" @click="goWithdraw">
+                                                        <text class="coin-balance-icon">💰</text>
+                                                        <text class="coin-balance-text">{{ formatCoinBalance(coinBalance) }}</text>
+                                                </view>
                                                 <!-- 广告红包入口 -->
                                                 <view class="ad-packet-btn" @click="toggleAdPacketPanel">
                                                         <text class="ad-packet-icon">🧧</text>
@@ -365,6 +370,7 @@ export default {
 
                         // ★ 待释放金币红包
                         freezeBalance: 0,              // 当前待释放金币余额
+                        coinBalance: 0,                 // ★ 用户可提现金币余额
                         showFreezeBagModal: false,       // 是否显示待领取红包弹窗
                         freezeClaiming: false,           // 是否正在领取中
                         freezeClaimed: false,            // 是否已领取
@@ -511,6 +517,9 @@ export default {
 
                                         // ★ 保存待释放金币余额
                                         this.freezeBalance = data.ad_freeze_balance || 0;
+
+                                        // ★ 保存用户金币余额
+                                        this.coinBalance = data.coin_balance || 0;
 
                                         // ★ 保存红包结算间隔（分钟），用于红包定期提醒
                                         this.settleInterval = data.settle_interval || 30;
@@ -1494,6 +1503,17 @@ export default {
                         uni.navigateTo({ url: '/pages/my/withdraw/index' });
                 },
 
+                /**
+                 * ★ 格式化金币余额（>=10000 显示为 x.x万）
+                 */
+                formatCoinBalance(amount) {
+                        if (!amount || amount <= 0) return '0';
+                        if (amount >= 10000) {
+                                return (amount / 10000).toFixed(1) + '万';
+                        }
+                        return String(amount);
+                },
+
                 scrollToBottom() {
                         // 统一使用 UniApp 的 scroll-into-view 机制
                         // 优势：只在 scroll-view 内部滚动，不会触发外层页面滚动导致 header 被推上去
@@ -1650,6 +1670,27 @@ export default {
 .ad-packet-btn {
         position: relative;
         padding: 10rpx 20rpx;
+}
+
+/* ★ 金币余额按钮 */
+.coin-balance-btn {
+        display: flex;
+        align-items: center;
+        background: linear-gradient(135deg, #ff9500, #ff6b00);
+        border-radius: 30rpx;
+        padding: 8rpx 20rpx;
+        margin-right: 12rpx;
+}
+
+.coin-balance-icon {
+        font-size: 28rpx;
+        margin-right: 6rpx;
+}
+
+.coin-balance-text {
+        font-size: 22rpx;
+        color: #fff;
+        font-weight: 600;
 }
 
 .ad-packet-icon {

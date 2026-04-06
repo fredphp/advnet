@@ -8,15 +8,17 @@ use think\console\input\Option;
 use think\console\Output;
 use app\common\library\AdIncomeService;
 use app\common\model\AdRedPacket;
+use app\common\model\AdRedPacketSplit;
+use app\common\model\AdIncomeLogSplit;
 use think\Log;
 
 /**
  * 广告收益定时结算命令
  *
  * 功能：
- * 1. 将 ad_freeze_balance 转换为红包
- * 2. 过期未领取的红包标记为已过期
- * 3. 查看统计信息
+ * 1. 检查用户冻结余额是否达到红包基数额度，达到则自动创建通知红包
+ * 2. 过期未领取的红包标记为已过期（跨分表）
+ * 3. 查看统计信息（跨分表）
  *
  * 使用方法：
  * php think ad:settle                           # 默认执行结算（处理100条）
@@ -90,37 +92,63 @@ class AdSettle extends Command
 
     /**
      * 结算待释放广告收益为红包
+     *
+     * ★ 新流程：遍历 ad_freeze_balance > 0 的用户，调用 checkAndAutoSettle
+     * checkAndAutoSettle 会在 freeze_balance 达到阈值时自动创建通知红包
      */
     protected function doSettle(Output $output, $limit)
     {
         $service = new AdIncomeService();
-        $result = $service->settleToRedPacket($limit);
 
-        $output->writeln("处理用户数: {$result['total_users']}");
-        $output->writeln("生成红包数: {$result['packets_created']}");
-        $output->writeln("释放金币数: {$result['total_coin']}");
+        // 查询有冻结余额的用户
+        $users = think\Db::name('coin_account')
+            ->where('ad_freeze_balance', '>', 0)
+            ->field('user_id, ad_freeze_balance')
+            ->order('ad_freeze_balance', 'desc')
+            ->limit($limit)
+            ->select();
 
-        if (!empty($result['errors'])) {
-            $output->writeln("错误数: " . count($result['errors']));
-            foreach (array_slice($result['errors'], 0, 10) as $error) {
-                $output->writeln("  - {$error}");
-            }
-            if (count($result['errors']) > 10) {
-                $output->writeln("  ... 还有 " . (count($result['errors']) - 10) . " 个错误");
+        $totalUsers = count($users);
+        $packetsCreated = 0;
+        $errors = [];
+
+        foreach ($users as $user) {
+            try {
+                $result = $service->checkAndAutoSettle((int)$user['user_id']);
+                if ($result['success']) {
+                    $packetsCreated++;
+                    $output->writeln("  用户{$user['user_id']}: 冻结余额{$user['ad_freeze_balance']} -> 生成通知红包");
+                }
+            } catch (\Throwable $e) {
+                $errors[] = "用户{$user['user_id']}: " . $e->getMessage();
             }
         }
 
-        if ($result['packets_created'] > 0) {
-            Log::info('AdSettle: 生成' . $result['packets_created'] . '个红包，共' . $result['total_coin'] . '金币');
+        $output->writeln("处理用户数: {$totalUsers}");
+        $output->writeln("生成红包数: {$packetsCreated}");
+
+        if (!empty($errors)) {
+            $output->writeln("错误数: " . count($errors));
+            foreach (array_slice($errors, 0, 10) as $error) {
+                $output->writeln("  - {$error}");
+            }
+            if (count($errors) > 10) {
+                $output->writeln("  ... 还有 " . (count($errors) - 10) . " 个错误");
+            }
+        }
+
+        if ($packetsCreated > 0) {
+            Log::info('AdSettle: 生成' . $packetsCreated . '个通知红包');
         }
     }
 
     /**
      * 处理过期红包
+     * ★ 使用 AdRedPacketSplit::expireAllPackets() 跨分表处理
      */
     protected function doExpire(Output $output)
     {
-        $count = AdRedPacket::expirePackets();
+        $count = AdRedPacketSplit::expireAllPackets();
         $output->writeln("过期红包数: {$count}");
 
         if ($count > 0) {
@@ -130,6 +158,7 @@ class AdSettle extends Command
 
     /**
      * 显示统计信息
+     * ★ 使用跨分表查询（AdIncomeLogSplit + AdRedPacketSplit）
      */
     protected function doStats(Output $output)
     {
@@ -143,21 +172,23 @@ class AdSettle extends Command
             ->where('ad_freeze_balance', '>', 0)
             ->sum('ad_freeze_balance');
 
-        // 未领取红包数
-        $unclaimedPackets = AdRedPacket::where('status', AdRedPacket::STATUS_UNCLAIMED)->count();
-        $unclaimedAmount = AdRedPacket::where('status', AdRedPacket::STATUS_UNCLAIMED)->sum('amount');
+        // ★ 使用跨分表统计未领取红包
+        $packetStats = AdRedPacketSplit::getStats();
+        $unclaimedPackets = $packetStats['unclaimed_count'] ?? 0;
+        $unclaimedAmount = $packetStats['unclaimed_amount'] ?? 0;
 
-        // 今日广告收益
+        // ★ 使用跨分表统计今日广告收益
         $todayStart = strtotime(date('Y-m-d'));
-        $todayIncome = \app\common\model\AdIncomeLog::where('createtime', '>=', $todayStart)
-            ->whereIn('status', [\app\common\model\AdIncomeLog::STATUS_CONFIRMED, \app\common\model\AdIncomeLog::STATUS_RELEASED])
-            ->sum('user_amount_coin');
+        $todayStats = AdIncomeLogSplit::getRangeStats($todayStart, time(), [
+            'status' => [\app\common\model\AdIncomeLog::STATUS_CONFIRMED, \app\common\model\AdIncomeLog::STATUS_RELEASED],
+        ]);
+        $todayIncome = $todayStats['sum_user_amount_coin'] ?? 0;
 
         $output->writeln("--- 广告系统统计 ---");
         $output->writeln("待结算用户数: {$pendingUsers}");
         $output->writeln("总冻结金额: " . (int)$totalFreeze . " 金币");
         $output->writeln("未领取红包数: {$unclaimedPackets}");
-        $output->writeln("未领取红包金额: " . (float)$unclaimedAmount . " 金币");
+        $output->writeln("未领取红包金额: " . (int)$unclaimedAmount . " 金币");
         $output->writeln("今日广告收益: " . (int)$todayIncome . " 金币");
     }
 }

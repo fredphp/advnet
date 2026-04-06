@@ -357,9 +357,9 @@ class CoinService
      * @param int $amount 金币数量
      * @return array
      */
-    public function freeze($userId, $amount)
+    public function freeze($userId, $amount, $logType = '', $logExtra = [])
     {
-        $result = ['success' => false, 'message' => ''];
+        $result = ['success' => false, 'message' => '', 'balance' => 0, 'frozen' => 0];
         
         $userId = (int)$userId;
         $amount = (int)$amount;
@@ -407,9 +407,24 @@ class CoinService
                 throw new Exception('操作失败，请重试');
             }
             
+            // 写入 coin_log（如果指定了 logType）
+            if (!empty($logType)) {
+                $this->addLog($userId, array_merge([
+                    'type' => $logType,
+                    'amount' => -$amount,
+                    'balance_before' => $balance,
+                    'balance_after' => $balance,
+                    'relation_type' => $logExtra['relation_type'] ?? '',
+                    'relation_id' => $logExtra['relation_id'] ?? 0,
+                    'description' => $logExtra['description'] ?? '金币冻结',
+                ], $logExtra));
+            }
+            
             Db::commit();
             
             $result['success'] = true;
+            $result['balance'] = $balance;
+            $result['frozen'] = $frozen + $amount;
             
         } catch (Exception $e) {
             Db::rollback();
@@ -428,9 +443,9 @@ class CoinService
      * @param int $amount 金币数量
      * @return array
      */
-    public function unfreeze($userId, $amount)
+    public function unfreeze($userId, $amount, $logType = '', $logExtra = [])
     {
-        $result = ['success' => false, 'message' => ''];
+        $result = ['success' => false, 'message' => '', 'balance' => 0, 'frozen' => 0];
         
         $userId = (int)$userId;
         $amount = (int)$amount;
@@ -457,6 +472,7 @@ class CoinService
                 throw new Exception('账户不存在');
             }
             
+            $balance = (int)$account['balance'];
             $frozen = (int)$account['frozen'];
             
             if ($frozen < $amount) {
@@ -476,9 +492,24 @@ class CoinService
                 throw new Exception('操作失败，请重试');
             }
             
+            // 写入 coin_log（如果指定了 logType）
+            if (!empty($logType)) {
+                $this->addLog($userId, array_merge([
+                    'type' => $logType,
+                    'amount' => $amount,
+                    'balance_before' => $balance,
+                    'balance_after' => $balance,
+                    'relation_type' => $logExtra['relation_type'] ?? '',
+                    'relation_id' => $logExtra['relation_id'] ?? 0,
+                    'description' => $logExtra['description'] ?? '金币解冻',
+                ], $logExtra));
+            }
+            
             Db::commit();
             
             $result['success'] = true;
+            $result['balance'] = $balance;
+            $result['frozen'] = $frozen - $amount;
             
         } catch (Exception $e) {
             Db::rollback();

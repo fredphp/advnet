@@ -167,18 +167,12 @@ export default {
                         try {
                                 const res = await this.$api.adOverview({});
                                 if (res && res.code === 1 && res.data) {
-                                        // ★ 待领取金额 = 真实红包金额之和 + 通知红包对应的 freeze_balance
-                                        const realPacketAmount = Math.floor(res.data.unclaimed_packet_amount || 0);
-                                        const freezeBalance = Math.floor(res.data.ad_freeze_balance || 0);
-                                        // 检查是否有通知类型的未领取红包
-                                        const hasNotifyPacket = this.list.some(p => this.isNotifyPacket(p) && p.status === 0);
-
+                                        // ★ 后端 unclaimed_packet_amount 已包含真实红包金额 + freeze_balance，直接使用
                                         this.summary = {
                                                 unclaimed_count: res.data.unclaimed_packet_count || 0,
-                                                // 如果有通知红包，金额应包含 freeze_balance
-                                                unclaimed_amount: hasNotifyPacket ? (realPacketAmount + freezeBalance) : realPacketAmount,
+                                                unclaimed_amount: Math.floor(res.data.unclaimed_packet_amount || 0),
                                         };
-                                        this.freezeBalance = freezeBalance;
+                                        this.freezeBalance = Math.floor(res.data.ad_freeze_balance || 0);
                                         this.redpacketThreshold = Math.floor(res.data.redpacket_threshold || 1000);
                                         this.overviewLoaded = true;
                                 }
@@ -296,11 +290,7 @@ export default {
                         if (eventData.adType === 'freeze_claim') {
                                 if (eventData.success) {
                                         const amount = eventData.amount || 0;
-                                        uni.showToast({
-                                                title: '领取成功 +' + amount + ' 金币',
-                                                icon: 'none',
-                                                duration: 2000
-                                        });
+                                        // ★ 不在此处弹 toast，由 red-bag.vue 的红包弹窗统一提示，避免重复弹窗
                                         this.loadSummary();
                                         this.$emit('claimed', { amount: amount, packetId: 0 });
                                 }

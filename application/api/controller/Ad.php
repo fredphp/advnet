@@ -399,6 +399,7 @@ class Ad extends Api
                 'today_income' => 0,
                 'total_ad_income' => 0,
                 'ad_freeze_balance' => 0,
+                'coin_balance' => 0,
                 'unclaimed_packet_count' => 0,
                 'unclaimed_packet_amount' => 0,
             ];

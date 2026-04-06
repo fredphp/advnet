@@ -7,6 +7,7 @@ use app\common\controller\Api;
 use app\common\library\AdIncomeService;
 use app\common\model\AdRedPacket as AdRedPacketModel;
 use app\common\model\AdIncomeLog;
+use app\common\model\AdIncomeLogSplit;
 use think\Db;
 use think\Log;
 use think\exception\HttpResponseException;
@@ -158,15 +159,21 @@ class AdRedPacket extends Api
             $limit = 50;
         }
 
-        $list = AdIncomeLog::where('user_id', $userId)
-            ->order('id', 'desc')
-            ->page($page, $limit)
-            ->select();
+        // ★ 使用跨分表查询（主表 + 所有分表），避免只查主表导致数据缺失
+        $offset = ($page - 1) * $limit;
+        $result = AdIncomeLogSplit::paginateAllTables(
+            ['user_id' => $userId],
+            'id', 'desc', $offset, $limit
+        );
 
-        $total = AdIncomeLog::where('user_id', $userId)->count();
-        $totalCoin = (int)AdIncomeLog::where('user_id', $userId)
-            ->whereIn('status', [AdIncomeLog::STATUS_CONFIRMED, AdIncomeLog::STATUS_RELEASED])
-            ->sum('user_amount_coin');
+        $list = $result['data'] ?? [];
+        $total = (int)($result['total'] ?? 0);
+
+        // 跨分表统计总金币（不限时间范围）
+        $totalCoin = (int)AdIncomeLogSplit::getRangeStats(0, time(), [
+            'user_id' => $userId,
+            'status' => [AdIncomeLog::STATUS_CONFIRMED, AdIncomeLog::STATUS_RELEASED],
+        ])['sum_user_amount_coin'];
 
         // 转换为前端友好的格式
         $formatList = [];

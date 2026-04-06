@@ -41,7 +41,7 @@ class CoinLog extends Model
         'red_packet_grab' => '抢红包奖励',
         'red_packet_click' => '红包点击奖励',
         'ad_red_packet' => '领取广告红包',
-        'freeze_balance_claim' => '领取广告金币',
+        'freeze_balance_claim' => '待释放金币领取',
         'freeze_balance_claim_feed' => '领取信息流广告金币',
         'freeze_balance_claim_reward' => '领取激励视频广告金币',
         'game_reward' => '游戏奖励',
@@ -61,6 +61,8 @@ class CoinLog extends Model
         'admin_reduce' => '后台扣减',
         'admin_deduct' => '后台扣减',
         'admin_batch_deduct' => '批量扣减',
+        'coin_freeze' => '金币冻结',
+        'coin_unfreeze' => '金币解冻',
         // 系统类型
         'system' => '系统操作',
     ];
