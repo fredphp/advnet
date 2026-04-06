@@ -98,8 +98,18 @@ export default {
                 // 初始化进度数据
                 this.updateProgress();
 
-                // 展示即上报
+                // ★ 展示即上报（添加全局节流：同一时刻只允许一次上报，避免多条adFeedMessage同时创建时并发请求）
                 this.$nextTick(() => {
+                        // 节流检查：使用全局标记，300ms内只允许一次上报
+                        const now = Date.now();
+                        const lastReportTime = getApp().globalData && getApp().globalData._lastAdFeedReportTime || 0;
+                        if (now - lastReportTime < 300) {
+                                console.log('[AdFeed] 节流：距上次上报仅' + (now - lastReportTime) + 'ms，跳过');
+                                return;
+                        }
+                        if (getApp().globalData) {
+                                getApp().globalData._lastAdFeedReportTime = now;
+                        }
                         this.silentReportView();
                 });
         },

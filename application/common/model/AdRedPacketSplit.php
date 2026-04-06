@@ -185,6 +185,7 @@ class AdRedPacketSplit extends SplitTableModel
 
     /**
      * 获取用户所有红包列表（跨表分页）
+     * ★ 优化：使用 UNION ALL + SQL级排序分页，避免全量内存排序
      * @param int $userId
      * @param int $page
      * @param int $limit
@@ -193,43 +194,59 @@ class AdRedPacketSplit extends SplitTableModel
     public static function getUserPacketsPaginated($userId, $page = 1, $limit = 20)
     {
         $model = new self();
-        $allRows = [];
+        $prefix = config('database.prefix');
+        $userId = (int)$userId;
+        $page = max(1, (int)$page);
+        $limit = min(100, max(1, (int)$limit));
+        $offset = ($page - 1) * $limit;
 
-        // 收集所有表中的红包
+        // 收集所有实际存在的表
         $allTables = array_unique(array_merge([$model->baseTable], $model->getTableList()));
-
+        $existingTables = [];
         foreach ($allTables as $table) {
-            $rows = Db::name($table)
-                ->where('user_id', $userId)
-                ->order('id', 'desc')
-                ->select();
-            foreach ($rows as $row) {
-                $row['_table'] = $table;
-                $allRows[] = $row;
+            $fullTable = $prefix . $table;
+            $check = Db::query("SHOW TABLES LIKE '{$fullTable}'");
+            if (!empty($check)) {
+                $existingTables[] = $table;
             }
         }
 
-        // 按 id 降序排列
-        usort($allRows, function ($a, $b) {
-            return $b['id'] - $a['id'];
-        });
-
-        $total = count($allRows);
-        $list = array_slice($allRows, ($page - 1) * $limit, $limit);
-
-        // 统计未领取
-        $unclaimedTotal = 0;
-        foreach ($allRows as $row) {
-            if ($row['status'] == self::STATUS_UNCLAIMED) {
-                $unclaimedTotal += (float)$row['amount'];
-            }
+        if (empty($existingTables)) {
+            return [
+                'list' => [],
+                'total' => 0,
+                'unclaimed_count' => 0,
+                'unclaimed_total' => 0,
+            ];
         }
 
+        // ★ 使用 UNION ALL + SQL ORDER BY + LIMIT 实现数据库级分页
+        $unions = [];
+        foreach ($existingTables as $table) {
+            $unions[] = "SELECT *, '{$table}' AS _table FROM `{$prefix}{$table}` WHERE user_id = {$userId}";
+        }
+        $unionSql = implode(' UNION ALL ', $unions);
+
+        // 获取总数
+        $countSql = "SELECT COUNT(*) AS total FROM ({$unionSql}) AS _union_all";
+        $totalRow = Db::query($countSql);
+        $total = (int)($totalRow[0]['total'] ?? 0);
+
+        // 获取分页数据（SQL级排序+分页，避免全量加载到内存）
+        $pageSql = "SELECT * FROM ({$unionSql}) AS _union_all ORDER BY id DESC LIMIT {$offset}, {$limit}";
+        $list = Db::query($pageSql);
+
+        // 获取未领取统计（跨表轻量聚合）
         $unclaimedCount = 0;
-        foreach ($allRows as $row) {
-            if ($row['status'] == self::STATUS_UNCLAIMED) {
-                $unclaimedCount++;
-            }
+        $unclaimedTotal = 0;
+        foreach ($existingTables as $table) {
+            $row = Db::name($table)
+                ->where('user_id', $userId)
+                ->where('status', self::STATUS_UNCLAIMED)
+                ->field('COUNT(*) AS cnt, IFNULL(SUM(amount), 0) AS total')
+                ->find();
+            $unclaimedCount += (int)($row['cnt'] ?? 0);
+            $unclaimedTotal += (float)($row['total'] ?? 0);
         }
 
         return [

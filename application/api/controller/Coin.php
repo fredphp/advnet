@@ -52,6 +52,11 @@ class Coin extends Api
         $type = $this->request->get('type/s', '');
         $month = $this->request->get('month/s', date('Ym'));
         
+        // ★ 安全校验：limit 上限100，防止恶意请求大量数据
+        if ($limit < 1) $limit = 1;
+        if ($limit > 100) $limit = 100;
+        if ($page < 1) $page = 1;
+        
         // ★ 安全校验：month 必须为6位数字（格式YYYYMM），防止表名注入
         if (!preg_match('/^\d{6}$/', $month)) {
             $this->error('月份参数格式错误');

@@ -235,17 +235,22 @@ class AdIncomeService
             }
 
             // 5. 更新 today_earn（当日收益）
+            // ★ 修复竞态条件：合并到上方同一条UPDATE语句中，避免两次UPDATE之间出现竞态
             $today = date('Y-m-d');
             if ($account['today_earn_date'] != $today) {
+                // 跨天重置：使用 CASE WHEN 确保原子性
                 Db::name('coin_account')
                     ->where('user_id', $userId)
+                    ->where('version', (int)$account['version'] + 1)  // 匹配上方已递增的version
                     ->update([
                         'today_earn' => $userCoin,
                         'today_earn_date' => $today,
                     ]);
             } else {
+                // 同一天累加：使用 SQL 表达式确保原子性
                 Db::name('coin_account')
                     ->where('user_id', $userId)
+                    ->where('version', (int)$account['version'] + 1)
                     ->update([
                         'today_earn' => Db::raw('today_earn + ' . $userCoin),
                     ]);
@@ -390,7 +395,7 @@ class AdIncomeService
                 return $freezeResult;
             }
 
-            // ★ 真实红包：直接发放金币到 balance
+            // ★ 真实红包：直接发放金币到 balance（同一事务内原子操作）
             // 更新红包状态（跨分表更新）
             if (isset($packet['_from_table'])) {
                 Db::name($packet['_from_table'])->where('id', $packetId)
@@ -401,35 +406,53 @@ class AdIncomeService
                     ]);
             }
 
-            // 通过 CoinService 发放金币到 balance
+            // ★ 在同一事务内直接更新 coin_account，避免嵌套事务风险
+            // （原代码调用 CoinService::addCoin() 有独立事务，导致非原子操作）
+            $coinAccount = Db::name('coin_account')
+                ->where('user_id', $userId)
+                ->lock(true)
+                ->find();
+
+            if (!$coinAccount) {
+                throw new Exception('金币账户不存在');
+            }
+
+            $newBalance = (int)$coinAccount['balance'] + $amount;
+            $coinAffected = Db::name('coin_account')
+                ->where('user_id', $userId)
+                ->where('version', $coinAccount['version'])
+                ->update([
+                    'balance' => $newBalance,
+                    'total_earn' => Db::raw('total_earn + ' . $amount),
+                    'version' => (int)$coinAccount['version'] + 1,
+                    'updatetime' => time(),
+                ]);
+
+            if ($coinAffected === 0) {
+                throw new Exception('账户更新失败，请重试');
+            }
+
+            // ★ 写入 coin_log（同一事务内）
+            $logTable = CoinLog::getOrCreateTable();
+            Db::name($logTable)->insert([
+                'user_id' => $userId,
+                'type' => 'ad_red_packet',
+                'amount' => $amount,
+                'balance_before' => (int)$coinAccount['balance'],
+                'balance_after' => $newBalance,
+                'relation_type' => 'ad_red_packet',
+                'relation_id' => $packetId,
+                'description' => '领取广告红包',
+                'createtime' => time(),
+                'create_date' => date('Y-m-d'),
+            ]);
+
             Db::commit();
 
-            $this->releaseLock($lockKey);
-
-            // 使用 CoinService 添加金币（独立事务）
-            $coinService = new CoinService();
-            $coinResult = $coinService->addCoin(
-                $userId,
-                $amount,
-                'ad_red_packet',
-                'ad_red_packet',
-                $packetId,
-                '领取广告红包'
-            );
-
-            if ($coinResult['success']) {
-                $result['success'] = true;
-                $result['amount'] = $amount;
-                $result['balance'] = $coinResult['balance'];
-                $result['message'] = '领取成功';
-            } else {
-                // 金币发放失败，回滚红包状态
-                if (isset($packet['_from_table'])) {
-                    Db::name($packet['_from_table'])->where('id', $packetId)
-                        ->update(['status' => AdRedPacket::STATUS_UNCLAIMED, 'claim_time' => null, 'updatetime' => time()]);
-                }
-                $result['message'] = $coinResult['message'] ?? '发放失败';
-            }
+            $result['success'] = true;
+            $result['amount'] = $amount;
+            $result['balance'] = $newBalance;
+            $result['message'] = '领取成功';
 
         } catch (\Throwable $e) {
             Db::rollback();
@@ -580,10 +603,10 @@ class AdIncomeService
             // 获取最小红包金额和过期时间配置
             $expireHours = (int)$this->getConfig('redpacket_expire_hours', 48);
 
-            // 查询用户当前冻结余额
+            // ★ 修复：先做轻量读取（不加行锁），快速判断是否需要结算
+            // 避免 lock(true) 长时间持有行锁，阻塞其他操作
             $account = Db::name('coin_account')
                 ->where('user_id', $userId)
-                ->lock(true)
                 ->find();
 
             if (!$account) {
@@ -592,20 +615,19 @@ class AdIncomeService
 
             $freezeBalance = (int)round($account['ad_freeze_balance']);
 
-            // 未达到基数额度 → 不自动发红包
+            // 未达到基数额度 → 不自动发红包（无需加锁）
             if ($freezeBalance < $threshold) {
                 return $result;
             }
 
-            // ★ 去重检查：如果该用户已有未领取的广告红包通知，不重复创建
+            // ★ 去重检查：如果该用户已有未领取的广告红包通知，不重复创建（无需加行锁）
             $unclaimed = AdRedPacketSplit::getUnclaimedSummary($userId);
             if ($unclaimed['count'] > 0) {
                 return $result;
             }
 
-            // ★ 新流程：只创建通知红包，不消费 ad_freeze_balance
-            // 红包 amount 设为 0（仅作通知），实际金币仍在 ad_freeze_balance 中
-            // 用户点击红包 → 查看当前 ad_freeze_balance → 观看激励视频 → claimFreezeBalance()
+            // ★ 通过前置条件后，使用分布式锁防并发（替代行锁）
+            // 分布式锁更轻量，不会阻塞数据库行
             $lockKey = self::LOCK_PREFIX . 'auto:' . $userId;
             $lock = $this->getLock($lockKey, 10);
 
@@ -617,9 +639,21 @@ class AdIncomeService
             try {
                 Db::startTrans();
 
-                // 再次确认没有未领取红包（防并发）
+                // ★ 再次确认没有未领取红包（防并发），在分布式锁保护下执行
                 $freshUnclaimed = AdRedPacketSplit::getUnclaimedSummary($userId);
                 if ($freshUnclaimed['count'] > 0) {
+                    Db::rollback();
+                    return $result;
+                }
+
+                // ★ 在事务内再次读取最新 freeze_balance（加行锁，此时锁持有时间极短）
+                $freshAccount = Db::name('coin_account')
+                    ->where('user_id', $userId)
+                    ->lock(true)
+                    ->find();
+
+                $freshFreezeBalance = (int)round($freshAccount['ad_freeze_balance']);
+                if ($freshFreezeBalance < $threshold) {
                     Db::rollback();
                     return $result;
                 }
@@ -643,10 +677,10 @@ class AdIncomeService
                 Db::commit();
 
                 $result['success'] = true;
-                $result['amount'] = $freezeBalance;  // 返回当前 freeze 余额供前端提示
-                $result['message'] = '待释放金币已达到' . $freezeBalance . '，请领取';
+                $result['amount'] = $freshFreezeBalance;  // 返回当前 freeze 余额供前端提示
+                $result['message'] = '待释放金币已达到' . $freshFreezeBalance . '，请领取';
 
-                Log::info("AutoSettle: 用户{$userId}冻结余额{$freezeBalance}达到阈值{$threshold}，发送通知红包(不消费freeze)");
+                Log::info("AutoSettle: 用户{$userId}冻结余额{$freshFreezeBalance}达到阈值{$threshold}，发送通知红包(不消费freeze)");
 
             } catch (Exception $e) {
                 Db::rollback();

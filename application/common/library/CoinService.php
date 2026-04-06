@@ -571,6 +571,13 @@ class CoinService
         }
         
         try {
+            // ★ 修复嵌套事务风险：在启动外层事务前，先确保转入账户存在
+            // （createAccount 内部有自己的事务，在外层事务中调用会导致嵌套事务问题）
+            $toAccountCheck = $this->getAccount($toUserId);
+            if (!$toAccountCheck) {
+                $this->getOrCreateAccount($toUserId);
+            }
+
             Db::startTrans();
             
             // 获取转出账户
@@ -584,11 +591,8 @@ class CoinService
                 throw new Exception('余额不足');
             }
             
-            // 获取或创建转入账户
+            // 获取转入账户（已确保存在，无需再调 createAccount）
             $toAccount = $this->getAccount($toUserId, true);
-            if (!$toAccount) {
-                $toAccount = $this->createAccount($toUserId);
-            }
             
             $toBalance = (int)$toAccount['balance'];
             
