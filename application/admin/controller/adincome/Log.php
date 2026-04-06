@@ -35,12 +35,31 @@ class Log extends Backend
             $total = $result['total'];
             $list = $result['rows'];
             
+            // 批量查询用户信息（避免N+1查询）
+            $userIds = array_unique(array_column($list, 'user_id'));
+            $userMap = [];
+            if (!empty($userIds)) {
+                $users = Db::name('user')
+                    ->whereIn('id', $userIds)
+                    ->field('id, username, nickname')
+                    ->select();
+                foreach ($users as $u) {
+                    $userMap[$u['id']] = $u;
+                }
+            }
+
             foreach ($list as &$row) {
                 $row['ad_type_text'] = AdIncomeLog::$typeList[$row['ad_type']] ?? '未知';
                 $row['ad_provider_text'] = AdIncomeLog::$providerList[$row['ad_provider']] ?? '未知';
                 $row['status_text'] = AdIncomeLog::$statusList[$row['status']] ?? '未知';
                 $row['createtime_text'] = date('Y-m-d H:i:s', $row['createtime']);
+
+                // 关联用户信息
+                $userInfo = $userMap[$row['user_id']] ?? null;
+                $row['username'] = $userInfo['username'] ?? '';
+                $row['nickname'] = $userInfo['nickname'] ?? '';
             }
+            unset($row);
             
             $result = ['total' => $total, 'rows' => $list];
             return json($result);
