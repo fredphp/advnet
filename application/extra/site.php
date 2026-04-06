@@ -190,4 +190,5 @@ return array (
   'feed_ad_count' => '3',
   'rewarded_video_interval' => '120',
   'rewarded_video_cooldown' => '30',
+  'ad_idle_timeout' => '120',
 );
