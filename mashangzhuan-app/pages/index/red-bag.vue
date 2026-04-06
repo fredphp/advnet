@@ -1143,6 +1143,10 @@ export default {
                                         this.freezeClaimed = true;
                                         this.freezeClaimAmount = res.data.amount || 0;
                                         uni.showToast({ title: '🎉 领取成功 +' + this.freezeClaimAmount + ' 金币', icon: 'none', duration: 2000 });
+                                        // ★ 领取成功后1.5秒自动关闭弹窗
+                                        setTimeout(() => {
+                                                this.closeFreezeBagModal();
+                                        }, 1500);
                                 } else {
                                         this.freezeClaiming = false;
                                         const msg = (res && res.msg) || '领取失败';
