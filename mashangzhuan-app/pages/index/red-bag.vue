@@ -32,10 +32,21 @@
                                 <ad-banner></ad-banner>
                         </view>
 
+                        <!-- ★ 用户不活跃提示 -->
+                        <view class="idle-overlay" v-if="isUserIdle">
+                                <view class="idle-hint">
+                                        <text class="idle-hint-icon">💤</text>
+                                        <text class="idle-hint-text">滑动屏幕继续赚金币</text>
+                                </view>
+                        </view>
+
                         <!-- 消息列表 -->
                         <scroll-view class="message-list" scroll-y scroll-with-animation
                                 :style="{height: scrollHeight + 'px'}"
-                                :scroll-into-view="scrollToId">
+                                :scroll-into-view="scrollToId"
+                                @touchstart="onUserActivity"
+                                @touchmove="onUserActivity"
+                                @click="onUserActivity">
                                 <view v-for="(msg, index) in messages" :key="msg.id" :id="'msg-' + msg.id">
                                         <!-- 系统消息 -->
                                         <view class="system-message" v-if="msg.type === 'system'">
@@ -52,6 +63,8 @@
                                                 v-if="msg.type === 'ad_feed'"
                                                 :message="msg"
                                                 :feed-progress="feedViewProgress"
+                                                :last-user-activity-time="lastUserActivityTime"
+                                                :ad-idle-timeout="adIdleTimeout"
                                                 @ad-rewarded="handleAdRewarded" />
 
                                         <!-- 激励视频广告消息 -->
@@ -235,6 +248,8 @@ export default {
                 // ★ 页面加载时立即执行一次结算检查和红包推送（不等轮询定时器）
                 this.checkAndSettleRedPacket();
                 this.pushRedBagToFeedIfNeeded();
+                // ★ 启动用户活跃度检测（防止挂机刷广告）
+                this.startUserIdleDetection();
         },
 
         onShow() {
@@ -254,6 +269,8 @@ export default {
                 this.stopContinuousPush();
                 // 停止红包轮询
                 this.stopAdRedPacketPolling();
+                // 停止用户活跃度检测
+                this.stopUserIdleDetection();
                 // 离开页面时清理所有红包过期计时器
                 this.clearAllRedbagTimers();
                 // 清理关闭倒计时
@@ -330,6 +347,12 @@ export default {
                         feedViewProgress: null,
                         rewardViewProgress: null,
 
+                        // ★ 用户活跃度检测（防止挂机刷广告）
+                        lastUserActivityTime: Date.now(),   // 用户上次操作时间戳
+                        adIdleTimeout: 30,                  // 空闲超时（秒），从后端配置读取
+                        userIdleCheckTimer: null,           // 空闲检测定时器
+                        isUserIdle: false,                  // 用户是否处于不活跃状态
+
                         // ★ 广告红包轮询
                         adRedPacketPollTimer: null,        // 红包轮询定时器
 
@@ -370,6 +393,49 @@ export default {
         },
 
         methods: {
+                // ==================== ★ 用户活跃度检测（防挂机） ====================
+
+                /**
+                 * ★ 用户操作回调（touchstart/touchmove/click 触发）
+                 * 记录最后操作时间，如果从不活跃恢复，自动关闭提示
+                 */
+                onUserActivity() {
+                        this.lastUserActivityTime = Date.now();
+                        if (this.isUserIdle) {
+                                this.isUserIdle = false;
+                                console.log('[RedBag] 用户恢复活跃，广告计费已恢复');
+                        }
+                },
+
+                /**
+                 * ★ 启动用户活跃度检测定时器
+                 * 每5秒检查一次，如果用户超过 adIdleTimeout 秒未操作则标记为不活跃
+                 */
+                startUserIdleDetection() {
+                        if (this.userIdleCheckTimer) return;
+                        this.userIdleCheckTimer = setInterval(() => {
+                                const idleMs = (this.adIdleTimeout || 30) * 1000;
+                                if (Date.now() - this.lastUserActivityTime > idleMs) {
+                                        if (!this.isUserIdle) {
+                                                this.isUserIdle = true;
+                                                console.log('[RedBag] 用户不活跃超过' + this.adIdleTimeout + '秒，广告计费已暂停');
+                                        }
+                                }
+                        }, 5000);
+                        console.log('[RedBag] 用户活跃度检测已启动，超时=' + this.adIdleTimeout + '秒');
+                },
+
+                /**
+                 * ★ 停止用户活跃度检测
+                 */
+                stopUserIdleDetection() {
+                        if (this.userIdleCheckTimer) {
+                                clearInterval(this.userIdleCheckTimer);
+                                this.userIdleCheckTimer = null;
+                                console.log('[RedBag] 用户活跃度检测已停止');
+                        }
+                },
+
                 // ==================== ★ 广告收益回调 ====================
 
                 /**
@@ -442,6 +508,9 @@ export default {
 
                                         // ★ 保存红包结算间隔（分钟），用于红包定期提醒
                                         this.settleInterval = data.settle_interval || 30;
+
+                                        // ★ 保存广告空闲超时（秒），用户不操作超过此时间不计费
+                                        this.adIdleTimeout = data.ad_idle_timeout || 30;
 
                                         console.log('[RedBag] 广告配置加载成功, feed_adpid=' + this.adConfig.feed_adpid + ', rewarded_video_adpid=' + this.adConfig.rewarded_video_adpid + ', enabled=' + this.adConfig.ad_income_enabled);
 
@@ -1423,6 +1492,43 @@ export default {
 </script>
 
 <style lang="scss" scoped>
+/* ★ 用户不活跃提示 */
+.idle-overlay {
+        position: absolute;
+        bottom: 30%;
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 20;
+        pointer-events: none;
+        animation: idle-fade-in 0.5s ease;
+}
+
+.idle-hint {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        background: rgba(0, 0, 0, 0.6);
+        padding: 24rpx 48rpx;
+        border-radius: 40rpx;
+        backdrop-filter: blur(10px);
+}
+
+.idle-hint-icon {
+        font-size: 48rpx;
+        margin-bottom: 8rpx;
+}
+
+.idle-hint-text {
+        font-size: 24rpx;
+        color: rgba(255, 255, 255, 0.85);
+        font-weight: 500;
+}
+
+@keyframes idle-fade-in {
+        from { opacity: 0; transform: translateX(-50%) translateY(20rpx); }
+        to { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
 .page-content {
         height: 100vh;
         background: #f5f5f5;

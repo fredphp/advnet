@@ -51,6 +51,15 @@ export default {
                 feedProgress: {
                         type: Object,
                         default: () => null
+                },
+                // ★ 用户活跃度（防挂机）
+                lastUserActivityTime: {
+                        type: Number,
+                        default: 0
+                },
+                adIdleTimeout: {
+                        type: Number,
+                        default: 30
                 }
         },
 
@@ -122,10 +131,19 @@ export default {
 
                 /**
                  * ★ 静默上报广告浏览（展示即计费）
+                 * 防挂机：如果用户超过 adIdleTimeout 秒未操作，跳过上报
                  */
                 async silentReportView() {
                         if (this.hasReported) return;
                         this.hasReported = true;
+
+                        // ★ 检查用户是否活跃（防挂机刷广告）
+                        const now = Date.now();
+                        const idleMs = (this.adIdleTimeout || 30) * 1000;
+                        if (this.lastUserActivityTime > 0 && (now - this.lastUserActivityTime) > idleMs) {
+                                console.log('[AdFeed] ⚠️ 用户不活跃(空闲' + Math.round((now - this.lastUserActivityTime) / 1000) + '秒)，跳过上报');
+                                return;
+                        }
 
                         try {
                                 const transactionId = 'af_auto_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
