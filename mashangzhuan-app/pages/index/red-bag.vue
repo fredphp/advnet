@@ -184,9 +184,9 @@
                                         <text v-if="freezeClaiming" class="rm-footer-hint">领取中...</text>
                                         <!-- 已领取 -->
                                         <text v-else-if="freezeClaimed" class="rm-footer-hint">已领取</text>
-                                        <!-- 从观看视频返回：直接领取 -->
-                                        <view v-else-if="showFreezeClaimButton" class="rm-open-btn" @click="claimFreezeBalance">
-                                                <text class="rm-open-text">开</text>
+                                        <!-- 从观看视频返回：手动领取 -->
+                                        <view v-else-if="showFreezeClaimButton" class="rm-open-btn rm-claim-btn" @click="claimFreezeBalance">
+                                                <text class="rm-open-text">领取红包</text>
                                         </view>
                                         <!-- 未观看视频 -->
                                         <view v-else class="rm-open-btn" @click="goFreezeClaim">
@@ -260,8 +260,10 @@ export default {
         },
 
         onHide() {
-                // 页面隐藏时移除事件监听（避免重复监听）
-                uni.$off('ad-watch-result', this.onAdWatchResult);
+                // ★ 不在此处移除事件监听！
+                // watch.vue 返回前会 uni.$emit('ad-watch-result')，如果此处移除了监听器，
+                // 事件将在 onShow 重新注册之前发出，导致事件丢失，红包弹窗无法弹出。
+                // 事件监听器仅在 onUnload 中移除即可。
         },
 
         onUnload() {
@@ -382,7 +384,7 @@ export default {
                 freezeDesc() {
                         if (this.freezeClaimed) return '已转入可提现金币余额';
                         if (this.freezeClaiming) return '领取中，请稍候...';
-                        if (this.showFreezeClaimButton) return '观看完成，点击开领取金币';
+                        if (this.showFreezeClaimButton) return '点击下方按钮领取红包，将待释放金币转为可提现金币';
                         return '点一次能获得一次金币';
                 }
         },
@@ -1082,17 +1084,17 @@ export default {
                         if (data && data.adType === 'freeze_claim') {
                                 const extra = data.progress || {};
 
-                                // ★ 新流程：观看完成返回，弹窗自动领取快照金额
+                                // ★ 新流程：观看完成返回，弹出领取红包弹窗，用户手动点击领取
                                 if (extra.freezeWatchDone) {
                                         this.freezeSnapshotAmount = extra.freezeSnapshotAmount || this.freezeSnapshotAmount;
+                                        // ★ 重置领取状态（弹窗显示"领取红包"按钮）
+                                        this.freezeClaimed = false;
+                                        this.freezeClaiming = false;
+                                        this.freezeClaimAmount = 0;
+                                        this.showFreezeClaimButton = true;
                                         this.loadAdOverview().then(() => {
                                                 setTimeout(() => {
-                                                        this.showFreezeClaimButton = true;
                                                         this.showFreezeBagModal = true;
-                                                        // ★ 弹出后自动领取
-                                                        this.$nextTick(() => {
-                                                                this.claimFreezeBalance();
-                                                        });
                                                 }, 500);
                                         });
                                         return;
@@ -1861,6 +1863,18 @@ export default {
         align-items: center;
         justify-content: center;
         box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.15);
+}
+
+/* 领取红包按钮（从观看视频返回时显示，需要更宽的圆角矩形） */
+.rm-claim-btn {
+        width: auto;
+        min-width: 200rpx;
+        padding: 0 40rpx;
+        border-radius: 50rpx;
+}
+
+.rm-claim-btn .rm-open-text {
+        font-size: 32rpx;
 }
 
 .rm-open-text {
