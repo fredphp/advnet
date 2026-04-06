@@ -102,120 +102,88 @@
                         </view>
                 </view>
 
-                <!-- 红包领取弹窗（遮罩层5秒内不可关闭） -->
+                <!-- 红包领取弹窗（微信红包风格） -->
                 <view class="redbag-modal-mask" v-if="showRedbagModal" @click="tryCloseModal">
                         <view class="redbag-modal" @click.stop>
-                                <!-- 顶部装饰 -->
-                                <view class="modal-header">
-                                        <image class="modal-logo" :src="currentRedbag.backgroundImage || '/static/image/redbag-icon.png'" mode="aspectFit"></image>
-                                        <text class="modal-title">{{ currentRedbag.displayTitle || '恭喜发财' }}</text>
+                                <!-- 顶部：发送者信息 -->
+                                <view class="rm-sender">
+                                        <image class="rm-sender-avatar" :src="(currentRedbag.user && currentRedbag.user.avatar) || '/static/image/avatar.png'" mode="aspectFill"></image>
+                                        <text class="rm-sender-name">{{ (currentRedbag.user && currentRedbag.user.nickname) || '系统' }} 发出的红包</text>
                                 </view>
 
-                                <!-- 金额显示区域 -->
-                                <view class="modal-amount-area">
+                                <!-- 中间：祝福语 + 金额 -->
+                                <view class="rm-body">
+                                        <text class="rm-wish">恭喜发财，大吉大利</text>
                                         <!-- 加载中 -->
-                                        <view v-if="isLoadingAmount" class="amount-circle loading">
-                                                <text class="amount-number loading-text">...</text>
-                                                <text class="amount-label">获取中</text>
+                                        <view v-if="isLoadingAmount" class="rm-amount-wrap">
+                                                <text class="rm-amount-loading">获取中...</text>
                                         </view>
                                         <!-- 有金额 -->
-                                        <view v-else class="amount-circle" :class="{ shaking: false }">
-                                                <text class="amount-number">{{ displayAmount }}</text>
-                                                <text class="amount-label">金币</text>
+                                        <view v-else class="rm-amount-wrap">
+                                                <text class="rm-amount-num">{{ displayAmount }}</text>
+                                                <text class="rm-amount-unit">金币</text>
                                         </view>
-
-                                        <text class="amount-hint" v-if="isLoadingAmount">
-                                                正在获取红包金额...
-                                        </text>
-                                        <text class="amount-hint" v-else-if="isClaimed">
-                                                已领取 {{ displayAmount }} 金币
-                                        </text>
-                                        <text class="amount-hint" v-else-if="isExpired">
-                                                已过期
-                                        </text>
-                                        <text class="amount-hint" v-else-if="currentAmount > 0">
-                                                恭喜获得 {{ displayAmount }} 金币
-                                        </text>
-                                        <text class="amount-hint" v-else>
-                                                获取金额失败，请重试
-                                        </text>
                                 </view>
 
-                                <!-- 操作按钮 -->
-                                <view class="modal-actions">
-                                        <!-- 加载中 -->
-                                        <view v-if="isLoadingAmount" class="action-btn disabled-btn">
-                                                <text class="action-text">获取中...</text>
-                                        </view>
-                                        <!-- 金额获取成功，未领取 → 领取按钮 -->
-                                        <view v-else-if="!isClaimed && currentAmount > 0" class="action-btn claim-btn" @click="claimRedbag">
-                                                <text class="action-text">领取并去小程序</text>
+                                <!-- 底部：提示 + 开按钮 -->
+                                <view class="rm-footer">
+                                        <!-- 未领取：显示开按钮 -->
+                                        <view v-if="!isClaimed && !isExpired && currentAmount > 0" class="rm-open-btn" @click="claimRedbag">
+                                                <text class="rm-open-text">开</text>
                                         </view>
                                         <!-- 已领取 -->
-                                        <view v-else-if="isClaimed" class="action-btn done-btn">
-                                                <text class="action-text">已领取</text>
-                                        </view>
-                                        <!-- 获取失败 -->
-                                        <view v-else class="action-btn close-action-btn" @click="closeRedbagModal">
-                                                <text class="action-text">关闭</text>
-                                        </view>
+                                        <text v-else-if="isClaimed" class="rm-footer-hint">已领取</text>
+                                        <!-- 已过期 -->
+                                        <text v-else-if="isExpired" class="rm-footer-hint">已过期</text>
+                                        <!-- 加载中/失败 -->
+                                        <text v-else class="rm-footer-hint">{{ isLoadingAmount ? '获取中...' : '领取失败' }}</text>
                                 </view>
 
-                                <!-- 关闭按钮（5秒内禁用，已领取可立即关闭） -->
-                                <view :class="['modal-close', { 'close-disabled': !canCloseModal && !isClaimed }]" @click="tryCloseModal">
-                                        <text class="close-text">{{ (canCloseModal || isClaimed) ? '关闭' : '请等待 ' + closeCountdown + 's' }}</text>
+                                <!-- 关闭按钮 -->
+                                <view class="rm-close" @click="tryCloseModal">
+                                        <text class="rm-close-text">关闭</text>
                                 </view>
                         </view>
                 </view>
 
-                <!-- ★ 待释放金币领取弹窗 -->
+                <!-- ★ 待释放金币领取弹窗（微信红包风格） -->
                 <view class="freeze-modal-mask" v-if="showFreezeBagModal" @click="closeFreezeBagModal">
                         <view class="freeze-modal" @click.stop>
-                                <view class="freeze-modal-header">
-                                        <text class="freeze-modal-title">{{ freezeClaimed ? '🎉 领取成功' : '🎉 待领取金币' }}</text>
+                                <!-- 顶部：发送者信息 -->
+                                <view class="rm-sender">
+                                        <text class="rm-sender-emoji">🧧</text>
+                                        <text class="rm-sender-name">广告收益红包</text>
                                 </view>
-                                <view class="freeze-modal-body">
-                                        <view class="freeze-amount-area">
-                                                <text class="freeze-amount-number">{{ freezeClaimed ? freezeClaimAmount : freezeBalance }}</text>
-                                                <text class="freeze-amount-unit">金币</text>
+
+                                <!-- 中间：祝福语 + 金额 -->
+                                <view class="rm-body">
+                                        <text class="rm-wish">恭喜发财，大吉大利</text>
+                                        <view class="rm-amount-wrap">
+                                                <text class="rm-amount-num">{{ freezeClaimed ? freezeClaimAmount : freezeBalance }}</text>
+                                                <text class="rm-amount-unit">金币</text>
                                         </view>
+                                        <text class="rm-desc">{{ freezeDesc }}</text>
+                                </view>
+
+                                <!-- 底部：操作按钮 -->
+                                <view class="rm-footer">
+                                        <!-- 领取中 -->
+                                        <text v-if="freezeClaiming" class="rm-footer-hint">领取中...</text>
                                         <!-- 已领取 -->
-                                        <text class="freeze-amount-desc" v-if="freezeClaimed">
-                                                已转入可提现金币余额
-                                        </text>
-                                        <!-- 从观看视频返回但领取失败：可重试领取 -->
-                                        <text class="freeze-amount-desc" v-else-if="showFreezeClaimButton && !freezeClaiming">
-                                                观看完成，点击下方按钮领取金币
-                                        </text>
+                                        <text v-else-if="freezeClaimed" class="rm-footer-hint">已领取</text>
+                                        <!-- 从观看视频返回：直接领取 -->
+                                        <view v-else-if="showFreezeClaimButton" class="rm-open-btn" @click="claimFreezeBalance">
+                                                <text class="rm-open-text">开</text>
+                                        </view>
                                         <!-- 未观看视频 -->
-                                        <text class="freeze-amount-desc" v-else-if="!showFreezeClaimButton">
-                                                观看激励视频后即可领取
-                                        </text>
-                                        <!-- 领取中 -->
-                                        <text class="freeze-amount-desc" v-else-if="freezeClaiming">
-                                                领取中，请稍候...
-                                        </text>
-                                </view>
-                                <view class="freeze-modal-actions">
-                                        <!-- 领取中 -->
-                                        <view v-if="freezeClaiming" class="freeze-action-btn freeze-action-disabled">
-                                                <text class="freeze-action-text">领取中...</text>
-                                        </view>
-                                        <!-- 已领取 -->
-                                        <view v-else-if="freezeClaimed" class="freeze-action-btn freeze-action-done">
-                                                <text class="freeze-action-text">已领取 {{ freezeClaimAmount }} 金币</text>
-                                        </view>
-                                        <!-- ★ 从观看视频返回时：显示"直接领取"按钮（领取失败时可重试） -->
-                                        <view v-else-if="showFreezeClaimButton" class="freeze-action-btn freeze-action-claim" @click="claimFreezeBalance">
-                                                <text class="freeze-action-text">领取 {{ freezeBalance }} 金币</text>
-                                        </view>
-                                        <!-- 未观看视频：显示"观看视频领取"按钮 -->
-                                        <view v-else class="freeze-action-btn freeze-action-claim" @click="goFreezeClaim">
-                                                <text class="freeze-action-text">观看视频领取</text>
+                                        <view v-else class="rm-open-btn" @click="goFreezeClaim">
+                                                <text class="rm-open-text">开</text>
                                         </view>
                                 </view>
-                                <view class="freeze-modal-close" @click="closeFreezeBagModal">
-                                        <text class="freeze-close-text">{{ freezeClaimed ? '关闭' : '取消' }}</text>
+
+                                <!-- 关闭按钮 -->
+                                <view class="rm-close" @click="closeFreezeBagModal">
+                                        <text class="rm-close-text">{{ freezeClaimed ? '关闭' : '取消' }}</text>
                                 </view>
                         </view>
                 </view>
@@ -385,6 +353,12 @@ export default {
                 },
                 isExpired() {
                         return this.currentRedbag && this.currentRedbag.status === 'expired';
+                },
+                freezeDesc() {
+                        if (this.freezeClaimed) return '已转入可提现金币余额';
+                        if (this.freezeClaiming) return '领取中，请稍候...';
+                        if (this.showFreezeClaimButton) return '观看完成，点击开领取金币';
+                        return '点一次能获得一次金币';
                 }
         },
 
@@ -1638,8 +1612,10 @@ export default {
         padding: 10rpx;
 }
 
-/* 红包弹窗 */
-.redbag-modal-mask {
+/* ==================== 微信红包弹窗样式（两个弹窗共用） ==================== */
+
+.redbag-modal-mask,
+.freeze-modal-mask {
         position: fixed;
         top: 0;
         left: 0;
@@ -1652,210 +1628,129 @@ export default {
         justify-content: center;
 }
 
-.redbag-modal {
-        width: 600rpx;
-        background: linear-gradient(180deg, #e74c3c, #c0392b);
-        border-radius: 24rpx;
-        padding: 40rpx;
+.freeze-modal-mask {
+        z-index: 1001;
+}
+
+.redbag-modal,
+.freeze-modal {
+        width: 560rpx;
+        background: linear-gradient(180deg, #E84D3D 0%, #C93A2C 60%, #B33228 100%);
+        border-radius: 20rpx;
+        overflow: hidden;
+        position: relative;
+}
+
+/* 顶部发送者信息 */
+.rm-sender {
+        display: flex;
+        align-items: center;
+        padding: 36rpx 40rpx 0;
+}
+
+.rm-sender-avatar {
+        width: 64rpx;
+        height: 64rpx;
+        border-radius: 8rpx;
+        margin-right: 16rpx;
+        background: rgba(255,255,255,0.15);
+}
+
+.rm-sender-emoji {
+        font-size: 48rpx;
+        margin-right: 16rpx;
+        line-height: 1;
+}
+
+.rm-sender-name {
+        color: rgba(255, 255, 255, 0.9);
+        font-size: 26rpx;
+}
+
+/* 中间祝福语 + 金额 */
+.rm-body {
+        padding: 30rpx 40rpx 20rpx;
         text-align: center;
 }
 
-.modal-header {
-        margin-bottom: 30rpx;
+.rm-wish {
+        color: #FFE4B5;
+        font-size: 34rpx;
+        font-weight: 600;
+        letter-spacing: 2rpx;
+        display: block;
+        margin-bottom: 20rpx;
 }
 
-.modal-logo {
-        width: 120rpx;
-        height: 120rpx;
-        border-radius: 50%;
-        margin: 0 auto 20rpx;
+.rm-amount-wrap {
+        display: flex;
+        align-items: baseline;
+        justify-content: center;
+        margin-bottom: 12rpx;
 }
 
-.modal-title {
-        color: #ffd700;
-        font-size: 36rpx;
-        font-weight: bold;
+.rm-amount-num {
+        color: #FFFFFF;
+        font-size: 80rpx;
+        font-weight: 800;
+        font-variant-numeric: tabular-nums;
+        line-height: 1;
 }
 
-.modal-amount-area {
-        padding: 40rpx 0;
-}
-
-.amount-circle {
-        margin: 0 auto;
-}
-
-.amount-number {
-        color: #fff;
-        font-size: 72rpx;
-        font-weight: bold;
-}
-
-.amount-number.loading-text {
-        color: rgba(255, 255, 255, 0.6);
-}
-
-.amount-label {
+.rm-amount-unit {
         color: rgba(255, 255, 255, 0.8);
         font-size: 26rpx;
+        margin-left: 8rpx;
+}
+
+.rm-amount-loading {
+        color: rgba(255, 255, 255, 0.6);
+        font-size: 32rpx;
+}
+
+.rm-desc {
+        color: rgba(255, 255, 255, 0.75);
+        font-size: 22rpx;
         display: block;
-        margin-top: 10rpx;
 }
 
-.amount-hint {
-        color: rgba(255, 255, 255, 0.9);
-        font-size: 28rpx;
-        margin-top: 20rpx;
-        display: block;
+/* 底部：开按钮 */
+.rm-footer {
+        padding: 10rpx 40rpx 30rpx;
+        display: flex;
+        align-items: center;
+        justify-content: center;
 }
 
-.modal-actions {
-        padding: 20rpx 0;
+.rm-open-btn {
+        width: 100rpx;
+        height: 100rpx;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #FFE4B5 0%, #F5C97E 100%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.15);
 }
 
-.action-btn {
-        margin: 0 auto;
-        width: 400rpx;
-        height: 80rpx;
-        line-height: 80rpx;
-        border-radius: 40rpx;
-        text-align: center;
+.rm-open-text {
+        color: #B33228;
+        font-size: 40rpx;
+        font-weight: 800;
 }
 
-.claim-btn {
-        background: #ffd700;
-        color: #c0392b;
-        font-weight: bold;
-}
-
-.done-btn {
-        background: rgba(255, 255, 255, 0.3);
-        color: #fff;
-}
-
-.close-action-btn {
-        background: rgba(255, 255, 255, 0.2);
-        color: #fff;
-}
-
-.disabled-btn {
-        background: rgba(255, 255, 255, 0.2);
-        color: rgba(255, 255, 255, 0.5);
-}
-
-.modal-close {
-        margin-top: 20rpx;
-}
-
-.close-text {
+.rm-footer-hint {
         color: rgba(255, 255, 255, 0.7);
         font-size: 28rpx;
 }
 
-.close-disabled {
-        opacity: 0.4;
-}
-
-/* ★ 待释放金币领取弹窗（通过红包通知触发，非页面展示） */
-.freeze-modal-mask {
-        position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background: rgba(0, 0, 0, 0.7);
-        z-index: 1001;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-}
-
-.freeze-modal {
-        width: 600rpx;
-        background: linear-gradient(180deg, #e74c3c, #c0392b);
-        border-radius: 24rpx;
-        padding: 40rpx;
+/* 关闭按钮 */
+.rm-close {
+        padding: 20rpx 0 30rpx;
         text-align: center;
 }
 
-.freeze-modal-header {
-        margin-bottom: 20rpx;
-}
-
-.freeze-modal-title {
-        color: #ffd700;
-        font-size: 36rpx;
-        font-weight: bold;
-}
-
-.freeze-modal-body {
-        padding: 30rpx 0;
-}
-
-.freeze-amount-area {
-        display: flex;
-        align-items: baseline;
-        justify-content: center;
-        margin-bottom: 16rpx;
-}
-
-.freeze-amount-number {
-        color: #fff;
-        font-size: 80rpx;
-        font-weight: 800;
-        font-variant-numeric: tabular-nums;
-}
-
-.freeze-amount-unit {
-        color: rgba(255, 255, 255, 0.8);
-        font-size: 28rpx;
-        margin-left: 8rpx;
-}
-
-.freeze-amount-desc {
-        color: rgba(255, 255, 255, 0.9);
-        font-size: 26rpx;
-}
-
-.freeze-modal-actions {
-        padding: 20rpx 0;
-}
-
-.freeze-action-btn {
-        height: 88rpx;
-        border-radius: 44rpx;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-}
-
-.freeze-action-text {
-        font-size: 30rpx;
-        font-weight: 700;
-        color: #fff;
-}
-
-.freeze-action-claim {
-        background: linear-gradient(135deg, #ffd700, #ffaa00);
-}
-
-.freeze-action-claim .freeze-action-text {
-        color: #c0392b;
-}
-
-.freeze-action-done {
-        background: rgba(255, 255, 255, 0.2);
-}
-
-.freeze-action-disabled {
-        background: rgba(255, 255, 255, 0.15);
-}
-
-.freeze-modal-close {
-        margin-top: 10rpx;
-}
-
-.freeze-close-text {
+.rm-close-text {
         color: rgba(255, 255, 255, 0.6);
         font-size: 26rpx;
 }
