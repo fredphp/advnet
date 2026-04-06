@@ -278,9 +278,9 @@ export default {
                                                 console.log('[AdWatch] 激励视频观看完毕，自动发放奖励');
                                                 this.claimReward();
                                         } else if (this.adType === 'freeze_claim') {
-                                                // ★ 冻结金币模式：观看完成，不自动领取，等待用户手动关闭返回红包页领取
-                                                console.log('[AdWatch] 冻结金币观看完毕，等待用户返回领取, snapshot=' + this.freezeSnapshotAmount);
-                                                this.claimed = true; // 标记观看完成（不标记领取）
+                                                // ★ 冻结金币模式：观看完成后自动调用 claimFreezeBalance API
+                                                console.log('[AdWatch] 冻结金币观看完毕，自动调用 claimFreezeBalance API, snapshot=' + this.freezeSnapshotAmount);
+                                                this.claimFreezeBalance();
                                         } else {
                                                 uni.showToast({ title: '观看完成！', icon: 'none', duration: 1500 });
                                         }
@@ -520,7 +520,7 @@ export default {
                         // 恢复返回手势
                         // #ifdef APP-PLUS
                         try {
-                                const webview = this.$scope.$getAppwebview();
+                                const webview = this.$scope.$getAppWebview();
                                 if (webview) webview.setStyle({ 'popGesture': 'close' });
                         } catch (e) {}
                         // #endif
@@ -533,6 +533,8 @@ export default {
                 forceBack() {
                         this.clearWatchTimer();
                         this.claiming = false;
+                        // ★ 通知父页面观看被中断（防止状态残留）
+                        this.notifyParent(false);
                         uni.navigateBack();
                 },
 

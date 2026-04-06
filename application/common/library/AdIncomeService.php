@@ -462,12 +462,24 @@ class AdIncomeService
 
         $userId = (int)$userId;
 
-        // 查找所有未领取红包
-        $packets = AdRedPacket::where('user_id', $userId)
-            ->where('status', AdRedPacket::STATUS_UNCLAIMED)
-            ->where('expire_time', '>', time())
-            ->order('id', 'asc')
-            ->select();
+        // ★ 查找所有未领取红包（跨分表查询，修复：原代码只查主表）
+        $tables = AdRedPacketSplit::ensureTablesExistByRange(strtotime('-3 months'), time());
+        $packets = [];
+        $now = time();
+        
+        foreach ($tables as $table) {
+            if (!AdRedPacketSplit::tableExists($table)) continue;
+            $rows = Db::name($table)
+                ->where('user_id', $userId)
+                ->where('status', AdRedPacket::STATUS_UNCLAIMED)
+                ->where('expire_time', '>', $now)
+                ->order('id', 'asc')
+                ->select();
+            foreach ($rows as $row) {
+                $row['_from_table'] = $table;
+                $packets[] = $row;
+            }
+        }
 
         if (empty($packets)) {
             $result['message'] = '没有可领取的红包';

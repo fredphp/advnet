@@ -260,8 +260,11 @@ export default {
         onShow() {
                 // 每次显示页面时刷新广告红包摘要
                 this.loadAdOverview();
-                // ★ 监听广告观看结果事件（用于 freeze_claim 返回后弹出领取界面）
-                uni.$on('ad-watch-result', this.onAdWatchResult);
+                // ★ Guard: only register once to prevent duplicates
+                if (!this._watchResultRegistered) {
+                        uni.$on('ad-watch-result', this.onAdWatchResult);
+                        this._watchResultRegistered = true;
+                }
         },
 
         onHide() {
@@ -377,6 +380,7 @@ export default {
                         freezeClaimAmount: 0,            // 领取到的金额
                         showFreezeClaimButton: false,    // 是否显示"直接领取"按钮（从观看视频返回时为true）
                         freezeSnapshotAmount: 0,         // ★ 点击红包时的快照金额（固定不变）
+                        overviewDebounceTimer: null,   // ★ loadAdOverview 防抖定时器
                 };
         },
 
@@ -484,7 +488,9 @@ export default {
                  * 加载广告收益概览
                  * @param {boolean} forceRefresh - 是否强制刷新（跳过前端缓存，确保获取最新数据）
                  */
-                async loadAdOverview(forceRefresh = false) {
+                loadAdOverview(forceRefresh = false) {
+                        clearTimeout(this.overviewDebounceTimer);
+                        this.overviewDebounceTimer = setTimeout(async () => {
                         try {
                                 // ★ 强制刷新时添加时间戳参数，防止浏览器/CDN 缓存
                                 const params = forceRefresh ? { _t: Date.now() } : {};
@@ -537,6 +543,7 @@ export default {
                         } catch (e) {
                                 console.warn('[RedBag] 加载广告配置失败:', e.message || e);
                         }
+                        }, 300);
                 },
 
                 // ==================== ★ 聊天资源管理 ====================

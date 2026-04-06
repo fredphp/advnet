@@ -130,6 +130,9 @@
                 onLoad() {
                         this.getWithdrawConfig();
                 },
+                onShow() {
+                        this.getWithdrawConfig();
+                },
                 methods: {
                         // 格式化金币数字（加千分位逗号）
                         formatCoin(num) {

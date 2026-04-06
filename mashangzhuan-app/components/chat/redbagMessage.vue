@@ -6,7 +6,7 @@
 
                 <view class="content-wrapper">
                         <!-- 用户昵称 -->
-                        <text v-if="!isMe" class="nickname">{{ message.user.nickname }}</text>
+                        <text v-if="!isMe" class="nickname">{{ (message.user && message.user.nickname) || '系统' }}</text>
 
                         <!-- 微信红包样式：左侧图标 + 右侧文字，整体圆角矩形 -->
                         <view :class="['redbag-card', statusClass]" @click="handleClick">

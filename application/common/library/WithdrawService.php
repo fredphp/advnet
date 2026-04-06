@@ -94,10 +94,10 @@ class WithdrawService
                 throw new \Exception('账户不存在');
             }
             
-            // 检查余额（可用余额 = 余额 - 冻结）
-            $availableBalance = $account['balance'];
+            // ★ 检查余额（可用余额 = 余额 - 冻结），冻结中的金币不可用于提现
+            $availableBalance = $account['balance'] - $account['frozen'];
             if ($availableBalance < $coinAmount) {
-                throw new \Exception('金币余额不足');
+                throw new \Exception('金币余额不足（可用余额：' . $availableBalance . '，冻结中：' . $account['frozen'] . '）');
             }
             
             // 检查每日提现限制
@@ -136,7 +136,7 @@ class WithdrawService
                 'order_no' => $orderNo,
                 'user_id' => $userId,
                 'coin_amount' => $coinAmount,
-                'exchange_rate' => self::COIN_RATE,
+                'exchange_rate' => SystemConfigService::getCoinRate(),
                 'cash_amount' => $cashAmount,
                 'fee_amount' => $feeAmount,
                 'actual_amount' => $actualAmount,
@@ -500,23 +500,29 @@ class WithdrawService
         try {
             Db::startTrans();
             
-            $order = WithdrawOrder::where('id', $orderId)->lock(true)->find();
+            // ★ 从分表查找订单（修复：原代码只查主表，找不到分表订单）
+            $order = $this->findOrderById($orderId);
             
             if (!$order) {
                 throw new \Exception('订单不存在');
             }
             
-            if ($order->status != self::STATUS_PENDING) {
+            $orderTable = $order['_table'] ?? '';
+            
+            if ($order['status'] != self::STATUS_PENDING) {
                 throw new \Exception('订单状态异常');
             }
             
-            $order->status = self::STATUS_APPROVED;
-            $order->audit_type = 1;
-            $order->audit_admin_id = $adminId;
-            $order->audit_admin_name = $adminName;
-            $order->audit_time = time();
-            $order->audit_remark = $remark;
-            $order->save();
+            // 更新订单状态（在分表中）
+            Db::name($orderTable)->where('id', $orderId)->update([
+                'status' => self::STATUS_APPROVED,
+                'audit_type' => 1,
+                'audit_admin_id' => $adminId,
+                'audit_admin_name' => $adminName,
+                'audit_time' => time(),
+                'audit_remark' => $remark,
+                'updatetime' => time(),
+            ]);
             
             Db::commit();
             
@@ -827,24 +833,30 @@ class WithdrawService
      */
     public function retryTransfer($orderId)
     {
-        $order = WithdrawOrder::find($orderId);
+        // ★ 从分表查找订单（修复：原代码只查主表）
+        $order = $this->findOrderById($orderId);
         
         if (!$order) {
             return ['success' => false, 'message' => '订单不存在'];
         }
         
-        if ($order->status != self::STATUS_FAILED) {
+        $orderTable = $order['_table'] ?? '';
+        
+        if ($order['status'] != self::STATUS_FAILED) {
             return ['success' => false, 'message' => '订单状态异常'];
         }
         
         $config = $this->getConfig();
-        if ($order->retry_count >= $config['transfer_retry_count']) {
+        $retryCount = $order['retry_count'] ?? 0;
+        if ($retryCount >= $config['transfer_retry_count']) {
             return ['success' => false, 'message' => '已达到最大重试次数'];
         }
         
-        // 重置状态为审核通过
-        $order->status = self::STATUS_APPROVED;
-        $order->save();
+        // 重置状态为审核通过（在分表中更新）
+        Db::name($orderTable)->where('id', $orderId)->update([
+            'status' => self::STATUS_APPROVED,
+            'updatetime' => time(),
+        ]);
         
         return $this->transfer($orderId);
     }
@@ -967,13 +979,20 @@ class WithdrawService
             Log::error('风控服务调用失败: ' . $e->getMessage());
         }
         
-        // 保留原有风控逻辑作为补充
+        // ★ 保留原有风控逻辑作为补充（修复：改为跨分表查询）
+        $riskTables = WithdrawOrder::ensureTablesExistByRange(strtotime('-30 days'), time());
+        
         // 1. 检查同一IP提现次数
         $ip = $options['ip'] ?? '';
         if ($ip) {
-            $ipCount = WithdrawOrder::where('ip', $ip)
-                ->where('createtime', '>=', strtotime('today'))
-                ->count();
+            $ipCount = 0;
+            $todayStart = strtotime('today');
+            foreach ($riskTables as $rtable) {
+                if (!WithdrawOrder::tableExists($rtable)) continue;
+                $ipCount += Db::name($rtable)->where('ip', $ip)
+                    ->where('createtime', '>=', $todayStart)
+                    ->count();
+            }
             
             if ($ipCount >= $config['same_ip_limit']) {
                 $result['score'] += 30;
@@ -984,9 +1003,14 @@ class WithdrawService
         // 2. 检查同一设备提现次数
         $deviceId = $options['device_id'] ?? '';
         if ($deviceId) {
-            $deviceCount = WithdrawOrder::where('device_id', $deviceId)
-                ->where('createtime', '>=', strtotime('today'))
-                ->count();
+            $deviceCount = 0;
+            $todayStart = strtotime('today');
+            foreach ($riskTables as $rtable) {
+                if (!WithdrawOrder::tableExists($rtable)) continue;
+                $deviceCount += Db::name($rtable)->where('device_id', $deviceId)
+                    ->where('createtime', '>=', $todayStart)
+                    ->count();
+            }
             
             if ($deviceCount >= $config['same_device_limit']) {
                 $result['score'] += 30;
@@ -1010,21 +1034,31 @@ class WithdrawService
             }
         }
         
-        // 5. 检查提现频率
-        $recentCount = WithdrawOrder::where('user_id', $userId)
-            ->where('createtime', '>=', time() - 3600)
-            ->count();
+        // 5. 检查提现频率（跨分表）
+        $recentCount = 0;
+        $oneHourAgo = time() - 3600;
+        foreach ($riskTables as $rtable) {
+            if (!WithdrawOrder::tableExists($rtable)) continue;
+            $recentCount += Db::name($rtable)->where('user_id', $userId)
+                ->where('createtime', '>=', $oneHourAgo)
+                ->count();
+        }
         
         if ($recentCount >= 3) {
             $result['score'] += 25;
             $result['tags'][] = '提现频率过高';
         }
         
-        // 6. 检查历史拒绝记录
-        $rejectCount = WithdrawOrder::where('user_id', $userId)
-            ->where('status', self::STATUS_REJECTED)
-            ->where('createtime', '>=', time() - 86400 * 30)
-            ->count();
+        // 6. 检查历史拒绝记录（跨分表）
+        $rejectCount = 0;
+        $thirtyDaysAgo = time() - 86400 * 30;
+        foreach ($riskTables as $rtable) {
+            if (!WithdrawOrder::tableExists($rtable)) continue;
+            $rejectCount += Db::name($rtable)->where('user_id', $userId)
+                ->where('status', self::STATUS_REJECTED)
+                ->where('createtime', '>=', $thirtyDaysAgo)
+                ->count();
+        }
         
         if ($rejectCount >= 3) {
             $result['score'] += 35;
@@ -1068,22 +1102,32 @@ class WithdrawService
     protected function checkDailyLimit($userId, $coinAmount, $config)
     {
         $today = strtotime('today');
+        $canceledStatus = self::STATUS_CANCELED;
         
-        // 检查次数
-        $todayCount = WithdrawOrder::where('user_id', $userId)
-            ->where('createtime', '>=', $today)
-            ->whereNotIn('status', [self::STATUS_CANCELED])
-            ->count();
+        // ★ 跨分表聚合查询（主表 + 所有分表）
+        $tables = WithdrawOrder::ensureTablesExistByRange(strtotime('-1 day'), time());
+        $todayCount = 0;
+        $todayAmount = 0;
+        
+        foreach ($tables as $table) {
+            if (!WithdrawOrder::tableExists($table)) continue;
+            
+            $todayCount += Db::name($table)
+                ->where('user_id', $userId)
+                ->where('createtime', '>=', $today)
+                ->where('status', '<>', $canceledStatus)
+                ->count();
+            
+            $todayAmount += Db::name($table)
+                ->where('user_id', $userId)
+                ->where('createtime', '>=', $today)
+                ->where('status', '<>', $canceledStatus)
+                ->sum('cash_amount');
+        }
         
         if ($todayCount >= $config['daily_withdraw_limit']) {
             throw new \Exception('今日提现次数已达上限');
         }
-        
-        // 检查金额
-        $todayAmount = WithdrawOrder::where('user_id', $userId)
-            ->where('createtime', '>=', $today)
-            ->whereNotIn('status', [self::STATUS_CANCELED])
-            ->sum('cash_amount');
         
         $cashAmount = $this->coinToCash($coinAmount);
         if ($todayAmount + $cashAmount > $config['daily_withdraw_amount']) {
@@ -1112,7 +1156,8 @@ class WithdrawService
      */
     protected function coinToCash($coinAmount)
     {
-        return round($coinAmount / self::COIN_RATE, 4);
+        $coinRate = SystemConfigService::getCoinRate();
+        return $coinRate > 0 ? round($coinAmount / $coinRate, 4) : 0;
     }
     
     /**

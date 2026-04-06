@@ -75,6 +75,7 @@ export default {
     },
     
     previewImage(url) {
+      if (!url) return;
       uni.previewImage({
         urls: [url],
         current: 0

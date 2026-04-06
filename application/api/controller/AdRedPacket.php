@@ -166,14 +166,16 @@ class AdRedPacket extends Api
             'id', 'desc', $offset, $limit
         );
 
-        $list = $result['data'] ?? [];
+        // ★ paginateAllTables 返回 'rows' 键（不是 'data'）
+        $list = $result['rows'] ?? [];
         $total = (int)($result['total'] ?? 0);
 
         // 跨分表统计总金币（不限时间范围）
         $totalCoin = (int)AdIncomeLogSplit::getRangeStats(0, time(), [
             'user_id' => $userId,
             'status' => [AdIncomeLog::STATUS_CONFIRMED, AdIncomeLog::STATUS_RELEASED],
-        ])['sum_user_amount_coin'];
+        // ★ getRangeStats 返回 'user_coin' 键（不是 'sum_user_amount_coin'）
+        ])['user_coin'];
 
         // 转换为前端友好的格式
         $formatList = [];
