@@ -599,6 +599,7 @@ class Ad extends Api
      *
      * @api {post} /api/ad/claimFreezeBalance 领取待释放金币
      * @apiParam {String} [transaction_id] 交易ID(防重复)
+     * @apiParam {Number} [max_amount] 最大领取金额（0或不传表示领取全部，传入则只领取指定金额）
      * @apiSuccess {Number} amount 领取金额（金币）
      * @apiSuccess {Number} balance 当前余额
      */
@@ -619,8 +620,9 @@ class Ad extends Api
             think\Cache::set($rateLimitKey, 1, 10);
         } catch (\Throwable $e) {}
 
+        $maxAmount = (int)$this->request->post('max_amount', 0);
         $service = new AdIncomeService();
-        $result = $service->claimFreezeBalance($userId);
+        $result = $service->claimFreezeBalance($userId, $maxAmount);
 
         if ($result['success']) {
             self::clearOverviewCache($userId);

@@ -951,9 +951,10 @@ class AdIncomeService
      * 前端调用时机：用户观看激励视频后
      *
      * @param int $userId
+     * @param int $maxAmount 最大领取金额（0或不传表示领取全部冻结余额）
      * @return array
      */
-    public function claimFreezeBalance($userId)
+    public function claimFreezeBalance($userId, $maxAmount = 0)
     {
         $result = [
             'success' => false,
@@ -1000,7 +1001,13 @@ class AdIncomeService
                 return $result;
             }
 
-            // ★ 原子操作：在同一事务中同时清零 freeze 和增加 balance
+            // ★ 支持指定最大领取金额（前端快照金额，避免领取期间新增的金币）
+            $maxAmount = (int)$maxAmount;
+            if ($maxAmount > 0 && $amount > $maxAmount) {
+                $amount = $maxAmount;
+            }
+
+            // ★ 原子操作：在同一事务中扣减 freeze 和增加 balance
             $balanceBefore = (int)$account['balance'];
             $balanceAfter = $balanceBefore + $amount;
 
@@ -1008,7 +1015,7 @@ class AdIncomeService
                 ->where('user_id', $userId)
                 ->where('version', $account['version'])
                 ->update([
-                    'ad_freeze_balance' => 0,
+                    'ad_freeze_balance' => Db::raw('ad_freeze_balance - ' . $amount),
                     'balance'           => $balanceAfter,
                     'total_earn'        => Db::raw('total_earn + ' . $amount),
                     'version'           => (int)$account['version'] + 1,

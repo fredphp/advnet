@@ -172,7 +172,7 @@
                                 <view class="rm-body">
                                         <text class="rm-wish">恭喜发财，大吉大利</text>
                                         <view class="rm-amount-wrap">
-                                                <text class="rm-amount-num">{{ freezeClaimed ? freezeClaimAmount : freezeBalance }}</text>
+                                                <text class="rm-amount-num">{{ freezeClaimed ? freezeClaimAmount : freezeSnapshotAmount }}</text>
                                                 <text class="rm-amount-unit">金币</text>
                                         </view>
                                         <text class="rm-desc">{{ freezeDesc }}</text>
@@ -368,6 +368,7 @@ export default {
                         freezeClaimed: false,            // 是否已领取
                         freezeClaimAmount: 0,            // 领取到的金额
                         showFreezeClaimButton: false,    // 是否显示"直接领取"按钮（从观看视频返回时为true）
+                        freezeSnapshotAmount: 0,         // ★ 点击红包时的快照金额（固定不变）
                 };
         },
 
@@ -1053,6 +1054,10 @@ export default {
                         this.freezeClaiming = false;
                         this.freezeClaimAmount = 0;
                         this.showFreezeClaimButton = showClaimButton;
+                        // ★ 如果不是从观看视频返回（即首次打开），快照当前冻结余额
+                        if (!showClaimButton) {
+                                this.freezeSnapshotAmount = this.freezeBalance;
+                        }
                         this.showFreezeBagModal = true;
                 },
 
@@ -1076,9 +1081,25 @@ export default {
                         console.log('[RedBag] 收到 ad-watch-result 事件:', JSON.stringify(data));
                         if (data && data.adType === 'freeze_claim') {
                                 const extra = data.progress || {};
-                                // ★ 观看页已自动调用 claimFreezeBalance API
+
+                                // ★ 新流程：观看完成返回，弹窗自动领取快照金额
+                                if (extra.freezeWatchDone) {
+                                        this.freezeSnapshotAmount = extra.freezeSnapshotAmount || this.freezeSnapshotAmount;
+                                        this.loadAdOverview().then(() => {
+                                                setTimeout(() => {
+                                                        this.showFreezeClaimButton = true;
+                                                        this.showFreezeBagModal = true;
+                                                        // ★ 弹出后自动领取
+                                                        this.$nextTick(() => {
+                                                                this.claimFreezeBalance();
+                                                        });
+                                                }, 500);
+                                        });
+                                        return;
+                                }
+
+                                // ★ 旧流程兼容：观看页已自动领取
                                 if (extra.freezeClaimed) {
-                                        // 领取成功：刷新数据并弹窗显示"已领取"
                                         this.freezeClaimed = true;
                                         this.freezeClaimAmount = extra.freezeClaimAmount || data.amount || 0;
                                         this.loadAdOverview().then(() => {
@@ -1088,7 +1109,6 @@ export default {
                                                 }, 500);
                                         });
                                 } else if (data.success) {
-                                        // 观看完成但领取失败：刷新数据，弹窗可重试
                                         this.loadAdOverview().then(() => {
                                                 setTimeout(() => {
                                                         this.openFreezeBagModal(true);
@@ -1107,9 +1127,14 @@ export default {
 
                         try {
                                 const transactionId = 'fc_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
-                                const res = await this.$api.adClaimFreezeBalance({
+                                const params = {
                                         transaction_id: transactionId,
-                                });
+                                };
+                                // ★ 传入快照金额，只领取点击红包时的金额，不领取期间新增的金币
+                                if (this.freezeSnapshotAmount > 0) {
+                                        params.max_amount = this.freezeSnapshotAmount;
+                                }
+                                const res = await this.$api.adClaimFreezeBalance(params);
 
                                 console.log('[RedBag] claimFreezeBalance 返回:', JSON.stringify(res));
                                 if (res && res.code === 1 && res.data) {
@@ -1133,11 +1158,14 @@ export default {
                  */
                 goFreezeClaim() {
                         this.showFreezeBagModal = false;
+                        // ★ 快照当前冻结余额，传给观看页，观看完成后用此金额领取
+                        this.freezeSnapshotAmount = this.freezeBalance;
                         const params = {
                                 type: 'freeze_claim',
-                                rewardCoin: this.freezeBalance,
+                                rewardCoin: this.freezeSnapshotAmount,
                                 watchSeconds: 30,
                                 msgId: 'freeze_' + Date.now(),
+                                freezeSnapshotAmount: this.freezeSnapshotAmount,
                         };
                         const query = Object.keys(params).map(k => k + '=' + params[k]).join('&');
                         uni.navigateTo({

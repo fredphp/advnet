@@ -97,13 +97,13 @@
                                         </view>
                                         <view class="countdown-text-area">
                                                 <text class="countdown-main-text" v-if="!watchDone">
-                                                        {{ isFreezeClaimMode ? '请观看广告 ' + watchRemaining + '秒后自动领取' : (isClaimMode ? '请观看广告 ' + watchRemaining + '秒后领取奖励' : '请观看广告 ' + watchRemaining + '秒') }}
+                                                        {{ isFreezeClaimMode ? '请观看广告 ' + watchRemaining + '秒后领取金币' : (isClaimMode ? '请观看广告 ' + watchRemaining + '秒后领取奖励' : '请观看广告 ' + watchRemaining + '秒') }}
                                                 </text>
                                                 <text class="countdown-main-text text-done" v-else-if="claiming">
                                                         观看完成，奖励自动发放中...
                                                 </text>
                                                 <text class="countdown-main-text text-done" v-else-if="claimed && isFreezeClaimMode">
-                                                        {{ freezeClaimSuccess ? '领取成功！' : '领取失败' }}
+                                                        观看完成，请返回领取金币
                                                 </text>
                                                 <text class="countdown-main-text text-done" v-else-if="claimed">
                                                         奖励已发放到待释放余额
@@ -128,9 +128,9 @@
                                 <view class="action-btn action-claiming" v-else-if="claiming">
                                         <text class="action-text">奖励发放中...</text>
                                 </view>
-                                <!-- ★ 冻结金币领取模式：自动领取中 -->
-                                <view class="action-btn action-claiming" v-else-if="watchDone && !claimed && isFreezeClaimMode">
-                                        <text class="action-text">领取中...</text>
+                                <!-- ★ 冻结金币领取模式：观看完成，显示返回领取按钮 -->
+                                <view class="action-btn action-done" @click="goBackFromFreezeClaim" v-else-if="watchDone && claimed && isFreezeClaimMode">
+                                        <text class="action-text">返回领取 {{ freezeSnapshotAmount }} 金币</text>
                                 </view>
                                 <!-- 红包领取模式：手动领取按钮 -->
                                 <view class="action-btn action-claim" @click="claimReward" v-else-if="watchDone && !claimed && isRedpacketClaimMode">
@@ -166,6 +166,7 @@ export default {
                         packetId: '',           // 红包ID（redpacket_claim 模式使用）
                         freezeClaimSuccess: false,     // freeze_claim 领取是否成功
                         freezeClaimAmount: 0,          // freeze_claim 实际领取金额
+                        freezeSnapshotAmount: 0,       // ★ 点击红包时的快照金额（传回给红包页）
                 };
         },
 
@@ -214,6 +215,7 @@ export default {
                 this.watchRemaining = this.watchSeconds;
                 this.msgId = options.msgId || '';
                 this.packetId = options.packet_id || '';
+                this.freezeSnapshotAmount = parseInt(options.freezeSnapshotAmount) || 0;
 
                 // 禁止页面返回手势（强制停留观看）
                 // #ifdef APP-PLUS
@@ -276,9 +278,9 @@ export default {
                                                 console.log('[AdWatch] 激励视频观看完毕，自动发放奖励');
                                                 this.claimReward();
                                         } else if (this.adType === 'freeze_claim') {
-                                                // ★ 冻结金币模式：观看完成，自动调用 claimFreezeBalance API 领取
-                                                console.log('[AdWatch] 冻结金币观看完毕，自动领取待释放金币');
-                                                this.claimFreezeBalance();
+                                                // ★ 冻结金币模式：观看完成，不自动领取，等待用户手动关闭返回红包页领取
+                                                console.log('[AdWatch] 冻结金币观看完毕，等待用户返回领取, snapshot=' + this.freezeSnapshotAmount);
+                                                this.claimed = true; // 标记观看完成（不标记领取）
                                         } else {
                                                 uni.showToast({ title: '观看完成！', icon: 'none', duration: 1500 });
                                         }
@@ -532,6 +534,18 @@ export default {
                         this.clearWatchTimer();
                         this.claiming = false;
                         uni.navigateBack();
+                },
+
+                /**
+                 * ★ 冻结金币模式：观看完成后返回红包页领取
+                 * 通知父页面观看完成 + 快照金额，由红包页调用 claimFreezeBalance(max_amount)
+                 */
+                goBackFromFreezeClaim() {
+                        this.notifyParent(true, 0, {
+                                freezeWatchDone: true,
+                                freezeSnapshotAmount: this.freezeSnapshotAmount,
+                        });
+                        this.goBack();
                 }
         }
 }
