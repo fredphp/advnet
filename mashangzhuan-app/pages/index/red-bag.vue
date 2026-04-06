@@ -214,7 +214,7 @@ export default {
         },
 
         async onLoad(opt) {
-                console.log('[RedBag] ★ 页面加载 v20250705-b (展示即计费版)');
+                console.log('[RedBag] ★ 页面加载 v20250705-c (30s红包推送版)');
                 this.groupId = opt.group_id || 'default_group';
                 this.user_info = uni.getStorageSync('user_info') || {};
 
@@ -333,8 +333,9 @@ export default {
                         // ★ 广告红包轮询
                         adRedPacketPollTimer: null,        // 红包轮询定时器
 
-                        // ★ 红包定期推送（每隔 settle_interval 分钟在信息流中插入红包消息）
-                        settleInterval: 30,              // 红包结算间隔（分钟），从后端配置读取
+                        // ★ 红包定期推送（每隔一定秒数在信息流中插入红包消息）
+                        settleInterval: 30,              // 红包结算间隔（分钟），从后端配置读取（仅用于后端结算）
+                        redBagPushInterval: 30,          // 红包推送到信息流的间隔（秒），前端控制
                         redBagLastPushTime: 0,           // 上次推送红包到信息流的时间戳
 
                         // ★ 待释放金币红包
@@ -856,25 +857,15 @@ export default {
 
                 /**
                  * ★ 检查是否需要推送红包到信息流
-                 * 条件：距上次推送已超过 settle_interval 分钟，且还有未领取的红包或待释放金币
-                 * 不做提醒，只要红包存在就定期推送到信息流中
+                 * 每隔 redBagPushInterval 秒（默认30秒）推送一次红包消息到信息流
+                 * 无条件推送，只要到了间隔时间就推送
                  */
                 pushRedBagToFeedIfNeeded() {
-                        const intervalMs = (this.settleInterval || 30) * 60 * 1000;
+                        const intervalMs = (this.redBagPushInterval || 30) * 1000;
                         const now = Date.now();
 
                         // 检查是否到了推送时间
-                        if ((now - this.redBagLastPushTime) < intervalMs) {
-                                return;
-                        }
-
-                        // 检查是否有红包可推送（未领取红包数 > 0 或 待释放余额 > 0）
-                        const hasUnclaimedPackets = this.adPacketBadge > 0;
-                        const hasFreezeBalance = this.freezeBalance > 0;
-
-                        if (!hasUnclaimedPackets && !hasFreezeBalance) {
-                                // 没有红包，更新时间但不推送
-                                this.redBagLastPushTime = now;
+                        if (this.redBagLastPushTime > 0 && (now - this.redBagLastPushTime) < intervalMs) {
                                 return;
                         }
 
