@@ -262,12 +262,11 @@ export default {
                 this.startContinuousPush();
                 // ★ 记录页面启动时间，用于激励视频间隔计算（首次需等待一个完整间隔后才推送）
                 this.rewardedVideoLastPushTime = Date.now();
-                // ★ 启动红包检查轮询（每10秒检查是否有新红包推送到聊天）
+                // ★ 启动红包检查轮询（每10秒触发后端结算检查，按 settle_interval 间隔推送红包到信息流）
                 this.startAdRedPacketPolling();
-                // ★ 页面加载时立即执行一次结算检查（不等轮询定时器）
+                // ★ 页面加载时立即执行一次结算检查和红包推送（不等轮询定时器）
                 this.checkAndSettleRedPacket();
-                // ★ 启动红包定期提醒（每隔 settle_interval 分钟在信息流中插入红包消息）
-                this.startRedPacketReminder();
+                this.pushRedBagToFeedIfNeeded();
         },
 
         onShow() {
@@ -287,8 +286,6 @@ export default {
                 this.stopContinuousPush();
                 // 停止红包轮询
                 this.stopAdRedPacketPolling();
-                // 停止红包定期提醒
-                this.stopRedPacketReminder();
                 // 离开页面时清理所有红包过期计时器
                 this.clearAllRedbagTimers();
                 // 清理关闭倒计时
@@ -367,13 +364,10 @@ export default {
 
                         // ★ 广告红包轮询
                         adRedPacketPollTimer: null,        // 红包轮询定时器
-                        lastKnownRedPacketCount: 0,        // 上次已知的红包数量
-                        pushedRedPacketIds: [],             // 已推送到聊天流的红包ID（避免重复推送）
 
-                        // ★ 红包定期提醒（每隔 settle_interval 分钟在信息流中插入红包消息）
-                        redPacketReminderTimer: null,    // 红包定期提醒定时器
+                        // ★ 红包定期推送（每隔 settle_interval 分钟在信息流中插入红包消息）
                         settleInterval: 30,              // 红包结算间隔（分钟），从后端配置读取
-                        redPacketLastRemindTime: 0,      // 上次红包提醒的时间戳
+                        redBagLastPushTime: 0,           // 上次推送红包到信息流的时间戳
 
                         // ★ 待释放金币红包
                         freezeBalance: 0,              // 当前待释放金币余额
@@ -838,27 +832,27 @@ export default {
                 // ==================== ★ 广告红包轮询推送 ====================
 
                 /**
-                 * ★ 结算检查 + 新红包推送（合并为一个方法）
+                 * ★ 结算检查 + 红包推送（合并为一个方法）
                  * 每10秒执行一次：
                  *   Step 1: 调用 /api/ad/checkSettle → 检查冻结余额是否达到阈值，达到则自动生成红包
-                 *   Step 2: 调用 /api/adredpacket/list → 获取新红包推送到聊天流
+                 *   Step 2: 检查是否到了 settle_interval 间隔，有红包则推送到信息流
                  */
                 async checkAndSettleRedPacket() {
                         try {
-                                // Step 1: 触发后端结算检查
+                                // 触发后端结算检查（检查 freeze_balance 是否达到阈值自动生成红包）
                                 try {
                                         const settleRes = await this.$api.adCheckSettle({});
                                         if (settleRes && settleRes.code === 1 && settleRes.data && settleRes.data.redpacket_created) {
                                                 console.log('[RedBag] 后端自动生成红包: ' + (settleRes.data.redpacket_amount || 0) + ' 金币');
-                                                // 刷新概览数据
+                                                // 刷新概览数据（更新 freezeBalance、adPacketBadge 等）
                                                 this.loadAdOverview();
                                         }
                                 } catch (e) {
                                         // 静默处理
                                 }
 
-                                // Step 2: 检查是否有新的未领取红包
-                                await this.checkNewAdRedPackets();
+                                // 检查是否到了推送红包到信息流的时间
+                                this.pushRedBagToFeedIfNeeded();
                         } catch (e) {
                                 // 静默处理
                         }
@@ -871,7 +865,7 @@ export default {
                         if (this.adRedPacketPollTimer) return;
                         this.adRedPacketPollTimer = setInterval(() => {
                                 this.checkAndSettleRedPacket();
-                        }, 10000); // 每10秒检查一次
+                        }, 10000); // 每10秒触发一次结算检查
                         console.log('[RedBag] 广告红包轮询已启动');
                 },
 
@@ -887,50 +881,53 @@ export default {
                 },
 
                 /**
-                 * 检查是否有新的未领取广告红包
+                 * ★ 检查是否需要推送红包到信息流
+                 * 条件：距上次推送已超过 settle_interval 分钟，且还有未领取的红包或待释放金币
+                 * 不做提醒，只要红包存在就定期推送到信息流中
                  */
-                async checkNewAdRedPackets() {
-                        try {
-                                const res = await this.$api.adRedpacketList({ page: 1, limit: 5 });
-                                if (!res || res.code !== 1 || !res.data) return;
+                pushRedBagToFeedIfNeeded() {
+                        const intervalMs = (this.settleInterval || 30) * 60 * 1000;
+                        const now = Date.now();
 
-                                const list = res.data.list || [];
-                                const unclaimed = list.filter(p => p.status === 0);
-
-                                // 检查是否有新红包
-                                for (const packet of unclaimed) {
-                                        if (!this.pushedRedPacketIds.includes(packet.id)) {
-                                                this.pushedRedPacketIds.push(packet.id);
-                                                this.pushAdRedPacketToChat(packet);
-                                        }
-                                }
-
-                                // 限制已推送ID列表长度，防止内存泄漏
-                                if (this.pushedRedPacketIds.length > 50) {
-                                        this.pushedRedPacketIds = this.pushedRedPacketIds.slice(-30);
-                                }
-                        } catch (e) {
-                                // 静默处理
+                        // 检查是否到了推送时间
+                        if ((now - this.redBagLastPushTime) < intervalMs) {
+                                return;
                         }
+
+                        // 检查是否有红包可推送（未领取红包数 > 0 或 待释放余额 > 0）
+                        const hasUnclaimedPackets = this.adPacketBadge > 0;
+                        const hasFreezeBalance = this.freezeBalance > 0;
+
+                        if (!hasUnclaimedPackets && !hasFreezeBalance) {
+                                // 没有红包，更新时间但不推送
+                                this.redBagLastPushTime = now;
+                                return;
+                        }
+
+                        // 更新推送时间
+                        this.redBagLastPushTime = now;
+
+                        // 推送红包消息到信息流
+                        this.pushRedBagToFeed();
                 },
 
                 /**
-                 * 将广告红包推送到聊天流中
-                 * @param {Object} packet 红包对象
+                 * ★ 推送一条红包消息到信息流
+                 * 使用随机的系统用户头像和昵称，不自动过期，用户可随时领取
                  */
-                pushAdRedPacketToChat(packet) {
-                        // ★ 通知红包 amount=0，显示当前 freezeBalance 作为红包金额
-                        const amount = packet.amount > 0 ? packet.amount : this.freezeBalance;
-                        // ★ 使用 chatNames 中的真实用户（昵称+头像匹配），不再硬编码
-                        const fallbackNames = ['赚钱达人', '福利小能手', '幸运星', '金币收藏家', '宝妈小丽', '自由职业者', '退休大叔', '程序员小哥'];
-                        const nickname = (this.chatNames && this.chatNames.length > 0)
-                                ? this.chatNames[Math.floor(Math.random() * this.chatNames.length)].nickname
-                                : fallbackNames[Math.floor(Math.random() * fallbackNames.length)];
+                pushRedBagToFeed() {
+                        const nickname = this.getRandomNickname();
+                        const amount = this.freezeBalance > 0 ? this.freezeBalance : 0;
+
+                        // 文案：如果有待释放余额就显示金额，否则只提示有红包
+                        const content = amount > 0
+                                ? '待释放金币 ' + amount + ' 个，快来领取吧！🧧'
+                                : '有新红包待领取，手慢无！🧧';
 
                         const redbagMsg = {
-                                id: 'ad_redbag_' + packet.id,
+                                id: 'redbag_feed_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6),
                                 type: 'redbag',
-                                content: '你有待释放金币，快来领取！',
+                                content: content,
                                 time: Date.now(),
                                 sender: nickname,
                                 user: {
@@ -943,133 +940,13 @@ export default {
                                 displayTitle: '待释放金币红包',
                                 taskData: {
                                         taskId: 0,
-                                        packetId: packet.id,
-                                        isAdRedPacket: true,  // 标记为广告红包（通知类型）
-                                }
-                        };
-
-                        this.messages.push(redbagMsg);
-                        console.log('[RedBag] 推送广告红包通知到聊天, id=' + packet.id + ', freezeBalance=' + this.freezeBalance);
-
-                        // ★ 5秒后自动标记为"已领完"（模拟其他群成员抢完）
-                        setTimeout(() => {
-                                const msg = this.messages.find(m => m.id === redbagMsg.id);
-                                if (msg && msg.status === 'unopened') {
-                                        this.$set(msg, 'status', 'expired');
-                                        console.log('[RedBag] 广告红包5秒超时，标记为已领完, id=' + packet.id);
-                                }
-                        }, 5000);
-
-                        this.scrollToBottom();
-                },
-
-                // ==================== ★ 红包定期提醒 ====================
-
-                /**
-                 * ★ 启动红包定期提醒定时器
-                 * 每隔 settle_interval 分钟，如果还有未领取的红包，就往聊天流插入一条红包消息
-                 * 提醒用户领取，同时增加红包信息流的曝光频次
-                 */
-                startRedPacketReminder() {
-                        if (this.redPacketReminderTimer) return;
-
-                        // 记录启动时间（首次提醒需等待一个完整间隔后才推送）
-                        this.redPacketLastRemindTime = Date.now();
-
-                        // 每30秒检查一次是否到了提醒时间（用短间隔轮询，实际间隔由 settle_interval 控制）
-                        this.redPacketReminderTimer = setInterval(() => {
-                                this.checkRedPacketReminder();
-                        }, 30000);
-
-                        console.log('[RedBag] 红包定期提醒已启动, interval=' + this.settleInterval + '分钟');
-                },
-
-                /**
-                 * 停止红包定期提醒
-                 */
-                stopRedPacketReminder() {
-                        if (this.redPacketReminderTimer) {
-                                clearInterval(this.redPacketReminderTimer);
-                                this.redPacketReminderTimer = null;
-                                console.log('[RedBag] 红包定期提醒已停止');
-                        }
-                },
-
-                /**
-                 * ★ 检查是否需要推送红包提醒消息
-                 * 条件：距上次提醒已超过 settle_interval 分钟，且还有未领取的红包或待释放金币
-                 */
-                checkRedPacketReminder() {
-                        const intervalMs = (this.settleInterval || 30) * 60 * 1000;
-                        const now = Date.now();
-
-                        // 检查是否到了提醒时间
-                        if ((now - this.redPacketLastRemindTime) < intervalMs) {
-                                return;
-                        }
-
-                        // 检查是否有未领取的红包（红包数量 > 0 或 待释放余额 > 0）
-                        const hasUnclaimedPackets = this.adPacketBadge > 0;
-                        const hasFreezeBalance = this.freezeBalance > 0;
-
-                        if (!hasUnclaimedPackets && !hasFreezeBalance) {
-                                // 没有可领取的红包，更新时间但不推送
-                                this.redPacketLastRemindTime = now;
-                                return;
-                        }
-
-                        // 更新提醒时间
-                        this.redPacketLastRemindTime = now;
-
-                        // 推送红包提醒消息到聊天流
-                        this.pushRedPacketReminderMessage();
-                },
-
-                /**
-                 * ★ 推送一条红包提醒消息到聊天流
-                 * 使用随机的系统用户头像和昵称
-                 */
-                pushRedPacketReminderMessage() {
-                        const nickname = this.getRandomNickname();
-                        const amount = this.freezeBalance > 0 ? this.freezeBalance : '';
-
-                        // 提醒文案：如果有待释放余额就显示金额，否则只提示有红包
-                        const content = amount
-                                ? '待释放金币 ' + amount + ' 个，快来领取吧！🧧'
-                                : '有新红包待领取，手慢无！🧧';
-
-                        const redbagMsg = {
-                                id: 'redbag_remind_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6),
-                                type: 'redbag',
-                                content: content,
-                                time: Date.now(),
-                                sender: nickname,
-                                user: {
-                                        nickname: nickname,
-                                        avatar: this.getAvatarForNickname(nickname)
-                                },
-                                status: 'unopened',
-                                amount: this.freezeBalance || 0,
-                                backgroundImage: '/static/image/redbag-icon.png',
-                                displayTitle: '待释放金币红包',
-                                taskData: {
-                                        taskId: 0,
                                         packetId: 0,
                                         isAdRedPacket: true,
-                                        isReminder: true,  // 标记为提醒消息
                                 }
                         };
 
                         this.messages.push(redbagMsg);
-                        console.log('[RedBag] 红包定期提醒已推送, freezeBalance=' + this.freezeBalance + ', badge=' + this.adPacketBadge);
-
-                        // 5秒后自动标记为"已领完"（模拟其他群成员抢完）
-                        setTimeout(() => {
-                                const msg = this.messages.find(m => m.id === redbagMsg.id);
-                                if (msg && msg.status === 'unopened') {
-                                        this.$set(msg, 'status', 'expired');
-                                }
-                        }, 5000);
+                        console.log('[RedBag] 红包已推送到信息流, freezeBalance=' + this.freezeBalance + ', badge=' + this.adPacketBadge);
 
                         this.scrollToBottom();
                 },
@@ -1277,7 +1154,7 @@ export default {
 
                         // ★ 广告红包（通知）：打开待释放金币弹窗，查看 freeze_balance 并领取
                         const taskData = msg.taskData || {};
-                        if (taskData.isAdRedPacket && taskData.packetId) {
+                        if (taskData.isAdRedPacket) {
                                 // ★ 新流程：点击红包 → 显示当前 ad_freeze_balance 金额
                                 // 用户点击"观看视频领取" → 跳转激励视频 → claimFreezeBalance() → balance
                                 this.cancelRedbagExpireTimer(msg.id);
