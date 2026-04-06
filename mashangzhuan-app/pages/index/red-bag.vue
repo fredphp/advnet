@@ -1150,6 +1150,9 @@ export default {
                                 if (res && res.code === 1 && res.data) {
                                         this.freezeClaimed = true;
                                         this.freezeClaimAmount = res.data.amount || 0;
+                                        // ★ 立即更新前端余额，不依赖异步 loadAdOverview
+                                        // 防止用户在 loadAdOverview 返回之前点击下一个红包时显示旧金额
+                                        this.freezeBalance = Math.max(0, (this.freezeBalance || 0) - this.freezeClaimAmount);
                                         uni.showToast({ title: '🎉 领取成功 +' + this.freezeClaimAmount + ' 金币', icon: 'none', duration: 2000 });
                                         // ★ 领取成功后1.5秒自动关闭弹窗
                                         setTimeout(() => {
