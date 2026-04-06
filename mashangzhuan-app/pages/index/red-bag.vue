@@ -333,10 +333,10 @@ export default {
                         // ★ 广告红包轮询
                         adRedPacketPollTimer: null,        // 红包轮询定时器
 
-                        // ★ 红包定期推送（每隔一定秒数在信息流中插入红包消息）
+                        // ★ 红包定期推送（随机5-30秒间隔在信息流中插入红包消息）
                         settleInterval: 30,              // 红包结算间隔（分钟），从后端配置读取（仅用于后端结算）
-                        redBagPushInterval: 30,          // 红包推送到信息流的间隔（秒），前端控制
                         redBagLastPushTime: 0,           // 上次推送红包到信息流的时间戳
+                        redBagNextInterval: 0,          // 下次推送的随机间隔（毫秒）
 
                         // ★ 待释放金币红包
                         freezeBalance: 0,              // 当前待释放金币余额
@@ -859,20 +859,23 @@ export default {
 
                 /**
                  * ★ 检查是否需要推送红包到信息流
-                 * 每隔 redBagPushInterval 秒（默认30秒）推送一次红包消息到信息流
+                 * 每次推送后随机取5-30秒作为下次推送间隔
                  * 无条件推送，只要到了间隔时间就推送
                  */
                 pushRedBagToFeedIfNeeded() {
-                        const intervalMs = (this.redBagPushInterval || 30) * 1000;
                         const now = Date.now();
 
                         // 检查是否到了推送时间
-                        if (this.redBagLastPushTime > 0 && (now - this.redBagLastPushTime) < intervalMs) {
+                        if (this.redBagLastPushTime > 0 && (now - this.redBagLastPushTime) < this.redBagNextInterval) {
                                 return;
                         }
 
                         // 更新推送时间
                         this.redBagLastPushTime = now;
+
+                        // ★ 随机生成下次推送间隔（5-30秒）
+                        this.redBagNextInterval = (5 + Math.random() * 25) * 1000;
+                        console.log('[RedBag] 红包已推送，下次间隔=' + Math.round(this.redBagNextInterval / 1000) + '秒');
 
                         // 推送红包消息到信息流
                         this.pushRedBagToFeed();
