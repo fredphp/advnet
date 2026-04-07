@@ -1,0 +1,1027 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>马上赚 API Documentation</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0f1117;--bg2:#161822;--bg3:#1c1f2e;--bg4:#232738;
+  --border:#2a2e42;--border2:#363b54;
+  --text:#e4e6f0;--text2:#9ca3b8;--text3:#6b7190;
+  --accent:#f97316;--accent2:#fb923c;--accent-bg:rgba(249,115,22,.08);--accent-border:rgba(249,115,22,.25);
+  --green:#22c55e;--green-bg:rgba(34,197,94,.1);--green-border:rgba(34,197,94,.3);
+  --red:#ef4444;--red-bg:rgba(239,68,68,.1);--red-border:rgba(239,68,68,.3);
+  --yellow:#eab308;--yellow-bg:rgba(234,179,8,.1);
+  --blue:#38bdf8;--blue-bg:rgba(56,189,248,.1);--blue-border:rgba(56,189,248,.3);
+  --purple:#a78bfa;--purple-bg:rgba(167,139,250,.1);
+  --get:#22c55e;--post:#f97316;--put:#38bdf8;--delete:#ef4444;--patch:#a78bfa;
+  --sidebar-w:280px;--header-h:64px;
+  --radius:8px;--radius-lg:12px;
+  --shadow:0 1px 3px rgba(0,0,0,.3),0 1px 2px rgba(0,0,0,.2);
+  --shadow-lg:0 10px 25px rgba(0,0,0,.4);
+  --font:-apple-system,BlinkMacSystemFont,'Segoe UI','Noto Sans SC',Roboto,sans-serif;
+  --mono:'SFMono-Regular',Consolas,'Liberation Mono',Menlo,monospace;
+}
+html{scroll-behavior:smooth;font-size:15px}
+body{font-family:var(--font);background:var(--bg);color:var(--text);line-height:1.6;overflow-x:hidden}
+::-webkit-scrollbar{width:6px;height:6px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
+::-webkit-scrollbar-thumb:hover{background:var(--text3)}
+::selection{background:var(--accent);color:#fff}
+a{color:var(--accent);text-decoration:none;transition:color .2s}
+a:hover{color:var(--accent2)}
+
+/* HEADER */
+.header{position:fixed;top:0;left:0;right:0;z-index:100;height:var(--header-h);background:var(--bg2);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 24px;backdrop-filter:blur(12px)}
+.header-logo{display:flex;align-items:center;gap:12px;font-size:1.15rem;font-weight:700;color:var(--text);white-space:nowrap}
+.header-logo .icon{width:36px;height:36px;background:linear-gradient(135deg,var(--accent),#ea580c);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:1.1rem;color:#fff;font-weight:800}
+.header-search{flex:1;max-width:480px;margin:0 32px;position:relative}
+.header-search input{width:100%;height:40px;background:var(--bg3);border:1px solid var(--border);border-radius:20px;padding:0 16px 0 42px;color:var(--text);font-size:.9rem;outline:none;transition:border-color .2s,box-shadow .2s}
+.header-search input:focus{border-color:var(--accent-border);box-shadow:0 0 0 3px var(--accent-bg)}
+.header-search input::placeholder{color:var(--text3)}
+.header-search .search-icon{position:absolute;left:14px;top:50%;transform:translateY(-50%);color:var(--text3);font-size:1rem;pointer-events:none}
+.header-stats{display:flex;gap:20px;margin-left:auto;font-size:.8rem;color:var(--text2)}
+.header-stats span strong{color:var(--accent);font-weight:600}
+.menu-toggle{display:none;width:40px;height:40px;border:none;background:var(--bg3);border-radius:8px;color:var(--text);font-size:1.4rem;cursor:pointer;align-items:center;justify-content:center;margin-right:12px}
+
+/* SIDEBAR */
+.sidebar{position:fixed;top:var(--header-h);left:0;bottom:0;width:var(--sidebar-w);background:var(--bg2);border-right:1px solid var(--border);overflow-y:auto;padding:16px 0;z-index:90;transition:transform .3s ease}
+.sidebar::-webkit-scrollbar{width:4px}
+.sidebar-group{margin-bottom:4px}
+.sidebar-group-title{display:flex;align-items:center;gap:8px;padding:8px 20px;font-size:.7rem;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--text3);cursor:pointer;transition:color .2s;user-select:none}
+.sidebar-group-title:hover{color:var(--text2)}
+.sidebar-group-title .arrow{font-size:.6rem;transition:transform .2s}
+.sidebar-group-title.collapsed .arrow{transform:rotate(-90deg)}
+.sidebar-links{overflow:hidden;transition:max-height .3s ease}
+.sidebar-links.collapsed{max-height:0 !important}
+.sidebar-link{display:flex;align-items:center;gap:10px;padding:7px 20px 7px 32px;font-size:.85rem;color:var(--text2);cursor:pointer;transition:all .15s;border-left:3px solid transparent}
+.sidebar-link:hover{background:var(--accent-bg);color:var(--text);border-left-color:var(--accent)}
+.sidebar-link.active{background:var(--accent-bg);color:var(--accent);border-left-color:var(--accent);font-weight:600}
+.sidebar-link .badge{margin-left:auto;font-size:.65rem;padding:1px 6px;border-radius:10px;background:var(--bg4);color:var(--text3);font-weight:500}
+.sidebar-link .method-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.sidebar-link .method-dot.get{background:var(--get)}
+.sidebar-link .method-dot.post{background:var(--post)}
+
+/* MAIN */
+.main{margin-left:var(--sidebar-w);margin-top:var(--header-h);padding:32px 40px 80px;max-width:1200px}
+
+/* SECTIONS */
+.section{margin-bottom:48px;scroll-margin-top:calc(var(--header-h) + 24px)}
+.section-header{display:flex;align-items:center;gap:14px;margin-bottom:24px;padding-bottom:16px;border-bottom:1px solid var(--border)}
+.section-header .module-icon{width:44px;height:44px;border-radius:var(--radius);display:flex;align-items:center;justify-content:center;font-size:1.2rem;flex-shrink:0}
+.section-header h2{font-size:1.35rem;font-weight:700;color:var(--text);line-height:1.2}
+.section-header .module-path{font-family:var(--mono);font-size:.85rem;color:var(--accent);background:var(--accent-bg);padding:3px 10px;border-radius:6px;border:1px solid var(--accent-border)}
+.section-desc{color:var(--text2);font-size:.9rem;margin-bottom:20px;line-height:1.7}
+
+/* CARDS */
+.endpoint-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-lg);margin-bottom:16px;overflow:hidden;transition:border-color .2s,box-shadow .2s}
+.endpoint-card:hover{border-color:var(--border2);box-shadow:var(--shadow)}
+.endpoint-card.hidden{display:none}
+.endpoint-top{display:flex;align-items:center;gap:14px;padding:16px 20px;cursor:pointer;transition:background .15s}
+.endpoint-top:hover{background:var(--bg3)}
+.method-badge{display:inline-flex;align-items:center;justify-content:center;padding:4px 12px;border-radius:6px;font-family:var(--mono);font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;min-width:64px}
+.method-badge.get{background:var(--green-bg);color:var(--get);border:1px solid var(--green-border)}
+.method-badge.post{background:var(--accent-bg);color:var(--post);border:1px solid var(--accent-border)}
+.method-badge.put{background:var(--blue-bg);color:var(--blue);border:1px solid var(--blue-border)}
+.method-badge.delete{background:var(--red-bg);color:var(--red);border:1px solid var(--red-border)}
+.method-badge.patch{background:var(--purple-bg);color:var(--purple);border:1px solid rgba(167,139,250,.3)}
+.endpoint-url{font-family:var(--mono);font-size:.9rem;color:var(--text);flex:1;word-break:break-all}
+.endpoint-desc-top{color:var(--text2);font-size:.88rem;margin-left:auto;text-align:right;max-width:300px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.endpoint-meta{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.tag{display:inline-flex;align-items:center;gap:4px;padding:2px 10px;border-radius:12px;font-size:.72rem;font-weight:500}
+.tag.auth-yes{background:var(--accent-bg);color:var(--accent);border:1px solid var(--accent-border)}
+.tag.auth-no{background:var(--green-bg);color:var(--green);border:1px solid var(--green-border)}
+.tag.auth-maybe{background:var(--yellow-bg);color:var(--yellow);border:1px solid rgba(234,179,8,.3)}
+.endpoint-expand-icon{color:var(--text3);font-size:.8rem;transition:transform .2s;margin-left:4px}
+.endpoint-card.expanded .endpoint-expand-icon{transform:rotate(180deg)}
+.endpoint-detail{display:none;padding:0 20px 20px;border-top:1px solid var(--border)}
+.endpoint-card.expanded .endpoint-detail{display:block}
+.endpoint-detail-inner{padding-top:16px}
+.endpoint-desc-full{color:var(--text2);font-size:.9rem;margin-bottom:16px;line-height:1.7}
+
+/* PARAMS TABLE */
+.param-section{margin-bottom:16px}
+.param-section h4{font-size:.8rem;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px;display:flex;align-items:center;gap:6px}
+.params-table{width:100%;border-collapse:collapse;font-size:.85rem}
+.params-table th{text-align:left;padding:8px 12px;background:var(--bg3);color:var(--text3);font-weight:600;font-size:.75rem;text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid var(--border)}
+.params-table td{padding:8px 12px;border-bottom:1px solid var(--border);color:var(--text2);vertical-align:top}
+.params-table tr:last-child td{border-bottom:none}
+.params-table tr:hover td{background:var(--bg3)}
+.params-table .param-name{font-family:var(--mono);color:var(--text);font-weight:500;font-size:.82rem;white-space:nowrap}
+.params-table .param-type{font-family:var(--mono);font-size:.78rem;color:var(--purple);background:var(--purple-bg);padding:2px 8px;border-radius:4px}
+.params-table .param-required{color:var(--red);font-weight:600;font-size:.75rem}
+.params-table .param-optional{color:var(--text3);font-size:.75rem}
+.no-params{color:var(--text3);font-size:.85rem;font-style:italic;padding:8px 0}
+
+/* AUTH INFO */
+.auth-section{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-lg);padding:28px;margin-bottom:36px}
+.auth-section h3{font-size:1.15rem;font-weight:700;margin-bottom:18px;display:flex;align-items:center;gap:10px}
+.auth-section h3 .auth-icon{color:var(--accent);font-size:1.2rem}
+.auth-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+.auth-card{background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);padding:18px}
+.auth-card h4{font-size:.88rem;font-weight:600;margin-bottom:10px;display:flex;align-items:center;gap:8px}
+.auth-card h4 .dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.auth-card p,.auth-card code{font-size:.83rem;color:var(--text2);line-height:1.7}
+.auth-card code{display:inline-block;background:var(--bg);padding:2px 8px;border-radius:4px;font-family:var(--mono);font-size:.78rem;color:var(--accent);margin-top:6px}
+
+/* RESPONSE FORMAT */
+.response-section{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-lg);padding:28px;margin-bottom:36px}
+.response-section h3{font-size:1.15rem;font-weight:700;margin-bottom:18px;display:flex;align-items:center;gap:10px}
+.response-section h3 .res-icon{color:var(--green);font-size:1.2rem}
+.code-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px}
+.code-card{background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);padding:14px;text-align:center}
+.code-card .code-val{font-family:var(--mono);font-size:1.4rem;font-weight:700;margin-bottom:4px}
+.code-card .code-val.c1{color:var(--green)}
+.code-card .code-val.c0{color:var(--red)}
+.code-card .code-val.c401{color:var(--yellow)}
+.code-card .code-val.c403{color:var(--accent)}
+.code-card .code-label{font-size:.75rem;color:var(--text3)}
+.response-example{background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden}
+.response-example-header{display:flex;align-items:center;justify-content:space-between;padding:10px 16px;background:var(--bg3);border-bottom:1px solid var(--border);font-size:.8rem;color:var(--text3);font-weight:600}
+.response-example pre{padding:16px;font-family:var(--mono);font-size:.82rem;line-height:1.8;color:var(--text2);overflow-x:auto;white-space:pre}
+.response-example pre .json-key{color:var(--accent)}
+.response-example pre .json-str{color:var(--green)}
+.response-example pre .json-num{color:var(--blue)}
+.response-example pre .json-null{color:var(--purple)}
+
+/* OVERVIEW STATS */
+.overview{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:36px}
+.stat-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-lg);padding:20px;display:flex;align-items:center;gap:16px}
+.stat-icon{width:48px;height:48px;border-radius:var(--radius);display:flex;align-items:center;justify-content:center;font-size:1.3rem;flex-shrink:0}
+.stat-info .stat-value{font-size:1.6rem;font-weight:700;line-height:1.2}
+.stat-info .stat-label{font-size:.78rem;color:var(--text3);margin-top:2px}
+
+/* TOC / Quick nav */
+.auth-section .method-list{list-style:none;margin-top:8px}
+.auth-section .method-list li{padding:4px 0;font-size:.83rem;color:var(--text2)}
+.auth-section .method-list code{font-family:var(--mono);font-size:.78rem;background:var(--bg);padding:2px 6px;border-radius:4px;color:var(--accent)}
+
+/* BACK TO TOP */
+.back-top{position:fixed;bottom:28px;right:28px;width:44px;height:44px;border-radius:50%;background:var(--accent);color:#fff;border:none;cursor:pointer;font-size:1.1rem;display:none;align-items:center;justify-content:center;box-shadow:var(--shadow-lg);z-index:200;transition:transform .2s,opacity .2s}
+.back-top:hover{transform:scale(1.1)}
+.back-top.visible{display:flex}
+
+/* RESPONSIVE */
+@media(max-width:1024px){
+  .overview{grid-template-columns:repeat(2,1fr)}
+  .code-grid{grid-template-columns:repeat(2,1fr)}
+  .auth-grid{grid-template-columns:1fr}
+}
+@media(max-width:768px){
+  .menu-toggle{display:flex}
+  .sidebar{transform:translateX(-100%)}
+  .sidebar.open{transform:translateX(0);box-shadow:var(--shadow-lg)}
+  .sidebar-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:80}
+  .sidebar-overlay.open{display:block}
+  .main{margin-left:0;padding:24px 16px 80px}
+  .header-stats{display:none}
+  .header-search{margin:0 12px}
+  .overview{grid-template-columns:1fr}
+  .endpoint-url{font-size:.78rem}
+  .endpoint-desc-top{display:none}
+  .endpoint-top{padding:12px 14px}
+  .endpoint-detail{padding:0 14px 14px}
+  .params-table{font-size:.78rem}
+  .params-table th,.params-table td{padding:6px 8px}
+  .section-header h2{font-size:1.1rem}
+  .section-header .module-path{font-size:.75rem}
+  .code-grid{grid-template-columns:1fr 1fr}
+}
+@media(max-width:480px){
+  .header-logo span{display:none}
+  .code-grid{grid-template-columns:1fr}
+  .endpoint-meta{gap:4px}
+}
+
+/* Dark mode print */
+@media print{
+  .sidebar,.header,.back-top{display:none !important}
+  .main{margin:0;padding:20px}
+  body{background:#fff;color:#000}
+  .endpoint-card,.auth-section,.response-section,.stat-card{border:1px solid #ddd;background:#fff}
+  .params-table th{background:#f5f5f5;color:#333}
+}
+
+/* Search highlight */
+mark{background:var(--yellow-bg);color:var(--yellow);padding:1px 3px;border-radius:3px}
+
+/* Smooth entrance animations */
+@keyframes fadeInUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+.section{animation:fadeInUp .4s ease both}
+
+/* Method column in sidebar */
+.sidebar-methods{display:flex;gap:4px;margin-left:auto}
+.sidebar-methods .sm{font-size:.6rem;font-family:var(--mono);padding:1px 5px;border-radius:3px;font-weight:600}
+.sm-g{background:rgba(34,197,94,.15);color:var(--get)}
+.sm-p{background:rgba(249,115,22,.15);color:var(--post)}
+</style>
+</head>
+<body>
+
+<!-- SIDEBAR OVERLAY (mobile) -->
+<div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
+
+<!-- HEADER -->
+<header class="header">
+  <button class="menu-toggle" onclick="toggleSidebar()">☰</button>
+  <div class="header-logo">
+    <div class="icon">$</div>
+    <span>马上赚 API Documentation</span>
+  </div>
+  <div class="header-search">
+    <span class="search-icon">🔍</span>
+    <input type="text" id="searchInput" placeholder="搜索接口名称、描述、路径..." oninput="filterEndpoints(this.value)">
+  </div>
+  <div class="header-stats">
+    <span><strong id="totalEndpoints">0</strong> 接口</span>
+    <span><strong>19</strong> 模块</span>
+    <span>v1.0</span>
+  </div>
+</header>
+
+<!-- SIDEBAR -->
+<nav class="sidebar" id="sidebar">
+  <div class="sidebar-group">
+    <div class="sidebar-group-title" onclick="toggleGroup(this)">
+      <span class="arrow">▼</span> 快速导航
+    </div>
+    <div class="sidebar-links" style="max-height:200px">
+      <div class="sidebar-link" onclick="scrollToEl('overview')">📊 概览统计</div>
+      <div class="sidebar-link" onclick="scrollToEl('auth')">🔐 认证说明</div>
+      <div class="sidebar-link" onclick="scrollToEl('response')">📦 响应格式</div>
+    </div>
+  </div>
+  <div id="sidebarNav"></div>
+</nav>
+
+<!-- MAIN CONTENT -->
+<main class="main" id="mainContent">
+
+  <!-- OVERVIEW -->
+  <div class="section" id="overview">
+    <div class="overview">
+      <div class="stat-card">
+        <div class="stat-icon" style="background:var(--accent-bg);color:var(--accent)">⚡</div>
+        <div class="stat-info">
+          <div class="stat-value" id="statTotal">0</div>
+          <div class="stat-label">API 接口总数</div>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon" style="background:var(--green-bg);color:var(--green)">✅</div>
+        <div class="stat-info">
+          <div class="stat-value" id="statAuth">0</div>
+          <div class="stat-label">需要登录</div>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon" style="background:var(--blue-bg);color:var(--blue)">🔓</div>
+        <div class="stat-info">
+          <div class="stat-value" id="statPublic">0</div>
+          <div class="stat-label">公开接口</div>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon" style="background:var(--purple-bg);color:var(--purple)">📁</div>
+        <div class="stat-info">
+          <div class="stat-value">19</div>
+          <div class="stat-label">功能模块</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- AUTH -->
+  <div class="section" id="auth">
+    <div class="auth-section">
+      <h3><span class="auth-icon">🔐</span> 认证说明 Authentication</h3>
+      <p class="section-desc" style="margin-top:-8px;margin-bottom:16px">
+        系统采用 Token 认证机制。用户登录成功后获取 Token，后续请求需携带 Token 进行身份验证。Token 可通过以下三种方式传递：
+      </p>
+      <div class="auth-grid">
+        <div class="auth-card">
+          <h4><span class="dot" style="background:var(--green)"></span> HTTP Header（推荐）</h4>
+          <p>在请求头中添加 Token 字段：</p>
+          <code>token: {your_token_here}</code>
+        </div>
+        <div class="auth-card">
+          <h4><span class="dot" style="background:var(--accent)"></span> Query Parameter</h4>
+          <p>在 URL 查询参数中传递：</p>
+          <code>/api/user/index?token={your_token}</code>
+        </div>
+        <div class="auth-card">
+          <h4><span class="dot" style="background:var(--blue)"></span> Cookie</h4>
+          <p>在 Cookie 中设置 Token：</p>
+          <code>Cookie: token={your_token}</code>
+        </div>
+        <div class="auth-card">
+          <h4><span class="dot" style="background:var(--purple)"></span> Token 有效期</h4>
+          <p>Token 默认有效期为 7 天，可通过 <code>/api/token/refresh</code> 刷新延长至 30 天。</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- RESPONSE FORMAT -->
+  <div class="section" id="response">
+    <div class="response-section">
+      <h3><span class="res-icon">📦</span> 响应格式 Response Format</h3>
+      <p class="section-desc" style="margin-top:-8px;margin-bottom:16px">
+        所有接口统一返回 JSON 格式数据，包含状态码、消息、时间戳和数据。
+      </p>
+      <div class="code-grid">
+        <div class="code-card">
+          <div class="code-val c1">1</div>
+          <div class="code-label">成功 Success</div>
+        </div>
+        <div class="code-card">
+          <div class="code-val c0">0</div>
+          <div class="code-label">失败 Failure</div>
+        </div>
+        <div class="code-card">
+          <div class="code-val c401">401</div>
+          <div class="code-label">未授权 Unauthorized</div>
+        </div>
+        <div class="code-card">
+          <div class="code-val c403">403</div>
+          <div class="code-label">已禁止 Forbidden</div>
+        </div>
+      </div>
+      <div class="response-example">
+        <div class="response-example-header">JSON Response Structure</div>
+        <pre><span class="json-key">{</span>
+    <span class="json-key">"code"</span>: <span class="json-num">1</span>,
+    <span class="json-key">"msg"</span>: <span class="json-str">"success"</span>,
+    <span class="json-key">"time"</span>: <span class="json-num">1720000000</span>,
+    <span class="json-key">"data"</span>: <span class="json-key">{</span>
+        <span class="json-comment">// 业务数据</span>
+    <span class="json-key">}</span>
+<span class="json-key">}</span></pre>
+      </div>
+    </div>
+  </div>
+
+  <!-- API SECTIONS WILL BE INJECTED HERE -->
+  <div id="apiSections"></div>
+
+</main>
+
+<!-- BACK TO TOP -->
+<button class="back-top" id="backTop" onclick="window.scrollTo({top:0,behavior:'smooth'})">↑</button>
+
+<script>
+// ============ API DATA ============
+const apiData = [
+  {
+    id:'user', name:'用户模块', icon:'👤', color:'var(--accent)', path:'/api/user',
+    desc:'用户注册、登录、资料管理等核心账户功能。',
+    endpoints:[
+      {method:'getProfile',http:'GET',url:'/api/user/getProfile',auth:true,desc:'获取用户资料编辑信息',params:[]},
+      {method:'index',http:'GET',url:'/api/user/index',auth:true,desc:'获取用户中心完整信息',params:[]},
+      {method:'login',http:'POST',url:'/api/user/login',auth:false,desc:'账号密码登录',params:[
+        {name:'account',type:'string',required:true,desc:'账号（用户名/手机号/邮箱）'},
+        {name:'password',type:'string',required:true,desc:'密码'}
+      ]},
+      {method:'mobilelogin',http:'POST',url:'/api/user/mobilelogin',auth:false,desc:'手机验证码登录（新用户自动注册）',params:[
+        {name:'mobile',type:'string',required:true,desc:'手机号'},
+        {name:'captcha',type:'string',required:true,desc:'短信验证码'}
+      ]},
+      {method:'register',http:'POST',url:'/api/user/register',auth:false,desc:'注册新账号',params:[
+        {name:'username',type:'string',required:true,desc:'用户名'},
+        {name:'password',type:'string',required:true,desc:'密码'},
+        {name:'email',type:'string',required:true,desc:'邮箱'},
+        {name:'mobile',type:'string',required:true,desc:'手机号'},
+        {name:'code',type:'string',required:true,desc:'验证码'}
+      ]},
+      {method:'logout',http:'POST',url:'/api/user/logout',auth:true,desc:'退出登录',params:[]},
+      {method:'profile',http:'POST',url:'/api/user/profile',auth:true,desc:'修改用户资料',params:[
+        {name:'username',type:'string',required:false,desc:'用户名'},
+        {name:'nickname',type:'string',required:false,desc:'昵称'},
+        {name:'bio',type:'string',required:false,desc:'个人简介'},
+        {name:'avatar',type:'string',required:false,desc:'头像URL'},
+        {name:'gender',type:'int',required:false,desc:'性别（0=未知, 1=男, 2=女）'},
+        {name:'birthday',type:'string',required:false,desc:'生日（YYYY-MM-DD）'}
+      ]},
+      {method:'changeemail',http:'POST',url:'/api/user/changeemail',auth:'maybe',desc:'修改邮箱（需邮箱验证码）',params:[
+        {name:'email',type:'string',required:true,desc:'新邮箱地址'},
+        {name:'captcha',type:'string',required:true,desc:'邮箱验证码'}
+      ]},
+      {method:'changemobile',http:'POST',url:'/api/user/changemobile',auth:'maybe',desc:'修改手机号（需短信验证码）',params:[
+        {name:'mobile',type:'string',required:true,desc:'新手机号'},
+        {name:'captcha',type:'string',required:true,desc:'短信验证码'}
+      ]},
+      {method:'third',http:'POST',url:'/api/user/third',auth:false,desc:'第三方OAuth登录',params:[
+        {name:'platform',type:'string',required:true,desc:'平台标识（如 wechat, qq, apple）'},
+        {name:'code',type:'string',required:true,desc:'OAuth授权码'}
+      ]},
+      {method:'resetpwd',http:'POST',url:'/api/user/resetpwd',auth:false,desc:'重置密码',params:[
+        {name:'type',type:'string',required:true,desc:'验证方式（mobile 或 email）'},
+        {name:'mobile',type:'string',required:false,desc:'手机号（type=mobile时必填）'},
+        {name:'email',type:'string',required:false,desc:'邮箱（type=email时必填）'},
+        {name:'newpassword',type:'string',required:true,desc:'新密码'},
+        {name:'captcha',type:'string',required:true,desc:'验证码'}
+      ]}
+    ]
+  },
+  {
+    id:'coin', name:'金币模块', icon:'💰', color:'var(--yellow)', path:'/api/coin',
+    desc:'金币余额查询、交易流水、账户信息等财务管理功能。',
+    endpoints:[
+      {method:'balance',http:'GET',url:'/api/coin/balance',auth:true,desc:'获取金币余额',params:[]},
+      {method:'account',http:'GET',url:'/api/coin/account',auth:true,desc:'获取完整账户信息',params:[]},
+      {method:'logs',http:'GET',url:'/api/coin/logs',auth:true,desc:'获取金币交易流水（分页）',params:[
+        {name:'page',type:'int',required:false,desc:'页码（默认1）'},
+        {name:'limit',type:'int',required:false,desc:'每页数量（最大100，默认20）'},
+        {name:'type',type:'string',required:false,desc:'交易类型筛选'},
+        {name:'month',type:'string',required:false,desc:'月份筛选（格式：YYYYMM）'}
+      ]},
+      {method:'types',http:'GET',url:'/api/coin/types',auth:true,desc:'获取金币交易类型列表',params:[]}
+    ]
+  },
+  {
+    id:'withdraw', name:'提现模块', icon:'💳', color:'var(--green)', path:'/api/withdraw',
+    desc:'提现申请、订单管理、提现统计等资金提取功能。',
+    endpoints:[
+      {method:'config',http:'GET',url:'/api/withdraw/config',auth:true,desc:'获取提现配置',params:[]},
+      {method:'apply',http:'POST',url:'/api/withdraw/apply',auth:true,desc:'申请提现',params:[
+        {name:'coin_amount',type:'number',required:true,desc:'提现金币数量'},
+        {name:'withdraw_type',type:'string',required:true,desc:'提现方式（wechat/alipay/bank）'},
+        {name:'withdraw_account',type:'string',required:true,desc:'提现账号'},
+        {name:'withdraw_name',type:'string',required:true,desc:'提现账户姓名'},
+        {name:'bank_name',type:'string',required:false,desc:'银行名称（银行卡必填）'},
+        {name:'bank_branch',type:'string',required:false,desc:'支行名称（银行卡必填）'}
+      ]},
+      {method:'list',http:'GET',url:'/api/withdraw/list',auth:true,desc:'获取提现订单列表',params:[
+        {name:'status',type:'string',required:false,desc:'订单状态筛选'},
+        {name:'page',type:'int',required:false,desc:'页码'},
+        {name:'limit',type:'int',required:false,desc:'每页数量'},
+        {name:'start_date',type:'string',required:false,desc:'开始日期'},
+        {name:'end_date',type:'string',required:false,desc:'结束日期'}
+      ]},
+      {method:'detail',http:'GET',url:'/api/withdraw/detail',auth:true,desc:'获取提现订单详情',params:[
+        {name:'id',type:'int',required:true,desc:'订单ID'}
+      ]},
+      {method:'cancel',http:'POST',url:'/api/withdraw/cancel',auth:true,desc:'取消提现订单',params:[
+        {name:'id',type:'int',required:true,desc:'订单ID'}
+      ]},
+      {method:'stat',http:'GET',url:'/api/withdraw/stat',auth:true,desc:'获取提现统计',params:[]},
+      {method:'preview',http:'POST',url:'/api/withdraw/preview',auth:true,desc:'预览提现金额',params:[
+        {name:'coin_amount',type:'number',required:true,desc:'提现金币数量'}
+      ]},
+      {method:'accounts',http:'GET',url:'/api/withdraw/accounts',auth:true,desc:'获取用户绑定的提现账户',params:[]}
+    ]
+  },
+  {
+    id:'videoreward', name:'视频奖励', icon:'🎬', color:'#ec4899', path:'/api/videoreward',
+    desc:'视频观看奖励上报、奖励领取、合集进度等短视频收益功能。',
+    endpoints:[
+      {method:'watch',http:'POST',url:'/api/videoreward/watch',auth:true,desc:'上报视频观看进度',params:[
+        {name:'video_id',type:'int',required:true,desc:'视频ID'},
+        {name:'watch_duration',type:'int',required:true,desc:'观看时长（秒）'},
+        {name:'watch_progress',type:'float',required:true,desc:'观看进度百分比（0-100）'},
+        {name:'current_position',type:'int',required:true,desc:'当前播放位置（秒）'},
+        {name:'session_id',type:'string',required:true,desc:'观看会话唯一标识'}
+      ]},
+      {method:'claim',http:'POST',url:'/api/videoreward/claim',auth:true,desc:'领取视频奖励金币',params:[
+        {name:'video_id',type:'int',required:true,desc:'视频ID'}
+      ]},
+      {method:'status',http:'POST',url:'/api/videoreward/status',auth:true,desc:'批量获取视频奖励状态',params:[
+        {name:'video_ids[]',type:'array',required:true,desc:'视频ID数组（最多50个）'}
+      ]},
+      {method:'collection',http:'GET',url:'/api/videoreward/collection',auth:true,desc:'获取合集进度',params:[
+        {name:'collection_id',type:'int',required:true,desc:'合集ID'}
+      ]},
+      {method:'daily',http:'GET',url:'/api/videoreward/daily',auth:true,desc:'获取今日收益统计',params:[]},
+      {method:'config',http:'GET',url:'/api/videoreward/config',auth:true,desc:'获取视频奖励配置',params:[]}
+    ]
+  },
+  {
+    id:'redpacket', name:'红包模块', icon:'🧧', color:'var(--red)', path:'/api/redpacket',
+    desc:'红包点击累积、领取、任务列表、参与记录等红包互动功能。',
+    endpoints:[
+      {method:'click',http:'POST',url:'/api/redpacket/click',auth:true,desc:'点击红包 - 累积金额',params:[
+        {name:'task_id',type:'int',required:false,desc:'任务ID（可选）'},
+        {name:'reset',type:'int',required:false,desc:'是否重置（可选）'}
+      ]},
+      {method:'claim',http:'POST',url:'/api/redpacket/claim',auth:true,desc:'领取累积金币（观看广告后）',params:[
+        {name:'task_id',type:'int',required:false,desc:'任务ID（可选）'}
+      ]},
+      {method:'reset',http:'POST',url:'/api/redpacket/reset',auth:true,desc:'重置累积数据',params:[]},
+      {method:'amount',http:'GET',url:'/api/redpacket/amount',auth:true,desc:'获取当前累积金额',params:[]},
+      {method:'tasks',http:'GET',url:'/api/redpacket/tasks',auth:true,desc:'获取红包任务列表',params:[
+        {name:'page',type:'int',required:false,desc:'页码'},
+        {name:'limit',type:'int',required:false,desc:'每页数量'},
+        {name:'type',type:'string',required:false,desc:'任务类型'}
+      ]},
+      {method:'detail',http:'GET',url:'/api/redpacket/detail',auth:true,desc:'获取任务详情',params:[
+        {name:'task_id',type:'int',required:true,desc:'任务ID'}
+      ]},
+      {method:'status',http:'GET',url:'/api/redpacket/status',auth:true,desc:'获取用户红包状态',params:[
+        {name:'task_id',type:'int',required:true,desc:'任务ID'}
+      ]},
+      {method:'today',http:'GET',url:'/api/redpacket/today',auth:true,desc:'获取今日红包统计',params:[]},
+      {method:'records',http:'GET',url:'/api/redpacket/records',auth:true,desc:'获取参与记录',params:[
+        {name:'page',type:'int',required:false,desc:'页码'},
+        {name:'limit',type:'int',required:false,desc:'每页数量'}
+      ]}
+    ]
+  },
+  {
+    id:'adredpacket', name:'广告红包', icon:'🎁', color:'#f472b6', path:'/api/adredpacket',
+    desc:'广告红包列表、领取、一键领取、收入统计等广告红包功能。',
+    endpoints:[
+      {method:'list',http:'GET',url:'/api/adredpacket/list',auth:true,desc:'获取广告红包列表',params:[
+        {name:'page',type:'int',required:false,desc:'页码'},
+        {name:'limit',type:'int',required:false,desc:'每页数量（最大50）'}
+      ]},
+      {method:'claim',http:'POST',url:'/api/adredpacket/claim',auth:true,desc:'领取单个广告红包',params:[
+        {name:'packet_id',type:'int',required:true,desc:'红包ID'}
+      ]},
+      {method:'claimAll',http:'POST',url:'/api/adredpacket/claimAll',auth:true,desc:'一键领取所有广告红包',params:[]},
+      {method:'stats',http:'GET',url:'/api/adredpacket/stats',auth:true,desc:'获取广告收入统计',params:[
+        {name:'page',type:'int',required:false,desc:'页码'},
+        {name:'limit',type:'int',required:false,desc:'每页数量（最大50）'}
+      ]}
+    ]
+  },
+  {
+    id:'ad', name:'广告模块', icon:'📢', color:'#06b6d4', path:'/api/ad',
+    desc:'广告服务端回调、客户端上报、收入概览、冻结余额管理等广告收益功能。',
+    endpoints:[
+      {method:'serverNotify',http:'POST',url:'/api/ad/serverNotify',auth:false,desc:'DCloud服务端回调',params:[
+        {name:'adpid',type:'string',required:true,desc:'广告位ID'},
+        {name:'provider',type:'string',required:true,desc:'广告提供商'},
+        {name:'platform',type:'string',required:true,desc:'平台标识'},
+        {name:'sign',type:'string',required:true,desc:'签名'},
+        {name:'trans_id',type:'string',required:true,desc:'交易ID'},
+        {name:'user_id',type:'string',required:true,desc:'用户ID'},
+        {name:'extra',type:'string',required:false,desc:'额外数据'},
+        {name:'cpm',type:'number',required:false,desc:'千次展示收益'}
+      ]},
+      {method:'callback',http:'POST',url:'/api/ad/callback',auth:true,desc:'客户端广告回调记录',params:[
+        {name:'ad_type',type:'string',required:true,desc:'广告类型（feed/reward）'},
+        {name:'adpid',type:'string',required:true,desc:'广告位ID'},
+        {name:'ad_provider',type:'string',required:true,desc:'广告提供商'},
+        {name:'ad_source',type:'string',required:true,desc:'广告来源'},
+        {name:'transaction_id',type:'string',required:true,desc:'交易ID'}
+      ]},
+      {method:'overview',http:'GET',url:'/api/ad/overview',auth:true,desc:'获取广告收入概览',params:[]},
+      {method:'checkSettle',http:'GET',url:'/api/ad/checkSettle',auth:true,desc:'检查冻结余额是否达阈值',params:[]},
+      {method:'recordView',http:'POST',url:'/api/ad/recordView',auth:true,desc:'记录广告观看并检查阈值奖励',params:[
+        {name:'ad_type',type:'string',required:true,desc:'广告类型'},
+        {name:'adpid',type:'string',required:true,desc:'广告位ID'},
+        {name:'ad_provider',type:'string',required:true,desc:'广告提供商'},
+        {name:'ad_source',type:'string',required:true,desc:'广告来源'},
+        {name:'transaction_id',type:'string',required:true,desc:'交易ID'}
+      ]},
+      {method:'claimFreezeBalance',http:'POST',url:'/api/ad/claimFreezeBalance',auth:true,desc:'领取冻结金币到余额',params:[
+        {name:'max_amount',type:'number',required:false,desc:'最大领取金额（可选）'}
+      ]},
+      {method:'chatResources',http:'GET',url:'/api/ad/chatResources',auth:true,desc:'获取聊天资源',params:[
+        {name:'version',type:'string',required:false,desc:'版本号（可选）'}
+      ]}
+    ]
+  },
+  {
+    id:'invite', name:'邀请分销', icon:'🤝', color:'#8b5cf6', path:'/api/invite',
+    desc:'邀请码、团队管理、佣金明细、业绩排行等分销推广功能。',
+    endpoints:[
+      {method:'overview',http:'GET',url:'/api/invite/overview',auth:true,desc:'分销中心概览',params:[]},
+      {method:'teamList',http:'GET',url:'/api/invite/teamList',auth:true,desc:'团队成员列表',params:[
+        {name:'level',type:'int',required:true,desc:'层级（0=直推, 1=二级, 2=三级）'},
+        {name:'page',type:'int',required:false,desc:'页码'},
+        {name:'limit',type:'int',required:false,desc:'每页数量（最大50）'}
+      ]},
+      {method:'commissionList',http:'GET',url:'/api/invite/commissionList',auth:true,desc:'佣金明细列表',params:[
+        {name:'source_type',type:'string',required:false,desc:'来源类型'},
+        {name:'level',type:'int',required:false,desc:'层级'},
+        {name:'page',type:'int',required:false,desc:'页码'},
+        {name:'limit',type:'int',required:false,desc:'每页数量（最大50）'},
+        {name:'month',type:'string',required:false,desc:'月份筛选（格式：YYYY-MM）'}
+      ]},
+      {method:'ranking',http:'GET',url:'/api/invite/ranking',auth:true,desc:'业绩排行榜',params:[
+        {name:'type',type:'string',required:false,desc:'排行类型（invite/commission）'},
+        {name:'limit',type:'int',required:false,desc:'数量限制'}
+      ]},
+      {method:'myCode',http:'GET',url:'/api/invite/myCode',auth:true,desc:'获取我的邀请码和链接',params:[]},
+      {method:'bind',http:'POST',url:'/api/invite/bind',auth:false,desc:'绑定邀请关系',params:[
+        {name:'invite_code',type:'string',required:true,desc:'邀请码'},
+        {name:'channel',type:'string',required:false,desc:'渠道标识（可选）'}
+      ]}
+    ]
+  },
+  {
+    id:'signin', name:'签到模块', icon:'📅', color:'#f59e0b', path:'/api/signin',
+    desc:'每日签到、补签、签到日历、排行榜等签到打卡功能。',
+    endpoints:[
+      {method:'index',http:'GET',url:'/api/signin/index',auth:true,desc:'获取签到首页配置及状态',params:[]},
+      {method:'monthSign',http:'GET',url:'/api/signin/monthSign',auth:true,desc:'获取月度签到日历',params:[
+        {name:'date',type:'string',required:true,desc:'月份（格式：YYYY-MM）'}
+      ]},
+      {method:'dosign',http:'POST',url:'/api/signin/dosign',auth:true,desc:'执行每日签到',params:[]},
+      {method:'fillup',http:'POST',url:'/api/signin/fillup',auth:true,desc:'补签（消耗金币）',params:[
+        {name:'date',type:'string',required:true,desc:'补签日期（格式：YYYY-MM-DD）'}
+      ]},
+      {method:'rank',http:'GET',url:'/api/signin/rank',auth:true,desc:'签到排行榜（Top10）',params:[]},
+      {method:'signLog',http:'GET',url:'/api/signin/signLog',auth:true,desc:'签到历史（分页）',params:[
+        {name:'page',type:'int',required:false,desc:'页码'}
+      ]}
+    ]
+  },
+  {
+    id:'message', name:'消息模块', icon:'💬', color:'#14b8a6', path:'/api/message',
+    desc:'消息列表、未读计数、已读标记、详情查看、任务推送等消息功能。',
+    endpoints:[
+      {method:'list',http:'GET',url:'/api/message/list',auth:true,desc:'获取消息列表',params:[
+        {name:'page',type:'int',required:false,desc:'页码'},
+        {name:'pagesize',type:'int',required:false,desc:'每页数量'},
+        {name:'type',type:'string',required:false,desc:'消息类型筛选'}
+      ]},
+      {method:'unreadCount',http:'GET',url:'/api/message/unreadCount',auth:true,desc:'获取未读消息数',params:[]},
+      {method:'markRead',http:'POST',url:'/api/message/markRead',auth:true,desc:'标记消息已读',params:[
+        {name:'message_id',type:'int',required:true,desc:'消息ID（0=全部标记已读）'}
+      ]},
+      {method:'detail',http:'GET',url:'/api/message/detail',auth:true,desc:'获取消息详情（自动标记已读）',params:[
+        {name:'id',type:'int',required:true,desc:'消息ID'}
+      ]},
+      {method:'taskPushList',http:'GET',url:'/api/message/taskPushList',auth:true,desc:'获取任务推送列表',params:[
+        {name:'page',type:'int',required:false,desc:'页码'},
+        {name:'pagesize',type:'int',required:false,desc:'每页数量'}
+      ]}
+    ]
+  },
+  {
+    id:'common', name:'公共模块', icon:'🔧', color:'#64748b', path:'/api/common',
+    desc:'应用初始化、文件上传、验证码生成等通用功能。',
+    endpoints:[
+      {method:'init',http:'GET/POST',url:'/api/common/init',auth:false,desc:'应用初始化',params:[
+        {name:'version',type:'string',required:false,desc:'客户端版本号'},
+        {name:'lng',type:'float',required:false,desc:'经度'},
+        {name:'lat',type:'float',required:false,desc:'纬度'}
+      ]},
+      {method:'upload',http:'POST',url:'/api/common/upload',auth:true,desc:'上传文件（支持分片）',params:[
+        {name:'file',type:'file',required:true,desc:'文件对象'},
+        {name:'chunkid',type:'string',required:false,desc:'分片ID（分片上传时必填）'},
+        {name:'action',type:'string',required:false,desc:'操作类型'},
+        {name:'chunkindex',type:'int',required:false,desc:'分片索引'},
+        {name:'chunkcount',type:'int',required:false,desc:'分片总数'},
+        {name:'filename',type:'string',required:false,desc:'文件名'}
+      ]},
+      {method:'captcha',http:'GET',url:'/api/common/captcha',auth:false,desc:'生成验证码图片',params:[
+        {name:'id',type:'string',required:false,desc:'验证码ID'}
+      ]}
+    ]
+  },
+  {
+    id:'token', name:'Token模块', icon:'🔑', color:'#e879f9', path:'/api/token',
+    desc:'Token 有效性检查和刷新。',
+    endpoints:[
+      {method:'check',http:'GET',url:'/api/token/check',auth:true,desc:'检查当前Token是否有效',params:[]},
+      {method:'refresh',http:'GET',url:'/api/token/refresh',auth:true,desc:'刷新Token（30天TTL）',params:[]}
+    ]
+  },
+  {
+    id:'wechat', name:'微信模块', icon:'💚', color:'#22c55e', path:'/api/wechat',
+    desc:'微信OAuth、App登录、小程序登录、公众号登录、手机号获取等微信集成功能。',
+    endpoints:[
+      {method:'getOfficialAuthUrl',http:'GET',url:'/api/wechat/getOfficialAuthUrl',auth:false,desc:'获取微信OAuth URL',params:[
+        {name:'redirect_url',type:'string',required:true,desc:'回调地址'},
+        {name:'scope',type:'string',required:false,desc:'授权作用域（可选）'},
+        {name:'state',type:'string',required:false,desc:'状态参数（可选）'}
+      ]},
+      {method:'appLogin',http:'POST',url:'/api/wechat/appLogin',auth:false,desc:'微信App登录',params:[
+        {name:'code',type:'string',required:true,desc:'微信授权码'},
+        {name:'invite_code',type:'string',required:false,desc:'邀请码（可选）'},
+        {name:'device_id',type:'string',required:false,desc:'设备ID（可选）'}
+      ]},
+      {method:'miniLogin',http:'POST',url:'/api/wechat/miniLogin',auth:false,desc:'微信小程序登录',params:[
+        {name:'code',type:'string',required:true,desc:'小程序登录凭证'},
+        {name:'nickname',type:'string',required:false,desc:'昵称（可选）'},
+        {name:'avatar',type:'string',required:false,desc:'头像URL（可选）'},
+        {name:'gender',type:'int',required:false,desc:'性别（可选）'},
+        {name:'invite_code',type:'string',required:false,desc:'邀请码（可选）'},
+        {name:'device_id',type:'string',required:false,desc:'设备ID（可选）'}
+      ]},
+      {method:'officialLogin',http:'POST',url:'/api/wechat/officialLogin',auth:false,desc:'微信公众号登录',params:[
+        {name:'code',type:'string',required:true,desc:'公众号授权码'},
+        {name:'invite_code',type:'string',required:false,desc:'邀请码（可选）'}
+      ]},
+      {method:'getMiniPhone',http:'POST',url:'/api/wechat/getMiniPhone',auth:false,desc:'小程序获取手机号',params:[
+        {name:'code',type:'string',required:true,desc:'手机号获取凭证'}
+      ]},
+      {method:'bindWechat',http:'POST',url:'/api/wechat/bindWechat',auth:false,desc:'绑定微信账号',params:[
+        {name:'code',type:'string',required:true,desc:'微信授权码'},
+        {name:'platform',type:'string',required:true,desc:'平台（app/mini/official）'}
+      ]},
+      {method:'unbindWechat',http:'POST',url:'/api/wechat/unbindWechat',auth:true,desc:'解绑微信',params:[
+        {name:'platform',type:'string',required:true,desc:'平台'}
+      ]},
+      {method:'loginStatus',http:'GET',url:'/api/wechat/loginStatus',auth:false,desc:'获取微信登录配置状态',params:[]}
+    ]
+  },
+  {
+    id:'validate', name:'验证模块', icon:'✅', color:'#10b981', path:'/api/validate',
+    desc:'邮箱、手机号、用户名、昵称等可用性检查与验证码校验。所有接口无需登录。',
+    endpoints:[
+      {method:'check_email_available',http:'GET',url:'/api/validate/check_email_available',auth:false,desc:'检查邮箱是否可用',params:[
+        {name:'email',type:'string',required:true,desc:'邮箱地址'},
+        {name:'id',type:'int',required:false,desc:'用户ID（排除自己，可选）'}
+      ]},
+      {method:'check_username_available',http:'GET',url:'/api/validate/check_username_available',auth:false,desc:'检查用户名是否可用',params:[
+        {name:'username',type:'string',required:true,desc:'用户名'},
+        {name:'id',type:'int',required:false,desc:'用户ID（可选）'}
+      ]},
+      {method:'check_nickname_available',http:'GET',url:'/api/validate/check_nickname_available',auth:false,desc:'检查昵称是否可用',params:[
+        {name:'nickname',type:'string',required:true,desc:'昵称'},
+        {name:'id',type:'int',required:false,desc:'用户ID（可选）'}
+      ]},
+      {method:'check_mobile_available',http:'GET',url:'/api/validate/check_mobile_available',auth:false,desc:'检查手机号是否可用',params:[
+        {name:'mobile',type:'string',required:true,desc:'手机号'},
+        {name:'id',type:'int',required:false,desc:'用户ID（可选）'}
+      ]},
+      {method:'check_mobile_exist',http:'GET',url:'/api/validate/check_mobile_exist',auth:false,desc:'检查手机号是否存在',params:[
+        {name:'mobile',type:'string',required:true,desc:'手机号'}
+      ]},
+      {method:'check_email_exist',http:'GET',url:'/api/validate/check_email_exist',auth:false,desc:'检查邮箱是否存在',params:[
+        {name:'email',type:'string',required:true,desc:'邮箱地址'}
+      ]},
+      {method:'check_sms_correct',http:'GET',url:'/api/validate/check_sms_correct',auth:false,desc:'验证短信验证码',params:[
+        {name:'mobile',type:'string',required:true,desc:'手机号'},
+        {name:'captcha',type:'string',required:true,desc:'验证码'},
+        {name:'event',type:'string',required:true,desc:'事件类型'}
+      ]},
+      {method:'check_ems_correct',http:'GET',url:'/api/validate/check_ems_correct',auth:false,desc:'验证邮箱验证码',params:[
+        {name:'email',type:'string',required:true,desc:'邮箱地址'},
+        {name:'captcha',type:'string',required:true,desc:'验证码'},
+        {name:'event',type:'string',required:true,desc:'事件类型'}
+      ]}
+    ]
+  },
+  {
+    id:'avatar', name:'头像模块', icon:'🎭', color:'#f43f5e', path:'/api/avatar',
+    desc:'系统头像列表获取。',
+    endpoints:[
+      {method:'list',http:'GET',url:'/api/avatar/list',auth:false,desc:'获取头像列表',params:[]}
+    ]
+  },
+  {
+    id:'singlepage', name:'单页模块', icon:'📄', color:'#78716c', path:'/api/singlepage',
+    desc:'弹窗公告、帮助中心、单页详情等内容管理功能。',
+    endpoints:[
+      {method:'notice',http:'GET',url:'/api/singlepage/notice',auth:false,desc:'获取最新弹窗公告',params:[
+        {name:'read_id',type:'int',required:false,desc:'已读公告ID（可选）'}
+      ]},
+      {method:'helpList',http:'GET',url:'/api/singlepage/helpList',auth:false,desc:'获取帮助中心文章',params:[
+        {name:'version',type:'string',required:false,desc:'版本号（可选）'}
+      ]},
+      {method:'detail',http:'GET',url:'/api/singlepage/detail',auth:false,desc:'获取单页详情',params:[
+        {name:'id',type:'int',required:true,desc:'单页ID'},
+        {name:'tpl',type:'string',required:false,desc:'模板名称'},
+        {name:'category',type:'string',required:false,desc:'分类'}
+      ]}
+    ]
+  },
+  {
+    id:'sms', name:'短信模块', icon:'📱', color:'#0ea5e9', path:'/api/sms',
+    desc:'短信验证码发送与验证。',
+    endpoints:[
+      {method:'send',http:'POST',url:'/api/sms/send',auth:false,desc:'发送短信验证码',params:[
+        {name:'mobile',type:'string',required:true,desc:'手机号'},
+        {name:'event',type:'string',required:true,desc:'事件类型（register/resetpwd/changemobile等）'}
+      ]},
+      {method:'check',http:'POST',url:'/api/sms/check',auth:false,desc:'验证短信验证码',params:[
+        {name:'mobile',type:'string',required:true,desc:'手机号'},
+        {name:'captcha',type:'string',required:true,desc:'验证码'},
+        {name:'event',type:'string',required:true,desc:'事件类型'}
+      ]}
+    ]
+  },
+  {
+    id:'ems', name:'邮箱模块', icon:'📧', color:'#a3e635', path:'/api/ems',
+    desc:'邮箱验证码发送与验证。',
+    endpoints:[
+      {method:'send',http:'POST',url:'/api/ems/send',auth:false,desc:'发送邮箱验证码',params:[
+        {name:'email',type:'string',required:true,desc:'邮箱地址'},
+        {name:'event',type:'string',required:true,desc:'事件类型（register/resetpwd/changeemail等）'}
+      ]},
+      {method:'check',http:'POST',url:'/api/ems/check',auth:false,desc:'验证邮箱验证码',params:[
+        {name:'email',type:'string',required:true,desc:'邮箱地址'},
+        {name:'captcha',type:'string',required:true,desc:'验证码'},
+        {name:'event',type:'string',required:true,desc:'事件类型'}
+      ]}
+    ]
+  },
+  {
+    id:'index', name:'首页模块', icon:'🏠', color:'#94a3b8', path:'/api/index',
+    desc:'API健康检查。',
+    endpoints:[
+      {method:'index',http:'GET',url:'/api/index/index',auth:false,desc:'API健康检查',params:[]}
+    ]
+  }
+];
+
+// ============ RENDER ============
+function renderAll(){
+  let totalEndpoints=0,totalAuth=0,totalPublic=0;
+  let sidebarHTML='';
+  let sectionsHTML='';
+
+  apiData.forEach((mod,idx)=>{
+    const getEndpoints=mod.endpoints.filter(e=>e.http==='GET').length;
+    const postEndpoints=mod.endpoints.filter(e=>e.http.includes('POST')).length;
+    const total=mod.endpoints.length;
+    totalEndpoints+=total;
+    mod.endpoints.forEach(e=>{
+      if(e.auth===true)totalAuth++;
+      else totalPublic++;
+    });
+
+    // Sidebar
+    sidebarHTML+=`
+    <div class="sidebar-group">
+      <div class="sidebar-group-title" onclick="toggleGroup(this)">
+        <span class="arrow">▼</span> ${mod.icon} ${mod.name}
+      </div>
+      <div class="sidebar-links" style="max-height:${total*50}px">
+        ${mod.endpoints.map(ep=>`
+          <div class="sidebar-link" onclick="scrollToEl('ep-${mod.id}-${ep.method}')">
+            <span class="method-dot ${ep.http==='GET'?'get':'post'}"></span>
+            ${ep.method}
+            <span class="badge">${ep.http}</span>
+          </div>
+        `).join('')}
+      </div>
+    </div>`;
+
+    // Section
+    let cardsHTML=mod.endpoints.map(ep=>{
+      const httpMethod = ep.http.includes('/') ? ep.http.split('/')[0].trim() : ep.http;
+      const authTag = ep.auth===true ? '<span class="tag auth-yes">🔒 需登录</span>' :
+                      ep.auth==='maybe' ? '<span class="tag auth-maybe">⚠️ 部分需登录</span>' :
+                      '<span class="tag auth-no">🔓 公开</span>';
+      const methodBadges = ep.http.split('/').map(m=>`<span class="method-badge ${m.toLowerCase()}">${m}</span>`).join(' ');
+      const paramsHTML = ep.params.length > 0 ? `
+        <table class="params-table">
+          <thead><tr><th>参数名</th><th>类型</th><th>必填</th><th>说明</th></tr></thead>
+          <tbody>
+            ${ep.params.map(p=>`
+              <tr>
+                <td class="param-name">${p.name}</td>
+                <td><span class="param-type">${p.type}</span></td>
+                <td>${p.required?'<span class="param-required">● 必填</span>':'<span class="param-optional">○ 可选</span>'}</td>
+                <td>${p.desc}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      ` : '<p class="no-params">无参数</p>';
+
+      return `
+      <div class="endpoint-card" id="ep-${mod.id}-${ep.method}" data-search="${ep.method} ${ep.url} ${ep.desc} ${mod.name} ${ep.params.map(p=>p.name+' '+p.desc).join(' ')}">
+        <div class="endpoint-top" onclick="toggleCard(this)">
+          ${methodBadges}
+          <span class="endpoint-url">${ep.url}</span>
+          <span class="endpoint-desc-top">${ep.desc}</span>
+          <span class="endpoint-expand-icon">▼</span>
+        </div>
+        <div class="endpoint-detail">
+          <div class="endpoint-detail-inner">
+            <div class="endpoint-meta" style="margin-bottom:14px">
+              ${authTag}
+              <span class="tag" style="background:var(--bg4);color:var(--text2);border:1px solid var(--border)">${ep.method}</span>
+            </div>
+            <div class="param-section">
+              <h4>📋 请求参数 Parameters</h4>
+              ${paramsHTML}
+            </div>
+          </div>
+        </div>
+      </div>`;
+    }).join('');
+
+    sectionsHTML+=`
+    <div class="section" id="section-${mod.id}" style="animation-delay:${idx*0.04}s">
+      <div class="section-header">
+        <div class="module-icon" style="background:${mod.color}22;color:${mod.color};border:1px solid ${mod.color}44">${mod.icon}</div>
+        <div>
+          <h2>${mod.name}</h2>
+          <span class="module-path">${mod.path}</span>
+        </div>
+        <span style="margin-left:auto;font-size:.8rem;color:var(--text3)">${total} 个接口 · ${getEndpoints} GET · ${postEndpoints} POST</span>
+      </div>
+      ${mod.desc?`<p class="section-desc">${mod.desc}</p>`:''}
+      ${cardsHTML}
+    </div>`;
+  });
+
+  document.getElementById('sidebarNav').innerHTML=sidebarHTML;
+  document.getElementById('apiSections').innerHTML=sectionsHTML;
+  document.getElementById('totalEndpoints').textContent=totalEndpoints;
+  document.getElementById('statTotal').textContent=totalEndpoints;
+  document.getElementById('statAuth').textContent=totalAuth;
+  document.getElementById('statPublic').textContent=totalPublic;
+}
+
+// ============ INTERACTIONS ============
+function toggleCard(el){
+  el.closest('.endpoint-card').classList.toggle('expanded');
+}
+function toggleGroup(el){
+  el.classList.toggle('collapsed');
+  const links=el.nextElementSibling;
+  links.classList.toggle('collapsed');
+}
+function toggleSidebar(){
+  document.getElementById('sidebar').classList.toggle('open');
+  document.getElementById('sidebarOverlay').classList.toggle('open');
+}
+function scrollToEl(id){
+  const el=document.getElementById(id);
+  if(el){
+    el.scrollIntoView({behavior:'smooth',block:'start'});
+    // If it's an endpoint card, expand it
+    if(el.classList.contains('endpoint-card')){
+      el.classList.add('expanded');
+    }
+  }
+  // Close mobile sidebar
+  if(window.innerWidth<=768){
+    document.getElementById('sidebar').classList.remove('open');
+    document.getElementById('sidebarOverlay').classList.remove('open');
+  }
+}
+
+// Search/filter
+function filterEndpoints(query){
+  query=query.trim().toLowerCase();
+  const cards=document.querySelectorAll('.endpoint-card');
+  const sections=document.querySelectorAll('.section');
+  if(!query){
+    cards.forEach(c=>c.classList.remove('hidden'));
+    sections.forEach(s=>s.style.display='');
+    return;
+  }
+  cards.forEach(card=>{
+    const text=(card.getAttribute('data-search')||'').toLowerCase();
+    card.classList.toggle('hidden',!text.includes(query));
+  });
+  sections.forEach(sec=>{
+    const visCards=sec.querySelectorAll('.endpoint-card:not(.hidden)');
+    sec.style.display=visCards.length===0?'none':'';
+  });
+}
+
+// Back to top
+window.addEventListener('scroll',()=>{
+  document.getElementById('backTop').classList.toggle('visible',window.scrollY>400);
+});
+
+// Active sidebar link on scroll
+let ticking=false;
+window.addEventListener('scroll',()=>{
+  if(!ticking){
+    requestAnimationFrame(()=>{
+      updateActiveLink();
+      ticking=false;
+    });
+    ticking=true;
+  }
+});
+function updateActiveLink(){
+  const scrollY=window.scrollY+120;
+  const cards=document.querySelectorAll('.endpoint-card:not(.hidden)');
+  let activeId=null;
+  cards.forEach(card=>{
+    if(card.offsetTop<=scrollY) activeId=card.id;
+  });
+  document.querySelectorAll('.sidebar-link').forEach(link=>{
+    const onclick=link.getAttribute('onclick')||'';
+    const isMatch=activeId && onclick.includes(`'${activeId}'`);
+    link.classList.toggle('active',isMatch);
+  });
+}
+
+// Keyboard shortcut
+document.addEventListener('keydown',e=>{
+  if((e.ctrlKey||e.metaKey)&&e.key==='k'){
+    e.preventDefault();
+    document.getElementById('searchInput').focus();
+  }
+  if(e.key==='Escape'){
+    const search=document.getElementById('searchInput');
+    if(document.activeElement===search){
+      search.value='';
+      filterEndpoints('');
+      search.blur();
+    }
+  }
+});
+
+// Init
+renderAll();
+</script>
+</body>
+</html>
