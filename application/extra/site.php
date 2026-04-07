@@ -35,8 +35,8 @@ return array (
     'dictionary' => '字典配置',
     'wechat' => '微信配置',
     'system' => '系统配置',
-    'signin' => '签到配置',
-    'singlepage' => '单页管理',
+    // 'signin' => '签到配置',
+    // 'singlepage' => '单页管理',
     'ad' => '广告配置',
   ),
   'mail_type' => '1',
@@ -191,4 +191,6 @@ return array (
   'rewarded_video_interval' => '120',
   'rewarded_video_cooldown' => '30',
   'ad_idle_timeout' => '120',
+  'feed_reward_threshold' => '1',
+  'video_reward_threshold' => '1',
 );
