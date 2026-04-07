@@ -736,13 +736,13 @@ class AdIncomeService
                 Log::info('ensureAdViewCounterTable: 自动创建 advn_ad_view_counter 表成功');
             }
 
-            // 确保配置项存在
-            $this->ensureConfigExists('feed_reward_threshold', 'ad', '信息流奖励阈值（次）', 'number', '1', '用户浏览多少次信息流广告后发放一次奖励，0或1=每次都发', 310);
-            $this->ensureConfigExists('video_reward_threshold', 'ad', '激励视频奖励阈值（次）', 'number', '1', '用户观看多少次激励视频后发放一次奖励，0=每次都发，1=每次都发', 311);
+            // 确保配置项存在（使用修正后的列名：tip/rule，不再传递不存在的 remark/weigh）
+            $this->ensureConfigExists('feed_reward_threshold', 'ad', '信息流奖励阈值（次）', 'number', '1', '用户浏览多少次信息流广告后发放一次奖励，0或1=每次都发', 'required|integer|gte:0');
+            $this->ensureConfigExists('video_reward_threshold', 'ad', '激励视频奖励阈值（次）', 'number', '1', '用户观看多少次激励视频后发放一次奖励，0=每次都发，1=每次都发', 'required|integer|gte:0');
 
             // ★ 修正旧默认值：如果 video_reward_threshold 仍为旧默认值 3，自动更新为 1
             try {
-                Db::name('config')->where('name', 'video_reward_threshold')->where('`group`', 'ad')->where('value', '3')->update(['value' => '1', 'updatetime' => time()]);
+                Db::name('config')->where('name', 'video_reward_threshold')->where('`group`', 'ad')->where('value', '3')->update(['value' => '1']);
             } catch (\Throwable $e) {}
 
             $ensured = true;
@@ -755,8 +755,12 @@ class AdIncomeService
 
     /**
      * 确保单条配置存在（不存在则插入，存在则跳过）
+     *
+     * ★ 修复：原方法插入了 advn_config 表不存在的列（remark/weigh/status/createtime/updatetime）
+     * ★ 导致 catch 静默吞掉异常，配置项从未真正写入数据库
+     * ★ 修正为使用实际表结构中的列（name/group/title/tip/type/value/rule）
      */
-    protected function ensureConfigExists($name, $group, $title, $type, $value, $remark, $weigh)
+    protected function ensureConfigExists($name, $group, $title, $type, $value, $tip = '', $rule = 'required')
     {
         try {
             $count = Db::name('config')->where('name', $name)->where('`group`', $group)->count();
@@ -765,17 +769,16 @@ class AdIncomeService
                     'name'     => $name,
                     '`group`' => $group,
                     'title'    => $title,
+                    'tip'      => $tip,
                     'type'     => $type,
                     'value'    => $value,
-                    'remark'   => $remark,
-                    'weigh'    => $weigh,
-                    'status'   => 'normal',
-                    'updatetime'=> time(),
-                    'createtime'=> time(),
+                    'rule'     => $rule,
                 ]);
+                Log::info('ensureConfigExists: 配置项已写入数据库: ' . $name);
             }
         } catch (\Throwable $e) {
             // 配置插入失败不影响主流程
+            Log::error('ensureConfigExists 写入失败: ' . $name . ', error=' . $e->getMessage());
         }
     }
 
