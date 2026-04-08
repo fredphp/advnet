@@ -492,60 +492,65 @@ export default {
                  */
                 loadAdOverview(forceRefresh = false) {
                         clearTimeout(this.overviewDebounceTimer);
-                        this.overviewDebounceTimer = setTimeout(async () => {
-                        try {
-                                // ★ 强制刷新时添加时间戳参数，防止浏览器/CDN 缓存
-                                const params = forceRefresh ? { _t: Date.now() } : {};
-                                const res = await this.$api.adOverview(params);
-                                console.log('[RedBag] overview 响应: code=' + (res ? res.code : 'null') + ', dataType=' + typeof (res && res.data));
-                                if (res && res.code === 1 && res.data) {
-                                        // ★ 后端已关闭加密，res.data 直接是对象
-                                        const data = (typeof res.data === 'object') ? res.data : null;
-                                        if (!data) {
-                                                console.warn('[RedBag] overview 数据格式异常, raw:', typeof res.data, String(res.data).substring(0, 100));
-                                                return;
+                        // ★ 返回 Promise，支持 .then() 链式调用
+                        return new Promise((resolve) => {
+                                this.overviewDebounceTimer = setTimeout(async () => {
+                                try {
+                                        // ★ 强制刷新时添加时间戳参数，防止浏览器/CDN 缓存
+                                        const params = forceRefresh ? { _t: Date.now() } : {};
+                                        const res = await this.$api.adOverview(params);
+                                        console.log('[RedBag] overview 响应: code=' + (res ? res.code : 'null') + ', dataType=' + typeof (res && res.data));
+                                        if (res && res.code === 1 && res.data) {
+                                                // ★ 后端已关闭加密，res.data 直接是对象
+                                                const data = (typeof res.data === 'object') ? res.data : null;
+                                                if (!data) {
+                                                        console.warn('[RedBag] overview 数据格式异常, raw:', typeof res.data, String(res.data).substring(0, 100));
+                                                        resolve();
+                                                        return;
+                                                }
+
+                                                this.adPacketBadge = data.unclaimed_packet_count || 0;
+
+                                                // ★ 保存广告配置供持续推送使用
+                                                this.adConfig.feed_adpid = data.feed_adpid || '';
+                                                this.adConfig.feed_ad_count = data.feed_ad_count || 3;
+                                                this.adConfig.reward_per_feed = data.reward_per_feed || 50;
+                                                this.adConfig.ad_income_enabled = data.ad_income_enabled || 0;
+
+                                                // ★ 保存激励视频广告配置
+                                                this.adConfig.rewarded_video_adpid = data.rewarded_video_adpid || '';
+                                                this.adConfig.reward_per_video = data.reward_per_video || 200;
+                                                this.adConfig.rewarded_video_interval = data.rewarded_video_interval || 120;
+
+                                                // ★ 保存广告浏览进度
+                                                this.feedViewProgress = data.feed_view_progress || null;
+                                                this.rewardViewProgress = data.reward_view_progress || null;
+
+                                                // ★ 保存待释放金币余额
+                                                this.freezeBalance = data.ad_freeze_balance || 0;
+
+                                                // ★ 保存用户金币余额
+                                                this.coinBalance = data.coin_balance || 0;
+
+                                                // ★ 保存红包结算间隔（分钟），用于红包定期提醒
+                                                this.settleInterval = data.settle_interval || 30;
+
+                                                // ★ 保存广告空闲超时（秒），用户不操作超过此时间不计费
+                                                this.adIdleTimeout = data.ad_idle_timeout || 30;
+
+                                                console.log('[RedBag] 广告配置加载成功, feed_adpid=' + this.adConfig.feed_adpid + ', rewarded_video_adpid=' + this.adConfig.rewarded_video_adpid + ', enabled=' + this.adConfig.ad_income_enabled);
+
+                                                // 检查广告配置并提示
+                                                this.checkAdConfigAndHint();
+                                        } else {
+                                                console.warn('[RedBag] overview 接口返回异常:', res ? JSON.stringify(res).substring(0, 200) : 'null response');
                                         }
-
-                                        this.adPacketBadge = data.unclaimed_packet_count || 0;
-
-                                        // ★ 保存广告配置供持续推送使用
-                                        this.adConfig.feed_adpid = data.feed_adpid || '';
-                                        this.adConfig.feed_ad_count = data.feed_ad_count || 3;
-                                        this.adConfig.reward_per_feed = data.reward_per_feed || 50;
-                                        this.adConfig.ad_income_enabled = data.ad_income_enabled || 0;
-
-                                        // ★ 保存激励视频广告配置
-                                        this.adConfig.rewarded_video_adpid = data.rewarded_video_adpid || '';
-                                        this.adConfig.reward_per_video = data.reward_per_video || 200;
-                                        this.adConfig.rewarded_video_interval = data.rewarded_video_interval || 120;
-
-                                        // ★ 保存广告浏览进度
-                                        this.feedViewProgress = data.feed_view_progress || null;
-                                        this.rewardViewProgress = data.reward_view_progress || null;
-
-                                        // ★ 保存待释放金币余额
-                                        this.freezeBalance = data.ad_freeze_balance || 0;
-
-                                        // ★ 保存用户金币余额
-                                        this.coinBalance = data.coin_balance || 0;
-
-                                        // ★ 保存红包结算间隔（分钟），用于红包定期提醒
-                                        this.settleInterval = data.settle_interval || 30;
-
-                                        // ★ 保存广告空闲超时（秒），用户不操作超过此时间不计费
-                                        this.adIdleTimeout = data.ad_idle_timeout || 30;
-
-                                        console.log('[RedBag] 广告配置加载成功, feed_adpid=' + this.adConfig.feed_adpid + ', rewarded_video_adpid=' + this.adConfig.rewarded_video_adpid + ', enabled=' + this.adConfig.ad_income_enabled);
-
-                                        // 检查广告配置并提示
-                                        this.checkAdConfigAndHint();
-                                } else {
-                                        console.warn('[RedBag] overview 接口返回异常:', res ? JSON.stringify(res).substring(0, 200) : 'null response');
+                                } catch (e) {
+                                        console.warn('[RedBag] 加载广告配置失败:', e.message || e);
                                 }
-                        } catch (e) {
-                                console.warn('[RedBag] 加载广告配置失败:', e.message || e);
-                        }
-                        }, 300);
+                                resolve();
+                                }, 300);
+                        });
                 },
 
                 // ==================== ★ 聊天资源管理 ====================
