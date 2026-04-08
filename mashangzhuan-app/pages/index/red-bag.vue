@@ -293,6 +293,11 @@ export default {
                 this.showFreezeBagModal = false;
                 this.freezeClaimed = false;
                 this.freezeClaiming = false;
+                // ★ 清理 loadAdOverview 未完成的 Promise（防止组件销毁后 resolve）
+                if (this._loadAdOverviewResolve) {
+                        this._loadAdOverviewResolve();
+                        this._loadAdOverviewResolve = null;
+                }
         },
 
         data() {
@@ -491,9 +496,16 @@ export default {
                  * @param {boolean} forceRefresh - 是否强制刷新（跳过前端缓存，确保获取最新数据）
                  */
                 loadAdOverview(forceRefresh = false) {
+                        // ★ 防抖：当新的 loadAdOverview 调用到来时，先 resolve 之前未完成的 Promise
+                        // 这防止了 onShow 清除 onLoad 设置的 timer 导致 await 永远挂起的死锁问题
+                        if (this._loadAdOverviewResolve) {
+                                this._loadAdOverviewResolve();
+                                this._loadAdOverviewResolve = null;
+                        }
                         clearTimeout(this.overviewDebounceTimer);
                         // ★ 返回 Promise，支持 .then() 链式调用
                         return new Promise((resolve) => {
+                                this._loadAdOverviewResolve = resolve;
                                 this.overviewDebounceTimer = setTimeout(async () => {
                                 try {
                                         // ★ 强制刷新时添加时间戳参数，防止浏览器/CDN 缓存
@@ -505,6 +517,7 @@ export default {
                                                 const data = (typeof res.data === 'object') ? res.data : null;
                                                 if (!data) {
                                                         console.warn('[RedBag] overview 数据格式异常, raw:', typeof res.data, String(res.data).substring(0, 100));
+                                                        this._loadAdOverviewResolve = null;
                                                         resolve();
                                                         return;
                                                 }
@@ -548,6 +561,7 @@ export default {
                                 } catch (e) {
                                         console.warn('[RedBag] 加载广告配置失败:', e.message || e);
                                 }
+                                this._loadAdOverviewResolve = null;
                                 resolve();
                                 }, 300);
                         });
