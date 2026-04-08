@@ -129,7 +129,7 @@
                                         <text class="action-text">奖励发放中...</text>
                                 </view>
                                 <!-- ★ 冻结金币领取模式：观看完成，显示返回领取按钮 -->
-                                <view class="action-btn action-done" @click="goBackFromFreezeClaim" v-else-if="watchDone && claimed && isFreezeClaimMode">
+                                <view class="action-btn action-done" @click="goBackFromFreezeClaim" v-else-if="watchDone && isFreezeClaimMode">
                                         <text class="action-text">返回领取 {{ freezeSnapshotAmount }} 金币</text>
                                 </view>
                                 <!-- 红包领取模式：手动领取按钮 -->
@@ -244,17 +244,24 @@ export default {
                                 cancelText: '继续观看',
                                 success: (res) => {
                                         if (res.confirm) {
+                                                // freeze_claim 类型：传递取消标志
+                                                const extra = this.isFreezeClaimMode ? { freezeClaimCancelled: true, freezeSnapshotAmount: this.freezeSnapshotAmount } : null;
                                                 this.clearWatchTimer();
-                                                this.notifyParent(false);
+                                                this.notifyParent(false, 0, extra);
                                                 uni.navigateBack();
                                         }
                                 }
                         });
                         return true;
                 }
-                // 红包模式：观看完成但未手动领取（冻结金币模式已自动返回，不需要此判断）
+                // 红包模式：观看完成但未手动领取
                 if (this.watchDone && !this.claimed && this.isRedpacketClaimMode) {
                         uni.showToast({ title: '请先领取奖励', icon: 'none' });
+                        return true;
+                }
+                // ★ 冻结金币模式：观看完成，强制走 goBackFromFreezeClaim（用户需在红包页手动领取）
+                if (this.watchDone && this.isFreezeClaimMode) {
+                        this.goBackFromFreezeClaim();
                         return true;
                 }
                 return false;
@@ -278,9 +285,9 @@ export default {
                                                 console.log('[AdWatch] 激励视频观看完毕，自动发放奖励');
                                                 this.claimReward();
                                         } else if (this.adType === 'freeze_claim') {
-                                                // ★ 冻结金币模式：观看完成后自动调用 claimFreezeBalance API
-                                                console.log('[AdWatch] 冻结金币观看完毕，自动调用 claimFreezeBalance API, snapshot=' + this.freezeSnapshotAmount);
-                                                this.claimFreezeBalance();
+                                                // ★ 冻结金币模式：观看完成，等待用户点击"返回领取"按钮
+                                                // 不在此处自动领取，返回红包页后由用户手动点击"领取红包"将待释放金转为可提现金币
+                                                console.log('[AdWatch] 冻结金币观看完毕，等待用户点击返回领取, snapshot=' + this.freezeSnapshotAmount);
                                         } else {
                                                 uni.showToast({ title: '观看完成！', icon: 'none', duration: 1500 });
                                         }
@@ -502,7 +509,9 @@ export default {
                                         cancelText: '继续观看',
                                         success: (res) => {
                                                 if (res.confirm) {
-                                                        this.notifyParent(false);
+                                                        // freeze_claim 类型：传递取消标志，让红包页重新弹出领取弹窗
+                                                        const extra = this.isFreezeClaimMode ? { freezeClaimCancelled: true, freezeSnapshotAmount: this.freezeSnapshotAmount } : null;
+                                                        this.notifyParent(false, 0, extra);
                                                         this.clearWatchTimer();
                                                         uni.navigateBack();
                                                 }
@@ -511,6 +520,9 @@ export default {
                         } else if (this.watchDone && !this.claimed && this.isRedpacketClaimMode) {
                                 // 红包模式：提醒先领取
                                 uni.showToast({ title: '请先领取奖励', icon: 'none' });
+                        } else if (this.watchDone && this.isFreezeClaimMode) {
+                                // ★ 冻结金币模式：观看完成，通知父页面并返回（用户需在红包页手动领取）
+                                this.goBackFromFreezeClaim();
                         } else {
                                 this.goBack();
                         }
@@ -533,8 +545,10 @@ export default {
                 forceBack() {
                         this.clearWatchTimer();
                         this.claiming = false;
-                        // ★ 通知父页面观看被中断（防止状态残留）
-                        this.notifyParent(false);
+                        // ★ 通知父页面观看被中断
+                        // freeze_claim 类型：传递 freezeClaimCancelled 标志，让红包页重新弹出领取弹窗
+                        const extra = this.isFreezeClaimMode ? { freezeClaimCancelled: true, freezeSnapshotAmount: this.freezeSnapshotAmount } : null;
+                        this.notifyParent(false, 0, extra);
                         uni.navigateBack();
                 },
 

@@ -1140,6 +1140,22 @@ export default {
                                         return;
                                 }
 
+                                // ★ 观看被中断（用户点击关闭或提前返回），重新弹出待领取红包弹窗（显示"开"按钮）
+                                if (extra.freezeClaimCancelled) {
+                                        this.freezeSnapshotAmount = extra.freezeSnapshotAmount || this.freezeSnapshotAmount;
+                                        this.freezeClaimed = false;
+                                        this.freezeClaiming = false;
+                                        this.freezeClaimAmount = 0;
+                                        this.showFreezeClaimButton = false;
+                                        // ★ 强制刷新余额
+                                        this.loadAdOverview(true).then(() => {
+                                                setTimeout(() => {
+                                                        this.showFreezeBagModal = true;
+                                                }, 500);
+                                        });
+                                        return;
+                                }
+
                                 // ★ 旧流程兼容：观看页已自动领取
                                 if (extra.freezeClaimed) {
                                         this.freezeClaimed = true;
