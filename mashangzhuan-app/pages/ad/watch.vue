@@ -259,8 +259,10 @@ export default {
                         uni.showToast({ title: '请先领取奖励', icon: 'none' });
                         return true;
                 }
-                // ★ 冻结金币模式：观看完成，强制走 goBackFromFreezeClaim（用户需在红包页手动领取）
+                // ★ 冻结金币模式：观看完成
                 if (this.watchDone && this.isFreezeClaimMode) {
+                        // 已经在 goBackFromFreezeClaim 中触发返回，不要再拦截，允许正常返回
+                        if (this._freezeClaimNavigating) return false;
                         this.goBackFromFreezeClaim();
                         return true;
                 }
@@ -522,7 +524,11 @@ export default {
                                 uni.showToast({ title: '请先领取奖励', icon: 'none' });
                         } else if (this.watchDone && this.isFreezeClaimMode) {
                                 // ★ 冻结金币模式：观看完成，通知父页面并返回（用户需在红包页手动领取）
-                                this.goBackFromFreezeClaim();
+                                if (this._freezeClaimNavigating) {
+                                        this.goBack();
+                                } else {
+                                        this.goBackFromFreezeClaim();
+                                }
                         } else {
                                 this.goBack();
                         }
@@ -557,6 +563,9 @@ export default {
                  * 通知父页面观看完成 + 快照金额，由红包页调用 claimFreezeBalance(max_amount)
                  */
                 goBackFromFreezeClaim() {
+                        // ★ 防止 onBackPress 递归调用导致死循环（H5 环境下 navigateBack 会触发 onBackPress）
+                        if (this._freezeClaimNavigating) return;
+                        this._freezeClaimNavigating = true;
                         this.notifyParent(true, 0, {
                                 freezeWatchDone: true,
                                 freezeSnapshotAmount: this.freezeSnapshotAmount,
