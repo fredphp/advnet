@@ -25,4 +25,6 @@ return [
     'app\command\Websocket',
     'app\command\AutoPush',
     'app\command\AdSettle',
+    'app\command\AdReward',
+    'app\command\InviteCommission',
 ];

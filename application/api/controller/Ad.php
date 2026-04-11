@@ -611,6 +611,57 @@ class Ad extends Api
     }
 
     /**
+     * ★ 轻量级记录信息流广告浏览（Redis 计数 + 异步结算）
+     *
+     * 与 recordView 的区别：
+     * - recordView: 每次浏览写数据库（ad_view_counter），达到阈值同步调用 handleAdCallback（~50ms）
+     * - recordFeedView: 只做 Redis INCR 计数，达到阈值推入队列由 cron 异步结算（~2ms）
+     *
+     * @api {post} /api/ad/recordFeedView 轻量记录信息流广告浏览
+     * @apiParam {String} [adpid] 广告位ID
+     * @apiSuccess {Number} view_count 当前浏览次数
+     * @apiSuccess {Number} threshold 奖励阈值
+     * @apiSuccess {Boolean} reward_pending 是否已触发奖励（异步发放中）
+     * @apiSuccess {Number} estimated_coin 预估奖励金币（达到阈值时可获得的金币）
+     * @apiSuccess {String} message 提示信息
+     */
+    public function recordFeedView()
+    {
+        $userId = $this->auth->id;
+        if (!$userId) {
+            $this->error('请先登录');
+        }
+
+        $service = new AdIncomeService();
+        $result = $service->recordFeedAdView($userId);
+
+        if (!$result['success']) {
+            $this->error($result['message']);
+        }
+
+        $this->writeAdBackLog('[RecordFeedView] userId=' . $userId . ' reward_pending=' . ($result['reward_pending'] ? '1' : '0'));
+
+        if ($result['reward_pending']) {
+            // 奖励已入队列，异步发放中
+            $this->success($result['message'], [
+                'view_count'     => $result['view_count'],
+                'threshold'      => $result['threshold'],
+                'reward_pending' => true,
+                'estimated_coin' => $result['estimated_coin'],
+                'message'        => $result['message'],
+            ]);
+        } else {
+            $this->success($result['message'], [
+                'view_count'     => $result['view_count'],
+                'threshold'      => $result['threshold'],
+                'reward_pending' => false,
+                'estimated_coin' => $result['estimated_coin'],
+                'message'        => $result['message'],
+            ]);
+        }
+    }
+
+    /**
      * 领取待释放金币
      *
      * 用户观看激励视频后调用，将 ad_freeze_balance 转入 balance
