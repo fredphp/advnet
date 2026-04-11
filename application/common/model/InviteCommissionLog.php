@@ -78,50 +78,6 @@ class InviteCommissionLog extends Model
     }
     
     /**
-     * 结算分佣
-     * @return bool
-     */
-    public function settle()
-    {
-        if ($this->status != self::STATUS_PENDING) {
-            return false;
-        }
-        
-        Db::startTrans();
-        try {
-            // 更新状态
-            $this->status = self::STATUS_SETTLED;
-            $this->settle_time = time();
-            $this->save();
-            
-            // 发放金币
-            if ($this->coin_amount > 0) {
-                $coinService = new \app\common\library\CoinService();
-                $coinService->addCoin(
-                    $this->parent_id,
-                    $this->coin_amount,
-                    'invite_commission',
-                    [
-                        'relation_type' => $this->source_type,
-                        'relation_id' => $this->id,
-                        'description' => $this->getRemarkText(),
-                    ]
-                );
-            }
-            
-            // 更新统计
-            $this->updateStat();
-            
-            Db::commit();
-            return true;
-            
-        } catch (\Exception $e) {
-            Db::rollback();
-            return false;
-        }
-    }
-    
-    /**
      * 取消分佣
      * @param string $reason 取消原因
      * @return bool
@@ -133,24 +89,6 @@ class InviteCommissionLog extends Model
         }
         
         $this->status = self::STATUS_CANCELED;
-        $this->cancel_reason = $reason;
-        $this->save();
-        
-        return true;
-    }
-    
-    /**
-     * 冻结分佣
-     * @param string $reason 冻结原因
-     * @return bool
-     */
-    public function freeze($reason = '')
-    {
-        if ($this->status != self::STATUS_PENDING) {
-            return false;
-        }
-        
-        $this->status = self::STATUS_FROZEN;
         $this->cancel_reason = $reason;
         $this->save();
         

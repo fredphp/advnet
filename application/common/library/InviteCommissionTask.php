@@ -20,56 +20,7 @@ use app\common\model\DailyCommissionStat;
  */
 class InviteCommissionTask
 {
-    /**
-     * 结算待处理的分佣记录
-     * 
-     * ★ 已废弃：新分佣流程使用冻结模式(status=3)，在用户领取待释放金币时同步结算。
-     * 本方法仅处理旧的 STATUS_PENDING(0) 记录，用于兼容历史数据。
-     * 如果没有历史遗留的 PENDING 记录，此方法会直接返回空结果。
-     * 
-     * @param int $limit 每次处理数量
-     * @return array
-     * @deprecated 新分佣走 handleAdCallback → claimFreezeBalance → settleFrozenCommissions
-     */
-    public function settlePendingCommission($limit = 100)
-    {
-        $result = [
-            'total' => 0,
-            'success' => 0,
-            'failed' => 0,
-        ];
-        
-        // 获取延迟时间（奖励产生后延迟多少秒发放佣金，用于风控缓冲）
-        $delay = $this->getConfig('invite_commission_delay', 300);
-        $delayTime = time() - $delay;
-        
-        // 获取待结算的分佣记录
-        $logs = InviteCommissionLog::where('status', InviteCommissionLog::STATUS_PENDING)
-            ->where('createtime', '<=', $delayTime)
-            ->limit($limit)
-            ->select();
-        
-        $result['total'] = count($logs);
-        
-        if ($result['total'] == 0) {
-            return $result;
-        }
-        
-        $service = new InviteCommissionService();
-        
-        foreach ($logs as $log) {
-            $settleResult = $service->settleCommission($log->id);
-            if ($settleResult['success']) {
-                $result['success']++;
-            } else {
-                $result['failed']++;
-                Log::error("分佣结算失败: ID={$log->id}, Error={$settleResult['message']}");
-            }
-        }
-        
-        return $result;
-    }
-    
+
     /**
      * 重置每日统计
      * @return array

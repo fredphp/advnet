@@ -4,7 +4,7 @@ namespace app\admin\controller\invite;
 
 use app\common\controller\Backend;
 use think\Db;
-use app\common\library\InviteCommissionService;
+use app\common\model\InviteCommissionLog;
 
 /**
  * 分佣记录管理
@@ -63,11 +63,8 @@ class Commissionlog extends Backend
     protected function getSourceTypeText($type)
     {
         $types = [
-            'withdraw' => '提现',
-            'video' => '视频观看',
-            'red_packet' => '红包',
-            'game' => '游戏',
-            'task' => '任务',
+            'ad_feed'   => '信息流广告',
+            'ad_reward' => '激励视频广告',
         ];
         return $types[$type] ?? $type;
     }
@@ -91,48 +88,6 @@ class Commissionlog extends Backend
     }
     
     /**
-     * 手动结算
-     */
-    public function settle($ids = null)
-    {
-        $row = $this->model->find($ids);
-        if (!$row) {
-            $this->error('记录不存在');
-        }
-        
-        if ($row->status != 0) {
-            $this->error('该记录已处理');
-        }
-        
-        $service = new InviteCommissionService();
-        $result = $service->settleCommission($ids);
-        
-        if ($result['success']) {
-            $this->success('结算成功');
-        } else {
-            $this->error($result['message']);
-        }
-    }
-    
-    /**
-     * 批量结算
-     */
-    public function batchSettle()
-    {
-        $ids = $this->request->post('ids');
-        if (empty($ids)) {
-            $this->error('请选择要结算的记录');
-        }
-        
-        $ids = explode(',', $ids);
-        
-        $service = new InviteCommissionService();
-        $result = $service->batchSettleCommission($ids);
-        
-        $this->success("结算完成: 成功{$result['success']}条, 失败{$result['failed']}条");
-    }
-    
-    /**
      * 取消分佣
      */
     public function cancel($ids = null)
@@ -141,36 +96,17 @@ class Commissionlog extends Backend
         if (!$row) {
             $this->error('记录不存在');
         }
-        
-        if ($row->status == 1) {
+
+        if ($row->status == InviteCommissionLog::STATUS_SETTLED) {
             $this->error('已结算的记录不能取消');
         }
-        
+
         $reason = $this->request->post('reason', '管理员取消');
-        
+
         if ($row->cancel($reason)) {
             $this->success('取消成功');
         } else {
             $this->error('取消失败');
-        }
-    }
-    
-    /**
-     * 冻结分佣
-     */
-    public function freeze($ids = null)
-    {
-        $row = $this->model->find($ids);
-        if (!$row) {
-            $this->error('记录不存在');
-        }
-        
-        $reason = $this->request->post('reason', '管理员冻结');
-        
-        if ($row->freeze($reason)) {
-            $this->success('冻结成功');
-        } else {
-            $this->error('冻结失败');
         }
     }
     
