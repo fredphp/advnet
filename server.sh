@@ -2,8 +2,7 @@
 # ============================================================================
 # 马上赚 (AdNetwork) 一键启动服务脚本
 # ============================================================================
-# 用途: 启动所有必要的服务（Web服务、队列监听、定时任务）
-# 注意: websocket 和 autopush 服务暂未启用，不在此脚本中
+# 用途: 启动所有必要的服务（Web服务、队列监听、定时任务、常驻进程）
 # 使用: chmod +x server.sh && ./server.sh [start|stop|restart|status]
 # ============================================================================
 
@@ -31,9 +30,13 @@ mkdir -p "$PID_DIR"
 # 各服务日志文件
 QUEUE_LOG="$LOG_DIR/queue.log"
 CRON_WRAPPER_LOG="$LOG_DIR/cron_wrapper.log"
+FEED_REWARD_LOG="$LOG_DIR/feed_reward.log"
 
 # 服务端口
 WEB_PORT="${WEB_PORT:-8080}"
+
+# 信息流广告奖励结算间隔（秒）
+FEED_REWARD_INTERVAL=5
 
 # 颜色定义
 RED='\033[0;31m'
@@ -189,6 +192,49 @@ stop_queue() {
     fi
 }
 
+# ==================== 信息流广告奖励异步结算（常驻进程） ====================
+# crontab 最小粒度为1分钟，无法满足5秒执行需求，使用 while+sleep 常驻进程
+
+start_feed_reward() {
+    local pid_file="$PID_DIR/feed_reward.pid"
+    if [ -f "$pid_file" ] && kill -0 "$(cat "$pid_file")" 2>/dev/null; then
+        log_warn "信息流广告奖励结算已在运行 (PID: $(cat "$pid_file"))"
+        return
+    fi
+    log_info "启动信息流广告奖励异步结算 (每${FEED_REWARD_INTERVAL}秒)..."
+    cd "$PROJECT_DIR"
+
+    # 常驻进程：while 循环 + sleep，每次执行 settle_feed
+    nohup bash -c "while true; do sleep ${FEED_REWARD_INTERVAL}; cd ${PROJECT_DIR} && ${PHP_BIN} think ad:reward --action=settle_feed --limit=50 >> ${FEED_REWARD_LOG} 2>&1; done" \
+        > /dev/null 2>&1 &
+    echo $! > "$pid_file"
+    sleep 1
+    if kill -0 "$(cat "$pid_file")" 2>/dev/null; then
+        log_info "信息流广告奖励结算启动成功 (PID: $(cat "$pid_file"), 间隔: ${FEED_REWARD_INTERVAL}s)"
+    else
+        log_error "信息流广告奖励结算启动失败，查看日志: $FEED_REWARD_LOG"
+        rm -f "$pid_file"
+    fi
+}
+
+stop_feed_reward() {
+    local pid_file="$PID_DIR/feed_reward.pid"
+    if [ -f "$pid_file" ]; then
+        local pid=$(cat "$pid_file")
+        if kill -0 "$pid" 2>/dev/null; then
+            # 杀掉 bash 子进程及其所有子进程
+            pkill -P "$pid" 2>/dev/null || true
+            kill "$pid" 2>/dev/null
+            sleep 1
+            kill -9 "$pid" 2>/dev/null || true
+            log_info "信息流广告奖励结算已停止 (PID: $pid)"
+        fi
+        rm -f "$pid_file"
+    else
+        log_info "信息流广告奖励结算未运行"
+    fi
+}
+
 # ==================== 定时任务管理 ====================
 
 CRON_TAG="advnet_cron"
@@ -201,8 +247,8 @@ generate_crontab() {
 # 由 server.sh 自动生成和管理，请勿手动编辑
 # ============================================================================
 
-# ─── 邀请分佣结算（每5分钟）───
-*/5 * * * * cd __PROJECT_DIR__ && __PHP_BIN__ think invite:commission --action=settle --limit=100 >> __LOG_DIR__/cron_settle.log 2>&1
+# ─── 信息流广告奖励异步结算（每5秒，常驻进程，非cron）───
+# 由 start/stop 控制，见 start_feed_reward / stop_feed_reward
 
 # ─── 每日统计重置（每天0点）───
 0 0 * * * cd __PROJECT_DIR__ && __PHP_BIN__ think invite:commission --action=daily >> __LOG_DIR__/cron_daily.log 2>&1
@@ -216,7 +262,10 @@ generate_crontab() {
 # ─── 分佣汇总统计（每天2点）───
 0 2 * * * cd __PROJECT_DIR__ && __PHP_BIN__ think invite:commission --action=summary >> __LOG_DIR__/cron_summary.log 2>&1
 
-# ─── 冻结分佣处理（每天3点）───
+# ─── 周期统计更新（每天0:30）───
+30 0 * * * cd __PROJECT_DIR__ && __PHP_BIN__ think invite:commission --action=period >> __LOG_DIR__/cron_period.log 2>&1
+
+# ─── 冻结分佣检查（每天3点，仅告警）───
 0 3 * * * cd __PROJECT_DIR__ && __PHP_BIN__ think invite:commission --action=frozen >> __LOG_DIR__/cron_frozen.log 2>&1
 
 # ─── 过期记录清理（每周日4点）───
@@ -245,7 +294,7 @@ install_crontab() {
     log_info "配置定时任务..."
 
     # 先移除旧的定时任务
-    crontab -l 2>/dev/null | grep -v "$CRON_TAG" | grep -v "think invite:commission" | grep -v "think ad:settle" | grep -v "think split:create-tables" | grep -v "think data:migrate" > /tmp/advnet_cron_backup_${USER}.txt 2>/dev/null || true
+    crontab -l 2>/dev/null | grep -v "$CRON_TAG" | grep -v "think invite:commission" | grep -v "think ad:settle" | grep -v "think ad:reward" | grep -v "think split:create-tables" | grep -v "think data:migrate" > /tmp/advnet_cron_backup_${USER}.txt 2>/dev/null || true
 
     # 生成新的定时任务
     generate_crontab
@@ -271,7 +320,7 @@ install_crontab() {
 
 uninstall_crontab() {
     log_info "移除定时任务..."
-    crontab -l 2>/dev/null | grep -v "think invite:commission" | grep -v "think ad:settle" | grep -v "think split:create-tables" | grep -v "think data:migrate" | crontab - 2>/dev/null || true
+    crontab -l 2>/dev/null | grep -v "think invite:commission" | grep -v "think ad:settle" | grep -v "think ad:reward" | grep -v "think split:create-tables" | grep -v "think data:migrate" | crontab - 2>/dev/null || true
     rm -f "$CRON_FILE"
     log_info "定时任务已移除"
 }
@@ -305,7 +354,10 @@ do_start() {
     # 2. 启动队列监听
     start_queue
 
-    # 3. 安装定时任务
+    # 3. 启动信息流广告奖励异步结算（常驻进程，每5秒）
+    start_feed_reward
+
+    # 4. 安装定时任务
     install_crontab
 
     echo ""
@@ -316,6 +368,7 @@ do_start() {
     echo "  后台管理:         http://localhost:$WEB_PORT/admin"
     echo "  API 接口:         http://localhost:$WEB_PORT/api"
     echo "  队列监听:         运行中"
+    echo "  广告奖励结算:     运行中 (每${FEED_REWARD_INTERVAL}秒)"
     echo "  定时任务:         已配置"
     echo ""
     echo -e "${YELLOW}注意: 生产环境请使用 Nginx + PHP-FPM 部署 Web 服务${NC}"
@@ -330,6 +383,7 @@ do_stop() {
 
     stop_web
     stop_queue
+    stop_feed_reward
     uninstall_crontab
 
     echo ""
@@ -362,8 +416,16 @@ do_status() {
         echo -e "  队列监听:         ${RED}未运行${NC}"
     fi
 
+    # 信息流广告奖励结算状态
+    local feed_pid_file="$PID_DIR/feed_reward.pid"
+    if [ -f "$feed_pid_file" ] && kill -0 "$(cat "$feed_pid_file")" 2>/dev/null; then
+        echo -e "  广告奖励结算:     ${GREEN}运行中${NC} (PID: $(cat "$feed_pid_file"), 间隔: ${FEED_REWARD_INTERVAL}s)"
+    else
+        echo -e "  广告奖励结算:     ${RED}未运行${NC}"
+    fi
+
     # 定时任务状态
-    local cron_count=$(crontab -l 2>/dev/null | grep "think invite:commission\|think ad:settle\|think split:create-tables\|think data:migrate" | wc -l)
+    local cron_count=$(crontab -l 2>/dev/null | grep "think invite:commission\|think ad:settle\|think ad:reward\|think split:create-tables\|think data:migrate" | wc -l)
     if [ "$cron_count" -gt 0 ]; then
         echo -e "  定时任务:         ${GREEN}已配置${NC} ($cron_count 条任务)"
     else
@@ -379,15 +441,16 @@ show_help() {
     echo "用法: $0 [命令]"
     echo ""
     echo "命令:"
-    echo "  start     启动所有服务（Web、队列、定时任务）"
+    echo "  start     启动所有服务（Web、队列、广告奖励结算、定时任务）"
     echo "  stop      停止所有服务"
     echo "  restart   重启所有服务"
     echo "  status    查看所有服务状态"
     echo "  help      显示帮助信息"
     echo ""
     echo "环境变量:"
-    echo "  PHP_BIN   指定 PHP 可执行文件路径 (默认: 自动检测)"
-    echo "  WEB_PORT  指定 Web 开发服务器端口 (默认: 8080)"
+    echo "  PHP_BIN              指定 PHP 可执行文件路径 (默认: 自动检测)"
+    echo "  WEB_PORT             指定 Web 开发服务器端口 (默认: 8080)"
+    echo "  FEED_REWARD_INTERVAL 信息流广告奖励结算间隔秒数 (默认: 5)"
     echo ""
     echo "示例:"
     echo "  $0 start              # 启动所有服务"
@@ -395,16 +458,23 @@ show_help() {
     echo "  PHP_BIN=/usr/bin/php7.4 $0 start  # 指定 PHP 版本"
     echo "  WEB_PORT=9000 $0 start            # 指定端口"
     echo ""
-    echo "定时任务说明:"
+    echo "常驻进程:"
+    echo "  ┌──────────────────┬────────┬──────────────────────────────────────────┐"
+    echo "  │ 服务             │ 频率   │ 说明                                     │"
+    echo "  ├──────────────────┼────────┼──────────────────────────────────────────┤"
+    echo "  │ 广告奖励结算     │ 每5秒  │ php think ad:reward --action=settle_feed │"
+    echo "  └──────────────────┴────────┴──────────────────────────────────────────┘"
+    echo ""
+    echo "定时任务:"
     echo "  ┌──────────────┬──────────┬──────────────────────────────────────┐"
     echo "  │ 任务         │ 频率     │ 说明                                 │"
     echo "  ├──────────────┼──────────┼──────────────────────────────────────┤"
-    echo "  │ 分佣结算     │ 每5分钟  │ php think invite:commission settle   │"
     echo "  │ 每日统计重置 │ 每天0点  │ php think invite:commission daily    │"
     echo "  │ 每周统计重置 │ 每周一0点│ php think invite:commission weekly   │"
     echo "  │ 每月统计重置 │ 每月1号  │ php think invite:commission monthly  │"
     echo "  │ 分佣汇总     │ 每天2点  │ php think invite:commission summary  │"
-    echo "  │ 冻结分佣     │ 每天3点  │ php think invite:commission frozen   │"
+    echo "  │ 周期统计     │ 每天0:30 │ php think invite:commission period   │"
+    echo "  │ 冻结分佣检查 │ 每天3点  │ php think invite:commission frozen   │"
     echo "  │ 记录清理     │ 每周日4点│ php think invite:commission clean    │"
     echo "  │ 广告结算     │ 每30分钟 │ php think ad:settle settle           │"
     echo "  │ 过期红包     │ 每小时   │ php think ad:settle expire           │"
