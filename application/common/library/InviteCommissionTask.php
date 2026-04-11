@@ -11,6 +11,11 @@ use app\common\model\DailyCommissionStat;
 
 /**
  * 邀请分佣定时任务
+ * 
+ * 分佣流程说明：
+ * 1. 用户获取奖励时，CoinService::addCoin() 自动计算分佣并从奖励中扣除
+ * 2. 分佣记录写入 invite_commission_log（status=0 待结算）
+ * 3. 本定时任务定期结算待处理的分佣记录，将金币发放到上级账户
  */
 class InviteCommissionTask
 {
@@ -27,7 +32,7 @@ class InviteCommissionTask
             'failed' => 0,
         ];
         
-        // 获取延迟时间（提现成功后延迟多少秒发放佣金）
+        // 获取延迟时间（奖励产生后延迟多少秒发放佣金，用于风控缓冲）
         $delay = $this->getConfig('invite_commission_delay', 300);
         $delayTime = time() - $delay;
         

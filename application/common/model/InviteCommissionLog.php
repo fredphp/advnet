@@ -179,8 +179,20 @@ class InviteCommissionLog extends Model
         $typeNames = [
             'withdraw' => '提现',
             'video' => '视频',
+            'video_watch' => '视频',
+            'video_share' => '视频',
             'red_packet' => '红包',
+            'red_packet_grab' => '红包',
+            'red_packet_click' => '红包',
+            'ad_red_packet' => '红包',
             'game' => '游戏',
+            'game_reward' => '游戏',
+            'sign_in' => '签到',
+            'sign_fillup_reward' => '签到',
+            'task_reward' => '任务',
+            'freeze_balance_claim' => '领取金币',
+            'freeze_balance_claim_feed' => '领取金币',
+            'freeze_balance_claim_reward' => '领取金币',
         ];
         
         $typeName = $typeNames[$this->source_type] ?? $this->source_type;

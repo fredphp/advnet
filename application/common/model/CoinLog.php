@@ -37,6 +37,7 @@ class CoinLog extends Model
         'invite_commission' => '邀请佣金',
         'commission_level1' => '一级佣金',
         'commission_level2' => '二级佣金',
+        'commission_deduct' => '分佣扣除',
         'red_packet' => '红包奖励',
         'red_packet_grab' => '抢红包奖励',
         'red_packet_click' => '红包点击奖励',

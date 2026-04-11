@@ -397,47 +397,6 @@ class VideoRewardService
     }
     
     /**
-     * 处理邀请佣金
-     */
-    protected function processInviteCommission($userId, $rewardCoin, $videoId)
-    {
-        $inviteRelation = Db::name('invite_relation')->where('user_id', $userId)->find();
-        
-        if (!$inviteRelation) {
-            return;
-        }
-        
-        $level1Rate = floatval($this->getConfig('level1_watch_commission', 0.01));
-        $level2Rate = floatval($this->getConfig('level2_watch_commission', 0.005));
-        
-        $coinService = new CoinService();
-        
-        // 一级上级佣金
-        if ($inviteRelation['parent_id'] > 0 && $level1Rate > 0) {
-            $commission = round($rewardCoin * $level1Rate, 2);
-            if ($commission > 0) {
-                $coinService->addCoin($inviteRelation['parent_id'], $commission, 'commission_level1', [
-                    'relation_type' => 'video',
-                    'relation_id' => $videoId,
-                    'description' => '下级观看视频佣金',
-                ]);
-            }
-        }
-        
-        // 二级上级佣金
-        if ($inviteRelation['grandparent_id'] > 0 && $level2Rate > 0) {
-            $commission = round($rewardCoin * $level2Rate, 2);
-            if ($commission > 0) {
-                $coinService->addCoin($inviteRelation['grandparent_id'], $commission, 'commission_level2', [
-                    'relation_type' => 'video',
-                    'relation_id' => $videoId,
-                    'description' => '间接下级观看视频佣金',
-                ]);
-            }
-        }
-    }
-    
-    /**
      * 创建观看会话
      */
     protected function createWatchSession($userId, $videoId, $sessionId, $data)

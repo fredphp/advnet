@@ -95,14 +95,20 @@ class UserCommissionStat extends Model
                 $this->withdraw_count = $this->withdraw_count + 1;
                 break;
             case 'video':
+            case 'video_watch':
+            case 'video_share':
                 $this->video_commission = $this->video_commission + $log->commission_amount;
                 $this->video_count = $this->video_count + 1;
                 break;
             case 'red_packet':
+            case 'red_packet_grab':
+            case 'red_packet_click':
+            case 'ad_red_packet':
                 $this->red_packet_commission = $this->red_packet_commission + $log->commission_amount;
                 $this->red_packet_count = $this->red_packet_count + 1;
                 break;
             case 'game':
+            case 'game_reward':
                 $this->game_commission = $this->game_commission + $log->commission_amount;
                 $this->game_count = $this->game_count + 1;
                 break;

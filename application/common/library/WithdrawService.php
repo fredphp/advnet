@@ -701,9 +701,6 @@ class WithdrawService
                 // 更新用户提现统计
                 $this->updateUserWithdrawStat($order);
                 
-                // 触发邀请分佣
-                $this->triggerInviteCommission($order);
-                
                 $result['success'] = true;
                 $result['message'] = '打款成功';
                 $result['data'] = $transferResult['data'];
@@ -1356,24 +1353,6 @@ class WithdrawService
                 'last_withdraw_time' => time(),
                 'updatetime' => time(),
             ]);
-        }
-    }
-    
-    /**
-     * 触发邀请分佣
-     */
-    protected function triggerInviteCommission($order)
-    {
-        try {
-            $service = new InviteCommissionService();
-            $service->triggerWithdrawCommission(
-                $order->user_id,
-                $order->cash_amount,
-                $order->order_no,
-                $order->id
-            );
-        } catch (\Exception $e) {
-            Log::error('触发提现分佣失败: ' . $e->getMessage());
         }
     }
     

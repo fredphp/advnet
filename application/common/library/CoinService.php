@@ -6,7 +6,6 @@ use think\Db;
 use think\Log;
 use think\Exception;
 use think\Cache;
-use app\common\model\CoinAccount;
 use app\common\model\CoinLog;
 
 /**
@@ -22,6 +21,9 @@ class CoinService
     // 缓存前缀
     const CACHE_PREFIX = 'coin:';
     const LOCK_PREFIX = 'lock:coin:';
+    
+    // 金币转换比例：10000金币 = 1元
+    const COIN_RATE = 10000;
     
     /**
      * @var array 配置缓存
@@ -163,7 +165,7 @@ class CoinService
      * @param int $userId 用户ID
      * @param int $amount 金币数量
      * @param string $type 类型
-     * @param string $relationType 关联类型
+     * @param string|array $relationType 关联类型（兼容数组和字符串两种传参方式）
      * @param int $relationId 关联ID
      * @param string $description 描述
      * @return array
@@ -177,9 +179,16 @@ class CoinService
         ];
         
         $userId = (int)$userId;
-        $amount = (int)$amount;
+        $originalAmount = (int)$amount;
         
-        if ($amount <= 0) {
+        // 兼容处理：当$relationType为数组时，从中提取参数
+        if (is_array($relationType)) {
+            $relationId = (int)($relationType['relation_id'] ?? $relationId);
+            $description = (string)($relationType['description'] ?? $description);
+            $relationType = (string)($relationType['relation_type'] ?? '');
+        }
+        
+        if ($originalAmount <= 0) {
             $result['message'] = '金币数量必须大于0';
             return $result;
         }
@@ -204,7 +213,7 @@ class CoinService
             }
             
             $balanceBefore = (int)$account['balance'];
-            $balanceAfter = $balanceBefore + $amount;
+            $balanceAfter = $balanceBefore + $originalAmount;
             
             // 使用乐观锁更新
             $affected = Db::name('coin_account')
@@ -212,7 +221,7 @@ class CoinService
                 ->where('version', $account['version'])
                 ->update([
                     'balance' => $balanceAfter,
-                    'total_earn' => (int)$account['total_earn'] + $amount,
+                    'total_earn' => (int)$account['total_earn'] + $originalAmount,
                     'version' => (int)$account['version'] + 1,
                     'updatetime' => time(),
                 ]);
@@ -224,7 +233,7 @@ class CoinService
             // 记录流水
             $this->addLog($userId, [
                 'type' => $type,
-                'amount' => $amount,
+                'amount' => $originalAmount,
                 'balance_before' => $balanceBefore,
                 'balance_after' => $balanceAfter,
                 'relation_type' => $relationType,

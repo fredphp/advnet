@@ -12,6 +12,8 @@ use app\common\model\AdIncomeLogSplit;
 use app\common\model\AdRedPacket;
 use app\common\model\AdRedPacketSplit;
 use app\common\model\CoinLog;
+use app\common\model\InviteCommissionLog;
+use app\common\model\UserCommissionStat;
 
 /**
  * 广告收益服务类
@@ -167,6 +169,11 @@ class AdIncomeService
             $platformCoin = (int)round($rewardCoin * $platformRate);
             $userCoin = $rewardCoin - $platformCoin;
 
+            // ★ 计算广告收益分佣（从用户广告冻结金币中扣除，向下取整）
+            $commissionResult = $this->calculateAdCommission($userId, $userCoin);
+            $commissionDeduct = $commissionResult['total_deduct'];
+            $userCoin = $userCoin - $commissionDeduct;
+
             if ($userCoin <= 0) {
                 Db::rollback();
                 $result['message'] = '用户获得金币为0';
@@ -254,6 +261,17 @@ class AdIncomeService
                     ->update([
                         'today_earn' => Db::raw('today_earn + ' . $userCoin),
                     ]);
+            }
+
+            // ★ 创建冻结分佣记录（在同一事务内）
+            if ($commissionDeduct > 0 && !empty($commissionResult['commissions'])) {
+                $this->createFrozenCommissionLogs(
+                    $commissionResult['commissions'],
+                    $userId,
+                    $adType,
+                    $userCoin + $commissionDeduct, // 分佣前的原始金币
+                    $logId
+                );
             }
 
             Db::commit();
@@ -1165,6 +1183,17 @@ class AdIncomeService
                 Log::warning("ClaimFreezeBalance: 标记通知红包失败: " . $e->getMessage());
             }
 
+            // ★ 收集本次待释放的广告收益记录ID，用于精确关联分佣解冻
+            $releasedAdLogIds = [];
+            try {
+                $pendingRecords = AdIncomeLogSplit::getPendingRecords($userId);
+                foreach ($pendingRecords as $rec) {
+                    $releasedAdLogIds[] = (int)$rec['id'];
+                }
+            } catch (\Throwable $e) {
+                Log::warning("ClaimFreezeBalance: 收集待释放记录ID失败: " . $e->getMessage());
+            }
+
             try {
                 $releasedCount = AdIncomeLogSplit::batchUpdateStatus(
                     $userId,
@@ -1177,6 +1206,9 @@ class AdIncomeService
             } catch (\Throwable $e) {
                 Log::warning("ClaimFreezeBalance: 标记收益记录RELEASED失败: " . $e->getMessage());
             }
+
+            // ★ 解冻并结算分佣（精确关联本次释放的广告收益记录）
+            $this->settleFrozenCommissions($userId, $releasedAdLogIds);
 
             // ★ 所有操作在同一个事务中，要么全部成功要么全部回滚
             Db::commit();
@@ -1198,6 +1230,257 @@ class AdIncomeService
         }
 
         return $result;
+    }
+
+    /**
+     * 计算广告收益分佣金额
+     *
+     * 分佣规则：
+     * - 一级分佣 = floor(金币 × 一级分佣比例)
+     * - 二级分佣 = floor(金币 × 二级分佣比例)
+     * - 用户实际获得 = 金币 - 一级分佣 - 二级分佣
+     *
+     * @param int $userId 用户ID
+     * @param int $amount 广告冻结金币数量（平台抽成后）
+     * @return array ['total_deduct' => int, 'commissions' => array]
+     */
+    protected function calculateAdCommission($userId, $amount)
+    {
+        $result = [
+            'total_deduct' => 0,
+            'commissions' => [],
+        ];
+
+        // 检查分佣功能是否开启
+        try {
+            $enabled = Db::name('config')->where('name', 'commission_enabled')->value('value');
+            if ($enabled != 1) {
+                return $result;
+            }
+        } catch (\Exception $e) {
+            return $result;
+        }
+
+        // 获取用户邀请关系
+        try {
+            $relation = Db::name('invite_relation')->where('user_id', $userId)->find();
+        } catch (\Exception $e) {
+            return $result;
+        }
+
+        if (!$relation) {
+            return $result;
+        }
+
+        // 获取分佣比例配置
+        $level1Rate = floatval(Db::name('config')->where('name', 'level1_commission_rate')->value('value') ?: 0.10);
+        $level2Rate = floatval(Db::name('config')->where('name', 'level2_commission_rate')->value('value') ?: 0.05);
+
+        // 一级分佣（向下取整）
+        if (!empty($relation['parent_id']) && $level1Rate > 0) {
+            $level1Coin = intval(floor($amount * $level1Rate));
+            if ($level1Coin > 0) {
+                $result['commissions'][] = [
+                    'parent_id' => (int)$relation['parent_id'],
+                    'level' => 1,
+                    'rate' => $level1Rate,
+                    'coin_amount' => $level1Coin,
+                ];
+                $result['total_deduct'] += $level1Coin;
+            }
+        }
+
+        // 二级分佣（向下取整）
+        if (!empty($relation['grandparent_id']) && $level2Rate > 0) {
+            $level2Coin = intval(floor($amount * $level2Rate));
+            if ($level2Coin > 0) {
+                $result['commissions'][] = [
+                    'parent_id' => (int)$relation['grandparent_id'],
+                    'level' => 2,
+                    'rate' => $level2Rate,
+                    'coin_amount' => $level2Coin,
+                ];
+                $result['total_deduct'] += $level2Coin;
+            }
+        }
+
+        return $result;
+    }
+
+    /**
+     * 创建冻结分佣记录
+     *
+     * @param array $commissions 分佣信息数组
+     * @param int $userId 获得奖励的用户ID
+     * @param string $sourceType 广告类型 (feed/reward)
+     * @param int $sourceAmount 分佣前的原始冻结金币数
+     * @param int $sourceId 关联ID（ad_income_log ID）
+     */
+    protected function createFrozenCommissionLogs($commissions, $userId, $sourceType, $sourceAmount, $sourceId = 0)
+    {
+        $now = time();
+        $coinRate = SystemConfigService::getCoinRate();
+
+        foreach ($commissions as $commission) {
+            $orderNo = 'CM' . date('YmdHis') . str_pad(mt_rand(0, 9999), 4, '0', STR_PAD_LEFT);
+            $commissionAmountYuan = $coinRate > 0 ? round($commission['coin_amount'] / $coinRate, 4) : 0;
+
+            Db::name('invite_commission_log')->insert([
+                'order_no' => $orderNo,
+                'source_type' => 'ad_' . $sourceType,
+                'source_id' => (int)$sourceId,
+                'source_order_no' => '',
+                'user_id' => $userId,
+                'parent_id' => $commission['parent_id'],
+                'level' => $commission['level'],
+                'source_amount' => $coinRate > 0 ? round($sourceAmount / $coinRate, 4) : 0,
+                'commission_rate' => $commission['rate'],
+                'commission_fixed' => 0,
+                'commission_amount' => $commissionAmountYuan,
+                'coin_amount' => $commission['coin_amount'],
+                'status' => InviteCommissionLog::STATUS_FROZEN, // 3 = 冻结状态
+                'remark' => $commission['level'] == 1 ? '广告收益一级分佣(冻结)' : '广告收益二级分佣(冻结)',
+                'createtime' => $now,
+                'updatetime' => $now,
+            ]);
+
+            // 更新上级冻结佣金统计
+            try {
+                $stat = UserCommissionStat::getOrCreate($commission['parent_id']);
+                $stat->addFrozen($commissionAmountYuan);
+            } catch (\Exception $e) {
+                Log::error('更新分佣冻结统计失败: ' . $e->getMessage());
+            }
+        }
+    }
+
+    /**
+     * 解冻并结算用户的冻结分佣
+     *
+     * 当用户领取广告待释放金币(freeze→balance)时调用，
+     * 将该用户对应的冻结分佣记录结算，金币发放到上级的 balance
+     *
+     * @param int $userId 领取金币的用户ID
+     */
+    protected function settleFrozenCommissions($userId, $sourceIds = [])
+    {
+        // 查找该用户的冻结分佣记录
+        $query = Db::name('invite_commission_log')
+            ->where('user_id', $userId)
+            ->where('status', InviteCommissionLog::STATUS_FROZEN);
+
+        // ★ 按 source_id 精确过滤：只结算本次被释放的广告收益对应的分佣
+        if (!empty($sourceIds)) {
+            $query->whereIn('source_id', $sourceIds);
+        }
+
+        $frozenLogs = $query->select();
+
+        if (empty($frozenLogs)) {
+            return;
+        }
+
+        $now = time();
+        $coinRate = SystemConfigService::getCoinRate();
+
+        // 按上级分组汇总金币和佣金
+        $parentCoins = [];
+        $parentCommissionYuan = [];
+        $logIds = [];
+
+        foreach ($frozenLogs as $log) {
+            $parentId = (int)$log['parent_id'];
+            $coinAmount = (int)$log['coin_amount'];
+            $commissionYuan = floatval($log['commission_amount']);
+
+            $parentCoins[$parentId] = ($parentCoins[$parentId] ?? 0) + $coinAmount;
+            $parentCommissionYuan[$parentId] = ($parentCommissionYuan[$parentId] ?? 0) + $commissionYuan;
+            $logIds[] = (int)$log['id'];
+        }
+
+        // 批量更新分佣记录为已结算
+        Db::name('invite_commission_log')
+            ->whereIn('id', $logIds)
+            ->update([
+                'status' => InviteCommissionLog::STATUS_SETTLED,
+                'settle_time' => $now,
+                'updatetime' => $now,
+            ]);
+
+        // 给每位上级增加金币并更新统计
+        foreach ($parentCoins as $parentId => $totalCoin) {
+            if ($totalCoin <= 0) continue;
+
+            // 获取上级账户
+            $parentAccount = Db::name('coin_account')
+                ->where('user_id', $parentId)
+                ->lock(true)
+                ->find();
+
+            if (!$parentAccount) {
+                // 自动创建账户
+                Db::name('coin_account')->insert([
+                    'user_id' => $parentId,
+                    'balance' => $totalCoin,
+                    'frozen' => 0,
+                    'total_earn' => $totalCoin,
+                    'total_spend' => 0,
+                    'ad_freeze_balance' => 0,
+                    'total_ad_income' => 0,
+                    'version' => 1,
+                    'createtime' => $now,
+                    'updatetime' => $now,
+                ]);
+                $balanceBefore = 0;
+            } else {
+                $balanceBefore = (int)$parentAccount['balance'];
+                Db::name('coin_account')
+                    ->where('user_id', $parentId)
+                    ->where('version', $parentAccount['version'])
+                    ->update([
+                        'balance' => Db::raw('balance + ' . $totalCoin),
+                        'total_earn' => Db::raw('total_earn + ' . $totalCoin),
+                        'version' => (int)$parentAccount['version'] + 1,
+                        'updatetime' => $now,
+                    ]);
+            }
+
+            // 写入上级的 coin_log
+            $logTable = CoinLog::getOrCreateTable();
+            Db::name($logTable)->insert([
+                'user_id' => $parentId,
+                'type' => 'invite_commission',
+                'amount' => $totalCoin,
+                'balance_before' => $balanceBefore,
+                'balance_after' => $balanceBefore + $totalCoin,
+                'relation_type' => 'ad_freeze_claim',
+                'relation_id' => $userId,
+                'description' => '下级领取广告金币，分佣结算',
+                'createtime' => $now,
+                'create_date' => date('Y-m-d'),
+            ]);
+
+            // 更新上级佣金统计
+            try {
+                $stat = UserCommissionStat::getOrCreate($parentId);
+                // 减少冻结佣金
+                $commissionYuan = $parentCommissionYuan[$parentId];
+                $stat->frozen_commission = max(0, $stat->frozen_commission - $commissionYuan);
+                // 增加总佣金和今日佣金
+                $stat->total_commission = $stat->total_commission + $commissionYuan;
+                $stat->total_coin = $stat->total_coin + $totalCoin;
+                $stat->today_commission = $stat->today_commission + $commissionYuan;
+                $stat->today_coin = $stat->today_coin + $totalCoin;
+                $stat->week_commission = $stat->week_commission + $commissionYuan;
+                $stat->month_commission = $stat->month_commission + $commissionYuan;
+                $stat->save();
+                $stat->clearCache($parentId);
+            } catch (\Exception $e) {
+                Log::error('更新佣金结算统计失败 userId=' . $parentId . ': ' . $e->getMessage());
+            }
+        }
+
+        Log::info('SettleFrozenCommissions: 用户' . $userId . '结算' . count($logIds) . '条冻结分佣');
     }
 
     /**

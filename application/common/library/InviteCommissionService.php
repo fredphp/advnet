@@ -16,8 +16,12 @@ use app\common\model\User;
  * 
  * 核心功能：
  * 1. 绑定邀请关系
- * 2. 触发提现分佣
- * 3. 统计邀请人数和收益
+ * 2. 统计邀请人数和收益
+ * 
+ * 注意：分佣逻辑已迁移至 AdIncomeService::handleAdCallback() 中，
+ * 当用户观看广告获得广告待释放金币(ad_freeze_balance)时，自动计算分佣并扣除，
+ * 分佣记录写入 invite_commission_log（status=3 冻结状态），
+ * 当用户领取待释放金币(claimFreezeBalance)时，冻结分佣同步解冻结算发放到上级。
  */
 class InviteCommissionService
 {
@@ -136,153 +140,6 @@ class InviteCommissionService
         }
         
         return $result;
-    }
-    
-    /**
-     * 提现触发分佣（唯一分佣入口）
-     * @param int $userId 提现用户ID
-     * @param float $cashAmount 提现金额(元)
-     * @param string $orderNo 提现订单号
-     * @param int $withdrawId 提现记录ID
-     * @return array
-     */
-    public function triggerWithdrawCommission($userId, $cashAmount, $orderNo, $withdrawId)
-    {
-        $result = [
-            'success' => false,
-            'message' => '',
-            'data' => [],
-        ];
-        
-        // 检查是否开启分佣
-        if (!$this->isCommissionEnabled()) {
-            $result['message'] = '分佣功能未开启';
-            return $result;
-        }
-        
-        // 获取用户邀请关系
-        $relation = InviteRelation::where('user_id', $userId)->find();
-        if (!$relation) {
-            $result['message'] = '无邀请关系';
-            return $result;
-        }
-        
-        // 从 advn_config 获取分佣比例
-        $level1Rate = floatval($this->getConfig('level1_commission_rate', 0.10));
-        $level2Rate = floatval($this->getConfig('level2_commission_rate', 0.05));
-        
-        // 获取最低触发金额
-        $minAmount = floatval($this->getConfig('commission_min_amount', 0));
-        
-        if ($cashAmount < $minAmount) {
-            $result['message'] = '金额未达分佣门槛';
-            return $result;
-        }
-        
-        $commissionLogs = [];
-        
-        Db::startTrans();
-        try {
-            // 一级分佣
-            if ($relation->parent_id > 0 && $level1Rate > 0) {
-                $level1Commission = round($cashAmount * $level1Rate, 4);
-                if ($level1Commission > 0) {
-                    $log = $this->createCommissionLog([
-                        'source_type' => 'withdraw',
-                        'source_id' => $withdrawId,
-                        'source_order_no' => $orderNo,
-                        'user_id' => $userId,
-                        'parent_id' => $relation->parent_id,
-                        'level' => 1,
-                        'source_amount' => $cashAmount,
-                        'commission_rate' => $level1Rate,
-                        'commission_amount' => $level1Commission,
-                    ]);
-                    
-                    if ($log) {
-                        $commissionLogs[] = $log;
-                        UserInviteStat::incrementValidInvite($relation->parent_id);
-                    }
-                }
-            }
-            
-            // 二级分佣
-            if ($relation->grandparent_id > 0 && $level2Rate > 0) {
-                $level2Commission = round($cashAmount * $level2Rate, 4);
-                if ($level2Commission > 0) {
-                    $log = $this->createCommissionLog([
-                        'source_type' => 'withdraw',
-                        'source_id' => $withdrawId,
-                        'source_order_no' => $orderNo,
-                        'user_id' => $userId,
-                        'parent_id' => $relation->grandparent_id,
-                        'level' => 2,
-                        'source_amount' => $cashAmount,
-                        'commission_rate' => $level2Rate,
-                        'commission_amount' => $level2Commission,
-                    ]);
-                    
-                    if ($log) {
-                        $commissionLogs[] = $log;
-                        UserInviteStat::incrementValidInvite($relation->grandparent_id);
-                    }
-                }
-            }
-            
-            Db::commit();
-            
-            $result['success'] = true;
-            $result['message'] = '分佣创建成功';
-            $result['data'] = [
-                'commission_count' => count($commissionLogs),
-                'logs' => $commissionLogs,
-            ];
-            
-        } catch (\Exception $e) {
-            Db::rollback();
-            $result['message'] = '分佣创建失败: ' . $e->getMessage();
-            Log::error('分佣创建失败: ' . $e->getMessage());
-        }
-        
-        return $result;
-    }
-    
-    /**
-     * 创建分佣记录
-     */
-    protected function createCommissionLog($data)
-    {
-        // 佣金转金币
-        $coinAmount = $data['commission_amount'] * self::COIN_RATE;
-        
-        // 生成订单号
-        $orderNo = 'CM' . date('YmdHis') . str_pad(mt_rand(0, 9999), 4, '0', STR_PAD_LEFT);
-        
-        // 创建分佣记录
-        $log = new InviteCommissionLog();
-        $log->order_no = $orderNo;
-        $log->source_type = $data['source_type'];
-        $log->source_id = $data['source_id'];
-        $log->source_order_no = $data['source_order_no'];
-        $log->user_id = $data['user_id'];
-        $log->parent_id = $data['parent_id'];
-        $log->level = $data['level'];
-        $log->source_amount = $data['source_amount'];
-        $log->commission_rate = $data['commission_rate'];
-        $log->commission_fixed = 0;
-        $log->commission_amount = $data['commission_amount'];
-        $log->coin_amount = $coinAmount;
-        $log->status = 0; // 待结算
-        $log->remark = $data['level'] == 1 ? '一级分佣' : '二级分佣';
-        $log->createtime = time();
-        $log->updatetime = time();
-        $log->save();
-        
-        // 更新用户佣金统计（待结算）
-        $stat = UserCommissionStat::getOrCreate($data['parent_id']);
-        $stat->addPending($data['commission_amount']);
-        
-        return $log->toArray();
     }
     
     /**
