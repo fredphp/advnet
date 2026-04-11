@@ -220,7 +220,7 @@ class AdIncomeLogSplit extends SplitTableModel
 
     /**
      * 获取用户所有待确认(CONFIRMED)的收益记录（跨所有表）
-     * 用于 checkAndAutoSettle / settleToRedPacket
+     * 用于 checkAndAutoSettle / claimFreezeBalance
      * @param int $userId
      * @return array
      */

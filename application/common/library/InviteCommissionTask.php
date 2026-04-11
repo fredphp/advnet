@@ -98,7 +98,11 @@ class InviteCommissionTask
     
     /**
      * 更新每周/每月佣金统计
-     * 将今日佣金累加到本周/本月统计
+     *
+     * ★ 修复时序依赖：先累加 today_commission 到 week/month，再清零 today。
+     * 这样无论 updatePeriodStats 和 resetDailyStats 执行顺序如何，都不会重复累加。
+     * 原逻辑依赖 "resetDaily(00:00) 先于 updatePeriod(00:30)"，一旦 resetDaily 失败或延迟就会重复。
+     *
      * @return array
      */
     public function updatePeriodStats()
@@ -106,23 +110,36 @@ class InviteCommissionTask
         $result = [
             'week' => 0,
             'month' => 0,
+            'reset_today' => 0,
         ];
         
         try {
-            // 更新本周佣金
+            // 步骤1：将 today_commission 累加到 week/month（原子操作）
             $result['week'] = Db::name('user_commission_stat')
                 ->where('id', '>', 0)
+                ->where('today_commission', '>', 0)  // ★ 只更新有今日数据的用户
                 ->update([
-                    'week_commission' => Db::raw('week_commission + today_commission'),
+                    'week_commission'   => Db::raw('week_commission + today_commission'),
+                    'month_commission'  => Db::raw('month_commission + today_commission'),
                     'updatetime' => time(),
                 ]);
             
-            // 更新本月佣金
             $result['month'] = Db::name('user_commission_stat')
                 ->where('id', '>', 0)
+                ->where('today_coin', '>', 0)
                 ->update([
-                    'month_commission' => Db::raw('month_commission + today_commission'),
+                    'week_coin'   => Db::raw('week_coin + today_coin'),
+                    'month_coin'  => Db::raw('month_coin + today_coin'),
                     'updatetime' => time(),
+                ]);
+            
+            // 步骤2：清零 today_commission（紧接在累加之后，同一执行周期内）
+            $result['reset_today'] = Db::name('user_commission_stat')
+                ->where('id', '>', 0)
+                ->update([
+                    'today_commission' => 0,
+                    'today_coin'       => 0,
+                    'updatetime'       => time(),
                 ]);
             
         } catch (\Exception $e) {

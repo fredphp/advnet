@@ -103,10 +103,11 @@ class Commissionlog extends Backend
 
         $reason = $this->request->post('reason', '管理员取消');
 
-        if ($row->cancel($reason)) {
-            $this->success('取消成功');
+        $result = $row->cancel($reason);
+        if ($result['success']) {
+            $this->success($result['message']);
         } else {
-            $this->error('取消失败');
+            $this->error($result['message']);
         }
     }
     

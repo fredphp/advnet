@@ -79,20 +79,90 @@ class InviteCommissionLog extends Model
     
     /**
      * 取消分佣
+     *
+     * ★ 取消冻结分佣(status=3)时，退还已扣除的金币到用户的 ad_freeze_balance。
+     * 因为分佣金币在 handleAdCallback 中已从用户奖励中扣除，取消分佣必须退还。
+     *
      * @param string $reason 取消原因
-     * @return bool
+     * @return array ['success' => bool, 'message' => string]
      */
     public function cancel($reason = '')
     {
         if ($this->status == self::STATUS_SETTLED) {
-            return false; // 已结算不能取消
+            return ['success' => false, 'message' => '已结算的记录不能取消'];
         }
-        
+
+        // 已取消的不重复操作
+        if ($this->status == self::STATUS_CANCELED) {
+            return ['success' => false, 'message' => '该记录已取消'];
+        }
+
+        $coinAmount = (int)$this->coin_amount;
+
+        // ★ 冻结分佣取消时退还金币给用户（从 ad_freeze_balance 退还）
+        if ($this->status == self::STATUS_FROZEN && $coinAmount > 0) {
+            try {
+                Db::startTrans();
+
+                // 更新分佣记录状态
+                $this->status = self::STATUS_CANCELED;
+                $this->cancel_reason = $reason;
+                $this->updatetime = time();
+                $this->save();
+
+                // 退还金币到用户的 ad_freeze_balance（使用乐观锁）
+                $account = Db::name('coin_account')
+                    ->where('user_id', $this->user_id)
+                    ->lock(true)
+                    ->find();
+
+                if ($account) {
+                    $affected = Db::name('coin_account')
+                        ->where('user_id', $this->user_id)
+                        ->where('version', $account['version'])
+                        ->update([
+                            'ad_freeze_balance' => Db::raw('ad_freeze_balance + ' . $coinAmount),
+                            'version' => (int)$account['version'] + 1,
+                            'updatetime' => time(),
+                        ]);
+
+                    if ($affected === 0) {
+                        Db::rollback();
+                        return ['success' => false, 'message' => '退还金币失败（账户版本冲突），请重试'];
+                    }
+
+                    // 写入退还流水
+                    $logTable = \app\common\model\CoinLog::getOrCreateTable();
+                    Db::name($logTable)->insert([
+                        'user_id'        => $this->user_id,
+                        'type'           => 'commission_refund',
+                        'amount'         => $coinAmount,
+                        'balance_before' => (int)$account['ad_freeze_balance'],
+                        'balance_after'  => (int)$account['ad_freeze_balance'] + $coinAmount,
+                        'relation_type'  => 'commission_cancel',
+                        'relation_id'    => $this->id,
+                        'description'    => '分佣取消退还' . $coinAmount . '金币（' . ($reason ?: '管理员取消') . '）',
+                        'createtime'     => time(),
+                        'create_date'    => date('Y-m-d'),
+                    ]);
+                }
+
+                Db::commit();
+                return ['success' => true, 'message' => '取消成功，已退还' . $coinAmount . '金币给用户'];
+
+            } catch (\Exception $e) {
+                Db::rollback();
+                return ['success' => false, 'message' => '取消失败: ' . $e->getMessage()];
+            }
+        }
+
+        // 非冻结状态（如 STATUS_PENDING），直接取消不退钱
         $this->status = self::STATUS_CANCELED;
         $this->cancel_reason = $reason;
+        $this->updatetime = time();
         $this->save();
-        
-        return true;
+
+        return ['success' => true, 'message' => '取消成功'];
     }
     
     /**

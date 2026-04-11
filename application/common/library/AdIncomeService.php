@@ -227,41 +227,30 @@ class AdIncomeService
                 $account = $this->createCoinAccount($userId);
             }
 
-            // 使用乐观锁更新
+            // ★ 4+5. 合并为单条原子 UPDATE（乐观锁）
+            // 同时更新 ad_freeze_balance、total_ad_income、today_earn，避免两次 UPDATE 之间的竞态条件
+            $today = date('Y-m-d');
+            $todayEarnExpr = ($account['today_earn_date'] != $today)
+                ? Db::raw('CASE WHEN today_earn_date = \'' . $today . '\' THEN today_earn + ' . $userCoin . ' ELSE ' . $userCoin . ' END')
+                : Db::raw('today_earn + ' . $userCoin);
+            $todayDateExpr = ($account['today_earn_date'] != $today)
+                ? Db::raw('CASE WHEN today_earn_date = \'' . $today . '\' THEN today_earn_date ELSE \'' . $today . '\' END')
+                : Db::raw('today_earn_date'); // 同天不更新日期字段，减少写入
+
             $affected = Db::name('coin_account')
                 ->where('user_id', $userId)
                 ->where('version', $account['version'])
                 ->update([
                     'ad_freeze_balance' => Db::raw('ad_freeze_balance + ' . $userCoin),
-                    'total_ad_income' => Db::raw('total_ad_income + ' . $rewardCoin),
-                    'version' => (int)$account['version'] + 1,
-                    'updatetime' => time(),
+                    'total_ad_income'   => Db::raw('total_ad_income + ' . $rewardCoin),
+                    'today_earn'        => $todayEarnExpr,
+                    'today_earn_date'   => $todayDateExpr,
+                    'version'           => (int)$account['version'] + 1,
+                    'updatetime'        => time(),
                 ]);
 
             if ($affected === 0) {
                 throw new Exception('账户更新失败，请重试');
-            }
-
-            // 5. 更新 today_earn（当日收益）
-            // ★ 修复竞态条件：合并到上方同一条UPDATE语句中，避免两次UPDATE之间出现竞态
-            $today = date('Y-m-d');
-            if ($account['today_earn_date'] != $today) {
-                // 跨天重置：使用 CASE WHEN 确保原子性
-                Db::name('coin_account')
-                    ->where('user_id', $userId)
-                    ->where('version', (int)$account['version'] + 1)  // 匹配上方已递增的version
-                    ->update([
-                        'today_earn' => $userCoin,
-                        'today_earn_date' => $today,
-                    ]);
-            } else {
-                // 同一天累加：使用 SQL 表达式确保原子性
-                Db::name('coin_account')
-                    ->where('user_id', $userId)
-                    ->where('version', (int)$account['version'] + 1)
-                    ->update([
-                        'today_earn' => Db::raw('today_earn + ' . $userCoin),
-                    ]);
             }
 
             // ★ 创建冻结分佣记录（在同一事务内）
@@ -294,29 +283,6 @@ class AdIncomeService
         }
 
         return $result;
-    }
-
-    /**
-     * ★ 已废弃：定时任务旧版结算（直接消费 freeze_balance 创建真实红包）
-     *
-     * 新流程使用 checkAndAutoSettle() 创建通知红包（不消费 freeze_balance）
-     * 用户通过 claimFreezeBalance() 主动领取时才消费 freeze_balance
-     *
-     * 此方法保留仅为兼容旧 cron 任务，实际不再执行任何操作。
-     *
-     * @param int $batchSize 每批处理数量
-     * @return array 处理结果（始终返回空结果）
-     * @deprecated 请使用 checkAndAutoSettle() + claimFreezeBalance() 新流程
-     */
-    public function settleToRedPacket($batchSize = 100)
-    {
-        Log::info('settleToRedPacket: 旧版批量结算已废弃，新流程使用 checkAndAutoSettle + claimFreezeBalance');
-        return [
-            'total_users' => 0,
-            'packets_created' => 0,
-            'total_coin' => 0,
-            'errors' => ['旧版批量结算已废弃，不再执行'],
-        ];
     }
 
     /**
@@ -363,7 +329,9 @@ class AdIncomeService
             $packet = AdRedPacketSplit::findById($packetId);
 
             if (!$packet) {
-                $this->error('红包不存在');
+                Db::rollback();
+                $result['message'] = '红包不存在';
+                return $result;
             }
 
             // ★ 安全校验：确保红包属于当前用户（防止越权领取他人红包）
@@ -1396,15 +1364,18 @@ class AdIncomeService
      */
     protected function settleFrozenCommissions($userId, $sourceOrderNos = [])
     {
+        // ★ 安全保护：sourceOrderNos 为空时不执行任何结算
+        // 避免因 getPendingRecords() 异常导致空数组，进而结算该用户所有冻结分佣
+        if (empty($sourceOrderNos)) {
+            Log::warning("SettleFrozenCommissions: 用户{$userId}的sourceOrderNos为空，跳过结算（可能getPendingRecords异常）");
+            return;
+        }
+
         // 查找该用户的冻结分佣记录
         $query = Db::name('invite_commission_log')
             ->where('user_id', $userId)
-            ->where('status', InviteCommissionLog::STATUS_FROZEN);
-
-        // ★ 按 source_order_no 精确过滤（跨分表唯一标识，格式 "表名:id"）
-        if (!empty($sourceOrderNos)) {
-            $query->whereIn('source_order_no', $sourceOrderNos);
-        }
+            ->where('status', InviteCommissionLog::STATUS_FROZEN)
+            ->whereIn('source_order_no', $sourceOrderNos);
 
         $frozenLogs = $query->select();
 
