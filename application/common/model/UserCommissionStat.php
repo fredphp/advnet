@@ -161,7 +161,8 @@ class UserCommissionStat extends Model
     public function addFrozen($amount)
     {
         $this->frozen_commission = $this->frozen_commission + $amount;
-        $this->pending_commission = max(0, $this->pending_commission - $amount);
+        // ★ 不再递减 pending_commission，因为新分佣流程直接创建 status=3(冻结)，
+        // 不经过 status=0(待结算)，所以 pending_commission 不会被增加
         $this->save();
     }
     

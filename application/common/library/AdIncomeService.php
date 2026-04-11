@@ -214,6 +214,7 @@ class AdIncomeService
                 throw new Exception($splitResult['message'] ?? '收益日志写入失败');
             }
             $logId = $splitResult['id'];
+            $logTable = $splitResult['table']; // 分表名（如 ad_income_log_202605）
 
             // 4. 更新 advn_coin_account：增加 ad_freeze_balance 和 total_ad_income
             $account = Db::name('coin_account')
@@ -270,7 +271,8 @@ class AdIncomeService
                     $userId,
                     $adType,
                     $userCoin + $commissionDeduct, // 分佣前的原始金币
-                    $logId
+                    $logId,
+                    $logTable  // ★ 传入分表名，用于生成唯一 source_order_no
                 );
             }
 
@@ -1099,19 +1101,22 @@ class AdIncomeService
                 throw new Exception('账户更新失败，请重试');
             }
 
-            // ★ 按广告类型查询待释放金额分布，分类型写入 coin_log
-            $adTypeStats = [];
+            // ★ 查询待释放记录（一次查询，复用于流水统计和分佣关联）
+            $pendingRecords = [];
             try {
                 $pendingRecords = AdIncomeLogSplit::getPendingRecords($userId);
-                foreach ($pendingRecords as $rec) {
-                    $adType = $rec['ad_type'] ?? 'unknown';
-                    if (!isset($adTypeStats[$adType])) {
-                        $adTypeStats[$adType] = 0;
-                    }
-                    $adTypeStats[$adType] += (int)$rec['user_amount_coin'];
-                }
             } catch (\Throwable $e) {
-                Log::warning("ClaimFreezeBalance: 查询广告类型分布失败: " . $e->getMessage());
+                Log::warning("ClaimFreezeBalance: 查询待释放记录失败: " . $e->getMessage());
+            }
+
+            // ★ 按广告类型查询待释放金额分布，分类型写入 coin_log
+            $adTypeStats = [];
+            foreach ($pendingRecords as $rec) {
+                $adType = $rec['ad_type'] ?? 'unknown';
+                if (!isset($adTypeStats[$adType])) {
+                    $adTypeStats[$adType] = 0;
+                }
+                $adTypeStats[$adType] += (int)$rec['user_amount_coin'];
             }
 
             // 构建按广告类型的流水配置
@@ -1183,15 +1188,14 @@ class AdIncomeService
                 Log::warning("ClaimFreezeBalance: 标记通知红包失败: " . $e->getMessage());
             }
 
-            // ★ 收集本次待释放的广告收益记录ID，用于精确关联分佣解冻
-            $releasedAdLogIds = [];
-            try {
-                $pendingRecords = AdIncomeLogSplit::getPendingRecords($userId);
-                foreach ($pendingRecords as $rec) {
-                    $releasedAdLogIds[] = (int)$rec['id'];
+            // ★ 从已查询的待释放记录中收集 source_order_no，用于精确关联分佣解冻
+            $releasedSourceOrderNos = [];
+            foreach ($pendingRecords as $rec) {
+                $table = $rec['_from_table'] ?? '';
+                $id = (int)$rec['id'];
+                if ($table && $id > 0) {
+                    $releasedSourceOrderNos[] = $table . ':' . $id;
                 }
-            } catch (\Throwable $e) {
-                Log::warning("ClaimFreezeBalance: 收集待释放记录ID失败: " . $e->getMessage());
             }
 
             try {
@@ -1208,7 +1212,7 @@ class AdIncomeService
             }
 
             // ★ 解冻并结算分佣（精确关联本次释放的广告收益记录）
-            $this->settleFrozenCommissions($userId, $releasedAdLogIds);
+            $this->settleFrozenCommissions($userId, $releasedSourceOrderNos);
 
             // ★ 所有操作在同一个事务中，要么全部成功要么全部回滚
             Db::commit();
@@ -1316,10 +1320,13 @@ class AdIncomeService
      * @param int $sourceAmount 分佣前的原始冻结金币数
      * @param int $sourceId 关联ID（ad_income_log ID）
      */
-    protected function createFrozenCommissionLogs($commissions, $userId, $sourceType, $sourceAmount, $sourceId = 0)
+    protected function createFrozenCommissionLogs($commissions, $userId, $sourceType, $sourceAmount, $sourceId = 0, $sourceTable = '')
     {
         $now = time();
         $coinRate = SystemConfigService::getCoinRate();
+
+        // ★ 生成跨分表唯一的 source_order_no（格式: "表名:id"，如 "ad_income_log_202605:213"）
+        $sourceOrderNo = !empty($sourceTable) ? $sourceTable . ':' . (int)$sourceId : '';
 
         foreach ($commissions as $commission) {
             $orderNo = 'CM' . date('YmdHis') . str_pad(mt_rand(0, 9999), 4, '0', STR_PAD_LEFT);
@@ -1329,7 +1336,7 @@ class AdIncomeService
                 'order_no' => $orderNo,
                 'source_type' => 'ad_' . $sourceType,
                 'source_id' => (int)$sourceId,
-                'source_order_no' => '',
+                'source_order_no' => $sourceOrderNo,  // ★ 跨分表唯一标识
                 'user_id' => $userId,
                 'parent_id' => $commission['parent_id'],
                 'level' => $commission['level'],
@@ -1362,16 +1369,16 @@ class AdIncomeService
      *
      * @param int $userId 领取金币的用户ID
      */
-    protected function settleFrozenCommissions($userId, $sourceIds = [])
+    protected function settleFrozenCommissions($userId, $sourceOrderNos = [])
     {
         // 查找该用户的冻结分佣记录
         $query = Db::name('invite_commission_log')
             ->where('user_id', $userId)
             ->where('status', InviteCommissionLog::STATUS_FROZEN);
 
-        // ★ 按 source_id 精确过滤：只结算本次被释放的广告收益对应的分佣
-        if (!empty($sourceIds)) {
-            $query->whereIn('source_id', $sourceIds);
+        // ★ 按 source_order_no 精确过滤（跨分表唯一标识，格式 "表名:id"）
+        if (!empty($sourceOrderNos)) {
+            $query->whereIn('source_order_no', $sourceOrderNos);
         }
 
         $frozenLogs = $query->select();

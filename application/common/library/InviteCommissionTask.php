@@ -13,9 +13,10 @@ use app\common\model\DailyCommissionStat;
  * 邀请分佣定时任务
  * 
  * 分佣流程说明：
- * 1. 用户获取奖励时，CoinService::addCoin() 自动计算分佣并从奖励中扣除
- * 2. 分佣记录写入 invite_commission_log（status=0 待结算）
- * 3. 本定时任务定期结算待处理的分佣记录，将金币发放到上级账户
+ * 1. 用户观看广告获得广告待释放金币时，AdIncomeService::handleAdCallback() 计算分佣
+ * 2. 分佣记录写入 invite_commission_log（status=3 冻结状态）
+ * 3. 用户领取待释放金币(claimFreezeBalance)时，冻结分佣同步解冻结算到上级账户
+ * 4. 本定时任务用于：清理过期分佣、汇总统计等维护操作
  */
 class InviteCommissionTask
 {
