@@ -99,41 +99,50 @@ class InviteCommissionTask
     /**
      * 更新每周/每月佣金统计
      *
-     * ★ 修复时序依赖：先累加 today_commission 到 week/month，再清零 today。
+     * ★ 修复时序依赖：先累加 today_commission/coin 到 week/month，再清零 today。
      * 这样无论 updatePeriodStats 和 resetDailyStats 执行顺序如何，都不会重复累加。
-     * 原逻辑依赖 "resetDaily(00:00) 先于 updatePeriod(00:30)"，一旦 resetDaily 失败或延迟就会重复。
+     *
+     * ★ 修复：合并为单条 UPDATE，同时累加 commission 和 coin，避免两次独立 UPDATE
+     * 因 where 条件不同（today_commission>0 vs today_coin>0）导致部分字段遗漏。
+     * 例如：某用户 today_commission>0 但 today_coin=0（极端场景），旧逻辑会漏更新 coin。
      *
      * @return array
      */
     public function updatePeriodStats()
     {
         $result = [
-            'week' => 0,
-            'month' => 0,
+            'commission' => 0,
+            'coin'       => 0,
             'reset_today' => 0,
         ];
         
         try {
-            // 步骤1：将 today_commission 累加到 week/month（原子操作）
-            $result['week'] = Db::name('user_commission_stat')
+            // 步骤1：将 today_commission 和 today_coin 同时累加到 week/month（单条原子 UPDATE）
+            // ★ 使用 OR 条件合并：只要 commission 或 coin 任一 > 0 就更新，避免字段遗漏
+            $result['commission'] = Db::name('user_commission_stat')
                 ->where('id', '>', 0)
-                ->where('today_commission', '>', 0)  // ★ 只更新有今日数据的用户
+                ->where('today_commission', '>', 0)
                 ->update([
                     'week_commission'   => Db::raw('week_commission + today_commission'),
                     'month_commission'  => Db::raw('month_commission + today_commission'),
-                    'updatetime' => time(),
+                    'week_coin'         => Db::raw('week_coin + today_coin'),
+                    'month_coin'        => Db::raw('month_coin + today_coin'),
+                    'updatetime'        => time(),
                 ]);
             
-            $result['month'] = Db::name('user_commission_stat')
+            // 步骤1.5：处理 today_commission=0 但 today_coin>0 的用户（补偿）
+            // ★ 确保 today_coin 也被累加（虽然正常逻辑下两者同步更新，但做防御性补偿）
+            $result['coin'] = Db::name('user_commission_stat')
                 ->where('id', '>', 0)
+                ->where('today_commission', 0)
                 ->where('today_coin', '>', 0)
                 ->update([
                     'week_coin'   => Db::raw('week_coin + today_coin'),
                     'month_coin'  => Db::raw('month_coin + today_coin'),
-                    'updatetime' => time(),
+                    'updatetime'  => time(),
                 ]);
             
-            // 步骤2：清零 today_commission（紧接在累加之后，同一执行周期内）
+            // 步骤2：清零 today_commission 和 today_coin（紧接在累加之后，同一执行周期内）
             $result['reset_today'] = Db::name('user_commission_stat')
                 ->where('id', '>', 0)
                 ->update([

@@ -993,6 +993,9 @@ class AdIncomeService
      * 将 ad_freeze_balance 转移到 balance
      * 前端调用时机：用户观看激励视频后
      *
+     * ★ 修复：先做 FIFO 匹配确定实际释放金额，再扣减 freeze_balance。
+     * 避免先扣 freeze_balance 再做 FIFO 匹配时，因部分匹配导致扣多放少（金币丢失）。
+     *
      * @param int $userId
      * @param int $maxAmount 最大领取金额（0或不传表示领取全部冻结余额）
      * @return array
@@ -1036,9 +1039,9 @@ class AdIncomeService
                 return $result;
             }
 
-            $amount = (int)round($account['ad_freeze_balance']);
+            $freezeBalance = (int)round($account['ad_freeze_balance']);
 
-            if ($amount <= 0) {
+            if ($freezeBalance <= 0) {
                 Db::rollback();
                 $result['message'] = '暂无可领取的待释放金币';
                 return $result;
@@ -1046,11 +1049,56 @@ class AdIncomeService
 
             // ★ 支持指定最大领取金额（前端快照金额，避免领取期间新增的金币）
             $maxAmount = (int)$maxAmount;
-            if ($maxAmount > 0 && $amount > $maxAmount) {
-                $amount = $maxAmount;
+            $claimTarget = $freezeBalance;
+            if ($maxAmount > 0 && $claimTarget > $maxAmount) {
+                $claimTarget = $maxAmount;
             }
 
-            // ★ 原子操作：在同一事务中扣减 freeze 和增加 balance
+            // ★ 第一步：查询所有待释放记录（按时间正序，保证先进先出）
+            $allPendingRecords = [];
+            try {
+                $allPendingRecords = AdIncomeLogSplit::getPendingRecords($userId);
+            } catch (\Throwable $e) {
+                Log::warning("ClaimFreezeBalance: 查询待释放记录失败: " . $e->getMessage());
+            }
+
+            // ★ 第二步：按先进先出原则，精确匹配本次领取的金额对应的记录
+            // ★ 关键修复：先匹配再扣款，确保扣减金额 = 实际释放记录金额，避免金币不一致
+            $releasedRecords = [];
+            $releasedAmount = 0;
+            $remainAmount = $claimTarget;
+            foreach ($allPendingRecords as $rec) {
+                $recCoin = (int)$rec['user_amount_coin'];
+                if ($recCoin <= 0) {
+                    $releasedRecords[] = $rec;
+                    continue;
+                }
+                if ($remainAmount >= $recCoin) {
+                    // 整条记录都纳入本次领取
+                    $releasedRecords[] = $rec;
+                    $releasedAmount += $recCoin;
+                    $remainAmount -= $recCoin;
+                } else {
+                    // ★ 部分匹配场景：该记录的金币比剩余领取额度大，跳过
+                    // 宁可少领也不要多领，保证 freeze_balance 和 pending 记录严格一致
+                    break;
+                }
+            }
+
+            // ★ 安全检查：实际释放金额不能超过 freeze_balance（防御性校验）
+            if ($releasedAmount > $freezeBalance) {
+                Log::warning("ClaimFreezeBalance: 用户{$userId}释放金额{$releasedAmount}超过冻结余额{$freezeBalance}，自动修正");
+                $releasedAmount = $freezeBalance;
+            }
+
+            if ($releasedAmount <= 0) {
+                Db::rollback();
+                $result['message'] = '无可领取的待释放金币';
+                return $result;
+            }
+
+            // ★ 第三步：原子操作：用 FIFO 匹配后的实际金额扣减 freeze 和增加 balance
+            $amount = $releasedAmount;
             $balanceBefore = (int)$account['balance'];
             $balanceAfter = $balanceBefore + $amount;
 
@@ -1067,36 +1115,6 @@ class AdIncomeService
 
             if ($affected === 0) {
                 throw new Exception('账户更新失败，请重试');
-            }
-
-            // ★ 查询所有待释放记录（按时间正序，保证先进先出）
-            $allPendingRecords = [];
-            try {
-                $allPendingRecords = AdIncomeLogSplit::getPendingRecords($userId);
-            } catch (\Throwable $e) {
-                Log::warning("ClaimFreezeBalance: 查询待释放记录失败: " . $e->getMessage());
-            }
-
-            // ★ 按先进先出原则，精确匹配本次领取的金额对应的记录
-            // 避免部分领取时把所有记录都标记为RELEASED导致分佣结算不一致
-            $releasedRecords = [];
-            $remainAmount = $amount;
-            foreach ($allPendingRecords as $rec) {
-                $recCoin = (int)$rec['user_amount_coin'];
-                if ($recCoin <= 0) {
-                    $releasedRecords[] = $rec;
-                    continue;
-                }
-                if ($remainAmount >= $recCoin) {
-                    // 整条记录都纳入本次领取
-                    $releasedRecords[] = $rec;
-                    $remainAmount -= $recCoin;
-                } else {
-                    // ★ 部分领取场景：该记录的金币比剩余领取额度大，跳过
-                    // 这种情况理论上不应该发生（amount 取自 ad_freeze_balance 等于所有 pending 之和）
-                    // 但如果有并发写入的极端情况，宁可少结算也不要多结算
-                    break;
-                }
             }
 
             // ★ 按广告类型统计本次实际领取的金额，分类型写入 coin_log
@@ -1496,21 +1514,28 @@ class AdIncomeService
                 'create_date' => date('Y-m-d'),
             ]);
 
-            // 更新上级佣金统计
+            // ★ 更新上级佣金统计（使用原子 SQL UPDATE 替代读-改-写，防止并发竞态）
             try {
-                $stat = UserCommissionStat::getOrCreate($parentId);
-                // 减少冻结佣金
                 $commissionYuan = $parentCommissionYuan[$parentId];
-                $stat->frozen_commission = max(0, $stat->frozen_commission - $commissionYuan);
-                // 增加总佣金和今日佣金
-                $stat->total_commission = $stat->total_commission + $commissionYuan;
-                $stat->total_coin = $stat->total_coin + $totalCoin;
-                $stat->today_commission = $stat->today_commission + $commissionYuan;
-                $stat->today_coin = $stat->today_coin + $totalCoin;
-                $stat->week_commission = $stat->week_commission + $commissionYuan;
-                $stat->month_commission = $stat->month_commission + $commissionYuan;
-                $stat->save();
-                $stat->clearCache($parentId);
+                // 使用 getOrCreate 确保记录存在（幂等），然后用原子 UPDATE 累加
+                UserCommissionStat::getOrCreate($parentId);
+                Db::name('user_commission_stat')
+                    ->where('user_id', $parentId)
+                    ->update([
+                        'frozen_commission' => Db::raw('GREATEST(0, frozen_commission - ' . $commissionYuan . ')'),
+                        'total_commission'  => Db::raw('total_commission + ' . $commissionYuan),
+                        'total_coin'        => Db::raw('total_coin + ' . $totalCoin),
+                        'today_commission'  => Db::raw('today_commission + ' . $commissionYuan),
+                        'today_coin'        => Db::raw('today_coin + ' . $totalCoin),
+                        'week_commission'   => Db::raw('week_commission + ' . $commissionYuan),
+                        'month_commission'  => Db::raw('month_commission + ' . $commissionYuan),
+                        'updatetime'        => $now,
+                    ]);
+                // 清除缓存
+                try {
+                    $stat = UserCommissionStat::getOrCreate($parentId);
+                    $stat->clearCache($parentId);
+                } catch (\Throwable $e) {}
             } catch (\Exception $e) {
                 Log::error('更新佣金结算统计失败 userId=' . $parentId . ': ' . $e->getMessage());
             }
@@ -1634,6 +1659,8 @@ class AdIncomeService
      * 达到阈值后推入待结算队列，由定时任务异步调用 handleAdCallback 发放奖励+分佣。
      * 接口响应时间从 ~50ms 降至 ~2ms。
      *
+     * ★ 修复：使用 Lua 脚本原子执行 INCR + 阈值判断 + 重置，避免并发下重复入队。
+     *
      * @param int $userId 用户ID
      * @return array
      */
@@ -1668,28 +1695,40 @@ class AdIncomeService
         $result['threshold'] = $threshold;
         $result['estimated_coin'] = $rewardPerView * $threshold;
 
-        // Redis INCR 计数
+        // ★ 使用 Lua 脚本原子执行：INCR + 阈值判断 + 重置 + 过期时间设置
+        // 解决并发下两个请求同时 INCR 到阈值导致重复入队的问题
         $counterKey = self::FEED_VIEW_COUNTER_PREFIX . $userId . ':' . $today;
-        $count = $redis->incr($counterKey);
+        $luaScript = <<<LUA
+local counterKey = KEYS[1]
+local threshold = tonumber(ARGV[1])
+local ttl = tonumber(ARGV[2])
+local count = redis.call('INCR', counterKey)
+local triggered = 0
+if count == 1 then
+    redis.call('EXPIRE', counterKey, ttl)
+end
+if threshold > 0 and count >= threshold then
+    redis.call('SET', counterKey, 0)
+    redis.call('EXPIRE', counterKey, ttl)
+    triggered = count
+end
+return {count, triggered}
+LUA;
 
-        // 首次写入时设置过期时间（次日自动清理）
-        if ($count === 1) {
-            $redis->expire($counterKey, 86400);
-        }
+        $luaResult = $redis->eval($luaScript, [$counterKey, $threshold, 86400], 1);
+
+        $count = (int)$luaResult[0];
+        $triggeredCount = (int)$luaResult[1];
 
         $result['view_count'] = $count;
 
         // 达到阈值 → 推入待结算队列
-        if ($count >= $threshold && $threshold > 0) {
-            // 重置计数器
-            $redis->set($counterKey, 0);
-            $redis->expire($counterKey, 86400);
-
+        if ($triggeredCount > 0) {
             // 推入队列：{userId, date, count, timestamp}
             $queueItem = json_encode([
                 'user_id'   => $userId,
                 'date'      => $today,
-                'count'     => $count,
+                'count'     => $triggeredCount,
                 'timestamp' => time(),
             ]);
             $redis->rPush(self::FEED_REWARD_QUEUE, $queueItem);
