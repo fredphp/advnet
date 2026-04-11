@@ -1101,25 +1101,37 @@ class AdIncomeService
                 throw new Exception('账户更新失败，请重试');
             }
 
-            // ★ 查询待释放记录（一次查询，复用于流水统计和分佣关联）
-            $pendingRecords = [];
+            // ★ 查询所有待释放记录（按时间正序，保证先进先出）
+            $allPendingRecords = [];
             try {
-                $pendingRecords = AdIncomeLogSplit::getPendingRecords($userId);
+                $allPendingRecords = AdIncomeLogSplit::getPendingRecords($userId);
             } catch (\Throwable $e) {
                 Log::warning("ClaimFreezeBalance: 查询待释放记录失败: " . $e->getMessage());
             }
 
-            // ★ 按广告类型查询待释放金额分布，分类型写入 coin_log
-            $adTypeStats = [];
-            foreach ($pendingRecords as $rec) {
-                $adType = $rec['ad_type'] ?? 'unknown';
-                if (!isset($adTypeStats[$adType])) {
-                    $adTypeStats[$adType] = 0;
+            // ★ 按先进先出原则，精确匹配本次领取的金额对应的记录
+            // 避免部分领取时把所有记录都标记为RELEASED导致分佣结算不一致
+            $releasedRecords = [];
+            $remainAmount = $amount;
+            foreach ($allPendingRecords as $rec) {
+                $recCoin = (int)$rec['user_amount_coin'];
+                if ($recCoin <= 0) {
+                    $releasedRecords[] = $rec;
+                    continue;
                 }
-                $adTypeStats[$adType] += (int)$rec['user_amount_coin'];
+                if ($remainAmount >= $recCoin) {
+                    // 整条记录都纳入本次领取
+                    $releasedRecords[] = $rec;
+                    $remainAmount -= $recCoin;
+                } else {
+                    // ★ 部分领取场景：该记录的金币比剩余领取额度大，跳过
+                    // 这种情况理论上不应该发生（amount 取自 ad_freeze_balance 等于所有 pending 之和）
+                    // 但如果有并发写入的极端情况，宁可少结算也不要多结算
+                    break;
+                }
             }
 
-            // 构建按广告类型的流水配置
+            // ★ 按广告类型统计本次实际领取的金额，分类型写入 coin_log
             $adTypeLogConfig = [
                 'feed'   => [
                     'type'          => 'freeze_balance_claim_feed',
@@ -1135,12 +1147,20 @@ class AdIncomeService
 
             $tableName = CoinLog::getOrCreateTable();
             $loggedAmount = 0;
+            $adTypeStats = [];
+            foreach ($releasedRecords as $rec) {
+                $adType = $rec['ad_type'] ?? 'unknown';
+                $recCoin = (int)$rec['user_amount_coin'];
+                if (!isset($adTypeStats[$adType])) {
+                    $adTypeStats[$adType] = 0;
+                }
+                $adTypeStats[$adType] += $recCoin;
+            }
 
             foreach ($adTypeStats as $adType => $adAmount) {
                 if ($adAmount <= 0) continue;
                 $config = $adTypeLogConfig[$adType] ?? null;
                 if (!$config) {
-                    // 未知广告类型，归入通用流水
                     $config = [
                         'type'          => 'freeze_balance_claim',
                         'relation_type' => 'ad_freeze_claim',
@@ -1188,27 +1208,32 @@ class AdIncomeService
                 Log::warning("ClaimFreezeBalance: 标记通知红包失败: " . $e->getMessage());
             }
 
-            // ★ 从已查询的待释放记录中收集 source_order_no，用于精确关联分佣解冻
+            // ★ 精确更新本次释放的记录为 RELEASED（而非全部 pending）
             $releasedSourceOrderNos = [];
-            foreach ($pendingRecords as $rec) {
+            $releasedCount = 0;
+            foreach ($releasedRecords as $rec) {
                 $table = $rec['_from_table'] ?? '';
                 $id = (int)$rec['id'];
                 if ($table && $id > 0) {
                     $releasedSourceOrderNos[] = $table . ':' . $id;
+                    try {
+                        Db::name($table)
+                            ->where('id', $id)
+                            ->where('user_id', $userId)
+                            ->where('status', AdIncomeLog::STATUS_CONFIRMED)
+                            ->update([
+                                'status'    => AdIncomeLog::STATUS_RELEASED,
+                                'updatetime' => time(),
+                            ]);
+                        $releasedCount++;
+                    } catch (\Throwable $e) {
+                        Log::warning("ClaimFreezeBalance: 标记单条收益记录RELEASED失败 table={$table} id={$id}: " . $e->getMessage());
+                    }
                 }
             }
 
-            try {
-                $releasedCount = AdIncomeLogSplit::batchUpdateStatus(
-                    $userId,
-                    [AdIncomeLog::STATUS_CONFIRMED],
-                    AdIncomeLog::STATUS_RELEASED
-                );
-                if ($releasedCount > 0) {
-                    Log::info("ClaimFreezeBalance: 用户{$userId}标记{$releasedCount}条广告收益记录为RELEASED");
-                }
-            } catch (\Throwable $e) {
-                Log::warning("ClaimFreezeBalance: 标记收益记录RELEASED失败: " . $e->getMessage());
+            if ($releasedCount > 0) {
+                Log::info("ClaimFreezeBalance: 用户{$userId}精确标记{$releasedCount}条广告收益记录为RELEASED");
             }
 
             // ★ 解冻并结算分佣（精确关联本次释放的广告收益记录）
@@ -1418,7 +1443,7 @@ class AdIncomeService
         foreach ($parentCoins as $parentId => $totalCoin) {
             if ($totalCoin <= 0) continue;
 
-            // 获取上级账户
+            // 获取上级账户（FOR UPDATE 行锁防止并发）
             $parentAccount = Db::name('coin_account')
                 ->where('user_id', $parentId)
                 ->lock(true)
@@ -1441,15 +1466,48 @@ class AdIncomeService
                 $balanceBefore = 0;
             } else {
                 $balanceBefore = (int)$parentAccount['balance'];
-                Db::name('coin_account')
-                    ->where('user_id', $parentId)
-                    ->where('version', $parentAccount['version'])
-                    ->update([
-                        'balance' => Db::raw('balance + ' . $totalCoin),
-                        'total_earn' => Db::raw('total_earn + ' . $totalCoin),
-                        'version' => (int)$parentAccount['version'] + 1,
-                        'updatetime' => $now,
-                    ]);
+                // ★ 带重试的乐观锁更新（最多3次，处理高并发场景下的版本冲突）
+                $maxRetries = 3;
+                $updated = false;
+                $currentVersion = (int)$parentAccount['version'];
+                $currentBalance = $balanceBefore;
+
+                for ($retry = 0; $retry < $maxRetries; $retry++) {
+                    $affected = Db::name('coin_account')
+                        ->where('user_id', $parentId)
+                        ->where('version', $currentVersion)
+                        ->update([
+                            'balance' => Db::raw('balance + ' . $totalCoin),
+                            'total_earn' => Db::raw('total_earn + ' . $totalCoin),
+                            'version' => $currentVersion + 1,
+                            'updatetime' => $now,
+                        ]);
+
+                    if ($affected > 0) {
+                        $updated = true;
+                        $currentBalance = $currentBalance + $totalCoin;
+                        break;
+                    }
+
+                    // 版本冲突，重新读取最新数据
+                    $freshAccount = Db::name('coin_account')
+                        ->where('user_id', $parentId)
+                        ->lock(true)
+                        ->find();
+                    if (!$freshAccount) {
+                        break;
+                    }
+                    $currentVersion = (int)$freshAccount['version'];
+                    $currentBalance = (int)$freshAccount['balance'];
+                }
+
+                if (!$updated) {
+                    // ★ 重试仍失败，抛出异常回滚整个事务，确保分佣不丢失
+                    Log::error("SettleFrozenCommissions: 上级账户{$parentId}更新失败(版本冲突)，回滚整个领取事务");
+                    throw new Exception('佣金结算失败，请重试');
+                }
+
+                $balanceBefore = $currentBalance - $totalCoin; // 还原结算前的余额
             }
 
             // 写入上级的 coin_log

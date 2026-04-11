@@ -85,9 +85,9 @@ class InviteCommission extends Command
                 break;
                 
             case 'frozen':
-                // 处理冻结分佣
-                $count = $task->processFrozenCommission(30);
-                $output->writeln("处理冻结分佣: {$count}条");
+                // 检查冻结分佣（仅告警，不自动取消）
+                $result = $task->processFrozenCommission(90);
+                $output->writeln("冻结分佣检查: " . $result['message']);
                 break;
                 
             case 'all':

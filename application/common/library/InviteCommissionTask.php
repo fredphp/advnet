@@ -22,8 +22,14 @@ class InviteCommissionTask
 {
     /**
      * 结算待处理的分佣记录
+     * 
+     * ★ 已废弃：新分佣流程使用冻结模式(status=3)，在用户领取待释放金币时同步结算。
+     * 本方法仅处理旧的 STATUS_PENDING(0) 记录，用于兼容历史数据。
+     * 如果没有历史遗留的 PENDING 记录，此方法会直接返回空结果。
+     * 
      * @param int $limit 每次处理数量
      * @return array
+     * @deprecated 新分佣走 handleAdCallback → claimFreezeBalance → settleFrozenCommissions
      */
     public function settlePendingCommission($limit = 100)
     {
@@ -253,11 +259,18 @@ class InviteCommissionTask
     
     /**
      * 处理冻结的分佣
-     * 检查冻结超过一定时间的分佣，自动取消
-     * @param int $freezeDays 冻结天数
-     * @return int 取消数量
+     * 
+     * ★ 注意：新的广告分佣流程中，冻结分佣(status=3)会在用户领取待释放金币时
+     * 同步解冻结算(claimFreezeBalance → settleFrozenCommissions)。
+     * 分佣金币已从用户奖励中扣除，如果自动取消分佣记录，会导致用户金币已扣但上级未收到佣金。
+     * 
+     * 因此此方法改为：仅记录告警日志，不自动取消。
+     * 如需清理长期未领取的冻结分佣，应由管理员手动处理（先退回用户金币，再取消分佣）。
+     * 
+     * @param int $freezeDays 冻结天数（默认90天）
+     * @return array ['warn_count' => int, 'details' => array]
      */
-    public function processFrozenCommission($freezeDays = 30)
+    public function processFrozenCommission($freezeDays = 90)
     {
         $expireTime = time() - ($freezeDays * 86400);
         
@@ -265,16 +278,25 @@ class InviteCommissionTask
             ->where('createtime', '<', $expireTime)
             ->select();
         
-        $count = 0;
-        foreach ($logs as $log) {
-            if ($log->cancel('冻结超时自动取消')) {
-                $count++;
+        $warnCount = count($logs);
+        
+        if ($warnCount > 0) {
+            // 汇总告警信息
+            $userIds = [];
+            $totalCoin = 0;
+            foreach ($logs as $log) {
+                $userIds[$log->user_id] = true;
+                $totalCoin += (int)$log->coin_amount;
             }
+            Log::warning("冻结分佣超时告警: {$warnCount}条记录超过{$freezeDays}天未结算，涉及" . count($userIds) . "个用户，共{$totalCoin}金币。请管理员手动处理。");
         }
         
-        Log::info("处理冻结分佣: 取消{$count}条");
-        
-        return $count;
+        return [
+            'warn_count' => $warnCount,
+            'message' => $warnCount > 0 
+                ? "发现{$warnCount}条超时冻结分佣，已记录告警日志，请手动处理" 
+                : "无超时冻结分佣",
+        ];
     }
     
     /**

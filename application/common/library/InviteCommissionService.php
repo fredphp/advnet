@@ -144,8 +144,11 @@ class InviteCommissionService
     
     /**
      * 结算分佣
+     * ★ 仅用于处理旧的 STATUS_PENDING(0) 记录（历史兼容）
+     * 新的分佣流程使用冻结模式(status=3)，在 AdIncomeService::settleFrozenCommissions() 中结算
      * @param int $logId 分佣记录ID
      * @return array
+     * @deprecated 新分佣走 AdIncomeService::settleFrozenCommissions()
      */
     public function settleCommission($logId)
     {
@@ -197,6 +200,7 @@ class InviteCommissionService
     
     /**
      * 批量结算分佣
+     * @deprecated 仅用于处理历史遗留的 STATUS_PENDING(0) 记录
      * @param array $logIds 分佣记录ID数组
      * @return array
      */
