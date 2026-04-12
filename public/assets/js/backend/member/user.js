@@ -203,8 +203,14 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
                     var isSystem = parseInt(row.user_type) == 1;
                     var sysBadge = isSystem ? ' <span style="font-size:9px;background:#fff;color:#13855c;padding:1px 4px;border-radius:3px;font-weight:600;">SYS</span>' : '';
 
-                    if (row.avatar && row.avatar.indexOf('/assets/') === -1) {
-                        var avatar = '<img src="' + row.avatar + '" class="user-avatar" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'flex\';" /><div class="user-avatar default' + (isSystem ? ' system-avatar' : '') + '" style="display:none;">' + initial + '</div>';
+                    // 任何非空头像都尝试显示，通过 onerror 回退到默认字母头像
+                    if (row.avatar) {
+                        var avatarSrc = row.avatar;
+                        // 相对路径自动拼接 CDN 前缀
+                        if (avatarSrc.indexOf('://') === -1 && avatarSrc.indexOf('/') === 0) {
+                            avatarSrc = Config.upload && Config.upload.cdnurl ? Config.upload.cdnurl + avatarSrc : avatarSrc;
+                        }
+                        var avatar = '<img src="' + avatarSrc + '" class="user-avatar" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'flex\';" /><div class="user-avatar default' + (isSystem ? ' system-avatar' : '') + '" style="display:none;">' + initial + '</div>';
                         return '<div class="user-info-cell">' + avatar +
                             '<div class="user-name-text"><span class="name">' + (row.nickname || row.username || '-') + sysBadge + '</span>' +
                             '<span class="id">ID: ' + row.id + '</span></div></div>';
