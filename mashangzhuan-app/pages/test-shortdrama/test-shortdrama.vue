@@ -74,7 +74,7 @@
 </template>
 
 <script>
-import * as PangolinMedia from '@/uni_modules/pangolin-media'
+// import * as PangolinMedia from '@/uni_modules/pangolin-media'
 
 export default {
   data() {
@@ -107,51 +107,51 @@ export default {
     }
   },
   onLoad() {
-    Object.values(PangolinMedia.Events).forEach((eventName) => {
-      PangolinMedia.on(eventName, (payload) => {
-        this.pushLog(`[${eventName}] ${JSON.stringify(payload || {})}`)
-      })
-    })
+    // Object.values(PangolinMedia.Events).forEach((eventName) => {
+    //   PangolinMedia.on(eventName, (payload) => {
+    //     this.pushLog(`[${eventName}] ${JSON.stringify(payload || {})}`)
+    //   })
+    // })
   },
   methods: {
     onConsentChange(e) {
       this.form.privacy.consent = !!e.detail.value
     },
     async onInit() {
-      const res = await PangolinMedia.init(this.form)
-      this.handleResult('init', res)
+      // const res = await PangolinMedia.init(this.form)
+      // this.handleResult('init', res)
     },
     async onDestroy() {
-      const res = await PangolinMedia.destroy()
-      this.handleResult('destroy', res)
+      // const res = await PangolinMedia.destroy()
+      // this.handleResult('destroy', res)
     },
     async showReward() {
-      const res = await PangolinMedia.showRewardVideo({ slotId: this.form.adSlots.reward })
-      this.handleResult('showRewardVideo', res)
+      // const res = await PangolinMedia.showRewardVideo({ slotId: this.form.adSlots.reward })
+      // this.handleResult('showRewardVideo', res)
     },
     async showFeed() {
-      const res = await PangolinMedia.loadFeed({ slotId: this.form.adSlots.feed })
-      this.handleResult('loadFeed', res)
+      // const res = await PangolinMedia.loadFeed({ slotId: this.form.adSlots.feed })
+      // this.handleResult('loadFeed', res)
     },
     async showSplash() {
-      const res = await PangolinMedia.showSplash({ slotId: this.form.adSlots.splash })
-      this.handleResult('showSplash', res)
+      // const res = await PangolinMedia.showSplash({ slotId: this.form.adSlots.splash })
+      // this.handleResult('showSplash', res)
     },
     async showInterstitial() {
-      const res = await PangolinMedia.showInterstitial({ slotId: this.form.adSlots.interstitial })
-      this.handleResult('showInterstitial', res)
+      // const res = await PangolinMedia.showInterstitial({ slotId: this.form.adSlots.interstitial })
+      // this.handleResult('showInterstitial', res)
     },
     async openHome() {
-      const res = await PangolinMedia.openDramaHome({})
-      this.handleResult('openDramaHome', res)
+      // const res = await PangolinMedia.openDramaHome({})
+      // this.handleResult('openDramaHome', res)
     },
     async openDetail() {
-      const res = await PangolinMedia.openDramaDetail({ dramaId: this.dramaId })
-      this.handleResult('openDramaDetail', res)
+      // const res = await PangolinMedia.openDramaDetail({ dramaId: this.dramaId })
+      // this.handleResult('openDramaDetail', res)
     },
     async getList() {
-      const res = await PangolinMedia.getDramaList({ mode: 'recommend', page: 1, count: 10 })
-      this.handleResult('getDramaList', res)
+      // const res = await PangolinMedia.getDramaList({ mode: 'recommend', page: 1, count: 10 })
+      // this.handleResult('getDramaList', res)
     },
     handleResult(action, result) {
       this.lastResult = JSON.stringify(result, null, 2)

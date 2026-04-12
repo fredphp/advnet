@@ -11,7 +11,7 @@
  Target Server Version : 80045 (8.0.45-0ubuntu0.24.04.1)
  File Encoding         : 65001
 
- Date: 06/04/2026 22:47:56
+ Date: 12/04/2026 11:20:24
 */
 
 SET NAMES utf8mb4;
@@ -97,7 +97,7 @@ CREATE TABLE `advn_ad_income_log_202507`  (
   INDEX `idx_user_status`(`user_id` ASC, `status` ASC) USING BTREE,
   INDEX `idx_user_status_createtime`(`user_id` ASC, `status` ASC, `createtime` ASC) USING BTREE,
   INDEX `idx_createtime_status`(`createtime` ASC, `status` ASC) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '广告收益记录表' ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '广告收益记录表' ROW_FORMAT = Dynamic;
 
 -- ----------------------------
 -- Records of advn_ad_income_log_202507
@@ -140,7 +140,7 @@ CREATE TABLE `advn_ad_income_log_202508`  (
   INDEX `idx_user_status`(`user_id` ASC, `status` ASC) USING BTREE,
   INDEX `idx_user_status_createtime`(`user_id` ASC, `status` ASC, `createtime` ASC) USING BTREE,
   INDEX `idx_createtime_status`(`createtime` ASC, `status` ASC) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '广告收益记录表' ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '广告收益记录表' ROW_FORMAT = Dynamic;
 
 -- ----------------------------
 -- Records of advn_ad_income_log_202508
@@ -183,7 +183,7 @@ CREATE TABLE `advn_ad_income_log_202509`  (
   INDEX `idx_user_status`(`user_id` ASC, `status` ASC) USING BTREE,
   INDEX `idx_user_status_createtime`(`user_id` ASC, `status` ASC, `createtime` ASC) USING BTREE,
   INDEX `idx_createtime_status`(`createtime` ASC, `status` ASC) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '广告收益记录表' ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '广告收益记录表' ROW_FORMAT = Dynamic;
 
 -- ----------------------------
 -- Records of advn_ad_income_log_202509
@@ -226,7 +226,7 @@ CREATE TABLE `advn_ad_income_log_2026`  (
   INDEX `idx_user_status`(`user_id` ASC, `status` ASC) USING BTREE,
   INDEX `idx_user_status_createtime`(`user_id` ASC, `status` ASC, `createtime` ASC) USING BTREE,
   INDEX `idx_createtime_status`(`createtime` ASC, `status` ASC) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '广告收益记录表' ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '广告收益记录表' ROW_FORMAT = Dynamic;
 
 -- ----------------------------
 -- Records of advn_ad_income_log_2026
@@ -269,7 +269,7 @@ CREATE TABLE `advn_ad_income_log_202604`  (
   INDEX `idx_user_status`(`user_id` ASC, `status` ASC) USING BTREE,
   INDEX `idx_user_status_createtime`(`user_id` ASC, `status` ASC, `createtime` ASC) USING BTREE,
   INDEX `idx_createtime_status`(`createtime` ASC, `status` ASC) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 143 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '广告收益记录表' ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB AUTO_INCREMENT = 224 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '广告收益记录表' ROW_FORMAT = Dynamic;
 
 -- ----------------------------
 -- Records of advn_ad_income_log_202604
@@ -299,16 +299,97 @@ INSERT INTO `advn_ad_income_log_202604` VALUES (129, 1, 'feed', '1849465521', 'u
 INSERT INTO `advn_ad_income_log_202604` VALUES (130, 1, 'feed', '1849465521', 'uniad', 'redbag_page', 0.0250, 250, 0.0000, 0.0000, 0, 0.0250, 250, 2, 'af_auto_1775463789813_nqn4vyj1j', '127.0.0.1', 'Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Mobile Safari/537.36 Edg/146.0.0.0', '', 'threshold_reward', 1775463789, 1775463822);
 INSERT INTO `advn_ad_income_log_202604` VALUES (131, 1, 'feed', '1849465521', 'uniad', 'redbag_page', 0.0250, 250, 0.0000, 0.0000, 0, 0.0250, 250, 2, 'af_auto_1775463838850_4ueu3o2on', '127.0.0.1', 'Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Mobile Safari/537.36 Edg/146.0.0.0', '', 'threshold_reward', 1775463839, 1775464904);
 INSERT INTO `advn_ad_income_log_202604` VALUES (132, 1, 'feed', '1849465521', 'uniad', 'redbag_page', 0.0250, 250, 0.0000, 0.0000, 0, 0.0250, 250, 2, 'af_auto_1775464870686_kn0qy08gs', '127.0.0.1', 'Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Mobile Safari/537.36 Edg/146.0.0.0', '', 'threshold_reward', 1775464870, 1775464904);
-INSERT INTO `advn_ad_income_log_202604` VALUES (133, 1, 'feed', '1849465521', 'uniad', 'redbag_page', 0.0250, 250, 0.0000, 0.0000, 0, 0.0250, 250, 1, 'af_auto_1775464922611_4dpf9kp38', '127.0.0.1', 'Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Mobile Safari/537.36 Edg/146.0.0.0', '', 'threshold_reward', 1775464922, NULL);
-INSERT INTO `advn_ad_income_log_202604` VALUES (134, 1, 'feed', '1849465521', 'uniad', 'redbag_page', 0.0250, 250, 0.0000, 0.0000, 0, 0.0250, 250, 1, 'af_auto_1775465004941_k8adeuyfk', '127.0.0.1', 'Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Mobile Safari/537.36 Edg/146.0.0.0', '', 'threshold_reward', 1775465003, NULL);
-INSERT INTO `advn_ad_income_log_202604` VALUES (135, 1, 'feed', '1849465521', 'uniad', 'redbag_page', 0.0250, 250, 0.0000, 0.0000, 0, 0.0250, 250, 1, 'af_auto_1775465046404_04l8xuye5', '127.0.0.1', 'Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Mobile Safari/537.36 Edg/146.0.0.0', '', 'threshold_reward', 1775465045, NULL);
-INSERT INTO `advn_ad_income_log_202604` VALUES (136, 1, 'feed', '1849465521', 'uniad', 'redbag_page', 0.0250, 250, 0.0000, 0.0000, 0, 0.0250, 250, 1, 'af_auto_1775482341625_e414n1tzq', '127.0.0.1', 'Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Mobile Safari/537.36 Edg/146.0.0.0', '', 'threshold_reward', 1775482340, NULL);
-INSERT INTO `advn_ad_income_log_202604` VALUES (137, 1, 'feed', '1849465521', 'uniad', 'redbag_page', 0.0250, 250, 0.0000, 0.0000, 0, 0.0250, 250, 1, 'af_auto_1775482412624_dix97k7eq', '127.0.0.1', 'Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Mobile Safari/537.36 Edg/146.0.0.0', '', 'threshold_reward', 1775482413, NULL);
-INSERT INTO `advn_ad_income_log_202604` VALUES (138, 1, 'feed', '1849465521', 'uniad', 'redbag_page', 0.0250, 250, 0.0000, 0.0000, 0, 0.0250, 250, 1, 'af_auto_1775482483546_z2qijbs61', '127.0.0.1', 'Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Mobile Safari/537.36 Edg/146.0.0.0', '', 'threshold_reward', 1775482482, NULL);
-INSERT INTO `advn_ad_income_log_202604` VALUES (139, 1, 'feed', '1849465521', 'uniad', 'redbag_page', 0.0250, 250, 0.0000, 0.0000, 0, 0.0250, 250, 1, 'af_auto_1775485653847_u2iy6kauv', '127.0.0.1', 'Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Mobile Safari/537.36 Edg/146.0.0.0', '', 'threshold_reward', 1775485654, NULL);
-INSERT INTO `advn_ad_income_log_202604` VALUES (140, 1, 'feed', '1849465521', 'uniad', 'redbag_page', 0.0250, 250, 0.0000, 0.0000, 0, 0.0250, 250, 1, 'af_auto_1775485709845_4zszc0maw', '127.0.0.1', 'Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Mobile Safari/537.36 Edg/146.0.0.0', '', 'threshold_reward', 1775485710, NULL);
-INSERT INTO `advn_ad_income_log_202604` VALUES (141, 1, 'feed', '1849465521', 'uniad', 'redbag_page', 0.0250, 250, 0.0000, 0.0000, 0, 0.0250, 250, 1, 'af_auto_1775486018261_a5c21qazt', '127.0.0.1', 'Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Mobile Safari/537.36 Edg/146.0.0.0', '', 'threshold_reward', 1775486018, NULL);
-INSERT INTO `advn_ad_income_log_202604` VALUES (142, 1, 'feed', '1849465521', 'uniad', 'redbag_page', 0.0250, 250, 0.0000, 0.0000, 0, 0.0250, 250, 1, 'af_auto_1775486084184_3ivomghf9', '127.0.0.1', 'Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Mobile Safari/537.36 Edg/146.0.0.0', '', 'threshold_reward', 1775486084, NULL);
+INSERT INTO `advn_ad_income_log_202604` VALUES (133, 1, 'feed', '1849465521', 'uniad', 'redbag_page', 0.0250, 250, 0.0000, 0.0000, 0, 0.0250, 250, 2, 'af_auto_1775464922611_4dpf9kp38', '127.0.0.1', 'Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Mobile Safari/537.36 Edg/146.0.0.0', '', 'threshold_reward', 1775464922, 1775546092);
+INSERT INTO `advn_ad_income_log_202604` VALUES (134, 1, 'feed', '1849465521', 'uniad', 'redbag_page', 0.0250, 250, 0.0000, 0.0000, 0, 0.0250, 250, 2, 'af_auto_1775465004941_k8adeuyfk', '127.0.0.1', 'Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Mobile Safari/537.36 Edg/146.0.0.0', '', 'threshold_reward', 1775465003, 1775546092);
+INSERT INTO `advn_ad_income_log_202604` VALUES (135, 1, 'feed', '1849465521', 'uniad', 'redbag_page', 0.0250, 250, 0.0000, 0.0000, 0, 0.0250, 250, 2, 'af_auto_1775465046404_04l8xuye5', '127.0.0.1', 'Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Mobile Safari/537.36 Edg/146.0.0.0', '', 'threshold_reward', 1775465045, 1775546092);
+INSERT INTO `advn_ad_income_log_202604` VALUES (136, 1, 'feed', '1849465521', 'uniad', 'redbag_page', 0.0250, 250, 0.0000, 0.0000, 0, 0.0250, 250, 2, 'af_auto_1775482341625_e414n1tzq', '127.0.0.1', 'Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Mobile Safari/537.36 Edg/146.0.0.0', '', 'threshold_reward', 1775482340, 1775546092);
+INSERT INTO `advn_ad_income_log_202604` VALUES (137, 1, 'feed', '1849465521', 'uniad', 'redbag_page', 0.0250, 250, 0.0000, 0.0000, 0, 0.0250, 250, 2, 'af_auto_1775482412624_dix97k7eq', '127.0.0.1', 'Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Mobile Safari/537.36 Edg/146.0.0.0', '', 'threshold_reward', 1775482413, 1775546092);
+INSERT INTO `advn_ad_income_log_202604` VALUES (138, 1, 'feed', '1849465521', 'uniad', 'redbag_page', 0.0250, 250, 0.0000, 0.0000, 0, 0.0250, 250, 2, 'af_auto_1775482483546_z2qijbs61', '127.0.0.1', 'Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Mobile Safari/537.36 Edg/146.0.0.0', '', 'threshold_reward', 1775482482, 1775546092);
+INSERT INTO `advn_ad_income_log_202604` VALUES (139, 1, 'feed', '1849465521', 'uniad', 'redbag_page', 0.0250, 250, 0.0000, 0.0000, 0, 0.0250, 250, 2, 'af_auto_1775485653847_u2iy6kauv', '127.0.0.1', 'Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Mobile Safari/537.36 Edg/146.0.0.0', '', 'threshold_reward', 1775485654, 1775546092);
+INSERT INTO `advn_ad_income_log_202604` VALUES (140, 1, 'feed', '1849465521', 'uniad', 'redbag_page', 0.0250, 250, 0.0000, 0.0000, 0, 0.0250, 250, 2, 'af_auto_1775485709845_4zszc0maw', '127.0.0.1', 'Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Mobile Safari/537.36 Edg/146.0.0.0', '', 'threshold_reward', 1775485710, 1775546092);
+INSERT INTO `advn_ad_income_log_202604` VALUES (141, 1, 'feed', '1849465521', 'uniad', 'redbag_page', 0.0250, 250, 0.0000, 0.0000, 0, 0.0250, 250, 2, 'af_auto_1775486018261_a5c21qazt', '127.0.0.1', 'Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Mobile Safari/537.36 Edg/146.0.0.0', '', 'threshold_reward', 1775486018, 1775546092);
+INSERT INTO `advn_ad_income_log_202604` VALUES (142, 1, 'feed', '1849465521', 'uniad', 'redbag_page', 0.0250, 250, 0.0000, 0.0000, 0, 0.0250, 250, 2, 'af_auto_1775486084184_3ivomghf9', '127.0.0.1', 'Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Mobile Safari/537.36 Edg/146.0.0.0', '', 'threshold_reward', 1775486084, 1775546092);
+INSERT INTO `advn_ad_income_log_202604` VALUES (143, 1, 'feed', '1849465521', 'uniad', 'redbag_page', 0.0050, 50, 0.0000, 0.0000, 0, 0.0050, 50, 2, 'af_auto_1775489141090_6rlbpjzuu', '127.0.0.1', 'Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Mobile Safari/537.36 Edg/146.0.0.0', '', 'threshold_reward', 1775489141, 1775546092);
+INSERT INTO `advn_ad_income_log_202604` VALUES (144, 1, 'feed', '1849465521', 'uniad', 'redbag_page', 0.0050, 50, 0.0000, 0.0000, 0, 0.0050, 50, 2, 'af_auto_1775489440582_m0brlsw4v', '127.0.0.1', 'Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Mobile Safari/537.36 Edg/146.0.0.0', '', 'threshold_reward', 1775489441, 1775546092);
+INSERT INTO `advn_ad_income_log_202604` VALUES (145, 1, 'feed', '1849465521', 'uniad', 'redbag_page', 0.0050, 50, 0.0000, 0.0000, 0, 0.0050, 50, 2, 'af_auto_1775489459564_flp0p53xc', '127.0.0.1', 'Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Mobile Safari/537.36 Edg/146.0.0.0', '', 'threshold_reward', 1775489460, 1775546092);
+INSERT INTO `advn_ad_income_log_202604` VALUES (146, 1, 'feed', '1849465521', 'uniad', 'redbag_page', 0.0050, 50, 0.0000, 0.0000, 0, 0.0050, 50, 2, 'af_auto_1775489467211_knczl62w2', '127.0.0.1', 'Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Mobile Safari/537.36 Edg/146.0.0.0', '', 'threshold_reward', 1775489468, 1775546092);
+INSERT INTO `advn_ad_income_log_202604` VALUES (147, 1, 'feed', '1849465521', 'uniad', 'redbag_page', 0.0050, 50, 0.0000, 0.0000, 0, 0.0050, 50, 2, 'af_auto_1775489478865_svv813kf4', '127.0.0.1', 'Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Mobile Safari/537.36 Edg/146.0.0.0', '', 'threshold_reward', 1775489479, 1775546092);
+INSERT INTO `advn_ad_income_log_202604` VALUES (148, 1, 'feed', '1849465521', 'uniad', 'redbag_page', 0.0050, 50, 0.0000, 0.0000, 0, 0.0050, 50, 2, 'af_auto_1775489487818_qvfd7zfid', '127.0.0.1', 'Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Mobile Safari/537.36 Edg/146.0.0.0', '', 'threshold_reward', 1775489488, 1775546092);
+INSERT INTO `advn_ad_income_log_202604` VALUES (149, 1, 'feed', '1849465521', 'uniad', 'redbag_page', 0.0050, 50, 0.0000, 0.0000, 0, 0.0050, 50, 2, 'af_auto_1775489502202_2rce8k0d1', '127.0.0.1', 'Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Mobile Safari/537.36 Edg/146.0.0.0', '', 'threshold_reward', 1775489502, 1775546092);
+INSERT INTO `advn_ad_income_log_202604` VALUES (150, 1, 'feed', '1849465521', 'uniad', 'redbag_page', 0.0050, 50, 0.0000, 0.0000, 0, 0.0050, 50, 2, 'af_auto_1775489514539_oh96wjddw', '127.0.0.1', 'Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Mobile Safari/537.36 Edg/146.0.0.0', '', 'threshold_reward', 1775489515, 1775546092);
+INSERT INTO `advn_ad_income_log_202604` VALUES (151, 1, 'feed', '1849465521', 'uniad', 'redbag_page', 0.0050, 50, 0.0000, 0.0000, 0, 0.0050, 50, 2, 'af_auto_1775489530847_fkqq22cwh', '127.0.0.1', 'Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Mobile Safari/537.36 Edg/146.0.0.0', '', 'threshold_reward', 1775489531, 1775546092);
+INSERT INTO `advn_ad_income_log_202604` VALUES (152, 1, 'feed', '1849465521', 'uniad', 'redbag_page', 0.0050, 50, 0.0000, 0.0000, 0, 0.0050, 50, 2, 'af_auto_1775489544854_7mqc7cnq1', '127.0.0.1', 'Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Mobile Safari/537.36 Edg/146.0.0.0', '', 'threshold_reward', 1775489545, 1775546092);
+INSERT INTO `advn_ad_income_log_202604` VALUES (153, 1, 'feed', '1849465521', 'uniad', 'redbag_page', 0.0050, 50, 0.0000, 0.0000, 0, 0.0050, 50, 2, 'af_auto_1775489553837_sp9fldhtg', '127.0.0.1', 'Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Mobile Safari/537.36 Edg/146.0.0.0', '', 'threshold_reward', 1775489554, 1775546092);
+INSERT INTO `advn_ad_income_log_202604` VALUES (154, 1, 'feed', '1849465521', 'uniad', 'redbag_page', 0.0050, 50, 0.0000, 0.0000, 0, 0.0050, 50, 2, 'af_auto_1775489561849_o3jgh46ml', '127.0.0.1', 'Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Mobile Safari/537.36 Edg/146.0.0.0', '', 'threshold_reward', 1775489562, 1775546092);
+INSERT INTO `advn_ad_income_log_202604` VALUES (155, 1, 'feed', '1849465521', 'uniad', 'redbag_page', 0.0050, 50, 0.0000, 0.0000, 0, 0.0050, 50, 2, 'af_auto_1775546065992_vlj429505', '127.0.0.1', 'Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Mobile Safari/537.36 Edg/146.0.0.0', '', 'threshold_reward', 1775546066, 1775546092);
+INSERT INTO `advn_ad_income_log_202604` VALUES (156, 1, 'feed', '1849465521', 'uniad', 'redbag_page', 0.0050, 50, 0.0000, 0.0000, 0, 0.0050, 50, 2, 'af_auto_1775546073938_mrgi3sts6', '127.0.0.1', 'Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Mobile Safari/537.36 Edg/146.0.0.0', '', 'threshold_reward', 1775546073, 1775546092);
+INSERT INTO `advn_ad_income_log_202604` VALUES (157, 1, 'feed', '1849465521', 'uniad', 'redbag_page', 0.0050, 50, 0.0000, 0.0000, 0, 0.0050, 50, 2, 'af_auto_1775546082090_25s36mdde', '127.0.0.1', 'Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Mobile Safari/537.36 Edg/146.0.0.0', '', 'threshold_reward', 1775546082, 1775546092);
+INSERT INTO `advn_ad_income_log_202604` VALUES (158, 1, 'feed', '1849465521', 'uniad', 'redbag_page', 0.0050, 50, 0.0000, 0.0000, 0, 0.0050, 50, 2, 'af_auto_1775546107493_nugjp2yta', '127.0.0.1', 'Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Mobile Safari/537.36 Edg/146.0.0.0', '', 'threshold_reward', 1775546107, 1775610768);
+INSERT INTO `advn_ad_income_log_202604` VALUES (159, 1, 'feed', '1849465521', 'uniad', 'redbag_page', 0.0050, 50, 0.0000, 0.0000, 0, 0.0050, 50, 2, 'af_auto_1775546117991_folj8ptm4', '127.0.0.1', 'Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Mobile Safari/537.36 Edg/146.0.0.0', '', 'threshold_reward', 1775546118, 1775610768);
+INSERT INTO `advn_ad_income_log_202604` VALUES (160, 1, 'feed', '1849465521', 'uniad', 'redbag_page', 0.0050, 50, 0.0000, 0.0000, 0, 0.0050, 50, 2, 'af_auto_1775546134856_5dnz95m04', '127.0.0.1', 'Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Mobile Safari/537.36 Edg/146.0.0.0', '', 'threshold_reward', 1775546134, 1775610768);
+INSERT INTO `advn_ad_income_log_202604` VALUES (161, 1, 'feed', '1849465521', 'uniad', 'redbag_page', 0.0050, 50, 0.0000, 0.0000, 0, 0.0050, 50, 2, 'af_auto_1775546140866_o47938h57', '127.0.0.1', 'Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Mobile Safari/537.36 Edg/146.0.0.0', '', 'threshold_reward', 1775546140, 1775610768);
+INSERT INTO `advn_ad_income_log_202604` VALUES (162, 1, 'feed', '1849465521', 'uniad', 'redbag_page', 0.0050, 50, 0.0000, 0.0000, 0, 0.0050, 50, 2, 'af_auto_1775546155844_gidd9zff5', '127.0.0.1', 'Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Mobile Safari/537.36 Edg/146.0.0.0', '', 'threshold_reward', 1775546156, 1775610768);
+INSERT INTO `advn_ad_income_log_202604` VALUES (163, 1, 'feed', '1849465521', 'uniad', 'redbag_page', 0.0050, 50, 0.0000, 0.0000, 0, 0.0050, 50, 2, 'af_auto_1775546168418_9y97pjre7', '127.0.0.1', 'Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Mobile Safari/537.36 Edg/146.0.0.0', '', 'threshold_reward', 1775546169, 1775610768);
+INSERT INTO `advn_ad_income_log_202604` VALUES (164, 1, 'feed', '1849465521', 'uniad', 'redbag_page', 0.0050, 50, 0.0000, 0.0000, 0, 0.0050, 50, 2, 'af_auto_1775546183507_ezbztjp5e', '127.0.0.1', 'Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Mobile Safari/537.36 Edg/146.0.0.0', '', 'threshold_reward', 1775546184, 1775610768);
+INSERT INTO `advn_ad_income_log_202604` VALUES (165, 1, 'feed', '1849465521', 'uniad', 'redbag_page', 0.0050, 50, 0.0000, 0.0000, 0, 0.0050, 50, 2, 'af_auto_1775546194305_ovoetqkgg', '127.0.0.1', 'Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Mobile Safari/537.36 Edg/146.0.0.0', '', 'threshold_reward', 1775546194, 1775610768);
+INSERT INTO `advn_ad_income_log_202604` VALUES (166, 1, 'feed', '1849465521', 'uniad', 'redbag_page', 0.0050, 50, 0.0000, 0.0000, 0, 0.0050, 50, 2, 'af_auto_1775546208880_j8npx64le', '127.0.0.1', 'Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Mobile Safari/537.36 Edg/146.0.0.0', '', 'threshold_reward', 1775546209, 1775610768);
+INSERT INTO `advn_ad_income_log_202604` VALUES (167, 1, 'feed', '1849465521', 'uniad', 'redbag_page', 0.0050, 50, 0.0000, 0.0000, 0, 0.0050, 50, 2, 'af_auto_1775546233437_fdcpepm57', '127.0.0.1', 'Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Mobile Safari/537.36 Edg/146.0.0.0', '', 'threshold_reward', 1775546234, 1775610768);
+INSERT INTO `advn_ad_income_log_202604` VALUES (168, 1, 'feed', '1849465521', 'uniad', 'redbag_page', 0.0050, 50, 0.0000, 0.0000, 0, 0.0050, 50, 2, 'af_auto_1775546247138_jn0q8hlzt', '127.0.0.1', 'Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Mobile Safari/537.36 Edg/146.0.0.0', '', 'threshold_reward', 1775546246, 1775610768);
+INSERT INTO `advn_ad_income_log_202604` VALUES (169, 1, 'feed', '1849465521', 'uniad', 'redbag_page', 0.0050, 50, 0.0000, 0.0000, 0, 0.0050, 50, 2, 'af_auto_1775610742946_0ot59p5a1', '127.0.0.1', 'Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Mobile Safari/537.36 Edg/146.0.0.0', '', 'threshold_reward', 1775610744, 1775610768);
+INSERT INTO `advn_ad_income_log_202604` VALUES (170, 1, 'feed', '1849465521', 'uniad', 'redbag_page', 0.0050, 50, 0.0000, 0.0000, 0, 0.0050, 50, 2, 'af_auto_1775610758579_ykyvjun28', '127.0.0.1', 'Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Mobile Safari/537.36 Edg/146.0.0.0', '', 'threshold_reward', 1775610758, 1775610768);
+INSERT INTO `advn_ad_income_log_202604` VALUES (171, 1, 'feed', '1849465521', 'uniad', 'redbag_page', 0.0050, 50, 0.0000, 0.0000, 0, 0.0050, 50, 2, 'af_auto_1775610775950_h2xq2xq73', '127.0.0.1', 'Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Mobile Safari/537.36 Edg/146.0.0.0', '', 'threshold_reward', 1775610776, 1775610898);
+INSERT INTO `advn_ad_income_log_202604` VALUES (172, 1, 'feed', '1849465521', 'uniad', 'redbag_page', 0.0050, 50, 0.0000, 0.0000, 0, 0.0050, 50, 2, 'af_auto_1775610785933_n5sorelzj', '127.0.0.1', 'Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Mobile Safari/537.36 Edg/146.0.0.0', '', 'threshold_reward', 1775610785, 1775610898);
+INSERT INTO `advn_ad_income_log_202604` VALUES (173, 1, 'feed', '1849465521', 'uniad', 'redbag_page', 0.0050, 50, 0.0000, 0.0000, 0, 0.0050, 50, 2, 'af_auto_1775610797956_iv5jynzff', '127.0.0.1', 'Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Mobile Safari/537.36 Edg/146.0.0.0', '', 'threshold_reward', 1775610798, 1775610898);
+INSERT INTO `advn_ad_income_log_202604` VALUES (174, 1, 'feed', '1849465521', 'uniad', 'redbag_page', 0.0050, 50, 0.0000, 0.0000, 0, 0.0050, 50, 2, 'af_auto_1775610806942_i5y2lzszu', '127.0.0.1', 'Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Mobile Safari/537.36 Edg/146.0.0.0', '', 'threshold_reward', 1775610807, 1775610898);
+INSERT INTO `advn_ad_income_log_202604` VALUES (175, 1, 'feed', '1849465521', 'uniad', 'redbag_page', 0.0050, 50, 0.0000, 0.0000, 0, 0.0050, 50, 2, 'af_auto_1775610829932_g56wz5hcp', '127.0.0.1', 'Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Mobile Safari/537.36 Edg/146.0.0.0', '', 'threshold_reward', 1775610830, 1775610898);
+INSERT INTO `advn_ad_income_log_202604` VALUES (176, 1, 'feed', '1849465521', 'uniad', 'redbag_page', 0.0050, 50, 0.0000, 0.0000, 0, 0.0050, 50, 2, 'af_auto_1775610838903_ttsry6zou', '127.0.0.1', 'Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Mobile Safari/537.36 Edg/146.0.0.0', '', 'threshold_reward', 1775610839, 1775610898);
+INSERT INTO `advn_ad_income_log_202604` VALUES (177, 1, 'feed', '1849465521', 'uniad', 'redbag_page', 0.0050, 50, 0.0000, 0.0000, 0, 0.0050, 50, 2, 'af_auto_1775610851039_wyubshtnm', '127.0.0.1', 'Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Mobile Safari/537.36 Edg/146.0.0.0', '', 'threshold_reward', 1775610850, 1775610898);
+INSERT INTO `advn_ad_income_log_202604` VALUES (178, 1, 'feed', '1849465521', 'uniad', 'redbag_page', 0.0050, 50, 0.0000, 0.0000, 0, 0.0050, 50, 2, 'af_auto_1775610865620_tx0ukmdmo', '127.0.0.1', 'Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Mobile Safari/537.36 Edg/146.0.0.0', '', 'threshold_reward', 1775610866, 1775610898);
+INSERT INTO `advn_ad_income_log_202604` VALUES (179, 1, 'feed', '1849465521', 'uniad', 'redbag_page', 0.0050, 50, 0.0000, 0.0000, 0, 0.0050, 50, 2, 'af_auto_1775610877804_o7cgywpel', '127.0.0.1', 'Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Mobile Safari/537.36 Edg/146.0.0.0', '', 'threshold_reward', 1775610877, 1775610898);
+INSERT INTO `advn_ad_income_log_202604` VALUES (180, 1, 'feed', '1849465521', 'uniad', 'redbag_page', 0.0050, 50, 0.0000, 0.0000, 0, 0.0050, 50, 2, 'af_auto_1775610892803_r0hyezr30', '127.0.0.1', 'Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Mobile Safari/537.36 Edg/146.0.0.0', '', 'threshold_reward', 1775610893, 1775610898);
+INSERT INTO `advn_ad_income_log_202604` VALUES (181, 1, 'feed', '1849465521', 'uniad', 'redbag_page', 0.0050, 50, 0.0000, 0.0000, 0, 0.0050, 50, 2, 'af_auto_1775610915079_26i7mfc54', '127.0.0.1', 'Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Mobile Safari/537.36 Edg/146.0.0.0', '', 'threshold_reward', 1775610914, 1775613580);
+INSERT INTO `advn_ad_income_log_202604` VALUES (182, 1, 'feed', '1849465521', 'uniad', 'redbag_page', 0.0050, 50, 0.0000, 0.0000, 0, 0.0050, 50, 2, 'af_auto_1775610928686_tfaly6b8h', '127.0.0.1', 'Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Mobile Safari/537.36 Edg/146.0.0.0', '', 'threshold_reward', 1775610929, 1775613580);
+INSERT INTO `advn_ad_income_log_202604` VALUES (183, 1, 'feed', '1849465521', 'uniad', 'redbag_page', 0.0050, 50, 0.0000, 0.0000, 0, 0.0050, 50, 2, 'af_auto_1775610939897_33n95awqe', '127.0.0.1', 'Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Mobile Safari/537.36 Edg/146.0.0.0', '', 'threshold_reward', 1775610939, 1775613580);
+INSERT INTO `advn_ad_income_log_202604` VALUES (184, 1, 'feed', '1849465521', 'uniad', 'redbag_page', 0.0050, 50, 0.0000, 0.0000, 0, 0.0050, 50, 2, 'af_auto_1775610950901_5jcujs0zf', '127.0.0.1', 'Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Mobile Safari/537.36 Edg/146.0.0.0', '', 'threshold_reward', 1775610951, 1775613580);
+INSERT INTO `advn_ad_income_log_202604` VALUES (185, 1, 'feed', '1849465521', 'uniad', 'redbag_page', 0.0050, 50, 0.0000, 0.0000, 0, 0.0050, 50, 2, 'af_auto_1775610962901_8m539uynk', '127.0.0.1', 'Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Mobile Safari/537.36 Edg/146.0.0.0', '', 'threshold_reward', 1775610963, 1775613580);
+INSERT INTO `advn_ad_income_log_202604` VALUES (186, 1, 'feed', '1849465521', 'uniad', 'redbag_page', 0.0050, 50, 0.0000, 0.0000, 0, 0.0050, 50, 2, 'af_auto_1775610976915_bzb9ff74g', '127.0.0.1', 'Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Mobile Safari/537.36 Edg/146.0.0.0', '', 'threshold_reward', 1775610976, 1775613580);
+INSERT INTO `advn_ad_income_log_202604` VALUES (187, 1, 'feed', '1849465521', 'uniad', 'redbag_page', 0.0050, 50, 0.0000, 0.0000, 0, 0.0050, 50, 2, 'af_auto_1775610988911_iy8qkf3mn', '127.0.0.1', 'Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Mobile Safari/537.36 Edg/146.0.0.0', '', 'threshold_reward', 1775610989, 1775613580);
+INSERT INTO `advn_ad_income_log_202604` VALUES (188, 1, 'feed', '1849465521', 'uniad', 'redbag_page', 0.0050, 50, 0.0000, 0.0000, 0, 0.0050, 50, 2, 'af_auto_1775611000913_yzclz05h7', '127.0.0.1', 'Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Mobile Safari/537.36 Edg/146.0.0.0', '', 'threshold_reward', 1775611000, 1775613580);
+INSERT INTO `advn_ad_income_log_202604` VALUES (189, 1, 'feed', '1849465521', 'uniad', 'redbag_page', 0.0050, 50, 0.0000, 0.0000, 0, 0.0050, 50, 2, 'af_auto_1775611012916_ua3bd22vw', '127.0.0.1', 'Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Mobile Safari/537.36 Edg/146.0.0.0', '', 'threshold_reward', 1775611012, 1775613580);
+INSERT INTO `advn_ad_income_log_202604` VALUES (190, 1, 'feed', '1849465521', 'uniad', 'redbag_page', 0.0050, 50, 0.0000, 0.0000, 0, 0.0050, 50, 2, 'af_auto_1775611948153_yn3fk17ma', '127.0.0.1', 'Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Mobile Safari/537.36 Edg/146.0.0.0', '', 'threshold_reward', 1775611948, 1775613580);
+INSERT INTO `advn_ad_income_log_202604` VALUES (191, 1, 'feed', '1849465521', 'uniad', 'redbag_page', 0.0050, 50, 0.0000, 0.0000, 0, 0.0050, 50, 2, 'af_auto_1775611959393_pddd6e632', '127.0.0.1', 'Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Mobile Safari/537.36 Edg/146.0.0.0', '', 'threshold_reward', 1775611958, 1775613580);
+INSERT INTO `advn_ad_income_log_202604` VALUES (192, 1, 'feed', '1849465521', 'uniad', 'redbag_page', 0.0050, 50, 0.0000, 0.0000, 0, 0.0050, 50, 2, 'af_auto_1775611976208_x6esrfzol', '127.0.0.1', 'Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Mobile Safari/537.36 Edg/146.0.0.0', '', 'threshold_reward', 1775611976, 1775613580);
+INSERT INTO `advn_ad_income_log_202604` VALUES (193, 1, 'feed', '1849465521', 'uniad', 'redbag_page', 0.0050, 50, 0.0000, 0.0000, 0, 0.0050, 50, 2, 'af_auto_1775611985421_8x4x4zsnk', '127.0.0.1', 'Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Mobile Safari/537.36 Edg/146.0.0.0', '', 'threshold_reward', 1775611986, 1775613580);
+INSERT INTO `advn_ad_income_log_202604` VALUES (194, 1, 'feed', '1849465521', 'uniad', 'redbag_page', 0.0050, 50, 0.0000, 0.0000, 0, 0.0050, 50, 2, 'af_auto_1775611994842_ald17o6ug', '127.0.0.1', 'Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Mobile Safari/537.36 Edg/146.0.0.0', '', 'threshold_reward', 1775611994, 1775613580);
+INSERT INTO `advn_ad_income_log_202604` VALUES (195, 1, 'feed', '1849465521', 'uniad', 'redbag_page', 0.0050, 50, 0.0000, 0.0000, 0, 0.0050, 50, 2, 'af_auto_1775612012345_916uem599', '127.0.0.1', 'Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Mobile Safari/537.36 Edg/146.0.0.0', '', 'threshold_reward', 1775612012, 1775613580);
+INSERT INTO `advn_ad_income_log_202604` VALUES (196, 1, 'feed', '1849465521', 'uniad', 'redbag_page', 0.0050, 50, 0.0000, 0.0000, 0, 0.0050, 50, 2, 'af_auto_1775612022582_jibhseito', '127.0.0.1', 'Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Mobile Safari/537.36 Edg/146.0.0.0', '', 'threshold_reward', 1775612022, 1775613580);
+INSERT INTO `advn_ad_income_log_202604` VALUES (197, 1, 'feed', '1849465521', 'uniad', 'redbag_page', 0.0050, 50, 0.0000, 0.0000, 0, 0.0050, 50, 2, 'af_auto_1775612033998_hapncc69g', '127.0.0.1', 'Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Mobile Safari/537.36 Edg/146.0.0.0', '', 'threshold_reward', 1775612034, 1775613580);
+INSERT INTO `advn_ad_income_log_202604` VALUES (198, 1, 'feed', '1849465521', 'uniad', 'redbag_page', 0.0050, 50, 0.0000, 0.0000, 0, 0.0050, 50, 2, 'af_auto_1775612431947_amdnajhd1', '127.0.0.1', 'Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Mobile Safari/537.36 Edg/146.0.0.0', '', 'threshold_reward', 1775612432, 1775613580);
+INSERT INTO `advn_ad_income_log_202604` VALUES (199, 1, 'feed', '1849465521', 'uniad', 'redbag_page', 0.0050, 50, 0.0000, 0.0000, 0, 0.0050, 50, 2, 'af_auto_1775612443946_2b50l7ynr', '127.0.0.1', 'Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Mobile Safari/537.36 Edg/146.0.0.0', '', 'threshold_reward', 1775612444, 1775613580);
+INSERT INTO `advn_ad_income_log_202604` VALUES (200, 1, 'feed', '1849465521', 'uniad', 'redbag_page', 0.0050, 50, 0.0000, 0.0000, 0, 0.0050, 50, 2, 'af_auto_1775612453932_59atc0xun', '127.0.0.1', 'Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Mobile Safari/537.36 Edg/146.0.0.0', '', 'threshold_reward', 1775612453, 1775613580);
+INSERT INTO `advn_ad_income_log_202604` VALUES (201, 1, 'feed', '1849465521', 'uniad', 'redbag_page', 0.0050, 50, 0.0000, 0.0000, 0, 0.0050, 50, 2, 'af_auto_1775612498802_fh08rhipn', '127.0.0.1', 'Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Mobile Safari/537.36 Edg/146.0.0.0', '', 'threshold_reward', 1775612499, 1775613580);
+INSERT INTO `advn_ad_income_log_202604` VALUES (202, 1, 'feed', '1849465521', 'uniad', 'redbag_page', 0.0050, 50, 0.0000, 0.0000, 0, 0.0050, 50, 2, 'af_auto_1775612512267_s4bzd13b6', '127.0.0.1', 'Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Mobile Safari/537.36 Edg/146.0.0.0', '', 'threshold_reward', 1775612511, 1775613580);
+INSERT INTO `advn_ad_income_log_202604` VALUES (203, 1, 'feed', '1849465521', 'uniad', 'redbag_page', 0.0050, 50, 0.0000, 0.0000, 0, 0.0050, 50, 2, 'af_auto_1775612528902_irb1fxjap', '127.0.0.1', 'Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Mobile Safari/537.36 Edg/146.0.0.0', '', 'threshold_reward', 1775612529, 1775613580);
+INSERT INTO `advn_ad_income_log_202604` VALUES (204, 1, 'feed', '1849465521', 'uniad', 'redbag_page', 0.0050, 50, 0.0000, 0.0000, 0, 0.0050, 50, 2, 'af_auto_1775613279904_8vm1tynud', '127.0.0.1', 'Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Mobile Safari/537.36 Edg/146.0.0.0', '', 'threshold_reward', 1775613279, 1775613580);
+INSERT INTO `advn_ad_income_log_202604` VALUES (205, 1, 'feed', '1849465521', 'uniad', 'redbag_page', 0.0050, 50, 0.0000, 0.0000, 0, 0.0050, 50, 2, 'af_auto_1775613294471_xde8f1crp', '127.0.0.1', 'Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Mobile Safari/537.36 Edg/146.0.0.0', '', 'threshold_reward', 1775613295, 1775613580);
+INSERT INTO `advn_ad_income_log_202604` VALUES (206, 1, 'feed', '1849465521', 'uniad', 'redbag_page', 0.0050, 50, 0.0000, 0.0000, 0, 0.0050, 50, 2, 'af_auto_1775613306561_mec4r6llr', '127.0.0.1', 'Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Mobile Safari/537.36 Edg/146.0.0.0', '', 'threshold_reward', 1775613307, 1775613580);
+INSERT INTO `advn_ad_income_log_202604` VALUES (207, 1, 'feed', '1849465521', 'uniad', 'redbag_page', 0.0050, 50, 0.0000, 0.0000, 0, 0.0050, 50, 2, 'af_auto_1775613314214_iiwua1soi', '127.0.0.1', 'Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Mobile Safari/537.36 Edg/146.0.0.0', '', 'threshold_reward', 1775613314, 1775613580);
+INSERT INTO `advn_ad_income_log_202604` VALUES (208, 1, 'feed', '1849465521', 'uniad', 'redbag_page', 0.0050, 50, 0.0000, 0.0000, 0, 0.0050, 50, 2, 'af_auto_1775613327100_25ow91c0q', '127.0.0.1', 'Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Mobile Safari/537.36 Edg/146.0.0.0', '', 'threshold_reward', 1775613327, 1775613580);
+INSERT INTO `advn_ad_income_log_202604` VALUES (209, 1, 'feed', '1849465521', 'uniad', 'redbag_page', 0.0050, 50, 0.0000, 0.0000, 0, 0.0050, 50, 2, 'af_auto_1775613338050_sdrh6zzb9', '127.0.0.1', 'Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Mobile Safari/537.36 Edg/146.0.0.0', '', 'threshold_reward', 1775613338, 1775613580);
+INSERT INTO `advn_ad_income_log_202604` VALUES (210, 1, 'feed', '1849465521', 'uniad', 'redbag_page', 0.0050, 50, 0.0000, 0.0000, 0, 0.0050, 50, 2, 'af_auto_1775613351035_n9cxvl0xr', '127.0.0.1', 'Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Mobile Safari/537.36 Edg/146.0.0.0', '', 'threshold_reward', 1775613351, 1775613580);
+INSERT INTO `advn_ad_income_log_202604` VALUES (211, 1, 'feed', '1849465521', 'uniad', 'redbag_page', 0.0050, 50, 0.0000, 0.0000, 0, 0.0050, 50, 2, 'af_auto_1775613362509_9nlkacoyn', '127.0.0.1', 'Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Mobile Safari/537.36 Edg/146.0.0.0', '', 'threshold_reward', 1775613363, 1775613580);
+INSERT INTO `advn_ad_income_log_202604` VALUES (212, 1, 'feed', '1849465521', 'uniad', 'redbag_page', 0.0050, 50, 0.0000, 0.0000, 0, 0.0050, 50, 2, 'af_auto_1775613375179_pbhdaf87v', '127.0.0.1', 'Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Mobile Safari/537.36 Edg/146.0.0.0', '', 'threshold_reward', 1775613375, 1775613580);
+INSERT INTO `advn_ad_income_log_202604` VALUES (213, 1, 'feed', '1849465521', 'uniad', 'redbag_page', 0.0050, 50, 0.0000, 0.0000, 0, 0.0050, 50, 2, 'af_auto_1775613385147_0cnoxg0t0', '127.0.0.1', 'Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Mobile Safari/537.36 Edg/146.0.0.0', '', 'threshold_reward', 1775613385, 1775613580);
+INSERT INTO `advn_ad_income_log_202604` VALUES (214, 1, 'feed', '1849465521', 'uniad', 'redbag_page', 0.0050, 50, 0.0000, 0.0000, 0, 0.0050, 50, 2, 'af_auto_1775613549133_eh1oihnxl', '127.0.0.1', 'Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Mobile Safari/537.36 Edg/146.0.0.0', '', 'threshold_reward', 1775613550, 1775613580);
+INSERT INTO `advn_ad_income_log_202604` VALUES (215, 1, 'feed', '1849465521', 'uniad', 'redbag_page', 0.0050, 50, 0.0000, 0.0000, 0, 0.0050, 50, 2, 'af_auto_1775613557686_hffp6ced3', '127.0.0.1', 'Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Mobile Safari/537.36 Edg/146.0.0.0', '', 'threshold_reward', 1775613557, 1775613580);
+INSERT INTO `advn_ad_income_log_202604` VALUES (216, 1, 'feed', '1849465521', 'uniad', 'redbag_page', 0.0050, 50, 0.0000, 0.0000, 0, 0.0050, 50, 2, 'af_auto_1775613567978_7dp1v3jkh', '127.0.0.1', 'Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Mobile Safari/537.36 Edg/146.0.0.0', '', 'threshold_reward', 1775613567, 1775613580);
+INSERT INTO `advn_ad_income_log_202604` VALUES (217, 1, 'feed', '1849465521', 'uniad', 'redbag_page', 0.0050, 50, 0.0000, 0.0000, 0, 0.0050, 50, 2, 'af_auto_1775613580005_th5zpc7tr', '127.0.0.1', 'Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Mobile Safari/537.36 Edg/146.0.0.0', '', 'threshold_reward', 1775613580, 1775613716);
+INSERT INTO `advn_ad_income_log_202604` VALUES (218, 1, 'feed', '1849465521', 'uniad', 'redbag_page', 0.0050, 50, 0.0000, 0.0000, 0, 0.0050, 50, 2, 'af_auto_1775613593488_pwwdn5zej', '127.0.0.1', 'Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Mobile Safari/537.36 Edg/146.0.0.0', '', 'threshold_reward', 1775613593, 1775613716);
+INSERT INTO `advn_ad_income_log_202604` VALUES (219, 1, 'feed', '1849465521', 'uniad', 'redbag_page', 0.0050, 50, 0.0000, 0.0000, 0, 0.0050, 50, 2, 'af_auto_1775613609918_2eu0643q9', '127.0.0.1', 'Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Mobile Safari/537.36 Edg/146.0.0.0', '', 'threshold_reward', 1775613610, 1775613716);
+INSERT INTO `advn_ad_income_log_202604` VALUES (220, 1, 'feed', '1849465521', 'uniad', 'redbag_page', 0.0050, 50, 0.0000, 0.0000, 0, 0.0050, 50, 2, 'af_auto_1775613622907_b78dqggen', '127.0.0.1', 'Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Mobile Safari/537.36 Edg/146.0.0.0', '', 'threshold_reward', 1775613622, 1775613716);
+INSERT INTO `advn_ad_income_log_202604` VALUES (221, 1, 'feed', '1849465521', 'uniad', 'redbag_page', 0.0050, 50, 0.0000, 0.0000, 0, 0.0050, 50, 2, 'af_auto_1775613640912_uiii7plw9', '127.0.0.1', 'Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Mobile Safari/537.36 Edg/146.0.0.0', '', 'threshold_reward', 1775613641, 1775613716);
+INSERT INTO `advn_ad_income_log_202604` VALUES (222, 1, 'feed', '1849465521', 'uniad', 'redbag_page', 0.0050, 50, 0.0000, 0.0000, 0, 0.0050, 50, 2, 'af_auto_1775613655922_b7noittit', '127.0.0.1', 'Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Mobile Safari/537.36 Edg/146.0.0.0', '', 'threshold_reward', 1775613655, 1775613716);
+INSERT INTO `advn_ad_income_log_202604` VALUES (223, 1, 'feed', '1849465521', 'uniad', 'redbag_page', 0.0050, 50, 0.0000, 0.0000, 0, 0.0050, 50, 2, 'af_auto_1775613693936_5g1wpjaej', '127.0.0.1', 'Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Mobile Safari/537.36 Edg/146.0.0.0', '', 'threshold_reward', 1775613694, 1775613716);
 
 -- ----------------------------
 -- Table structure for advn_ad_income_log_2027
@@ -347,7 +428,7 @@ CREATE TABLE `advn_ad_income_log_2027`  (
   INDEX `idx_user_status`(`user_id` ASC, `status` ASC) USING BTREE,
   INDEX `idx_user_status_createtime`(`user_id` ASC, `status` ASC, `createtime` ASC) USING BTREE,
   INDEX `idx_createtime_status`(`createtime` ASC, `status` ASC) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '广告收益记录表' ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '广告收益记录表' ROW_FORMAT = Dynamic;
 
 -- ----------------------------
 -- Records of advn_ad_income_log_2027
@@ -399,7 +480,7 @@ CREATE TABLE `advn_ad_red_packet_202507`  (
   INDEX `idx_status`(`status` ASC) USING BTREE,
   INDEX `idx_expire_time`(`expire_time` ASC) USING BTREE,
   INDEX `idx_user_status`(`user_id` ASC, `status` ASC) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '广告红包表（系统自动生成）' ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '广告红包表（系统自动生成）' ROW_FORMAT = Dynamic;
 
 -- ----------------------------
 -- Records of advn_ad_red_packet_202507
@@ -425,7 +506,7 @@ CREATE TABLE `advn_ad_red_packet_202508`  (
   INDEX `idx_status`(`status` ASC) USING BTREE,
   INDEX `idx_expire_time`(`expire_time` ASC) USING BTREE,
   INDEX `idx_user_status`(`user_id` ASC, `status` ASC) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '广告红包表（系统自动生成）' ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '广告红包表（系统自动生成）' ROW_FORMAT = Dynamic;
 
 -- ----------------------------
 -- Records of advn_ad_red_packet_202508
@@ -451,7 +532,7 @@ CREATE TABLE `advn_ad_red_packet_202509`  (
   INDEX `idx_status`(`status` ASC) USING BTREE,
   INDEX `idx_expire_time`(`expire_time` ASC) USING BTREE,
   INDEX `idx_user_status`(`user_id` ASC, `status` ASC) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '广告红包表（系统自动生成）' ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '广告红包表（系统自动生成）' ROW_FORMAT = Dynamic;
 
 -- ----------------------------
 -- Records of advn_ad_red_packet_202509
@@ -477,7 +558,7 @@ CREATE TABLE `advn_ad_red_packet_2026`  (
   INDEX `idx_status`(`status` ASC) USING BTREE,
   INDEX `idx_expire_time`(`expire_time` ASC) USING BTREE,
   INDEX `idx_user_status`(`user_id` ASC, `status` ASC) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '广告红包表（系统自动生成）' ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '广告红包表（系统自动生成）' ROW_FORMAT = Dynamic;
 
 -- ----------------------------
 -- Records of advn_ad_red_packet_2026
@@ -503,7 +584,7 @@ CREATE TABLE `advn_ad_red_packet_202604`  (
   INDEX `idx_status`(`status` ASC) USING BTREE,
   INDEX `idx_expire_time`(`expire_time` ASC) USING BTREE,
   INDEX `idx_user_status`(`user_id` ASC, `status` ASC) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 13 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '广告红包表（系统自动生成）' ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB AUTO_INCREMENT = 18 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '广告红包表（系统自动生成）' ROW_FORMAT = Dynamic;
 
 -- ----------------------------
 -- Records of advn_ad_red_packet_202604
@@ -519,7 +600,12 @@ INSERT INTO `advn_ad_red_packet_202604` VALUES (8, 1, 0.00, 'freeze_notify', '',
 INSERT INTO `advn_ad_red_packet_202604` VALUES (9, 1, 0.00, 'freeze_notify', '', 1, 1775463341, 1775635795, 1775462995, 1775463341);
 INSERT INTO `advn_ad_red_packet_202604` VALUES (10, 1, 0.00, 'freeze_notify', '', 1, 1775463822, 1775636149, 1775463349, 1775463822);
 INSERT INTO `advn_ad_red_packet_202604` VALUES (11, 1, 0.00, 'freeze_notify', '', 1, 1775464904, 1775636629, 1775463829, 1775464904);
-INSERT INTO `advn_ad_red_packet_202604` VALUES (12, 1, 0.00, 'freeze_notify', '', 0, NULL, 1775637705, 1775464905, NULL);
+INSERT INTO `advn_ad_red_packet_202604` VALUES (12, 1, 0.00, 'freeze_notify', '', 1, 1775546092, 1775637705, 1775464905, 1775546092);
+INSERT INTO `advn_ad_red_packet_202604` VALUES (13, 1, 0.00, 'freeze_notify', '', 1, 1775610768, 1775718918, 1775546118, 1775610768);
+INSERT INTO `advn_ad_red_packet_202604` VALUES (14, 1, 0.00, 'freeze_notify', '', 1, 1775610898, 1775783585, 1775610785, 1775610898);
+INSERT INTO `advn_ad_red_packet_202604` VALUES (15, 1, 0.00, 'freeze_notify', '', 1, 1775613580, 1775783729, 1775610929, 1775613580);
+INSERT INTO `advn_ad_red_packet_202604` VALUES (16, 1, 0.00, 'freeze_notify', '', 1, 1775613716, 1775786380, 1775613580, 1775613716);
+INSERT INTO `advn_ad_red_packet_202604` VALUES (17, 1, 0.00, 'freeze_notify', '', 0, NULL, 1775786527, 1775613727, NULL);
 
 -- ----------------------------
 -- Table structure for advn_ad_red_packet_2027
@@ -541,7 +627,7 @@ CREATE TABLE `advn_ad_red_packet_2027`  (
   INDEX `idx_status`(`status` ASC) USING BTREE,
   INDEX `idx_expire_time`(`expire_time` ASC) USING BTREE,
   INDEX `idx_user_status`(`user_id` ASC, `status` ASC) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '广告红包表（系统自动生成）' ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '广告红包表（系统自动生成）' ROW_FORMAT = Dynamic;
 
 -- ----------------------------
 -- Records of advn_ad_red_packet_2027
@@ -564,15 +650,17 @@ CREATE TABLE `advn_ad_view_counter`  (
   UNIQUE INDEX `uk_user_type_date`(`user_id` ASC, `ad_type` ASC, `view_date` ASC) USING BTREE,
   INDEX `idx_user_id`(`user_id` ASC) USING BTREE,
   INDEX `idx_view_date`(`view_date` ASC) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 5 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '广告浏览计数器（按天自动重置）' ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB AUTO_INCREMENT = 7 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '广告浏览计数器（按天自动重置）' ROW_FORMAT = Dynamic;
 
 -- ----------------------------
 -- Records of advn_ad_view_counter
 -- ----------------------------
 INSERT INTO `advn_ad_view_counter` VALUES (1, 1, 'feed', '2026-04-05', 4, 33, 1775395344, 1775402599);
 INSERT INTO `advn_ad_view_counter` VALUES (2, 1, 'reward', '2026-04-05', 0, 2, 1775396276, 1775402534);
-INSERT INTO `advn_ad_view_counter` VALUES (3, 1, 'feed', '2026-04-06', 1, 103, 1775435609, 1775486100);
+INSERT INTO `advn_ad_view_counter` VALUES (3, 1, 'feed', '2026-04-06', 0, 115, 1775435609, 1775489562);
 INSERT INTO `advn_ad_view_counter` VALUES (4, 1, 'reward', '2026-04-06', 0, 4, 1775435966, 1775460854);
+INSERT INTO `advn_ad_view_counter` VALUES (5, 1, 'feed', '2026-04-07', 0, 14, 1775546065, 1775546247);
+INSERT INTO `advn_ad_view_counter` VALUES (6, 1, 'feed', '2026-04-08', 0, 55, 1775610743, 1775613694);
 
 -- ----------------------------
 -- Table structure for advn_admin
@@ -601,7 +689,7 @@ CREATE TABLE `advn_admin`  (
 -- ----------------------------
 -- Records of advn_admin
 -- ----------------------------
-INSERT INTO `advn_admin` VALUES (1, 'admin', 'Admin', 'ca5a435772eb9b8e1a310401f82e15a1', 'bf9139', '/assets/img/avatar.png', 'admin@admin.com', '', 0, 1775194400, '127.0.0.1', 1491635035, 1775194400, 'b23d3b7c-0eb3-4e83-a18f-6bbcfe02766e', 'normal');
+INSERT INTO `advn_admin` VALUES (1, 'admin', 'Admin', 'ca5a435772eb9b8e1a310401f82e15a1', 'bf9139', '/assets/img/avatar.png', 'admin@admin.com', '', 0, 1775896802, '127.0.0.1', 1491635035, 1775896802, '0b4eb179-4ce0-42c1-8008-fac5933d9d91', 'normal');
 
 -- ----------------------------
 -- Table structure for advn_admin_coin_log
@@ -647,7 +735,7 @@ CREATE TABLE `advn_admin_log`  (
   `createtime` bigint NULL DEFAULT NULL COMMENT '操作时间',
   PRIMARY KEY (`id`) USING BTREE,
   INDEX `name`(`username` ASC) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 729 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '管理员日志表' ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB AUTO_INCREMENT = 733 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '管理员日志表' ROW_FORMAT = Dynamic;
 
 -- ----------------------------
 -- Records of advn_admin_log
@@ -1380,6 +1468,10 @@ INSERT INTO `advn_admin_log` VALUES (725, 1, 'admin', '/BgYmdTvqpf.php/general.c
 INSERT INTO `advn_admin_log` VALUES (726, 1, 'admin', '/BgYmdTvqpf.php/general.config/edit', '常规管理 / 系统配置 / 编辑', '{\"__token__\":\"***\",\"row\":{\"name\":\"广告联盟\",\"beian\":\"\",\"version\":\"1.0.2\",\"timezone\":\"Asia\\/Shanghai\",\"forbiddenip\":\"\",\"languages\":\"{&quot;backend&quot;:&quot;zh-cn&quot;,&quot;frontend&quot;:&quot;zh-cn&quot;}\",\"fixedpage\":\"dashboard\",\"red_packet_max_reward\":\"10000\"}}', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0', 1775443056);
 INSERT INTO `advn_admin_log` VALUES (727, 1, 'admin', '/BgYmdTvqpf.php/general.config/edit', '常规管理 / 系统配置 / 编辑', '{\"__token__\":\"***\",\"row\":{\"ad_income_enabled\":\"1\",\"platform_rate\":\"0.30\",\"settle_interval\":\"30\",\"min_redpacket_amount\":\"100\",\"redpacket_expire_hours\":\"48\",\"daily_reward_limit\":\"50000\",\"reward_per_feed\":\"50\",\"reward_per_video\":\"200\",\"callback_secret\":\"fArAX0yiwDazNbnFDsFP2JGnP1SJkyZ7\",\"enabled_providers\":\"uniad,csj\",\"redpacket_threshold\":\"100\",\"feed_adpid\":\"1849465521\",\"rewarded_video_adpid\":\"1453908345\",\"feed_ad_count\":\"3\",\"rewarded_video_interval\":\"120\",\"rewarded_video_cooldown\":\"30\",\"ad_idle_timeout\":\"120\"}}', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0', 1775443067);
 INSERT INTO `advn_admin_log` VALUES (728, 1, 'admin', '/BgYmdTvqpf.php/general.config/edit', '常规管理 / 系统配置 / 编辑', '{\"__token__\":\"***\",\"row\":{\"name\":\"广告联盟\",\"beian\":\"\",\"version\":\"1.0.2\",\"timezone\":\"Asia\\/Shanghai\",\"forbiddenip\":\"\",\"languages\":\"{&quot;backend&quot;:&quot;zh-cn&quot;,&quot;frontend&quot;:&quot;zh-cn&quot;}\",\"fixedpage\":\"dashboard\",\"red_packet_max_reward\":\"10000\"}}', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0', 1775485704);
+INSERT INTO `advn_admin_log` VALUES (729, 1, 'admin', '/BgYmdTvqpf.php/general.config/edit', '常规管理 / 系统配置 / 编辑', '{\"__token__\":\"***\",\"row\":{\"name\":\"广告联盟\",\"beian\":\"\",\"version\":\"1.0.2\",\"timezone\":\"Asia\\/Shanghai\",\"forbiddenip\":\"\",\"languages\":\"{&quot;backend&quot;:&quot;zh-cn&quot;,&quot;frontend&quot;:&quot;zh-cn&quot;}\",\"fixedpage\":\"dashboard\",\"red_packet_max_reward\":\"10000\"}}', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0', 1775489333);
+INSERT INTO `advn_admin_log` VALUES (730, 1, 'admin', '/BgYmdTvqpf.php/general.config/edit', '常规管理 / 系统配置 / 编辑', '{\"__token__\":\"***\",\"row\":{\"ad_income_enabled\":\"1\",\"platform_rate\":\"0.30\",\"settle_interval\":\"30\",\"min_redpacket_amount\":\"100\",\"redpacket_expire_hours\":\"48\",\"daily_reward_limit\":\"50000\",\"reward_per_feed\":\"50\",\"reward_per_video\":\"200\",\"callback_secret\":\"fArAX0yiwDazNbnFDsFP2JGnP1SJkyZ7\",\"enabled_providers\":\"uniad,csj\",\"redpacket_threshold\":\"100\",\"feed_adpid\":\"1849465521\",\"rewarded_video_adpid\":\"1453908345\",\"feed_ad_count\":\"3\",\"rewarded_video_interval\":\"120\",\"rewarded_video_cooldown\":\"30\",\"ad_idle_timeout\":\"120\",\"feed_reward_threshold\":\"1\",\"video_reward_threshold\":\"1\"}}', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0', 1775489350);
+INSERT INTO `advn_admin_log` VALUES (731, 1, 'admin', '/BgYmdTvqpf.php/index/login', '登录', '{\"__token__\":\"***\",\"username\":\"admin\",\"password\":\"***\",\"captcha\":\"25dm\"}', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0', 1775797608);
+INSERT INTO `advn_admin_log` VALUES (732, 1, 'admin', '/BgYmdTvqpf.php/index/login?url=/BgYmdTvqpf.php/general/config?addtabs=1', '登录', '{\"url\":\"\\/BgYmdTvqpf.php\\/general\\/config?addtabs=1\",\"__token__\":\"***\",\"username\":\"admin\",\"password\":\"***\",\"captcha\":\"gtju\"}', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0', 1775896802);
 
 -- ----------------------------
 -- Table structure for advn_anticheat_log
@@ -1934,7 +2026,7 @@ CREATE TABLE `advn_coin_account`  (
 -- ----------------------------
 -- Records of advn_coin_account
 -- ----------------------------
-INSERT INTO `advn_coin_account` VALUES (1, 1, 90473.00, 1132263.00, 921553.00, 50.00, 48324.00, 21195.00, '2026-04-06', 2750.00, 36100.00, 195, 1772773258, 1775486084, NULL);
+INSERT INTO `advn_coin_account` VALUES (1, 1, 96973.00, 1132263.00, 928053.00, 50.00, 48324.00, 2750.00, '2026-04-08', 300.00, 40150.00, 281, 1772773258, 1775613716, NULL);
 INSERT INTO `advn_coin_account` VALUES (2, 1001, 432754.00, 0.00, 695110.00, 0.00, 72983.00, 0.00, NULL, 0.00, 0.00, 0, 1772773258, 1773134246, NULL);
 INSERT INTO `advn_coin_account` VALUES (3, 1002, 37836.00, 0.00, 951741.00, 0.00, 44491.00, 0.00, NULL, 0.00, 0.00, 0, 1772773258, 1772773258, NULL);
 INSERT INTO `advn_coin_account` VALUES (4, 1003, 174300.00, 0.00, 709606.00, 0.00, 96134.00, 0.00, NULL, 0.00, 0.00, 0, 1772773258, 1772847990, NULL);
@@ -2102,7 +2194,7 @@ CREATE TABLE `advn_coin_log_202604`  (
   INDEX `idx_type`(`type` ASC) USING BTREE,
   INDEX `idx_create_time`(`createtime` ASC) USING BTREE,
   INDEX `idx_admin_id`(`admin_id` ASC) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 23 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '金币流水表' ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB AUTO_INCREMENT = 28 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '金币流水表' ROW_FORMAT = Dynamic;
 
 -- ----------------------------
 -- Records of advn_coin_log_202604
@@ -2129,6 +2221,11 @@ INSERT INTO `advn_coin_log_202604` VALUES (19, 1, 'freeze_balance_claim_feed', 1
 INSERT INTO `advn_coin_log_202604` VALUES (20, 1, 'freeze_balance_claim_feed', 750.00, 88973.00, 89723.00, 'ad_freeze_claim', 0, NULL, '领取待释放金币(信息流广告→可提现金币)', NULL, NULL, NULL, 1775463341, '2026-04-06');
 INSERT INTO `advn_coin_log_202604` VALUES (21, 1, 'freeze_balance_claim_feed', 500.00, 89473.00, 89973.00, 'ad_freeze_claim', 0, NULL, '领取待释放金币(信息流广告→可提现金币)', NULL, NULL, NULL, 1775463822, '2026-04-06');
 INSERT INTO `advn_coin_log_202604` VALUES (22, 1, 'freeze_balance_claim_feed', 500.00, 89973.00, 90473.00, 'ad_freeze_claim', 0, NULL, '领取待释放金币(信息流广告→可提现金币)', NULL, NULL, NULL, 1775464904, '2026-04-06');
+INSERT INTO `advn_coin_log_202604` VALUES (23, 1, 'freeze_balance_claim_feed', 3250.00, 90473.00, 93723.00, 'ad_freeze_claim', 0, NULL, '领取待释放金币(信息流广告→可提现金币)', NULL, NULL, NULL, 1775546092, '2026-04-07');
+INSERT INTO `advn_coin_log_202604` VALUES (24, 1, 'freeze_balance_claim_feed', 650.00, 93973.00, 94623.00, 'ad_freeze_claim', 0, NULL, '领取待释放金币(信息流广告→可提现金币)', NULL, NULL, NULL, 1775610768, '2026-04-08');
+INSERT INTO `advn_coin_log_202604` VALUES (25, 1, 'freeze_balance_claim_feed', 500.00, 94623.00, 95123.00, 'ad_freeze_claim', 0, NULL, '领取待释放金币(信息流广告→可提现金币)', NULL, NULL, NULL, 1775610898, '2026-04-08');
+INSERT INTO `advn_coin_log_202604` VALUES (26, 1, 'freeze_balance_claim_feed', 1800.00, 95123.00, 96923.00, 'ad_freeze_claim', 0, NULL, '领取待释放金币(信息流广告→可提现金币)', NULL, NULL, NULL, 1775613580, '2026-04-08');
+INSERT INTO `advn_coin_log_202604` VALUES (27, 1, 'freeze_balance_claim_feed', 350.00, 96773.00, 97123.00, 'ad_freeze_claim', 0, NULL, '领取待释放金币(信息流广告→可提现金币)', NULL, NULL, NULL, 1775613716, '2026-04-08');
 
 -- ----------------------------
 -- Table structure for advn_coin_log_archive
@@ -2178,7 +2275,7 @@ CREATE TABLE `advn_config`  (
   `setting` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT '' COMMENT '配置',
   PRIMARY KEY (`id`) USING BTREE,
   UNIQUE INDEX `name`(`name` ASC) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 324 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '系统配置' ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB AUTO_INCREMENT = 326 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '系统配置' ROW_FORMAT = Dynamic;
 
 -- ----------------------------
 -- Records of advn_config
@@ -2339,6 +2436,8 @@ INSERT INTO `advn_config` VALUES (320, 'feed_ad_count', 'ad', '红包页信息�
 INSERT INTO `advn_config` VALUES (321, 'rewarded_video_interval', 'ad', '激励视频推送间隔（秒）', '每隔多少秒在红包页消息流中推送一条激励视频广告卡片，默认120秒（2分钟）', 'number', '', '120', '', 'required|integer|gte:10', '', NULL);
 INSERT INTO `advn_config` VALUES (322, 'rewarded_video_cooldown', 'ad', '激励视频冷却时间（秒）', '用户上次观看激励视频后需要等待多少秒才能再次观看，默认30秒', 'number', '', '30', '', 'required|integer|gte:5', '', NULL);
 INSERT INTO `advn_config` VALUES (323, 'ad_idle_timeout', 'ad', '广告空闲超时(秒)', '用户在红包群页面不触摸屏幕超过此时间后，信息流广告不再累计金币（防止挂机刷广告风险），设置为0则不限制', 'number', '', '120', '', 'required|integer|gte:0', '', NULL);
+INSERT INTO `advn_config` VALUES (324, 'feed_reward_threshold', 'ad', '信息流奖励阈值（次）', '用户浏览多少次信息流广告后发放一次奖励，设置为0或1表示每次浏览都发放奖励', 'number', '', '1', '', 'required|integer|gte:0', '', NULL);
+INSERT INTO `advn_config` VALUES (325, 'video_reward_threshold', 'ad', '激励视频奖励阈值（次）', '用户观看多少次激励视频后发放一次奖励，设置为0或1表示每次观看都发放奖励', 'number', '', '1', '', 'required|integer|gte:0', '', NULL);
 
 -- ----------------------------
 -- Table structure for advn_daily_commission_stat
@@ -2837,7 +2936,7 @@ CREATE TABLE `advn_migration_config`  (
 -- Records of advn_migration_config
 -- ----------------------------
 INSERT INTO `advn_migration_config` VALUES (1, 'migration_path', 'sql/migrations', '迁移文件目录', 1772363672, 1772363672);
-INSERT INTO `advn_migration_config` VALUES (2, 'last_batch_no', '65', '最后执行批次号', 1772363672, 1775443050);
+INSERT INTO `advn_migration_config` VALUES (2, 'last_batch_no', '66', '最后执行批次号', 1772363672, 1775489326);
 
 -- ----------------------------
 -- Table structure for advn_migration_record
@@ -2859,7 +2958,7 @@ CREATE TABLE `advn_migration_record`  (
   UNIQUE INDEX `uk_migration_name`(`migration_name` ASC) USING BTREE,
   INDEX `idx_status`(`status` ASC) USING BTREE,
   INDEX `idx_batch`(`batch` ASC) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 69 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '数据迁移记录表' ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB AUTO_INCREMENT = 70 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '数据迁移记录表' ROW_FORMAT = Dynamic;
 
 -- ----------------------------
 -- Records of advn_migration_record
@@ -2932,6 +3031,7 @@ INSERT INTO `advn_migration_record` VALUES (65, '2026072001_optimize_ad_overview
 INSERT INTO `advn_migration_record` VALUES (66, '2026072101_cleanup_invalid_red_packets.sql', '/mnt/d/phpstudy_pro/WWW/adv/sql/migrations/2026072101_cleanup_invalid_red_packets.sql', 63, 'completed', 1775371202, 0.02, NULL, '5fb6461cfb3e372a805abe17fecf278e', 1775371202, 1775371202);
 INSERT INTO `advn_migration_record` VALUES (67, '2026072201_split_ad_income_tables.sql', '/mnt/d/phpstudy_pro/WWW/adv/sql/migrations/2026072201_split_ad_income_tables.sql', 64, 'completed', 1775374673, 0.68, NULL, '8cee0d1fe39526998e1a27f5ded892d4', 1775374672, 1775374673);
 INSERT INTO `advn_migration_record` VALUES (68, '2026072202_add_ad_idle_timeout.sql', '/mnt/d/phpstudy_pro/WWW/adv/sql/migrations/2026072202_add_ad_idle_timeout.sql', 65, 'completed', 1775443050, 0.01, NULL, '572c5bd95ba81b439de234761da9c522', 1775443050, 1775443050);
+INSERT INTO `advn_migration_record` VALUES (69, '2026072203_add_feed_and_video_reward_threshold.sql', '/mnt/d/phpstudy_pro/WWW/adv/sql/migrations/2026072203_add_feed_and_video_reward_threshold.sql', 66, 'completed', 1775489326, 0.02, NULL, 'd5c52ebd52848a46f2d42bb48446377f', 1775489326, 1775489326);
 
 -- ----------------------------
 -- Table structure for advn_red_packet_record
@@ -3184,7 +3284,7 @@ CREATE TABLE `advn_red_packet_task_2026`  (
   INDEX `sender_id`(`sender_id` ASC) USING BTREE,
   INDEX `idx_push_status`(`push_status` ASC) USING BTREE,
   INDEX `idx_resource_id`(`resource_id` ASC) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '红包任务表' ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '红包任务表' ROW_FORMAT = Dynamic;
 
 -- ----------------------------
 -- Records of advn_red_packet_task_2026
@@ -3226,7 +3326,7 @@ CREATE TABLE `advn_red_packet_task_202604`  (
   INDEX `sender_id`(`sender_id` ASC) USING BTREE,
   INDEX `idx_push_status`(`push_status` ASC) USING BTREE,
   INDEX `idx_resource_id`(`resource_id` ASC) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '红包任务表' ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '红包任务表' ROW_FORMAT = Dynamic;
 
 -- ----------------------------
 -- Records of advn_red_packet_task_202604
@@ -3268,7 +3368,7 @@ CREATE TABLE `advn_red_packet_task_2027`  (
   INDEX `sender_id`(`sender_id` ASC) USING BTREE,
   INDEX `idx_push_status`(`push_status` ASC) USING BTREE,
   INDEX `idx_resource_id`(`resource_id` ASC) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '红包任务表' ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '红包任务表' ROW_FORMAT = Dynamic;
 
 -- ----------------------------
 -- Records of advn_red_packet_task_2027
@@ -3701,7 +3801,7 @@ CREATE TABLE `advn_shop_brand`  (
   `updatetime` bigint NULL DEFAULT NULL COMMENT '更新时间',
   `weigh` int NOT NULL DEFAULT 0 COMMENT '权重',
   PRIMARY KEY (`id`) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '品牌管理' ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '品牌管理' ROW_FORMAT = Dynamic;
 
 -- ----------------------------
 -- Records of advn_shop_brand
@@ -3741,7 +3841,7 @@ CREATE TABLE `advn_shop_carts`  (
   `updatetime` bigint NULL DEFAULT NULL COMMENT '更新时间',
   PRIMARY KEY (`id`) USING BTREE,
   INDEX `user_id`(`user_id` ASC) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '购物车' ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '购物车' ROW_FORMAT = Dynamic;
 
 -- ----------------------------
 -- Records of advn_shop_carts
@@ -3810,7 +3910,7 @@ CREATE TABLE `advn_shop_collect`  (
   `createtime` bigint NULL DEFAULT NULL COMMENT '创建时间',
   `updatetime` bigint NULL DEFAULT NULL COMMENT '更新时间',
   PRIMARY KEY (`id`) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '收藏表' ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '收藏表' ROW_FORMAT = Dynamic;
 
 -- ----------------------------
 -- Records of advn_shop_collect
@@ -3838,7 +3938,7 @@ CREATE TABLE `advn_shop_comment`  (
   `status` enum('normal','hidden') CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'normal' COMMENT '状态',
   PRIMARY KEY (`id`) USING BTREE,
   INDEX `post_id`(`goods_id` ASC) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '评论表' ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '评论表' ROW_FORMAT = Dynamic;
 
 -- ----------------------------
 -- Records of advn_shop_comment
@@ -3867,7 +3967,7 @@ CREATE TABLE `advn_shop_coupon`  (
   `createtime` bigint NULL DEFAULT NULL COMMENT '创建时间',
   `updatetime` bigint NULL DEFAULT NULL COMMENT '更新时间',
   PRIMARY KEY (`id`) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '优惠券表' ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '优惠券表' ROW_FORMAT = Dynamic;
 
 -- ----------------------------
 -- Records of advn_shop_coupon
@@ -3885,7 +3985,7 @@ CREATE TABLE `advn_shop_coupon_condition`  (
   `createtime` bigint NULL DEFAULT NULL COMMENT '创建时间',
   `updatetime` bigint NULL DEFAULT NULL COMMENT '更新时间',
   PRIMARY KEY (`id`) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '优惠券条件' ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '优惠券条件' ROW_FORMAT = Dynamic;
 
 -- ----------------------------
 -- Records of advn_shop_coupon_condition
@@ -4390,7 +4490,7 @@ CREATE TABLE `advn_shop_order`  (
   INDEX `paytime`(`paytime` ASC) USING BTREE,
   INDEX `createtime`(`createtime` ASC) USING BTREE,
   INDEX `province_city_area`(`province_id` ASC, `city_id` ASC, `area_id` ASC) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '订单表' ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '订单表' ROW_FORMAT = Dynamic;
 
 -- ----------------------------
 -- Records of advn_shop_order
@@ -4699,7 +4799,7 @@ CREATE TABLE `advn_shop_template_msg`  (
   `createtime` bigint NULL DEFAULT NULL COMMENT '创建时间',
   `updatetime` bigint NULL DEFAULT NULL COMMENT '更新时间',
   PRIMARY KEY (`id`) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '模板消息' ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '模板消息' ROW_FORMAT = Dynamic;
 
 -- ----------------------------
 -- Records of advn_shop_template_msg
@@ -4719,7 +4819,7 @@ CREATE TABLE `advn_shop_user_coupon`  (
   `createtime` bigint NULL DEFAULT NULL COMMENT '创建时间',
   `updatetime` bigint NULL DEFAULT NULL COMMENT '更新时间',
   PRIMARY KEY (`id`) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '优惠券领取记录表' ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '优惠券领取记录表' ROW_FORMAT = Dynamic;
 
 -- ----------------------------
 -- Records of advn_shop_user_coupon
@@ -5844,7 +5944,7 @@ CREATE TABLE `advn_user_red_packet_accumulate_2026`  (
   INDEX `user_id`(`user_id` ASC) USING BTREE,
   INDEX `task_id`(`task_id` ASC) USING BTREE,
   INDEX `is_collected`(`is_collected` ASC) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '用户红包累计记录表' ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '用户红包累计记录表' ROW_FORMAT = Dynamic;
 
 -- ----------------------------
 -- Records of advn_user_red_packet_accumulate_2026
@@ -6595,7 +6695,7 @@ CREATE TABLE `advn_user_red_packet_accumulate_202604`  (
   INDEX `user_id`(`user_id` ASC) USING BTREE,
   INDEX `task_id`(`task_id` ASC) USING BTREE,
   INDEX `is_collected`(`is_collected` ASC) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '用户红包累计记录表' ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '用户红包累计记录表' ROW_FORMAT = Dynamic;
 
 -- ----------------------------
 -- Records of advn_user_red_packet_accumulate_202604
@@ -6623,7 +6723,7 @@ CREATE TABLE `advn_user_red_packet_accumulate_2027`  (
   INDEX `user_id`(`user_id` ASC) USING BTREE,
   INDEX `task_id`(`task_id` ASC) USING BTREE,
   INDEX `is_collected`(`is_collected` ASC) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '用户红包累计记录表' ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '用户红包累计记录表' ROW_FORMAT = Dynamic;
 
 -- ----------------------------
 -- Records of advn_user_red_packet_accumulate_2027
@@ -7029,7 +7129,7 @@ CREATE TABLE `advn_video_watch_record`  (
   INDEX `idx_collection_id`(`collection_id` ASC) USING BTREE,
   INDEX `idx_reward_status`(`reward_status` ASC) USING BTREE,
   INDEX `idx_user_date`(`user_id` ASC, `date_key` ASC) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '视频观看记录表' ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '视频观看记录表' ROW_FORMAT = Dynamic;
 
 -- ----------------------------
 -- Records of advn_video_watch_record
@@ -7353,7 +7453,7 @@ CREATE TABLE `advn_withdraw_order_2014`  (
   INDEX `idx_status`(`status` ASC) USING BTREE,
   INDEX `idx_create_time`(`createtime` ASC) USING BTREE,
   INDEX `idx_transfer_no`(`transfer_no` ASC) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '提现申请表' ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '提现申请表' ROW_FORMAT = Dynamic;
 
 -- ----------------------------
 -- Records of advn_withdraw_order_2014
@@ -7406,7 +7506,7 @@ CREATE TABLE `advn_withdraw_order_2015`  (
   INDEX `idx_status`(`status` ASC) USING BTREE,
   INDEX `idx_create_time`(`createtime` ASC) USING BTREE,
   INDEX `idx_transfer_no`(`transfer_no` ASC) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '提现申请表' ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '提现申请表' ROW_FORMAT = Dynamic;
 
 -- ----------------------------
 -- Records of advn_withdraw_order_2015
@@ -7459,7 +7559,7 @@ CREATE TABLE `advn_withdraw_order_2016`  (
   INDEX `idx_status`(`status` ASC) USING BTREE,
   INDEX `idx_create_time`(`createtime` ASC) USING BTREE,
   INDEX `idx_transfer_no`(`transfer_no` ASC) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '提现申请表' ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '提现申请表' ROW_FORMAT = Dynamic;
 
 -- ----------------------------
 -- Records of advn_withdraw_order_2016
@@ -7512,7 +7612,7 @@ CREATE TABLE `advn_withdraw_order_2017`  (
   INDEX `idx_status`(`status` ASC) USING BTREE,
   INDEX `idx_create_time`(`createtime` ASC) USING BTREE,
   INDEX `idx_transfer_no`(`transfer_no` ASC) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '提现申请表' ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '提现申请表' ROW_FORMAT = Dynamic;
 
 -- ----------------------------
 -- Records of advn_withdraw_order_2017
@@ -7565,7 +7665,7 @@ CREATE TABLE `advn_withdraw_order_2018`  (
   INDEX `idx_status`(`status` ASC) USING BTREE,
   INDEX `idx_create_time`(`createtime` ASC) USING BTREE,
   INDEX `idx_transfer_no`(`transfer_no` ASC) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '提现申请表' ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '提现申请表' ROW_FORMAT = Dynamic;
 
 -- ----------------------------
 -- Records of advn_withdraw_order_2018
@@ -7618,7 +7718,7 @@ CREATE TABLE `advn_withdraw_order_2019`  (
   INDEX `idx_status`(`status` ASC) USING BTREE,
   INDEX `idx_create_time`(`createtime` ASC) USING BTREE,
   INDEX `idx_transfer_no`(`transfer_no` ASC) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '提现申请表' ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '提现申请表' ROW_FORMAT = Dynamic;
 
 -- ----------------------------
 -- Records of advn_withdraw_order_2019
@@ -7671,7 +7771,7 @@ CREATE TABLE `advn_withdraw_order_2020`  (
   INDEX `idx_status`(`status` ASC) USING BTREE,
   INDEX `idx_create_time`(`createtime` ASC) USING BTREE,
   INDEX `idx_transfer_no`(`transfer_no` ASC) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '提现申请表' ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '提现申请表' ROW_FORMAT = Dynamic;
 
 -- ----------------------------
 -- Records of advn_withdraw_order_2020
@@ -7724,7 +7824,7 @@ CREATE TABLE `advn_withdraw_order_2021`  (
   INDEX `idx_status`(`status` ASC) USING BTREE,
   INDEX `idx_create_time`(`createtime` ASC) USING BTREE,
   INDEX `idx_transfer_no`(`transfer_no` ASC) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '提现申请表' ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '提现申请表' ROW_FORMAT = Dynamic;
 
 -- ----------------------------
 -- Records of advn_withdraw_order_2021
@@ -7777,7 +7877,7 @@ CREATE TABLE `advn_withdraw_order_2022`  (
   INDEX `idx_status`(`status` ASC) USING BTREE,
   INDEX `idx_create_time`(`createtime` ASC) USING BTREE,
   INDEX `idx_transfer_no`(`transfer_no` ASC) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '提现申请表' ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '提现申请表' ROW_FORMAT = Dynamic;
 
 -- ----------------------------
 -- Records of advn_withdraw_order_2022
@@ -7830,7 +7930,7 @@ CREATE TABLE `advn_withdraw_order_2023`  (
   INDEX `idx_status`(`status` ASC) USING BTREE,
   INDEX `idx_create_time`(`createtime` ASC) USING BTREE,
   INDEX `idx_transfer_no`(`transfer_no` ASC) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '提现申请表' ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '提现申请表' ROW_FORMAT = Dynamic;
 
 -- ----------------------------
 -- Records of advn_withdraw_order_2023
@@ -7883,7 +7983,7 @@ CREATE TABLE `advn_withdraw_order_2024`  (
   INDEX `idx_status`(`status` ASC) USING BTREE,
   INDEX `idx_create_time`(`createtime` ASC) USING BTREE,
   INDEX `idx_transfer_no`(`transfer_no` ASC) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '提现申请表' ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '提现申请表' ROW_FORMAT = Dynamic;
 
 -- ----------------------------
 -- Records of advn_withdraw_order_2024
@@ -7936,7 +8036,7 @@ CREATE TABLE `advn_withdraw_order_2025`  (
   INDEX `idx_status`(`status` ASC) USING BTREE,
   INDEX `idx_create_time`(`createtime` ASC) USING BTREE,
   INDEX `idx_transfer_no`(`transfer_no` ASC) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '提现申请表' ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '提现申请表' ROW_FORMAT = Dynamic;
 
 -- ----------------------------
 -- Records of advn_withdraw_order_2025
