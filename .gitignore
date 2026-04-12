@@ -2,7 +2,6 @@
 /thinkphp/
 /vendor/
 /runtime/*
-/addons/*
 /public/uploads/*
 .DS_Store
 .idea
