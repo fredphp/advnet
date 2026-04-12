@@ -1,8 +1,8 @@
 <template>
         <view :class="['message', isMe ? 'me' : 'other']">
                 <!-- 用户头像 -->
-                <image v-if="!isMe" class="avatar" :src="(message.user && message.user.avatar) || '/static/image/avatar.png'" mode="aspectFill"></image>
-                <image v-if="isMe" class="avatar" :src="vuex_user.avatar || '/static/image/avatar.png'" mode="aspectFill"></image>
+                <image v-if="!isMe" class="avatar" :src="(message.user && message.user.avatar) || '/static/image/avatar.png'" mode="aspectFill" @error="onAvatarError"></image>
+                <image v-if="isMe" class="avatar" :src="vuex_user.avatar || '/static/image/avatar.png'" mode="aspectFill" @error="onAvatarError"></image>
 
                 <view class="content-wrapper">
                         <!-- 用户昵称 -->
@@ -67,6 +67,11 @@ export default {
                                 return;
                         }
                         this.$emit('open-redbag', this.message);
+                },
+                onAvatarError(e) {
+                        if (e && e.target) {
+                                e.target.src = '/static/image/avatar.png';
+                        }
                 }
         }
 }
@@ -92,6 +97,8 @@ export default {
         border-radius: 50%;
         margin: 0 20rpx;
         flex-shrink: 0;
+        background-color: #e0e0e0;
+        border: 2rpx solid #d0d0d0;
 }
 
 .content-wrapper {

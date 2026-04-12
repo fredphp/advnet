@@ -4,13 +4,15 @@
       v-if="!isMe" 
       class="avatar" 
       :src="(message.user && message.user.avatar) || '/static/image/avatar.png'" 
-      mode="aspectFit"
+      mode="aspectFill"
+      @error="onAvatarError"
     ></image>
         <image
           v-if="isMe" 
           class="avatar" 
           :src="vuex_user.avatar || '/static/image/avatar.png'" 
-          mode="aspectFit"
+          mode="aspectFill"
+          @error="onAvatarError"
         ></image>
     
     <view class="content-wrapper">
@@ -69,6 +71,12 @@ export default {
   },
   
   methods: {
+    onAvatarError(e) {
+      // 图片加载失败时替换为默认头像
+      if (e && e.target) {
+        e.target.src = '/static/image/avatar.png';
+      }
+    },
     formatTime(timestamp) {
       const date = new Date(timestamp)
       return `${date.getHours()}:${date.getMinutes().toString().padStart(2, '0')}`
@@ -98,6 +106,8 @@ export default {
   border-radius: 50%;
   margin: 0 20rpx;
   flex-shrink: 0;
+  background-color: #e0e0e0;
+  border: 2rpx solid #d0d0d0;
 }
 
 .content-wrapper {

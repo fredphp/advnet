@@ -2,7 +2,7 @@
         <view class="ad-feed-message">
                 <!-- ★ 顶部：发送者信息条（与普通消息风格一致） -->
                 <view class="msg-header">
-                        <image class="msg-avatar" :src="message.user ? message.user.avatar : '/static/image/avatar.png'" mode="aspectFit"></image>
+                        <image class="msg-avatar" :src="message.user ? message.user.avatar : '/static/image/avatar.png'" mode="aspectFill" @error="onAvatarError"></image>
                         <text class="msg-nickname">{{ message.user ? message.user.nickname : '广告推荐' }}</text>
                 </view>
 
@@ -125,6 +125,11 @@ export default {
                         // 信息流广告点击可跳转观看页（展示即计费，点击非必须）
                         // 目前不做跳转，仅展示
                 },
+                onAvatarError(e) {
+                        if (e && e.target) {
+                                e.target.src = '/static/image/avatar.png';
+                        }
+                },
 
                 formatTime(timestamp) {
                         if (!timestamp) return '';
@@ -210,6 +215,8 @@ export default {
         border-radius: 50%;
         margin-right: 20rpx;
         flex-shrink: 0;
+        background-color: #e0e0e0;
+        border: 2rpx solid #d0d0d0;
 }
 
 .msg-nickname {

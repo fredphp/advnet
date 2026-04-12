@@ -585,7 +585,7 @@ export default {
                                                 // 服务端数据有更新 → 解析并缓存到本地
                                                 const names = (res.data.users || []).map(u => ({
                                                         nickname: u.nickname || ('用户' + u.id),
-                                                        avatar: u.avatar || '/static/image/avatar.png'
+                                                        avatar: this.cdnurl(u.avatar) || '/static/image/avatar.png'
                                                 }));
                                                 const msgs = (res.data.messages || [])
                                                         .map(m => m.description)
@@ -1900,7 +1900,8 @@ export default {
         height: 64rpx;
         border-radius: 8rpx;
         margin-right: 16rpx;
-        background: rgba(255,255,255,0.15);
+        background: rgba(255,255,255,0.3);
+        border: 2rpx solid rgba(255,255,255,0.2);
 }
 
 .rm-sender-emoji {
