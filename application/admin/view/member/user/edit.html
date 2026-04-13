@@ -2,15 +2,14 @@
 .edit-user-box { padding: 15px; }
 .edit-user-box .user-header { display: flex; align-items: center; margin-bottom: 15px; padding-bottom: 15px; border-bottom: 1px solid #eee; }
 .edit-user-box .user-avatar { width: 80px; height: 80px; border-radius: 50%; margin-right: 12px; background: #f5f5f5; cursor: pointer; object-fit: cover; }
-.edit-user-box .avatar-upload-area { display: flex; align-items: center; gap: 15px; margin-bottom: 10px; padding: 12px; background: #fafafa; border: 1px dashed #ddd; border-radius: 6px; }
+.edit-user-box .avatar-upload-area { margin-bottom: 10px; padding: 12px; background: #fafafa; border: 1px dashed #ddd; border-radius: 6px; }
+.edit-user-box .avatar-upload-area .avatar-upload-btns { display: flex; gap: 6px; margin-bottom: 8px; }
+.edit-user-box .avatar-upload-area .faupload-preview { margin: 0 !important; padding: 0 !important; }
+.edit-user-box .avatar-upload-area .faupload-preview li { margin: 0 !important; padding: 0 !important; }
+.edit-user-box .avatar-upload-area .faupload-preview li img { width: 80px; height: 80px; object-fit: cover; border-radius: 50%; border: 2px solid #eee; }
 .edit-user-box .avatar-preview-wrap { position: relative; flex-shrink: 0; }
 .edit-user-box .avatar-preview-wrap .change-avatar-hint { position: absolute; bottom: 0; left: 0; right: 0; background: rgba(0,0,0,0.5); color: #fff; font-size: 11px; text-align: center; padding: 2px 0; border-radius: 0 0 50% 50%; opacity: 0; transition: opacity 0.2s; pointer-events: none; }
 .edit-user-box .avatar-preview-wrap:hover .change-avatar-hint { opacity: 1; }
-.edit-user-box .avatar-upload-info { flex: 1; }
-.edit-user-box .avatar-upload-info .info-title { font-size: 13px; font-weight: 600; color: #333; }
-.edit-user-box .avatar-upload-info .info-desc { font-size: 12px; color: #999; margin-top: 4px; }
-.edit-user-box .avatar-upload-btns { display: flex; gap: 6px; margin-top: 8px; }
-.edit-user-box .avatar-upload-btns .btn { font-size: 12px; padding: 4px 12px; }
 .edit-user-box .user-name { font-size: 16px; font-weight: 600; color: #333; }
 .edit-user-box .user-id { font-size: 12px; color: #999; margin-top: 2px; }
 .edit-user-box .section-title { font-size: 13px; font-weight: 600; color: #333; margin: 15px 0 10px; padding-left: 8px; border-left: 3px solid #667eea; }
@@ -62,7 +61,7 @@
                 <button type="button" id="faupload-avatar" class="btn btn-danger faupload" data-input-id="c-avatar" data-mimetype="image/gif,image/jpeg,image/png,image/jpg,image/bmp" data-multiple="false" data-preview-id="p-avatar"><i class="fa fa-upload"></i> 上传头像</button>
                 <button type="button" id="fachoose-avatar" class="btn btn-primary fachoose" data-input-id="c-avatar" data-mimetype="image/*" data-multiple="false"><i class="fa fa-list"></i> 从相册选择</button>
             </div>
-            <ul class="row list-inline faupload-preview" id="p-avatar"></ul>
+            <ul class="faupload-preview" id="p-avatar"></ul>
         </div>
 
         <div class="section-title">基本信息</div>
