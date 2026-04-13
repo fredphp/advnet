@@ -54,6 +54,29 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
         },
         edit: function () {
             Controller.api.bindevent();
+
+            // 头像上传后同步更新头部预览
+            var $avatarInput = $('#c-avatar');
+            var $headerAvatar = $('#header-avatar');
+
+            // 监听头像值变化，同步更新头部预览
+            $avatarInput.on('change', function () {
+                var val = $(this).val();
+                if (val) {
+                    // 处理相对路径拼接CDN
+                    if (val.indexOf('://') === -1 && val.indexOf('/') === 0 && Config.upload && Config.upload.cdnurl) {
+                        val = Config.upload.cdnurl + val;
+                    }
+                    $headerAvatar.attr('src', val);
+                } else {
+                    $headerAvatar.attr('src', '/assets/img/avatar.png');
+                }
+            });
+
+            // 点击头部头像触发上传
+            $headerAvatar.on('click', function () {
+                $('#faupload-avatar').trigger('click');
+            });
         },
         statistics: function () {
             Controller.api.loadStatistics();
