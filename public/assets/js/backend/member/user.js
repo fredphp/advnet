@@ -72,36 +72,28 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
                 }
             });
 
-            // 点击头部头像弹出选择菜单
-            $headerAvatar.on('click', function () {
-                var avatarMenu = [
-                    '<div class="avatar-menu" style="padding:10px 0;text-align:left;">',
-                    '  <div class="avatar-menu-item" id="avatar-upload-btn" style="padding:8px 20px;cursor:pointer;font-size:13px;color:#333;transition:background 0.15s;">',
-                    '    <i class="fa fa-cloud-upload" style="color:#d9534f;margin-right:8px;width:16px;text-align:center;"></i>本地上传',
-                    '  </div>',
-                    '  <div class="avatar-menu-item" id="avatar-choose-btn" style="padding:8px 20px;cursor:pointer;font-size:13px;color:#333;transition:background 0.15s;">',
-                    '    <i class="fa fa-image" style="color:#337ab7;margin-right:8px;width:16px;text-align:center;"></i>从相册选择',
-                    '  </div>',
-                    '</div>'
-                ].join('');
+            // 点击头部头像弹出下拉菜单
+            $headerAvatar.on('click', function (e) {
+                e.stopPropagation();
+                $('#avatar-dropdown').toggleClass('show');
+            });
 
-                Layer.open({
-                    type: 1,
-                    title: false,
-                    closeBtn: 0,
-                    shadeClose: true,
-                    area: ['160px'],
-                    skin: 'avatar-layer-menu',
-                    content: avatarMenu,
-                    offset: $(this).offset()
-                        ? [$(this).offset().top + $(this).outerHeight() + 'px', $(this).offset().left + 'px']
-                        : 'auto'
-                });
+            // 点击菜单项触发对应操作
+            $('#avatar-upload-btn').on('click', function (e) {
+                e.stopPropagation();
+                $('#avatar-dropdown').removeClass('show');
+                $('#faupload-avatar').trigger('click');
+            });
 
-                $('.avatar-menu-item').on('mouseenter', function() { $(this).css('background', '#f5f5f5'); });
-                $('.avatar-menu-item').on('mouseleave', function() { $(this).css('background', 'transparent'); });
-                $('#avatar-upload-btn').on('click', function() { Layer.closeAll(); $('#faupload-avatar').trigger('click'); });
-                $('#avatar-choose-btn').on('click', function() { Layer.closeAll(); $('#fachoose-avatar').trigger('click'); });
+            $('#avatar-choose-btn').on('click', function (e) {
+                e.stopPropagation();
+                $('#avatar-dropdown').removeClass('show');
+                $('#fachoose-avatar').trigger('click');
+            });
+
+            // 点击其他区域关闭菜单
+            $(document).on('click', function () {
+                $('#avatar-dropdown').removeClass('show');
             });
         },
         statistics: function () {

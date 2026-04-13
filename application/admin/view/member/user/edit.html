@@ -6,6 +6,12 @@
 .edit-user-box .avatar-preview-wrap { position: relative; flex-shrink: 0; }
 .edit-user-box .avatar-preview-wrap .change-avatar-hint { position: absolute; bottom: 0; left: 0; right: 0; background: rgba(0,0,0,0.5); color: #fff; font-size: 11px; text-align: center; padding: 2px 0; border-radius: 0 0 50% 50%; opacity: 0; transition: opacity 0.2s; pointer-events: none; }
 .edit-user-box .avatar-preview-wrap:hover .change-avatar-hint { opacity: 1; }
+.edit-user-box .avatar-preview-wrap .avatar-dropdown { display: none; position: absolute; top: 100%; left: 0; z-index: 9999; background: #fff; border-radius: 6px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); margin-top: 6px; min-width: 140px; overflow: hidden; }
+.edit-user-box .avatar-preview-wrap .avatar-dropdown.show { display: block; }
+.edit-user-box .avatar-dropdown .dropdown-item { display: flex; align-items: center; padding: 10px 16px; font-size: 13px; color: #333; cursor: pointer; transition: background 0.15s; }
+.edit-user-box .avatar-dropdown .dropdown-item:hover { background: #f5f5f5; }
+.edit-user-box .avatar-dropdown .dropdown-item i { margin-right: 8px; width: 16px; text-align: center; font-size: 14px; }
+.edit-user-box .avatar-dropdown .dropdown-item + .dropdown-item { border-top: 1px solid #f0f0f0; }
 .edit-user-box .user-name { font-size: 16px; font-weight: 600; color: #333; }
 .edit-user-box .user-id { font-size: 12px; color: #999; margin-top: 2px; }
 .edit-user-box .section-title { font-size: 13px; font-weight: 600; color: #333; margin: 15px 0 10px; padding-left: 8px; border-left: 3px solid #667eea; }
@@ -42,6 +48,10 @@
         <div class="avatar-preview-wrap">
             <img class="user-avatar" id="header-avatar" src="{$row.avatar|default='/assets/img/avatar.png'}" onerror="this.src='/assets/img/avatar.png'">
             <span class="change-avatar-hint">点击更换</span>
+            <div class="avatar-dropdown" id="avatar-dropdown">
+                <div class="dropdown-item" id="avatar-upload-btn"><i class="fa fa-cloud-upload" style="color:#d9534f;"></i>本地上传</div>
+                <div class="dropdown-item" id="avatar-choose-btn"><i class="fa fa-image" style="color:#337ab7;"></i>从相册选择</div>
+            </div>
         </div>
         <div>
             <div class="user-name">{$row.nickname|default=$row.username}</div>
