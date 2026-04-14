@@ -76,6 +76,21 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
                 // 在加载UEditor前设置 UEDITOR_HOME_URL（使用相对路径确保dialog等资源正确加载）
                 window.UEDITOR_HOME_URL = '/assets/libs/ueditor/';
 
+                // 动态注册 ueditor 模块路径，兼容 require-backend.min.js 未内置 ueditor 配置的情况
+                require.config({
+                    paths: {
+                        'ueditor': '../libs/ueditor/ueditor.all.min',
+                        'ueditor-config': '../libs/ueditor/ueditor.config',
+                        'ueditor-lang': '../libs/ueditor/lang/zh-cn/zh-cn'
+                    },
+                    shim: {
+                        'ueditor': {
+                            deps: ['ueditor-config', 'ueditor-lang', 'css!../libs/ueditor/themes/default/css/ueditor.min.css'],
+                            exports: 'UE'
+                        }
+                    }
+                });
+
                 require(['ueditor'], function () {
                     // 等待DOM渲染完成后初始化编辑器
                     setTimeout(function () {

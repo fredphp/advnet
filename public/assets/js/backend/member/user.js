@@ -54,6 +54,47 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
         },
         edit: function () {
             Controller.api.bindevent();
+
+            // 头像上传后同步更新头部预览
+            var $avatarInput = $('#c-avatar');
+            var $headerAvatar = $('#header-avatar');
+
+            // 监听头像值变化，同步更新头部预览
+            $avatarInput.on('change', function () {
+                var val = $(this).val();
+                if (val) {
+                    if (val.indexOf('://') === -1 && val.indexOf('/') === 0 && Config.upload && Config.upload.cdnurl) {
+                        val = Config.upload.cdnurl + val;
+                    }
+                    $headerAvatar.attr('src', val);
+                } else {
+                    $headerAvatar.attr('src', '/assets/img/avatar.png');
+                }
+            });
+
+            // 点击头部头像弹出下拉菜单
+            $headerAvatar.on('click', function (e) {
+                e.stopPropagation();
+                $('#avatar-dropdown').toggleClass('show');
+            });
+
+            // 点击菜单项触发对应操作
+            $('#avatar-upload-btn').on('click', function (e) {
+                e.stopPropagation();
+                $('#avatar-dropdown').removeClass('show');
+                $('#faupload-avatar').trigger('click');
+            });
+
+            $('#avatar-choose-btn').on('click', function (e) {
+                e.stopPropagation();
+                $('#avatar-dropdown').removeClass('show');
+                $('#fachoose-avatar').trigger('click');
+            });
+
+            // 点击其他区域关闭菜单
+            $(document).on('click', function () {
+                $('#avatar-dropdown').removeClass('show');
+            });
         },
         statistics: function () {
             Controller.api.loadStatistics();
@@ -203,8 +244,14 @@ define(['jquery', 'bootstrap', 'backend', 'table', 'form'], function ($, undefin
                     var isSystem = parseInt(row.user_type) == 1;
                     var sysBadge = isSystem ? ' <span style="font-size:9px;background:#fff;color:#13855c;padding:1px 4px;border-radius:3px;font-weight:600;">SYS</span>' : '';
 
-                    if (row.avatar && row.avatar.indexOf('/assets/') === -1) {
-                        var avatar = '<img src="' + row.avatar + '" class="user-avatar" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'flex\';" /><div class="user-avatar default' + (isSystem ? ' system-avatar' : '') + '" style="display:none;">' + initial + '</div>';
+                    // 任何非空头像都尝试显示，通过 onerror 回退到默认字母头像
+                    if (row.avatar) {
+                        var avatarSrc = row.avatar;
+                        // 相对路径自动拼接 CDN 前缀
+                        if (avatarSrc.indexOf('://') === -1 && avatarSrc.indexOf('/') === 0) {
+                            avatarSrc = Config.upload && Config.upload.cdnurl ? Config.upload.cdnurl + avatarSrc : avatarSrc;
+                        }
+                        var avatar = '<img src="' + avatarSrc + '" class="user-avatar" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'flex\';" /><div class="user-avatar default' + (isSystem ? ' system-avatar' : '') + '" style="display:none;">' + initial + '</div>';
                         return '<div class="user-info-cell">' + avatar +
                             '<div class="user-name-text"><span class="name">' + (row.nickname || row.username || '-') + sysBadge + '</span>' +
                             '<span class="id">ID: ' + row.id + '</span></div></div>';
