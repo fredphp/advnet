@@ -84,7 +84,13 @@
                     "bd" : {}
                 },
                 "geolocation" : {},
-                "oauth" : {}
+                "oauth" : {
+					"weixin": {
+						"appid": "wx3c078ec2e418ee00",
+						"appsecret": "7ca43697e562cc960c4ae64be1b81c7c",
+						"UniversalLinks": ""
+					}
+				}
             },
             "icons" : {
                 "android" : {
