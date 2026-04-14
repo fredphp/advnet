@@ -64,7 +64,11 @@
                     "<uses-permission android:name=\"android.permission.WRITE_SETTINGS\"/>"
                 ],
                 "abiFilters" : [ "armeabi-v7a", "arm64-v8a", "x86" ],
-                "packagename" : "com.coco3g.qiming"
+                "packagename" : "com.coco3g.qiming",
+                "keystore" : "mashangzhuan.keystore",
+                "password" : "123456",
+                "aliasname" : "mashangzhuan",
+                "aliaspassword" : "123456"
             },
             /* ios打包配置 */
             "ios" : {
